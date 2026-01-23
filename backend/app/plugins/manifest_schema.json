@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["id", "name", "version", "entry", "apiVersion"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Уникальный идентификатор плагина (lowercase, alphanumeric, hyphens)"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Название плагина для отображения"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "Версия плагина в формате semver (major.minor.patch)"
+    },
+    "entry": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Путь к entry point файлу относительно корня плагина (например, index.html)"
+    },
+    "apiVersion": {
+      "type": "string",
+      "enum": ["1"],
+      "description": "Версия API плагина (поддерживается только версия 1)"
+    },
+    "capabilities": {
+      "type": "object",
+      "properties": {
+        "submit": {
+          "type": "boolean",
+          "description": "Поддерживает ли плагин отправку ответов"
+        },
+        "explanation": {
+          "type": "boolean",
+          "description": "Поддерживает ли плагин отображение объяснений"
+        }
+      },
+      "default": {}
+    },
+    "height": {
+      "type": "integer",
+      "minimum": 200,
+      "maximum": 2000,
+      "default": 400,
+      "description": "Высота iframe в пикселях"
+    }
+  },
+  "additionalProperties": false
+}
