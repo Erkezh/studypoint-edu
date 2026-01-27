@@ -1,0 +1,12 @@
+{
+  "id": "kazakh-fractions-app",
+  "name": "kazakh-fractions-app",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "api_version": "1",
+  "capabilities": {
+    "submit": true,
+    "explanation": true
+  },
+  "height": 400
+}

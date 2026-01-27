@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query
 
 from app.core.rbac import require_roles
-from app.schemas.admin import BulkImportRequest, InteractiveQuestionCreate, QuestionCreate, QuestionUpdate
+from app.schemas.admin import BulkImportRequest, InteractiveQuestionCreate, PluginQuestionCreate, QuestionCreate, QuestionUpdate
 from app.schemas.base import ApiResponse, PaginatedMeta
 from app.services.admin_service import AdminService
 
@@ -100,6 +100,24 @@ async def create_interactive_question(body: InteractiveQuestionCreate, svc: Admi
         level=body.level or 1,
     )
     q = await svc.create_question(question_data)
+    return ApiResponse(
+        data={
+            "id": q.id,
+            "skill_id": q.skill_id,
+            "type": q.type,
+            "prompt": q.prompt,
+            "data": q.data,
+            "correct_answer": q.correct_answer,
+            "explanation": q.explanation,
+            "level": q.level,
+        }
+    )
+
+
+@router.post("/plugin", response_model=ApiResponse[dict])
+async def create_plugin_question(body: PluginQuestionCreate, svc: AdminService = Depends()):
+    """Добавить плагин в тест (навык). Создаёт вопрос типа PLUGIN."""
+    q = await svc.create_plugin_question(body)
     return ApiResponse(
         data={
             "id": q.id,

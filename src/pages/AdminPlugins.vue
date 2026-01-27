@@ -15,10 +15,77 @@
         {{ successMessage }}
       </div>
 
+      <!-- Загрузка TSX плагина -->
+      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 class="text-xl font-semibold mb-4">Загрузить тест из TSX файла</h2>
+
+        <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded">
+          <p class="text-sm text-purple-800 mb-2"><strong>Как это работает:</strong></p>
+          <ul class="text-sm text-purple-700 list-disc list-inside space-y-1">
+            <li>Загрузите TSX файл с React компонентом (как в примере <code class="bg-purple-100 px-1 rounded">fraction_comparison_app.tsx</code>)</li>
+            <li>Система автоматически преобразует TSX в HTML плагин</li>
+            <li>Плагин будет создан и опционально добавлен в тест для выбранного класса</li>
+            <li>Максимальный размер: 1MB</li>
+          </ul>
+        </div>
+
+        <form @submit.prevent="handleTsxUpload" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              TSX файл
+            </label>
+            <input
+              ref="tsxFileInput"
+              type="file"
+              accept=".tsx,.ts"
+              @change="handleTsxFileSelect"
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+            />
+            <p v-if="selectedTsxFile" class="text-sm text-gray-600 mt-2">
+              Выбран файл: {{ selectedTsxFile.name }} ({{ formatFileSize(selectedTsxFile.size) }})
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Название плагина (опционально)
+            </label>
+            <input
+              v-model="tsxPluginName"
+              type="text"
+              placeholder="Автоматически из имени файла"
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Добавить в тест для класса (опционально)
+            </label>
+            <select
+              v-model="tsxGradeId"
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
+            >
+              <option :value="null">— Не добавлять в тест —</option>
+              <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
+            </select>
+          </div>
+
+          <div class="flex gap-4">
+            <Button type="submit" variant="primary" :loading="uploadingTsx">
+              Загрузить TSX и создать плагин
+            </Button>
+            <Button type="button" variant="outline" @click="resetTsxUpload">
+              Очистить
+            </Button>
+          </div>
+        </form>
+      </div>
+
       <!-- Загрузка плагина -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">Загрузить новый плагин</h2>
-        
+        <h2 class="text-xl font-semibold mb-4">Загрузить новый плагин (ZIP)</h2>
+
         <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
           <p class="text-sm text-blue-800 mb-2"><strong>Требования к плагину:</strong></p>
           <ul class="text-sm text-blue-700 list-disc list-inside space-y-1">
@@ -60,7 +127,7 @@
       <!-- Список плагинов -->
       <div class="bg-white rounded-lg shadow-md p-6">
         <h2 class="text-xl font-semibold mb-4">Загруженные плагины</h2>
-        
+
         <div v-if="loading" class="text-center py-8">
           <p class="text-gray-500">Загрузка...</p>
         </div>
@@ -84,7 +151,7 @@
                   <p><strong>Entry:</strong> {{ plugin.entry }}</p>
                   <p><strong>API Version:</strong> {{ plugin.api_version }}</p>
                   <p><strong>Высота:</strong> {{ plugin.height }}px</p>
-                  <p><strong>Статус:</strong> 
+                  <p><strong>Статус:</strong>
                     <span :class="plugin.is_published ? 'text-green-600' : 'text-gray-500'">
                       {{ plugin.is_published ? 'Опубликован' : 'Не опубликован' }}
                     </span>
@@ -92,7 +159,7 @@
                   <p><strong>Загружен:</strong> {{ formatDate(plugin.created_at) }}</p>
                 </div>
               </div>
-              
+
               <div class="flex flex-col gap-2 ml-4">
                 <Button
                   v-if="!plugin.is_published"
@@ -118,6 +185,15 @@
                   @click="previewPlugin(plugin)"
                 >
                   Preview
+                </Button>
+                <Button
+                  v-if="plugin.is_published"
+                  variant="primary"
+                  size="sm"
+                  @click="openAddToTest(plugin)"
+                  :loading="addingToTest === plugin.id"
+                >
+                  Добавить в тест
                 </Button>
                 <Button
                   v-if="!plugin.is_published"
@@ -150,8 +226,19 @@
               ×
             </button>
           </div>
-          
+
           <div class="flex-1 overflow-auto p-4">
+            <!-- Кнопка «Проверить» для embed-режима -->
+            <div class="mb-4 flex gap-2 items-center">
+              <Button
+                variant="primary"
+                size="sm"
+                @click="requestPluginAnswer"
+              >
+                Проверить
+              </Button>
+              <span class="text-sm text-gray-500">Плагин в тестовом режиме — только задание.</span>
+            </div>
             <!-- Лог postMessage событий -->
             <div class="mb-4 p-3 bg-gray-50 rounded border">
               <h4 class="font-semibold mb-2">PostMessage Events:</h4>
@@ -181,6 +268,38 @@
           </div>
         </div>
       </div>
+
+      <!-- Модальное окно «Добавить в тест» -->
+      <div
+        v-if="addToTestPlugin"
+        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+        @click.self="addToTestPlugin = null"
+      >
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+          <h3 class="text-lg font-semibold mb-4">Добавить плагин «{{ addToTestPlugin.name }}» в тест</h3>
+          <p class="text-sm text-gray-600 mb-4">
+            Плагин станет отдельным навыком. Выберите класс — навык появится в практике по этому классу.
+          </p>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Класс (сынып)</label>
+              <select
+                v-model="addToTestGradeId"
+                class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option :value="null">— Выберите класс —</option>
+                <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex gap-2 mt-6">
+            <Button variant="primary" :loading="addingToTest !== null" :disabled="!addToTestGradeId" @click="submitAddToTest">
+              Добавить в тест
+            </Button>
+            <Button variant="outline" @click="addToTestPlugin = null">Отмена</Button>
+          </div>
+        </div>
+      </div>
     </main>
     <Footer />
   </div>
@@ -191,6 +310,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { adminApi } from '@/api/admin'
+import { catalogApi } from '@/api/catalog'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
@@ -206,10 +326,19 @@ const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 const selectedFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
+const selectedTsxFile = ref<File | null>(null)
+const tsxFileInput = ref<HTMLInputElement | null>(null)
+const tsxPluginName = ref<string>('')
+const tsxGradeId = ref<number | null>(null)
+const uploadingTsx = ref(false)
 const plugins = ref<Array<Record<string, any>>>([])
 const previewPluginData = ref<Record<string, any> | null>(null)
 const messageLog = ref<Array<{ type: string; data: any }>>([])
 const messageHandler = ref<((event: MessageEvent) => void) | null>(null)
+const addToTestPlugin = ref<Record<string, any> | null>(null)
+const addToTestGradeId = ref<number | null>(null)
+const grades = ref<Array<{ id: number; number: number; title: string }>>([])
+const addingToTest = ref<string | null>(null)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
@@ -217,6 +346,18 @@ const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     selectedFile.value = target.files[0]
+  }
+}
+
+const handleTsxFileSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    selectedTsxFile.value = target.files[0]
+    // Автоматически заполняем название плагина из имени файла
+    if (!tsxPluginName.value) {
+      const fileName = target.files[0].name.replace(/\.(tsx|ts)$/, '')
+      tsxPluginName.value = fileName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-').toLowerCase()
+    }
   }
 }
 
@@ -250,25 +391,84 @@ const handleUpload = async () => {
     }, 5000)
   } catch (err: any) {
     console.error('Upload error:', err)
-    const errorDetail = err.response?.data?.error || err.response?.data
-    let errorMsg = err.message
-    
-    if (errorDetail) {
-      if (typeof errorDetail === 'string') {
-        errorMsg = errorDetail
-      } else if (errorDetail.message) {
-        errorMsg = errorDetail.message
-      } else if (errorDetail.code === 'plugin_exists') {
-        errorMsg = `Плагин уже существует. Если он не опубликован, он будет заменен. Если опубликован - сначала скройте его.`
+    console.error('Upload error response:', err.response?.data)
+
+    let errorMsg = 'Ошибка при загрузке плагина'
+
+    // Обработка 400 Bad Request
+    if (err.response?.status === 400) {
+      const errorData = err.response?.data
+
+      // Проверяем разные форматы ошибок от FastAPI
+      if (errorData?.detail) {
+        if (Array.isArray(errorData.detail)) {
+          errorMsg = errorData.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ')
+        } else if (typeof errorData.detail === 'string') {
+          errorMsg = errorData.detail
+        } else if (errorData.detail.message) {
+          errorMsg = errorData.detail.message
+        }
+      } else if (errorData?.error) {
+        // Формат: { error: { code: "...", message: "..." } }
+        if (typeof errorData.error === 'string') {
+          errorMsg = errorData.error
+        } else {
+          // Используем код ошибки для более понятного сообщения
+          const codeMessages: Record<string, string> = {
+            'invalid_zip': 'Некорректный ZIP файл. Убедитесь, что файл является валидным ZIP архивом.',
+            'manifest_not_found': 'manifest.json не найден в корне архива. Убедитесь, что manifest.json находится в корне ZIP файла.',
+            'invalid_manifest_json': 'Некорректный JSON в manifest.json. Проверьте синтаксис JSON файла.',
+            'manifest_validation_error': 'Ошибка валидации manifest.json. Проверьте, что все обязательные поля заполнены правильно.',
+            'manifest_parse_error': 'Ошибка парсинга manifest.json. Проверьте структуру файла.',
+            'entry_not_found': 'Entry файл не найден. Убедитесь, что файл, указанный в manifest.json как entry, существует в архиве.',
+            'plugin_security_error': 'Ошибка безопасности плагина. Плагин не прошел проверку безопасности.'
+          }
+
+          // Приоритет: message > codeMessages[code] > code
+          if (errorData.error.message) {
+            errorMsg = errorData.error.message
+          } else if (errorData.error.code && codeMessages[errorData.error.code]) {
+            errorMsg = codeMessages[errorData.error.code]
+            // Добавляем детали, если есть
+            if (errorData.error.details) {
+              errorMsg += ` (${JSON.stringify(errorData.error.details)})`
+            }
+          } else if (errorData.error.code) {
+            errorMsg = `Ошибка: ${errorData.error.code}`
+          }
+        }
+      } else if (errorData?.message) {
+        errorMsg = errorData.message
+      } else if (typeof errorData === 'string') {
+        errorMsg = errorData
+      }
+
+      // Если все еще не нашли сообщение, показываем полный ответ для отладки
+      if (errorMsg === 'Ошибка при загрузке плагина' && errorData) {
+        console.error('Не удалось извлечь сообщение об ошибке. Полный ответ:', errorData)
+        errorMsg = `Ошибка загрузки: ${JSON.stringify(errorData)}`
       }
     }
-    
     // Обработка 409 Conflict
-    if (err.response?.status === 409) {
+    else if (err.response?.status === 409) {
+      const errorDetail = err.response?.data?.error || err.response?.data
       errorMsg = errorDetail?.message || 'Плагин с таким ID и версией уже существует. Если он опубликован, сначала скройте его.'
     }
-    
-    error.value = errorMsg || 'Ошибка при загрузке плагина'
+    // Другие ошибки
+    else {
+      const errorDetail = err.response?.data?.error || err.response?.data
+      if (errorDetail) {
+        if (typeof errorDetail === 'string') {
+          errorMsg = errorDetail
+        } else if (errorDetail.message) {
+          errorMsg = errorDetail.message
+        }
+      } else if (err.message) {
+        errorMsg = err.message
+      }
+    }
+
+    error.value = errorMsg
   } finally {
     uploading.value = false
   }
@@ -281,6 +481,98 @@ const resetUpload = () => {
   }
 }
 
+const handleTsxUpload = async () => {
+  if (!selectedTsxFile.value) {
+    error.value = 'Выберите TSX файл для загрузки'
+    return
+  }
+
+  uploadingTsx.value = true
+  error.value = null
+  successMessage.value = null
+
+  try {
+    const response = await adminApi.uploadTsxPlugin(
+      selectedTsxFile.value,
+      tsxPluginName.value || undefined,
+      tsxGradeId.value || undefined
+    )
+
+    let message = `Плагин "${response.data.name}" успешно создан из TSX файла!`
+    if (response.data.added_to_test) {
+      if (response.data.added_to_test.already_exists) {
+        message += ` Плагин уже был добавлен в тест как навык «${response.data.added_to_test.skill_title}».`
+      } else {
+        message += ` Плагин добавлен в тест как навык «${response.data.added_to_test.skill_title}».`
+      }
+    }
+
+    successMessage.value = message
+    resetTsxUpload()
+    await loadPlugins()
+    setTimeout(() => {
+      successMessage.value = null
+    }, 5000)
+  } catch (err: any) {
+    console.error('TSX Upload error:', err)
+    console.error('TSX Upload error response:', err.response?.data)
+    console.error('TSX Upload error status:', err.response?.status)
+
+    const errorData = err.response?.data
+
+    let errorMsg = 'Ошибка при загрузке TSX файла'
+
+    // Обработка сетевых ошибок
+    if (!err.response) {
+      errorMsg = 'Не удалось подключиться к серверу. Проверьте, что backend запущен.'
+    }
+    // Обработка ошибок от сервера
+    else if (errorData?.error) {
+      if (errorData.error.message) {
+        errorMsg = errorData.error.message
+      } else if (errorData.error.code) {
+        const codeMessages: Record<string, string> = {
+          'invalid_file': 'Некорректный файл. Файл должен быть .tsx или .ts',
+          'invalid_tsx': 'Некорректный TSX код. Проверьте синтаксис React компонента.',
+          'file_read_error': 'Ошибка при чтении файла. Убедитесь, что файл не поврежден.',
+          'file_encoding_error': 'Ошибка декодирования файла. Убедитесь, что файл в кодировке UTF-8.',
+          'empty_file': 'Файл пустой или не содержит TSX код.',
+          'tsx_transform_error': 'Ошибка при преобразовании TSX в HTML.',
+        }
+        errorMsg = codeMessages[errorData.error.code] || errorData.error.code || errorMsg
+        if (errorData.error.details) {
+          errorMsg += ` (${JSON.stringify(errorData.error.details)})`
+        }
+      }
+    } else if (errorData?.detail) {
+      if (typeof errorData.detail === 'string') {
+        errorMsg = errorData.detail
+      } else if (Array.isArray(errorData.detail)) {
+        errorMsg = errorData.detail.map((e: any) => e.msg || e.message).join(', ')
+      } else if (errorData.detail.message) {
+        errorMsg = errorData.detail.message
+      }
+    } else if (err.message) {
+      errorMsg = err.message
+    }
+
+    error.value = errorMsg
+  } finally {
+    uploadingTsx.value = false
+  }
+}
+
+const resetTsxUpload = () => {
+  selectedTsxFile.value = null
+  tsxPluginName.value = ''
+  tsxGradeId.value = null
+  if (tsxFileInput.value) {
+    tsxFileInput.value.value = ''
+  }
+  error.value = null
+  successMessage.value = null
+}
+
 const loadPlugins = async () => {
   loading.value = true
   error.value = null
@@ -290,7 +582,7 @@ const loadPlugins = async () => {
     plugins.value = response.data || []
   } catch (err: any) {
     console.error('Load plugins error:', err)
-    
+
     // Обработка ошибок авторизации
     if (err.response?.status === 401) {
       const errorDetail = err.response.data?.error || err.response.data?.detail
@@ -299,7 +591,7 @@ const loadPlugins = async () => {
       } else {
         error.value = 'Ошибка авторизации. Токен истек или недействителен. Пожалуйста, войдите снова.'
       }
-      
+
       // Предлагаем перелогиниться
       setTimeout(() => {
         if (confirm('Токен истек. Перейти на страницу входа?')) {
@@ -366,11 +658,13 @@ const pluginUrl = ref('')
 const previewPlugin = (plugin: Record<string, any>) => {
   previewPluginData.value = plugin
   messageLog.value = []
-  
-  // Формируем URL для iframe
+  error.value = null
+
+  // Формируем URL для iframe (embed=1 — только задание, без кнопок)
   // Путь: /static/plugins/{plugin_id}/{version}/{entry}
-  pluginUrl.value = `${API_BASE_URL}/static/plugins/${plugin.plugin_id}/${plugin.version}/${plugin.entry}`
-  
+  const base = `${API_BASE_URL}/static/plugins/${plugin.plugin_id}/${plugin.version}/${plugin.entry}`
+  pluginUrl.value = base.includes('?') ? `${base}&embed=1` : `${base}?embed=1`
+
   // Настраиваем обработчик postMessage
   setupMessageHandler()
 }
@@ -380,25 +674,25 @@ const setupMessageHandler = () => {
   if (messageHandler.value) {
     window.removeEventListener('message', messageHandler.value)
   }
-  
+
   messageHandler.value = (event: MessageEvent) => {
     // Проверяем origin для безопасности (в продакшене нужно строже)
     // if (event.origin !== window.location.origin) return
-    
+
     try {
       const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-      
+
       if (data.type) {
         messageLog.value.push({
           type: data.type,
           data: data,
         })
-        
+
         // Обрабатываем SUBMIT - отправляем на сервер
         if (data.type === 'SUBMIT') {
           handlePluginSubmit(data)
         }
-        
+
         // Обрабатываем INIT - отправляем подтверждение
         if (data.type === 'INIT') {
           sendMessageToPlugin({
@@ -406,19 +700,23 @@ const setupMessageHandler = () => {
             status: 'ready',
           })
         }
+        if (data.type === 'ANSWER_NOT_READY') {
+          error.value = 'Заполните оба поля (перетащите числа в ячейки)'
+          setTimeout(() => { error.value = null }, 3000)
+        }
       }
     } catch (e) {
       console.error('Error parsing message:', e)
     }
   }
-  
+
   window.addEventListener('message', messageHandler.value)
 }
 
 const handlePluginSubmit = async (data: any) => {
   try {
     // Отправляем на сервер для проверки
-    const response = await fetch(`${API_BASE_URL}/api/v1/plugins/evaluate`, {
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/plugins/evaluate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -429,9 +727,9 @@ const handlePluginSubmit = async (data: any) => {
         userAnswer: data.userAnswer,
       }),
     })
-    
+
     const result = await response.json()
-    
+
     // Отправляем результат обратно в плагин
     sendMessageToPlugin({
       type: 'SERVER_RESULT',
@@ -451,11 +749,15 @@ const handlePluginSubmit = async (data: any) => {
 }
 
 const sendMessageToPlugin = (data: any) => {
-  // Находим iframe и отправляем сообщение
   const iframe = document.querySelector('iframe')
   if (iframe && iframe.contentWindow) {
-    iframe.contentWindow.postMessage(data, '*') // В продакшене указать конкретный origin
+    iframe.contentWindow.postMessage(data, '*')
   }
+}
+
+const requestPluginAnswer = () => {
+  if (!previewPluginData.value) return
+  sendMessageToPlugin({ type: 'REQUEST_ANSWER' })
 }
 
 const handleIframeLoad = () => {
@@ -475,6 +777,55 @@ const closePreview = () => {
   messageLog.value = []
 }
 
+const loadGrades = async () => {
+  try {
+    const res = await catalogApi.getGrades()
+    grades.value = (res.data || []).map((g: any) => ({ id: g.id, number: g.number, title: g.title }))
+  } catch (e) {
+    console.error('Load grades error:', e)
+  }
+}
+
+const openAddToTest = (plugin: Record<string, any>) => {
+  addToTestPlugin.value = plugin
+  addToTestGradeId.value = null
+}
+
+const submitAddToTest = async () => {
+  if (!addToTestPlugin.value || !addToTestGradeId.value) return
+  addingToTest.value = addToTestPlugin.value.id
+  error.value = null
+  try {
+    const res = await adminApi.addPluginToTest({
+      grade_id: addToTestGradeId.value,
+      plugin_id: addToTestPlugin.value.plugin_id,
+      plugin_version: addToTestPlugin.value.version,
+    })
+    const title = res.data?.skill_title ?? addToTestPlugin.value.name
+    if (res.data?.already_exists) {
+      // Плагин уже был добавлен ранее
+      successMessage.value = res.data?.message || `Плагин «${addToTestPlugin.value.name}» уже добавлен в тест как навык «${title}».`
+    } else {
+      successMessage.value = `Плагин «${addToTestPlugin.value.name}» добавлен в тест как навык «${title}».`
+    }
+    addToTestPlugin.value = null
+    setTimeout(() => { successMessage.value = null }, 5000)
+  } catch (err: any) {
+    console.error('Add plugin to test error:', err)
+    // Обрабатываем ошибку 409 (Conflict) более информативно
+    if (err.response?.status === 409) {
+      const detail = err.response?.data?.error || err.response?.data
+      const message = (typeof detail === 'string' ? detail : detail?.message) || 'Плагин уже добавлен в тест или возник конфликт при создании навыка'
+      error.value = message
+    } else {
+      const detail = err.response?.data?.error || err.response?.data
+      error.value = (typeof detail === 'string' ? detail : detail?.message) || err.message || 'Ошибка при добавлении плагина в тест'
+    }
+  } finally {
+    addingToTest.value = null
+  }
+}
+
 onMounted(async () => {
   // Проверяем авторизацию
   if (!authStore.isAuthenticated) {
@@ -484,15 +835,16 @@ onMounted(async () => {
     }, 2000)
     return
   }
-  
+
   // Проверяем роль
   if (authStore.user?.role !== 'ADMIN') {
     error.value = 'Только администраторы могут управлять плагинами'
     return
   }
-  
+
   // Загружаем плагины
   await loadPlugins()
+  await loadGrades()
 })
 
 onUnmounted(() => {

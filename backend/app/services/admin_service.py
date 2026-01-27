@@ -9,11 +9,15 @@ from app.core.errors import AppError
 from app.db.session import get_db_session
 from app.models.catalog import Grade, Skill, Subject
 from app.models.question import Question
+from app.models.enums import QuestionType
+from app.repositories.plugin_repo import PluginRepository
 from app.schemas.admin import (
+    AddPluginToTestRequest,
     BulkImportRequest,
     BulkImportResponse,
     GradeCreate,
     GradeUpdate,
+    PluginQuestionCreate,
     QuestionCreate,
     QuestionUpdate,
     SkillCreate,
@@ -169,6 +173,198 @@ class AdminService:
             raise
         return q
 
+    async def create_plugin_question(self, req: PluginQuestionCreate) -> Question:
+        """Добавить плагин в тест (навык). Создаёт вопрос типа PLUGIN."""
+        repo = PluginRepository(self.session)
+        if req.plugin_version:
+            plugin = await repo.get_by_plugin_id_and_version(req.plugin_id, req.plugin_version)
+        else:
+            plugin = await repo.get_by_plugin_id(req.plugin_id)
+        if plugin is None:
+            raise AppError(
+                status_code=404,
+                code="plugin_not_found",
+                message=f"Плагин {req.plugin_id}" + (f"@{req.plugin_version}" if req.plugin_version else "") + " не найден",
+            )
+        if not plugin.is_published:
+            raise AppError(
+                status_code=400,
+                code="plugin_not_published",
+                message="В тест можно добавить только опубликованный плагин. Сначала опубликуйте его.",
+            )
+        create = QuestionCreate(
+            skill_id=req.skill_id,
+            type=QuestionType.PLUGIN,
+            prompt=plugin.name,
+            data={
+                "plugin_id": plugin.plugin_id,
+                "plugin_version": plugin.version,
+                "entry": plugin.entry,
+                "height": plugin.height,
+            },
+            correct_answer={},
+            explanation="",
+            level=1,
+        )
+        return await self.create_question(create)
+
+    async def add_plugin_to_test(self, req: AddPluginToTestRequest) -> dict:
+        """Создать навык из плагина и добавить в тест. Плагин сам становится навыком."""
+        import re
+
+        grade = await self.session.get(Grade, req.grade_id)
+        if grade is None:
+            raise AppError(status_code=404, code="grade_not_found", message="Класс не найден")
+
+        repo = PluginRepository(self.session)
+        if req.plugin_version:
+            plugin = await repo.get_by_plugin_id_and_version(req.plugin_id, req.plugin_version)
+        else:
+            plugin = await repo.get_by_plugin_id(req.plugin_id)
+        if plugin is None:
+            raise AppError(
+                status_code=404,
+                code="plugin_not_found",
+                message=f"Плагин {req.plugin_id}" + (f"@{req.plugin_version}" if req.plugin_version else "") + " не найден",
+            )
+        if not plugin.is_published:
+            raise AppError(
+                status_code=400,
+                code="plugin_not_published",
+                message="В тест можно добавить только опубликованный плагин. Сначала опубликуйте его.",
+            )
+
+        subjects = await self.list_subjects()
+        subject_id = subjects[0].id if subjects else 1
+
+        # Проверяем, не был ли уже этот плагин добавлен в тест для данного класса
+        # Ищем вопрос PLUGIN с таким plugin_id в навыках этого класса
+        from sqlalchemy import and_
+        
+        # Сначала находим все навыки для этого класса
+        skills_stmt = select(Skill).where(
+            Skill.subject_id == subject_id,
+            Skill.grade_id == req.grade_id
+        )
+        skills_result = await self.session.execute(skills_stmt)
+        skills = skills_result.scalars().all()
+        
+        if skills:
+            skill_ids = [s.id for s in skills]
+            # Ищем вопросы PLUGIN для этих навыков
+            questions_stmt = select(Question).where(
+                Question.type == QuestionType.PLUGIN,
+                Question.skill_id.in_(skill_ids)
+            )
+            questions_result = await self.session.execute(questions_stmt)
+            questions = questions_result.scalars().all()
+            
+            # Проверяем, есть ли вопрос с таким plugin_id
+            for question in questions:
+                question_data = question.data or {}
+                if question_data.get('plugin_id') == plugin.plugin_id:
+                    # Находим навык для этого вопроса
+                    skill = await self.session.get(Skill, question.skill_id)
+                    if skill:
+                        # Возвращаем информацию о существующем навыке
+                        # Это не ошибка, просто плагин уже добавлен
+                        return {
+                            "skill_id": skill.id,
+                            "skill_title": skill.title,
+                            "question_id": question.id,
+                            "already_exists": True,
+                            "message": f"Плагин уже добавлен в тест как навык «{skill.title}»"
+                        }
+
+        base = re.sub(r"[^a-zA-Z0-9_-]", "", plugin.plugin_id)[:16] or "plugin"
+        code = base
+        suffix = 0
+        exists_stmt = select(Skill).where(
+            Skill.subject_id == subject_id,
+            Skill.grade_id == req.grade_id,
+            Skill.code == code,
+        )
+        while (await self.session.execute(exists_stmt)).scalar_one_or_none() is not None:
+            suffix += 1
+            if suffix > 99:
+                # Если не удалось подобрать код, возможно плагин уже добавлен
+                # Проверяем еще раз более тщательно
+                all_skills_stmt = select(Skill).where(
+                    Skill.subject_id == subject_id,
+                    Skill.grade_id == req.grade_id
+                )
+                all_skills = (await self.session.execute(all_skills_stmt)).scalars().all()
+                for skill in all_skills:
+                    skill_questions_stmt = select(Question).where(
+                        Question.skill_id == skill.id,
+                        Question.type == QuestionType.PLUGIN
+                    )
+                    skill_questions = (await self.session.execute(skill_questions_stmt)).scalars().all()
+                    for q in skill_questions:
+                        if (q.data or {}).get('plugin_id') == plugin.plugin_id:
+                            return {
+                                "skill_id": skill.id,
+                                "skill_title": skill.title,
+                                "question_id": q.id,
+                                "already_exists": True,
+                                "message": f"Плагин уже добавлен в тест как навык «{skill.title}»"
+                            }
+                raise AppError(
+                    status_code=409, 
+                    code="conflict", 
+                    message=f"Не удалось подобрать уникальный код навыка для плагина {plugin.plugin_id}. Возможно, слишком много навыков с похожими кодами."
+                )
+            code = f"{base}_{suffix}"[:16]
+            exists_stmt = select(Skill).where(
+                Skill.subject_id == subject_id,
+                Skill.grade_id == req.grade_id,
+                Skill.code == code,
+            )
+
+        skill_req = SkillCreate(
+            subject_id=subject_id,
+            grade_id=req.grade_id,
+            code=code,
+            title=plugin.name,
+            description="",
+            tags=[],
+            difficulty=1,
+        )
+        
+        try:
+            skill = await self.create_skill(skill_req)
+        except AppError as e:
+            if e.code == "conflict":
+                # Если все же возник конфликт, пробуем найти существующий навык
+                existing_skill_stmt = select(Skill).where(
+                    Skill.subject_id == subject_id,
+                    Skill.grade_id == req.grade_id,
+                    Skill.title == plugin.name
+                )
+                existing_skill = (await self.session.execute(existing_skill_stmt)).scalar_one_or_none()
+                if existing_skill:
+                    # Проверяем, есть ли уже вопрос PLUGIN для этого навыка
+                    existing_q_stmt = select(Question).where(
+                        Question.skill_id == existing_skill.id,
+                        Question.type == QuestionType.PLUGIN
+                    )
+                    existing_qs = (await self.session.execute(existing_q_stmt)).scalars().all()
+                    for existing_q in existing_qs:
+                        question_data = existing_q.data or {}
+                        if question_data.get('plugin_id') == plugin.plugin_id:
+                            return {
+                                "skill_id": existing_skill.id,
+                                "skill_title": existing_skill.title,
+                                "question_id": existing_q.id,
+                                "already_exists": True
+                            }
+            raise
+
+        q = await self.create_plugin_question(
+            PluginQuestionCreate(skill_id=skill.id, plugin_id=plugin.plugin_id, plugin_version=plugin.version)
+        )
+        return {"skill_id": skill.id, "skill_title": skill.title, "question_id": q.id}
+
     async def update_question(self, question_id: int, req: QuestionUpdate) -> Question:
         q = await self.session.get(Question, question_id)
         if q is None:
@@ -181,8 +377,9 @@ class AdminService:
     async def delete_question(self, question_id: int) -> None:
         q = await self.session.get(Question, question_id)
         if q is None:
-            return
+            raise AppError(status_code=404, code="not_found", message="Question not found")
         await self.session.delete(q)
+        await self.session.flush()
 
     async def bulk_import(self, req: BulkImportRequest) -> BulkImportResponse:
         skills_created = 0

@@ -1,6 +1,6 @@
 {
-  "id": "math-addition-example",
-  "name": "Пример: Сложение чисел",
+  "id": "drag-drop-math-example",
+  "name": "Перетаскивание чисел",
   "version": "1.0.0",
   "entry": "index.html",
   "apiVersion": "1",
@@ -8,5 +8,5 @@
     "submit": true,
     "explanation": true
   },
-  "height": 500
+  "height": 250
 }

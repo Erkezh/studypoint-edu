@@ -13,7 +13,8 @@ export enum QuestionType {
   NUMERIC = 'NUMERIC',
   TEXT = 'TEXT',
   MULTI_SELECT = 'MULTI_SELECT',
-  INTERACTIVE = 'INTERACTIVE', // Интерактивные задания с кодом
+  INTERACTIVE = 'INTERACTIVE', // Интерактивные задания с кодом (deprecated)
+  PLUGIN = 'PLUGIN', // Интерактивное задание — iframe плагина
 }
 
 export enum SubscriptionPlan {

@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyPoint</title>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f3f4f6; min-height: 100vh; }
+    .app { display: flex; flex-direction: column; min-height: 100vh; }
+    header { background: #4f46e5; color: white; padding: 1rem 2rem; font-size: 1.5rem; font-weight: bold; }
+    footer { background: #1f2937; color: #9ca3af; padding: 1rem 2rem; text-align: center; }
+    main { flex: 1; display: flex; gap: 1rem; padding: 1rem; }
+    .exercise-frame { flex: 1; border: none; border-radius: 8px; background: white; }
+    .sidebar { width: 280px; background: white; border-radius: 8px; padding: 1.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .stat-box { background: #f9fafb; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; text-align: center; }
+    .stat-label { font-size: 0.875rem; color: #6b7280; margin-bottom: 0.25rem; }
+    .stat-value { font-size: 2rem; font-weight: bold; }
+    .stat-value.correct { color: #16a34a; }
+    .stat-value.wrong { color: #dc2626; }
+    .stat-value.total { color: #4f46e5; }
+    .exercise-list { margin-top: 1.5rem; }
+    .exercise-list h3 { font-size: 0.875rem; color: #6b7280; margin-bottom: 0.5rem; }
+    .exercise-btn { width: 100%; padding: 0.75rem; margin-bottom: 0.5rem; border: 1px solid #e5e7eb; border-radius: 6px; background: white; cursor: pointer; text-align: left; transition: all 0.2s; }
+    .exercise-btn:hover { border-color: #4f46e5; background: #eef2ff; }
+    .exercise-btn.active { border-color: #4f46e5; background: #eef2ff; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="app">
+      <header>StudyPoint</header>
+      <main>
+        <iframe class="exercise-frame" :srcdoc="iframeSrc"></iframe>
+        <aside class="sidebar">
+          <div class="stat-box">
+            <div class="stat-label">Correct</div>
+            <div class="stat-value correct">{{ stats.correct }}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Wrong</div>
+            <div class="stat-value wrong">{{ stats.wrong }}</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Total</div>
+            <div class="stat-value total">{{ stats.correct + stats.wrong }}</div>
+          </div>
+          <div class="exercise-list">
+            <h3>Exercises</h3>
+            <button v-for="ex in exercises" :key="ex.id" class="exercise-btn" :class="{ active: currentExercise?.id === ex.id }" @click="currentExercise = ex">
+              {{ ex.name }}
+            </button>
+          </div>
+        </aside>
+      </main>
+      <footer>StudyPoint Learning Platform</footer>
+    </div>
+  </div>
+  <script>
+    const { createApp, ref, watch, onMounted, onUnmounted } = Vue
+
+    // Lucide icons wrapper - creates React components from lucide UMD
+    const LUCIDE_WRAPPER = `
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    `
+
+    // TSX Transformer - converts Claude Artifacts code to browser-ready
+    function transformTsx(code) {
+      // Extract component name
+      const exportMatch = code.match(/export\s+default\s+(\w+)/)
+      const componentName = exportMatch ? exportMatch[1] : 'App'
+
+      // Transform imports
+      code = code.replace(/import\s+React\s*,?\s*\{([^}]*)\}\s*from\s*['"]react['"];?/g, (_, h) => 'const {' + h + '} = React;')
+      code = code.replace(/import\s+React\s+from\s*['"]react['"];?/g, '')
+      code = code.replace(/import\s*\{([^}]*)\}\s*from\s*['"]react['"];?/g, (_, h) => 'const {' + h + '} = React;')
+      code = code.replace(/import\s*\{([^}]*)\}\s*from\s*['"]lucide-react['"];?/g, (_, i) => 'const {' + i + '} = window.lucideReact;')
+      code = code.replace(/export\s+default\s+\w+;?/g, '')
+
+      // Inject postMessage into handleSubmit
+      code = code.replace(
+        /(const\s+handleSubmit\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?)(setShowResult\s*\(\s*true\s*\)\s*;?)/,
+        (m, before, setShow) => before + setShow + '\n    const __correct = userAnswer === problems[currentIndex].correctAnswer;\n    window.parent.postMessage({ type: "exercise-result", correct: __correct }, "*");'
+      )
+
+      return { code, componentName }
+    }
+
+    createApp({
+      setup() {
+        // Exercises list - TODO: fetch from backend in production
+        const exercises = ref([
+          { id: 'fraction-comparison', name: 'Fraction Comparison', file: 'exercieses/fraction_comparison_app.tsx' }
+        ])
+
+        const currentExercise = ref(exercises.value[0])
+        const iframeSrc = ref('')
+        const stats = ref({ correct: 0, wrong: 0 })
+
+        // Load exercise - fetch TSX, transform, build iframe HTML
+        async function loadExercise(exercise) {
+          if (!exercise?.file) return
+          try {
+            const res = await fetch(exercise.file)
+            const tsxCode = await res.text()
+            const { code, componentName } = transformTsx(tsxCode)
+
+            iframeSrc.value = '<!DOCTYPE html><html><head><meta charset="UTF-8">' +
+              '<script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>' +
+              '<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>' +
+              '<script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>' +
+              '<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"><\/script>' +
+              '<script src="https://cdn.tailwindcss.com"><\/script>' +
+              '</head><body><div id="root"></div>' +
+              '<script>' + LUCIDE_WRAPPER + '<\/script>' +
+              '<script type="text/babel">' + code +
+              '\nReactDOM.createRoot(document.getElementById("root")).render(React.createElement(' + componentName + '));' +
+              '<\/script></body></html>'
+          } catch (e) {
+            iframeSrc.value = '<html><body><p style="color:red;padding:20px">Error: ' + e.message + '</p></body></html>'
+          }
+        }
+
+        watch(currentExercise, loadExercise, { immediate: true })
+
+        const handleMessage = (e) => {
+          if (e.data?.type === 'exercise-result') {
+            if (e.data.correct) stats.value.correct++
+            else stats.value.wrong++
+          }
+        }
+
+        onMounted(() => window.addEventListener('message', handleMessage))
+        onUnmounted(() => window.removeEventListener('message', handleMessage))
+
+        return { exercises, currentExercise, iframeSrc, stats }
+      }
+    }).mount('#app')
+  </script>
+</body>
+</html>

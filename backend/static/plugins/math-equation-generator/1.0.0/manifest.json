@@ -1,0 +1,12 @@
+{
+  "id": "math-equation-generator",
+  "name": "Решение уравнений",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "apiVersion": "1",
+  "capabilities": {
+    "submit": true,
+    "explanation": true
+  },
+  "height": 280
+}

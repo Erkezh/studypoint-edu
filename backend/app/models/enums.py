@@ -15,7 +15,8 @@ class QuestionType(str, enum.Enum):
     NUMERIC = "NUMERIC"
     TEXT = "TEXT"
     MULTI_SELECT = "MULTI_SELECT"
-    INTERACTIVE = "INTERACTIVE"  # Интерактивные задания с кодом
+    INTERACTIVE = "INTERACTIVE"  # Интерактивные задания с кодом (deprecated: используйте PLUGIN)
+    PLUGIN = "PLUGIN"  # Интерактивное задание — iframe плагина из /static/plugins
 
 
 class SubscriptionPlan(str, enum.Enum):

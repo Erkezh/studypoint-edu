@@ -77,6 +77,20 @@ class InteractiveQuestionCreate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata for the component")
 
 
+class PluginQuestionCreate(BaseModel):
+    """Добавить плагин в тест (навык). Создаёт вопрос типа PLUGIN."""
+    skill_id: int
+    plugin_id: str = Field(description="ID плагина из manifest")
+    plugin_version: str | None = Field(default=None, description="Версия плагина; если не указана — последняя опубликованная")
+
+
+class AddPluginToTestRequest(BaseModel):
+    """Добавить плагин в тест: создаётся навык из плагина + вопрос PLUGIN."""
+    grade_id: int = Field(description="ID класса (grade)")
+    plugin_id: str = Field(description="ID плагина из manifest")
+    plugin_version: str | None = Field(default=None, description="Версия плагина; если не указана — последняя")
+
+
 class QuestionUpdate(BaseModel):
     prompt: str | None = None
     data: dict[str, Any] | None = None

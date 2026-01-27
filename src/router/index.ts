@@ -61,12 +61,6 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/admin/questions',
-    name: 'admin-questions',
-    component: () => import('@/pages/AdminQuestions.vue'),
-    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
-  },
-  {
     path: '/admin/skills',
     name: 'admin-skills',
     component: () => import('@/pages/AdminSkills.vue'),
@@ -76,6 +70,18 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/plugins',
     name: 'admin-plugins',
     component: () => import('@/pages/AdminPlugins.vue'),
+    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+  },
+  {
+    path: '/admin/questions',
+    name: 'admin-questions',
+    component: () => import('@/pages/AdminQuestions.vue'),
+    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+  },
+  {
+    path: '/admin/questions/list',
+    name: 'admin-questions-list',
+    component: () => import('@/pages/AdminQuestionsList.vue'),
     meta: { requiresAuth: true, requiresRole: 'ADMIN' },
   },
   {
@@ -110,13 +116,13 @@ router.beforeEach(async (to, from, next) => {
           return
         }
       }
-      
+
       // Проверяем роль, если требуется
       if (to.meta.requiresRole && authStore.user?.role !== to.meta.requiresRole) {
         next({ name: 'home' }) // Редирект на главную, если нет прав
         return
       }
-      
+
       next()
     }
   } else {

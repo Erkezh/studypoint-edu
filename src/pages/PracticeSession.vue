@@ -8,7 +8,10 @@
       </div>
 
       <div v-else-if="practiceStore.error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {{ practiceStore.error }}
+        <p>{{ practiceStore.error }}</p>
+        <Button @click="router.push({ name: 'home' })" class="mt-4" variant="primary">
+          Басты бетке
+        </Button>
       </div>
 
       <div v-else-if="practiceStore.currentSession && (currentQuestion || showingResult)">
@@ -27,7 +30,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Предупреждение о необходимости подписки (если пробные вопросы исчерпаны и пользователь не авторизован) -->
         <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
           <div class="flex items-center">
@@ -43,7 +46,7 @@
             </div>
           </div>
         </div>
-        
+
         <!-- Прогресс сессии -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6" :class="{ 'opacity-50': shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value }">
           <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
@@ -90,6 +93,9 @@
           <div v-if="practiceStore.rateLimitMessage" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
             {{ practiceStore.rateLimitMessage }}
           </div>
+          <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {{ error }}
+          </div>
         </div>
 
         <!-- Результат ответа (показывается вместо вопроса после отправки) -->
@@ -105,30 +111,30 @@
             <p class="font-semibold text-lg mb-4">
               {{ lastResult.is_correct ? '✓ Дұрыс!' : '✗ Қате' }}
             </p>
-            
+
             <!-- Показываем ответ пользователя и правильный ответ при неправильном ответе -->
             <div v-if="!lastResult.is_correct" class="space-y-3 mt-4">
               <div>
                 <p class="font-medium mb-1">Сіздің жауабыңыз:</p>
-                <p 
+                <p
                   class="text-sm bg-white px-3 py-2 rounded border border-red-400"
                   v-html="formatUserAnswer(userAnswer, lastQuestion)"
                 ></p>
               </div>
               <div>
                 <p class="font-medium mb-1">Дұрыс жауап:</p>
-                <p 
+                <p
                   class="text-sm bg-white px-3 py-2 rounded border border-green-400"
                   v-html="formatCorrectAnswer(lastQuestion, lastResult)"
                 ></p>
               </div>
             </div>
-            
+
             <p v-if="lastResult.explanation" class="text-sm mt-4 italic">{{ lastResult.explanation }}</p>
           </div>
 
-          <!-- Кнопка "Далее" - показываем только при неправильном ответе или если сессия завершена -->
-          <div v-if="!lastResult.is_correct || lastResult.finished" class="flex gap-4 justify-center">
+          <!-- Кнопки: Келесі (при !finished), К результатам (при finished). Без авто-перехода. -->
+          <div class="flex gap-4 justify-center mt-4">
             <Button
               v-if="!lastResult.finished"
               @click="loadNextQuestion"
@@ -139,17 +145,21 @@
               Келесі
             </Button>
             <Button
+              v-if="lastResult.finished"
+              @click="goToResults"
+              :disabled="loadingNext"
+              class="px-8"
+            >
+              Нәтижелерге өту
+            </Button>
+            <Button
+              v-if="!lastResult.finished"
               @click="finishSession"
               variant="outline"
               :disabled="loadingNext"
             >
               Сессияны аяқтау
             </Button>
-          </div>
-          
-          <!-- При правильном ответе показываем сообщение о переходе -->
-          <div v-if="lastResult.is_correct && !lastResult.finished" class="text-center text-sm text-gray-600">
-            Келесі сұраққа өту...
           </div>
         </div>
 
@@ -162,15 +172,15 @@
               <p class="text-sm text-gray-600">Жалғастыру үшін аккаунтқа кіріңіз</p>
             </div>
           </div>
-          
+
           <div class="mb-4">
             <span class="text-sm text-gray-500">Деңгей:</span>
             <span class="ml-2 font-medium">{{ currentQuestion.level }}</span>
           </div>
 
           <div class="mb-6">
-            <p 
-              class="text-lg font-medium mb-4" 
+            <p
+              class="text-lg font-medium mb-4"
               v-html="containsFraction(currentQuestion.prompt) ? formatFraction(currentQuestion.prompt) : currentQuestion.prompt"
             ></p>
 
@@ -249,6 +259,30 @@
               </div>
             </div>
 
+            <!-- PLUGIN (iframe плагина из /static/plugins, embed — только задание; проверка через кнопку теста) -->
+            <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
+              <iframe
+                v-if="pluginIframeSrc"
+                ref="pluginIframeRef"
+                :src="pluginIframeSrc"
+                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: '1px solid #e5e7eb', borderRadius: '8px' }"
+                sandbox="allow-scripts allow-same-origin"
+                scrolling="yes"
+                class="rounded-lg"
+              />
+              <div v-else class="text-red-500 text-sm">
+                ⚠ Плагин не загружен. Отсутствуют plugin_id, plugin_version или entry.
+              </div>
+              <Button
+                v-if="pluginIframeSrc"
+                @click="requestPluginAnswer"
+                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                :loading="submitting"
+              >
+                Жіберу
+              </Button>
+            </div>
+
             <!-- MULTI_SELECT или неизвестный тип -->
             <div v-else class="space-y-4">
               <p class="text-sm text-gray-500 mb-2">
@@ -291,7 +325,7 @@
       </div>
     </main>
     <Footer />
-    
+
     <!-- Модальное окно о завершении пробного периода -->
     <Modal
       :is-open="showTrialEndedModal"
@@ -350,11 +384,32 @@ const catalogStore = useCatalogStore()
 // Статистика навыка для отображения предыдущего результата
 const previousBestScore = ref<number | null>(null)
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+
 const currentQuestion = computed(() => practiceStore.currentQuestion)
+
+const pluginIframeSrc = computed(() => {
+  const q = currentQuestion.value
+  if (!q || q.type !== 'PLUGIN' || !q.data) return ''
+  const id = q.data.plugin_id
+  const ver = q.data.plugin_version
+  const entry = q.data.entry
+  if (!id || !ver || !entry) return ''
+  return `${API_BASE_URL}/static/plugins/${id}/${ver}/${entry}?embed=1`
+})
+
+const pluginEmbedHeight = computed(() => {
+  const q = currentQuestion.value
+  if (!q?.data?.height) return 250
+  // Используем высоту из manifest или минимум 200, максимум 400
+  return Math.min(400, Math.max(200, Number(q.data.height) || 250))
+})
+
 const submitting = ref(false)
 const numericAnswer = ref<number | null>(null)
 const textAnswer = ref('')
 const lastResult = ref<PracticeSubmitResponse | null>(null)
+const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
 const questionStartTime = ref(Date.now())
 const showingResult = ref(false) // Показывать ли результат вместо вопроса
 const userAnswer = ref<any>(null) // Сохраненный ответ пользователя
@@ -380,12 +435,12 @@ const showTrialEndedModal = ref(false)
 
 const goToLogin = () => {
   showTrialEndedModal.value = false
-  router.push({ 
-    name: 'login', 
-    query: { 
+  router.push({
+    name: 'login',
+    query: {
       redirect: router.currentRoute.value.fullPath,
       requireSubscription: 'true'
-    } 
+    }
   })
 }
 
@@ -408,7 +463,7 @@ const formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
-  
+
   if (hours > 0) {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
@@ -419,11 +474,11 @@ const formatTime = (seconds: number): string => {
 const startTimer = () => {
   // Останавливаем предыдущий таймер, если он есть
   stopTimer()
-  
+
   // Инициализируем время из store или начинаем с 0
   const initialTime = practiceStore.timeElapsed || 0
   currentTime.value = initialTime
-  
+
   // Обновляем время каждую секунду
   timeInterval = setInterval(() => {
     currentTime.value++
@@ -463,7 +518,7 @@ const formatMCQOption = (option: any): string => {
   } else {
     result = String(option)
   }
-  
+
   // Если содержит дробь, форматируем её
   if (containsFraction(result)) {
     return formatFraction(result)
@@ -474,17 +529,18 @@ const formatMCQOption = (option: any): string => {
 // Форматирование ответа пользователя для отображения
 const formatUserAnswer = (answer: any, question: QuestionPublic | null): string => {
   if (!question || answer === null || answer === undefined) return String(answer || '')
-  
+
   let result: string
   if (question.type === 'MCQ') {
-    // Для MCQ показываем выбранный вариант
     result = formatMCQOption(answer)
   } else if (question.type === 'NUMERIC') {
     result = String(answer)
+  } else if ((question.type === 'PLUGIN' || question.type === 'INTERACTIVE') && typeof answer === 'object' && answer !== null) {
+    result = (answer as any).question || JSON.stringify(answer)
   } else {
     result = String(answer)
   }
-  
+
   // Если содержит дробь, форматируем её
   if (containsFraction(result)) {
     return formatFraction(result)
@@ -495,26 +551,26 @@ const formatUserAnswer = (answer: any, question: QuestionPublic | null): string 
 // Извлечение правильного ответа из explanation
 const extractAnswerFromExplanation = (explanation: string | null | undefined): string | null => {
   if (!explanation) return null
-  
+
   // Пытаемся найти ответ в формате "= 104" или "=104" в конце строки
   const equalsMatch = explanation.match(/=\s*(\d+(?:\.\d+)?)\s*$/i)
   if (equalsMatch) {
     return equalsMatch[1]
   }
-  
+
   // Пытаемся найти число после знака равенства в любом месте
   const equalsAnywhere = explanation.match(/=\s*(\d+(?:\.\d+)?)/i)
   if (equalsAnywhere) {
     return equalsAnywhere[1]
   }
-  
+
   // Пытаемся найти последнее число в строке (может быть ответом)
   const numbers = explanation.match(/\d+(?:\.\d+)?/g)
   if (numbers && numbers.length > 0) {
     // Берем последнее число как потенциальный ответ
     return numbers[numbers.length - 1]
   }
-  
+
   return null
 }
 
@@ -529,7 +585,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       explanation: result?.explanation,
     })
   }
-  
+
   // Сначала проверяем результат ответа (может содержать правильный ответ)
   if (result) {
     const resultAny = result as any
@@ -543,7 +599,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
         allKeys: Object.keys(resultAny),
       })
     }
-    
+
     // Проверяем явные поля
     if (resultAny.correct_answer !== undefined && resultAny.correct_answer !== null) {
       const answer = String(resultAny.correct_answer)
@@ -566,7 +622,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
       return answer
     }
-    
+
     // Пытаемся извлечь из explanation
     if (result.explanation) {
       const extracted = extractAnswerFromExplanation(result.explanation)
@@ -582,7 +638,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
     }
   }
-  
+
   if (!question) {
     // Если есть explanation в результате, пытаемся извлечь оттуда
     if (result?.explanation) {
@@ -593,7 +649,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
     }
     return 'Правильный ответ не указан'
   }
-  
+
   // Логируем только в режиме разработки
   if (import.meta.env.DEV && !result?.is_correct) {
     console.log('Checking question data:', {
@@ -602,12 +658,12 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       dataKeys: question.data ? Object.keys(question.data) : [],
     })
   }
-  
+
   // Пытаемся получить правильный ответ из данных вопроса
   if (question.data?.correct_answer !== undefined && question.data.correct_answer !== null) {
     return String(question.data.correct_answer)
   }
-  
+
   // Для MCQ пытаемся найти правильный вариант
   if (question.type === 'MCQ') {
     const choices = question.data?.choices || question.data?.options || []
@@ -618,7 +674,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       answer: question.data?.answer,
       correctAnswer: question.data?.correct_answer
     })
-    
+
     // Сначала проверяем correct_answer
     if (question.data?.correct_answer !== undefined && question.data.correct_answer !== null) {
       const correct = question.data.correct_answer
@@ -634,7 +690,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
       return answerStr
     }
-    
+
     // Проверяем correct_index
     const correctIndex = question.data?.correct_index
     if (correctIndex !== undefined && choices[correctIndex] !== undefined) {
@@ -645,7 +701,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
       return answerStr
     }
-    
+
     // Если есть answer в data
     if (question.data?.answer !== undefined && question.data.answer !== null) {
       const answer = question.data.answer
@@ -664,7 +720,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
       return answerStr
     }
-    
+
     // Пытаемся извлечь из explanation, если это MCQ
     if (result?.explanation) {
       const extracted = extractAnswerFromExplanation(result.explanation)
@@ -689,7 +745,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
     }
   }
-  
+
   // Для NUMERIC и TEXT
   if (question.data?.answer !== undefined && question.data.answer !== null) {
     const answer = String(question.data.answer)
@@ -699,7 +755,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
     }
     return answer
   }
-  
+
   // Если ничего не найдено, пытаемся вычислить правильный ответ из вопроса
   // Для вопроса "What is the last digit of 41?" правильный ответ - 1
   if (question.prompt) {
@@ -717,7 +773,7 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       }
     }
   }
-  
+
   // Последняя попытка - извлечь из explanation
   if (result?.explanation) {
     const extracted = extractAnswerFromExplanation(result.explanation)
@@ -729,25 +785,25 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       return extracted
     }
   }
-  
+
   return 'Правильный ответ не указан'
 }
 
 // Обработка ответа для MCQ вопросов
 const submitMCQAnswer = async (option: any, index: number) => {
   if (!currentQuestion.value || !practiceStore.currentSession || submitting.value || showingResult.value) return
-  
+
   const choices = currentQuestion.value.data?.choices || currentQuestion.value.data?.options || []
-  
+
   // Для MCQ важно отправить правильное значение
   // Правильный ответ может быть:
   // 1. ID варианта (например, "A", "B", "C") - если варианты имеют поле "id"
   // 2. Само значение варианта (например, "5", "56") - если варианты простые значения
   // 3. Индекс варианта (например, "0", "1", "2") - если правильный ответ хранится как индекс
-  
+
   let choiceValue: string
   const exactChoice = choices[index]
-  
+
   if (exactChoice !== undefined) {
     // Если вариант - объект с полем "id", используем ID (например, "A", "B", "C")
     if (typeof exactChoice === 'object' && exactChoice !== null && exactChoice.id !== undefined) {
@@ -755,7 +811,7 @@ const submitMCQAnswer = async (option: any, index: number) => {
     }
     // Если вариант - объект без "id", используем value, label, text или choice
     else if (typeof exactChoice === 'object' && exactChoice !== null) {
-      const extracted = exactChoice.value !== undefined ? String(exactChoice.value) : 
+      const extracted = exactChoice.value !== undefined ? String(exactChoice.value) :
                         (exactChoice.label || exactChoice.text || exactChoice.choice || String(exactChoice))
       choiceValue = typeof extracted === 'string' ? extracted.trim() : String(extracted)
     }
@@ -778,7 +834,7 @@ const submitMCQAnswer = async (option: any, index: number) => {
       if (option.id !== undefined) {
         choiceValue = String(option.id).trim()
       } else {
-        const extracted = option.value !== undefined ? String(option.value) : 
+        const extracted = option.value !== undefined ? String(option.value) :
                           (option.label || option.text || option.choice || String(option))
         choiceValue = typeof extracted === 'string' ? extracted.trim() : String(extracted)
       }
@@ -786,28 +842,28 @@ const submitMCQAnswer = async (option: any, index: number) => {
       choiceValue = String(option || index)
     }
   }
-  
+
   // Логируем только в режиме разработки
   if (import.meta.env.DEV) {
-    console.log('MCQ choice prepared:', { 
-      original: option, 
+    console.log('MCQ choice prepared:', {
+      original: option,
       formatted: choiceValue,
       index: index,
       exactChoice: exactChoice,
-      allChoices: choices.map((c: any, i: number) => ({ 
-        index: i, 
-        value: c, 
+      allChoices: choices.map((c: any, i: number) => ({
+        index: i,
+        value: c,
         type: typeof c,
         id: typeof c === 'object' ? c.id : undefined,
         asString: typeof c === 'string' ? c.trim() : (typeof c === 'number' ? String(c) : String(c))
       }))
     })
   }
-  
+
   // Сохраняем для отображения - сохраняем оригинальный вариант для правильного отображения
   userAnswer.value = typeof option === 'object' ? (option.label || option.text || option.value || String(option)) : option
   lastQuestion.value = { ...currentQuestion.value }
-  
+
   // Вызываем submitAnswer с уже подготовленной строкой
   await submitAnswer(choiceValue, 'MCQ')
 }
@@ -821,29 +877,43 @@ const submitAnswer = async (answer: any, questionType?: string) => {
   if (!currentQuestion.value || !practiceStore.currentSession || submitting.value || showingResult.value) return
 
   submitting.value = true
-  
+
+  // Обновление сессии перед отправкой теперь происходит ниже, после создания requestData
+  // Это позволяет избежать дублирования и правильно обновить questionId
+
   // Сохраняем ответ пользователя и текущий вопрос (если еще не сохранено)
   if (userAnswer.value === null) {
     userAnswer.value = answer
     lastQuestion.value = { ...currentQuestion.value }
   }
-  
+
   // Определяем тип вопроса
   const qType = questionType || currentQuestion.value.type
+
+  // Проверяем, что у нас есть актуальный вопрос
+  if (!currentQuestion.value || !currentQuestion.value.id) {
+    error.value = 'Вопрос не найден. Обновите страницу.'
+    submitting.value = false
+    return
+  }
+
+  // Объявляем переменные для использования в catch блоке
+  let requestData: any = null
+  let submittedAnswer: Record<string, any> | null = null
 
   try {
     const timeSpent = Math.max(0, Math.min(3600, Math.floor((Date.now() - questionStartTime.value) / 1000)))
 
     // Формируем submitted_answer - API ожидает объект Record<string, any>
     // Для MCQ API ожидает { choice: "..." } - ОБЯЗАТЕЛЬНО строка
-    let submittedAnswer: Record<string, any>
-    
+    submittedAnswer = {} as Record<string, any>
+
     if (qType === 'MCQ') {
       // Для MCQ API ожидает поле "choice" со СТРОКОЙ
       // Важно: строка должна точно соответствовать одному из вариантов в choices
       const choices = currentQuestion.value.data?.choices || currentQuestion.value.data?.options || []
       let choiceStr: string
-      
+
       if (typeof answer === 'string') {
         choiceStr = answer.trim()
       } else if (typeof answer === 'number') {
@@ -852,12 +922,12 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       } else {
         choiceStr = String(answer).trim()
       }
-      
+
       // Проверяем, что choiceStr не пустой
       if (!choiceStr || choiceStr === '') {
         throw new Error('Не выбран вариант ответа')
       }
-      
+
       // Проверяем, что выбранный вариант существует в списке choices
       // Важно: сравниваем точно, учитывая тип исходного варианта
       const choiceExists = choices.some((c: any) => {
@@ -877,7 +947,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         // Для других типов - простое сравнение строк
         return String(c) === choiceStr
       })
-      
+
       if (!choiceExists && choices.length > 0) {
         console.warn('Selected choice does not match any option:', {
           selected: choiceStr,
@@ -891,14 +961,14 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           })
         })
       }
-      
+
       submittedAnswer = { choice: choiceStr }
-      
+
       // Логируем только важную информацию (можно отключить в production)
       if (import.meta.env.DEV) {
-        console.log('MCQ answer formatted for API:', { 
-          original: answer, 
-          formatted: choiceStr, 
+        console.log('MCQ answer formatted for API:', {
+          original: answer,
+          formatted: choiceStr,
           type: typeof choiceStr,
           questionChoices: choices,
           choiceExists: choiceExists,
@@ -914,9 +984,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         throw new Error('Некорректное числовое значение')
       }
       submittedAnswer = { value: numValue }
-    } else if (qType === 'INTERACTIVE') {
-      // Для INTERACTIVE - ответ может быть любым объектом
-      // Сохраняем как есть, если это объект, иначе оборачиваем в answer
+    } else if (qType === 'INTERACTIVE' || qType === 'PLUGIN') {
+      // INTERACTIVE / PLUGIN — ответ объектом (например userAnswer от плагина)
       if (typeof answer === 'object' && answer !== null) {
         submittedAnswer = answer
       } else {
@@ -934,24 +1003,114 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 
     // Для генераторов используем оригинальный ID из data._generator_id
     // Для обычных вопросов используем числовой ID
+    // ВАЖНО: Используем актуальный questionId из currentQuestion.value,
+    // который уже должен быть синхронизирован с сервером
     let questionId: string | number
-    if (currentQuestion.value.data?._generator_id) {
+
+    // Проверяем, есть ли _generator_id (для генераторов)
+    const generatorId = currentQuestion.value.data?._generator_id
+    if (generatorId) {
       // Для генераторов используем оригинальный строковый ID
-      questionId = currentQuestion.value.data._generator_id
+      // Бэкенд сравнивает current_q_id (строка) с str(req.question_id)
+      // ВАЖНО: _generator_id должен точно совпадать с current_question_id в state сессии
+      questionId = String(generatorId)
+
+      if (import.meta.env.DEV) {
+        console.log('Using generator question ID:', {
+          generatorId,
+          questionId,
+          questionIdType: typeof questionId,
+          currentQuestionData: currentQuestion.value.data,
+        })
+      }
     } else {
-      // Для обычных вопросов используем числовой ID
-      questionId = Number(currentQuestion.value.id)
+      // Для обычных вопросов (включая PLUGIN) используем числовой ID
+      // ВАЖНО: Для PLUGIN вопросов question_id должен совпадать с last_question_id в сессии
+      // Используем ID из currentQuestion, который должен быть синхронизирован с сервером
+      const qId = currentQuestion.value.id
+      questionId = typeof qId === 'number' ? qId : Number(qId)
+
+      // Проверяем, что ID валидный
+      if (isNaN(questionId as number)) {
+        error.value = 'Неверный ID вопроса. Обновите страницу.'
+        submitting.value = false
+        return
+      }
+
+      // Для PLUGIN вопросов проверяем, что question_id совпадает с last_question_id в сессии
+      // Если не совпадает, это может привести к 409 ошибке
+      if (currentQuestion.value.type === 'PLUGIN' && practiceStore.currentSession?.last_question_id) {
+        const sessionLastQId = typeof practiceStore.currentSession.last_question_id === 'number'
+          ? practiceStore.currentSession.last_question_id
+          : Number(practiceStore.currentSession.last_question_id)
+
+        if (!isNaN(sessionLastQId) && sessionLastQId !== questionId) {
+          console.warn('PLUGIN question ID mismatch:', {
+            currentQuestionId: questionId,
+            sessionLastQuestionId: sessionLastQId,
+            currentQuestion: currentQuestion.value,
+          })
+          // Используем last_question_id из сессии, чтобы избежать 409
+          questionId = sessionLastQId
+          console.log('Using session last_question_id instead:', questionId)
+        }
+      }
+
+      if (import.meta.env.DEV) {
+        console.log('Using regular question ID:', {
+          qId,
+          questionId,
+          questionIdType: typeof questionId,
+          sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
+          questionType: currentQuestion.value?.type,
+        })
+      }
     }
 
-    const requestData = {
+    // Для PLUGIN вопросов (не генераторов) нужно убедиться, что question_id совпадает с last_question_id
+    // в сессии. Если они не совпадают, это может привести к 409 ошибке.
+    // Для генераторов используем _generator_id, который должен совпадать с current_question_id в state.
+
+    requestData = {
       question_id: questionId,
       submitted_answer: submittedAnswer,
       time_spent_sec: timeSpent,
     }
 
-    // Логируем только важную информацию
+    // Логируем для диагностики
     if (import.meta.env.DEV) {
-      console.log('Submitting answer:', requestData)
+      console.log('Preparing to submit:', {
+        questionId,
+        questionIdType: typeof questionId,
+        currentQuestionId: currentQuestion.value?.id,
+        currentQuestionType: currentQuestion.value?.type,
+        isGenerator: !!currentQuestion.value?.data?._generator_id,
+        sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
+      })
+    }
+
+    // Логируем для диагностики (всегда в DEV режиме)
+    if (import.meta.env.DEV) {
+      console.log('=== SUBMIT ANSWER DEBUG ===')
+      console.log('Question ID details:', {
+        questionId,
+        questionIdType: typeof questionId,
+        questionIdAsString: String(questionId),
+        questionIdTrimmed: String(questionId).trim(),
+        currentQuestionId: currentQuestion.value?.id,
+        currentQuestionGeneratorId: currentQuestion.value?.data?._generator_id,
+        currentQuestionGeneratorIdType: typeof currentQuestion.value?.data?._generator_id,
+        currentQuestionGeneratorIdString: String(currentQuestion.value?.data?._generator_id || ''),
+        sessionId: practiceStore.currentSession?.id,
+        isGenerator: !!currentQuestion.value?.data?._generator_id,
+        currentQuestionData: currentQuestion.value?.data,
+      })
+      console.log('Request data:', {
+        ...requestData,
+        question_id_type: typeof requestData.question_id,
+        question_id_string: String(requestData.question_id),
+      })
+      console.log('=== END DEBUG ===')
     }
 
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
@@ -967,7 +1126,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           explanation: response.explanation
         })
       }
-      
+
       // Детальная диагностика для MCQ (всегда в режиме разработки)
       if (qType === 'MCQ' && import.meta.env.DEV) {
         const choices = currentQuestion.value.data?.choices || currentQuestion.value.data?.options || []
@@ -992,43 +1151,66 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           questionId: currentQuestion.value.id
         })
       }
-      
+
       lastResult.value = response
       showingResult.value = true // Показываем результат вместо вопроса
-      
+
+      // Логируем для диагностики
+      if (import.meta.env.DEV) {
+        console.log('Answer submitted successfully:', {
+          is_correct: response.is_correct,
+          finished: response.finished,
+          smartscore: response.session?.current_smartscore || response.session?.smartscore,
+          questions_answered: response.session?.questions_answered,
+          explanation: response.explanation,
+        })
+      }
+
+      // Плагин (PLUGIN): отправляем SERVER_RESULT в iframe
+      if (qType === 'PLUGIN' && pluginIframeRef.value?.contentWindow) {
+        try {
+          pluginIframeRef.value.contentWindow.postMessage(
+            {
+              type: 'SERVER_RESULT',
+              correct: response.is_correct,
+              score: response.is_correct ? 1 : 0,
+              explanation: response.explanation || '',
+            },
+            '*'
+          )
+        } catch (e) {
+          console.warn('PracticeSession: postMessage SERVER_RESULT to plugin failed', e)
+        }
+      }
+
       // Синхронизируем время с сервером
       if (response.session?.time_elapsed_sec !== undefined) {
         currentTime.value = response.session.time_elapsed_sec
       }
-      
-      // Проверяем, достиг ли SmartScore 100 - если да, завершаем тест
+
+      // SmartScore 100: завершаем сессию, показываем результат и кнопку «Нәтижелерге өту» (без авто-редиректа)
       const currentSmartScore = response.session?.current_smartscore || response.session?.smartscore || 0
+
+      // Логируем для диагностики
+      if (import.meta.env.DEV) {
+        console.log('Checking SmartScore completion:', {
+          currentSmartScore,
+          finished: response.finished,
+          is_correct: response.is_correct,
+          questions_answered: response.session?.questions_answered,
+        })
+      }
+
       if (currentSmartScore >= 100 && !response.finished) {
-        console.log('PracticeSession: SmartScore reached 100, finishing session')
-        // Завершаем сессию на бэкенде
+        console.log('SmartScore reached 100, finishing session...')
         try {
-          await practiceStore.finishSession(practiceStore.currentSession.id)
-          // Переходим на страницу результатов
-          stopTimer()
-          setTimeout(() => {
-            router.push({
-              name: 'practice-results',
-              params: { sessionId: practiceStore.currentSession!.id },
-            })
-          }, 2000)
-          return
+          await practiceStore.finishSession(practiceStore.currentSession!.id)
         } catch (err) {
           console.error('Failed to finish session:', err)
-          // Если не удалось завершить, все равно переходим к результатам
-          stopTimer()
-          setTimeout(() => {
-            router.push({
-              name: 'practice-results',
-              params: { sessionId: practiceStore.currentSession!.id },
-            })
-          }, 2000)
-          return
         }
+        stopTimer()
+        lastResult.value = { ...response, finished: true }
+        return
       }
 
       // Проверяем пробные вопросы после каждого ответа
@@ -1038,7 +1220,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         // Проверяем текущее количество использованных вопросов
         const currentCount = trialQuestions.getTrialQuestionsCount()
         console.log('PracticeSession: Trial questions count after answer:', currentCount)
-        
+
         // Если пробные вопросы исчерпаны, показываем модальное окно сразу
         if (trialQuestions.isTrialQuestionsExhausted.value || currentCount >= trialQuestions.TRIAL_QUESTIONS_LIMIT) {
           console.log('PracticeSession: Trial questions exhausted after answer, showing modal')
@@ -1047,34 +1229,15 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           return
         }
       }
-      
-      // Если сессия завершена, проверяем пробные вопросы
+
+      // Сессия завершена: останавливаем таймер, без авто-редиректа (кнопка «Нәтижелерге өту»)
       if (response.finished) {
         stopTimer()
-        
-        // Если пользователь не авторизован и пробные вопросы исчерпаны, показываем модальное окно
         if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
           showTrialEndedModal.value = true
-          return
-        }
-        
-        // Иначе переходим на страницу результатов
-        setTimeout(() => {
-          router.push({
-            name: 'practice-results',
-            params: { sessionId: practiceStore.currentSession!.id },
-          })
-        }, 2000)
-      } else if (response.is_correct) {
-        // Если ответ правильный, автоматически переходим к следующему вопросу через 1 секунду
-        // Но только если пробные вопросы не исчерпаны
-        if (!shouldCheckTrialQuestions.value || !trialQuestions.isTrialQuestionsExhausted.value) {
-          setTimeout(() => {
-            loadNextQuestion()
-          }, 1000)
         }
       }
-      // Если ответ неправильный, показываем результат с кнопкой "Далее" (уже отображается)
+      // Правильный/неправильный — переход только по кнопке «Келесі», без авто-перехода
     }
   } catch (err: any) {
     console.error('PracticeSession: Failed to submit answer:', err)
@@ -1086,7 +1249,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       userRole: authStore.user?.role,
       storeError: practiceStore.error,
     })
-    
+
     // Используем сообщение об ошибке из store, если оно есть
     if (practiceStore.error) {
       error.value = practiceStore.error
@@ -1094,58 +1257,179 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       // Обрабатываем ошибки напрямую
       const status = err.response?.status
       const errorData = err.response?.data
-      
+
       if (status === 409) {
-        // Конфликт - сессия уже завершена или изменена
-        // Обновляем состояние сессии и перенаправляем на результаты
-        console.log('Session conflict detected, refreshing session state...')
-        console.log('Current session state:', {
-          id: practiceStore.currentSession?.id,
-          finished_at: practiceStore.currentSession?.finished_at,
-          questions_answered: practiceStore.currentSession?.questions_answered,
-          smartscore: practiceStore.currentSession?.current_smartscore
+        // Конфликт - сессия уже завершена, вопрос изменен или уже отвечен
+        console.log('Session conflict detected (409), refreshing session...', {
+          errorMessage: errorData?.error?.message || errorData?.message,
+          submittedQuestionId: requestData?.question_id,
         })
-        
+
         try {
-          // Пытаемся обновить состояние сессии
+          // Обновляем состояние сессии
           if (practiceStore.currentSession?.id) {
             await practiceStore.getSession(practiceStore.currentSession.id)
-            console.log('Refreshed session state:', {
-              id: practiceStore.currentSession?.id,
-              finished_at: practiceStore.currentSession?.finished_at,
-              questions_answered: practiceStore.currentSession?.questions_answered,
-              smartscore: practiceStore.currentSession?.current_smartscore
-            })
-            
+
             // Если сессия завершена, переходим на результаты
             if (practiceStore.currentSession?.finished_at) {
               console.log('Session is finished, redirecting to results')
               stopTimer()
-              router.push({ 
-                name: 'practice-results', 
-                params: { sessionId: practiceStore.currentSession.id } 
+              router.push({
+                name: 'practice-results',
+                params: { sessionId: practiceStore.currentSession.id }
               })
               return
+            }
+
+            // Проверяем, изменился ли текущий вопрос
+            const currentQId = practiceStore.currentQuestion?.data?._generator_id
+              || practiceStore.currentQuestion?.id
+            const submittedQId = requestData?.question_id
+
+            console.log('Question comparison after refresh:', {
+              currentQId,
+              submittedQId,
+              currentQIdType: typeof currentQId,
+              submittedQIdType: typeof submittedQId,
+              match: String(currentQId) === String(submittedQId),
+            })
+
+            // Если вопрос изменился, значит он уже был отвечен или сессия продвинулась
+            // Просто загружаем актуальный вопрос (не пытаемся повторно отправить)
+            if (currentQId && submittedQId && String(currentQId) !== String(submittedQId)) {
+              console.log('Question changed after refresh, loading new question instead of retrying')
+              // Вопрос уже был отвечен или изменился - просто обновляем UI
+              // Не показываем ошибку, просто продолжаем с новым вопросом
+              submitting.value = false
+              showingResult.value = false
+              userAnswer.value = null
+              return
+            }
+
+            // Если вопрос тот же, но все равно 409 - возможно, он уже был отвечен
+            // Или сессия в неконсистентном состоянии
+            // Пытаемся повторить отправку только если вопрос совпадает
+            if (requestData && practiceStore.currentQuestion) {
+              console.log('Retrying submit after session refresh...')
+
+              // Для PLUGIN вопросов (не генераторов) используем last_question_id из сессии
+              // чтобы избежать 409 ошибки
+              let updatedQuestionId: string | number
+
+              if (practiceStore.currentQuestion.data?._generator_id) {
+                // Для генераторов используем _generator_id
+                updatedQuestionId = String(practiceStore.currentQuestion.data._generator_id)
+              } else if (practiceStore.currentQuestion.type === 'PLUGIN' && practiceStore.currentSession?.last_question_id) {
+                // Для PLUGIN вопросов используем last_question_id из сессии
+                const sessionLastQId = typeof practiceStore.currentSession.last_question_id === 'number'
+                  ? practiceStore.currentSession.last_question_id
+                  : Number(practiceStore.currentSession.last_question_id)
+
+                if (!isNaN(sessionLastQId)) {
+                  updatedQuestionId = sessionLastQId
+                  console.log('Using session last_question_id for PLUGIN question:', updatedQuestionId)
+                } else {
+                  updatedQuestionId = typeof practiceStore.currentQuestion.id === 'number'
+                    ? practiceStore.currentQuestion.id
+                    : Number(practiceStore.currentQuestion.id)
+                }
+              } else {
+                // Для обычных вопросов используем ID из currentQuestion
+                updatedQuestionId = typeof practiceStore.currentQuestion.id === 'number'
+                  ? practiceStore.currentQuestion.id
+                  : Number(practiceStore.currentQuestion.id)
+              }
+
+              if (isNaN(updatedQuestionId as number) && !practiceStore.currentQuestion.data?._generator_id) {
+                console.error('Invalid question ID after refresh')
+                error.value = 'Сессия уақытша қате көрсетті. Бетті жаңартып, қайталап көріңіз.'
+                submitting.value = false
+                return
+              }
+
+              // Обновляем requestData с актуальным question_id
+              const updatedRequestData = {
+                ...requestData,
+                question_id: updatedQuestionId
+              }
+
+              console.log('Retrying with updated question_id:', {
+                updatedQuestionId,
+                updatedQuestionIdType: typeof updatedQuestionId,
+                originalQuestionId: requestData.question_id,
+                sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
+              })
+
+              try {
+                // Повторяем отправку с обновленными данными (только один раз)
+                const retryResponse = await practiceStore.submitAnswer(
+                  practiceStore.currentSession.id,
+                  updatedRequestData
+                )
+
+                if (retryResponse) {
+                  // Успешно отправили после обновления
+                  lastResult.value = retryResponse
+                  showingResult.value = true
+                  userAnswer.value = answer
+
+                  // Безопасно копируем currentQuestion (может быть null)
+                  if (practiceStore.currentQuestion) {
+                    lastQuestion.value = { ...practiceStore.currentQuestion }
+                  }
+
+                  // Продолжаем обычную обработку ответа
+                  if (retryResponse.session?.time_elapsed_sec !== undefined) {
+                    currentTime.value = retryResponse.session.time_elapsed_sec
+                  }
+
+                  // Обрабатываем результат как обычно
+                  if (retryResponse.finished) {
+                    stopTimer()
+                  }
+
+                  submitting.value = false
+                  return // Выходим из обработки ошибки
+                }
+              } catch (retryErr: any) {
+                console.warn('Retry after 409 also failed:', retryErr)
+                // Если повторная попытка тоже не удалась, не показываем ошибку
+                // Просто обновляем UI и продолжаем с текущим вопросом
+                submitting.value = false
+                showingResult.value = false
+                userAnswer.value = null
+                // Не устанавливаем error.value, чтобы не пугать пользователя
+                // Сессия уже обновлена, пользователь может продолжить
+              }
             } else {
-              // Если сессия не завершена, возможно это временная ошибка
-              // Показываем сообщение и позволяем пользователю продолжить
-              console.log('Session is not finished, but got 409. This might be a race condition.')
-              error.value = 'Сессия уақытша қате көрсетті. Бетті жаңартып, қайталап көріңіз.'
+              // Вопрос не совпадает или отсутствует - просто обновляем UI
+              console.log('Question mismatch or missing, updating UI without retry')
+              submitting.value = false
+              showingResult.value = false
+              userAnswer.value = null
             }
           }
         } catch (refreshErr) {
-          console.error('Failed to refresh session:', refreshErr)
-          // Если не удалось обновить, просто перенаправляем
+          console.error('Failed to refresh session after 409:', refreshErr)
           const errorDetail = errorData?.error?.message || errorData?.message || 'Сессия бұрын аяқталған немесе өзгертілген болуы мүмкін'
-          error.value = errorDetail
-          stopTimer()
-          setTimeout(() => {
-            if (practiceStore.currentSession?.id) {
-              router.push({ name: 'practice-results', params: { sessionId: practiceStore.currentSession.id } })
-            } else {
-              router.push({ name: 'home' })
-            }
-          }, 2000)
+
+          // Если сессия точно завершена, перенаправляем
+          if (practiceStore.currentSession?.finished_at) {
+            stopTimer()
+            setTimeout(() => {
+              if (practiceStore.currentSession?.id) {
+                router.push({ name: 'practice-results', params: { sessionId: practiceStore.currentSession.id } })
+              } else {
+                router.push({ name: 'home' })
+              }
+            }, 2000)
+          } else {
+            // Если сессия не завершена, просто обновляем UI
+            submitting.value = false
+            showingResult.value = false
+            userAnswer.value = null
+            // Не показываем ошибку, чтобы не пугать пользователя
+          }
         }
       } else if (status === 402) {
         // Ошибка 402 - Payment Required
@@ -1178,7 +1462,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         error.value = typeof errorDetail === 'string' ? errorDetail : 'Жауапты жіберу мүмкін болмады. Қайталап көріңіз.'
       }
     }
-    
+
     // Обработка завершения сессии при ошибке 409
     if (err.response?.status === 409 && practiceStore.currentSession) {
       setTimeout(() => {
@@ -1205,22 +1489,23 @@ const loadNextQuestion = async () => {
   }
 
   loadingNext.value = true
-  
+
   try {
     // Сохраняем информацию о следующем вопросе перед сбросом
     const hasNextQuestion = lastResult.value?.next_question !== null && lastResult.value?.next_question !== undefined
-    
+
     // Сбрасываем состояние результата
     showingResult.value = false
     const savedResult = lastResult.value
     lastResult.value = null
     userAnswer.value = null
     lastQuestion.value = null
-    
+    error.value = null
+
     // Сбрасываем форму
     numericAnswer.value = null
     textAnswer.value = ''
-    
+
     // Если есть следующий вопрос в ответе, он уже загружен в store через submitAnswer
     // Просто проверяем, что вопрос доступен
     if (hasNextQuestion && practiceStore.currentQuestion) {
@@ -1241,19 +1526,65 @@ const loadNextQuestion = async () => {
 
 const finishSession = async () => {
   if (!practiceStore.currentSession) return
-
   try {
     await practiceStore.finishSession(practiceStore.currentSession.id)
-    router.push({
-      name: 'practice-results',
-      params: { sessionId: practiceStore.currentSession!.id },
-    })
+    goToResults()
   } catch (err: any) {
     console.error('Failed to finish session:', err)
   }
 }
 
+const goToResults = () => {
+  stopTimer()
+  if (practiceStore.currentSession?.id) {
+    router.push({
+      name: 'practice-results',
+      params: { sessionId: practiceStore.currentSession.id },
+    })
+  }
+}
+
+const requestPluginAnswer = () => {
+  if (!pluginIframeRef.value?.contentWindow || !currentQuestion.value || currentQuestion.value.type !== 'PLUGIN') return
+  if (submitting.value || showingResult.value) return
+  error.value = null
+  try {
+    pluginIframeRef.value.contentWindow.postMessage({ type: 'REQUEST_ANSWER' }, '*')
+  } catch (e) {
+    console.warn('PracticeSession: postMessage REQUEST_ANSWER failed', e)
+  }
+}
+
+// Флаг для предотвращения двойной отправки от плагина
+const pluginSubmitInProgress = ref(false)
+
+const pluginMessageHandler = (event: MessageEvent) => {
+  try {
+    const d = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+    if (!d || !d.type) return
+    const q = currentQuestion.value
+    if (!q || q.type !== 'PLUGIN') return
+
+    if (d.type === 'ANSWER_NOT_READY') {
+      error.value = d.message || 'Тапсырманы толтырыңыз'
+      return
+    }
+    if (d.type !== 'SUBMIT') return
+    if (submitting.value || showingResult.value || pluginSubmitInProgress.value) return
+    const userAnswer = d.userAnswer
+    if (!userAnswer) return
+    error.value = null
+    pluginSubmitInProgress.value = true
+    submitAnswer(userAnswer, 'PLUGIN').finally(() => {
+      pluginSubmitInProgress.value = false
+    })
+  } catch {
+    // ignore
+  }
+}
+
 onMounted(async () => {
+  window.addEventListener('message', pluginMessageHandler)
   try {
     const session = await practiceStore.getSession(props.sessionId)
     console.log('Session loaded:', session)
@@ -1261,7 +1592,7 @@ onMounted(async () => {
     console.log('Session smartscore:', session?.current_smartscore || session?.smartscore)
     console.log('Session time:', session?.time_elapsed_sec)
     console.log('Session questions answered:', session?.questions_answered)
-    
+
     // Загружаем статистику навыка для отображения предыдущего результата
     if (session?.skill_id) {
       try {
@@ -1274,18 +1605,18 @@ onMounted(async () => {
         console.warn('Failed to load skill stats:', err)
       }
     }
-    
+
     // Восстанавливаем время сессии
     if (session?.time_elapsed_sec !== undefined) {
       currentTime.value = session.time_elapsed_sec
     }
-    
+
     if (session && !session.current_question) {
       // Если нет текущего вопроса, запрашиваем следующий
       const nextQuestion = await practiceStore.getNextQuestion(props.sessionId)
       console.log('Next question received:', nextQuestion)
     }
-    
+
     // Логируем текущий вопрос для отладки
     if (practiceStore.currentQuestion) {
       console.log('Current question in store:', {
@@ -1295,9 +1626,9 @@ onMounted(async () => {
         data: practiceStore.currentQuestion.data,
       })
     }
-    
+
     questionStartTime.value = Date.now()
-    
+
     // Запускаем таймер
     startTimer()
   } catch (err: any) {
@@ -1306,7 +1637,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  // Останавливаем таймер при размонтировании компонента
+  window.removeEventListener('message', pluginMessageHandler)
   stopTimer()
 })
 </script>

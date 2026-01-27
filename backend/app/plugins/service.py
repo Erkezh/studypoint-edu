@@ -14,6 +14,7 @@ from app.core.config import settings
 from app.core.errors import AppError
 from app.plugins.schemas import PluginCreate, PluginManifest
 from app.plugins.security import PluginSecurityError, scan_zip_contents
+from app.plugins.tsx_transformer import transform_tsx_to_html
 from app.repositories.plugin_repo import PluginRepository
 
 
@@ -219,6 +220,167 @@ class PluginService:
             "is_published": plugin.is_published,
         }
 
+    async def upload_tsx_plugin(
+        self,
+        file: UploadFile,
+        plugin_name: str | None = None,
+        grade_id: int | None = None,
+        admin_service = None,
+    ) -> dict:
+        """Загружает TSX файл и создает плагин из него.
+        
+        Args:
+            file: TSX файл
+            plugin_name: Название плагина (если не указано, берется из имени файла)
+            grade_id: ID класса для автоматического добавления в тест
+            admin_service: Сервис администрирования для создания навыка
+            
+        Returns:
+            dict с информацией о созданном плагине
+        """
+        import logging
+        import re
+        import zipfile
+        from app.models.enums import QuestionType
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Starting TSX plugin upload: filename={file.filename}, plugin_name={plugin_name}, grade_id={grade_id}")
+        
+        # Читаем TSX код
+        # Важно: FastAPI UploadFile можно прочитать только один раз
+        try:
+            # Сбрасываем позицию файла на начало (если он был прочитан ранее)
+            if hasattr(file, 'seek') and hasattr(file.file, 'seek'):
+                await file.seek(0)
+            content = await file.read()
+            tsx_code = content.decode("utf-8")
+            logger.info(f"TSX file read successfully: {len(tsx_code)} characters")
+            
+            if not tsx_code or len(tsx_code.strip()) == 0:
+                raise AppError(
+                    status_code=400,
+                    code="empty_file",
+                    message="Файл пустой или не содержит TSX код"
+                )
+        except UnicodeDecodeError as e:
+            raise AppError(
+                status_code=400,
+                code="file_encoding_error",
+                message=f"Ошибка декодирования файла. Убедитесь, что файл в кодировке UTF-8: {str(e)}"
+            )
+        except Exception as e:
+            if isinstance(e, AppError):
+                raise
+            raise AppError(
+                status_code=400,
+                code="file_read_error",
+                message=f"Ошибка при чтении файла: {str(e)}"
+            )
+        
+        # Определяем имя плагина
+        if not plugin_name:
+            plugin_name = Path(file.filename or "tsx-plugin").stem
+            # Убираем расширение и делаем читаемым
+            plugin_name = re.sub(r"[^a-zA-Z0-9\s-]", "", plugin_name)
+            plugin_name = re.sub(r"\s+", "-", plugin_name).lower()
+            if not plugin_name:
+                plugin_name = "tsx-plugin"
+        
+        # Генерируем plugin_id из имени
+        plugin_id = re.sub(r"[^a-zA-Z0-9-]", "", plugin_name.lower())[:32]
+        if not plugin_id:
+            plugin_id = f"tsx-{uuid.uuid4().hex[:8]}"
+        
+        version = "1.0.0"
+        
+        # Преобразуем TSX в HTML
+        try:
+            logger.info("Transforming TSX to HTML...")
+            html_content = transform_tsx_to_html(tsx_code, plugin_name)
+            logger.info(f"TSX transformed successfully: {len(html_content)} characters")
+        except Exception as e:
+            logger.error(f"TSX transformation error: {str(e)}", exc_info=True)
+            raise AppError(
+                status_code=400,
+                code="tsx_transform_error",
+                message=f"Ошибка при преобразовании TSX: {str(e)}"
+            )
+        
+        # Создаем manifest
+        manifest = PluginManifest(
+            id=plugin_id,
+            name=plugin_name,
+            version=version,
+            entry="index.html",
+            apiVersion="1",
+            capabilities={
+                "submit": True,
+                "explanation": True,
+            },
+            height=400,
+        )
+        
+        # Сохраняем плагин
+        plugin_dir = self.plugins_dir / plugin_id / version
+        plugin_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Сохраняем файлы
+        (plugin_dir / "index.html").write_text(html_content, encoding="utf-8")
+        (plugin_dir / "manifest.json").write_text(
+            manifest.model_dump_json(indent=2), encoding="utf-8"
+        )
+        
+        # Создаем ZIP архив
+        zip_path = plugin_dir.parent / f"{plugin_id}-{version}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.write(plugin_dir / "index.html", "index.html")
+            zip_file.write(plugin_dir / "manifest.json", "manifest.json")
+        
+        # Сохраняем в БД
+        # Генерируем UUID для БД (для уникальности записи)
+        plugin_uuid = str(uuid.uuid4())
+        
+        # Используем словарь, как в upload_plugin
+        logger.info(f"Creating plugin in database: plugin_id={plugin_id}, name={plugin_name}")
+        plugin = await self.repo.create({
+            "id": plugin_uuid,  # UUID для БД
+            "plugin_id": plugin_id,  # ID из manifest для пути к файлам
+            "name": plugin_name,
+            "version": version,
+            "entry": "index.html",
+            "api_version": "1",
+            "capabilities": manifest.capabilities,
+            "height": manifest.height,
+            "is_published": False,
+            "manifest_data": manifest.model_dump(),
+        })
+        logger.info(f"Plugin created in database: id={plugin.id}, plugin_id={plugin.plugin_id}")
+        
+        result = {
+            "id": str(plugin.id),
+            "plugin_id": plugin_id,
+            "name": plugin_name,
+            "version": version,
+            "is_published": False,
+        }
+        
+        # Если указан grade_id, автоматически добавляем в тест
+        if grade_id and admin_service:
+            try:
+                from app.schemas.admin import AddPluginToTestRequest
+                add_req = AddPluginToTestRequest(
+                    grade_id=grade_id,
+                    plugin_id=plugin_id,
+                    plugin_version=version,
+                )
+                test_result = await admin_service.add_plugin_to_test(add_req)
+                result["added_to_test"] = test_result
+            except Exception as e:
+                # Не критично, если не удалось добавить в тест
+                result["add_to_test_error"] = str(e)
+        
+        return result
+
     async def delete_plugin(self, plugin_id: str) -> dict:
         """Удаляет плагин (только если не опубликован).
         
@@ -307,78 +469,160 @@ class PluginService:
         
         # Логика проверки для drag-drop-math-example
         if plugin_id == "drag-drop-math-example":
-            # Извлекаем ответ пользователя
-            user_a = user_answer.get("a")
-            user_b = user_answer.get("b")
-            user_sum = user_answer.get("answer")
-            question_text = user_answer.get("question", "")
-            
-            # Отладочная информация (в продакшене убрать)
+            import re
             import logging
             logger = logging.getLogger(__name__)
-            logger.info(f"Drag-drop check: a={user_a}, b={user_b}, sum={user_sum}, question={question_text}")
-            
-            # Парсим вопрос для получения правильного ответа
-            # Формат: "X + Y = Z" где Z - правильный ответ (сумма)
-            import re
-            match = re.search(r'=\s*(\d+)$', question_text)
+
+            def _to_int(x):
+                if x is None:
+                    return None
+                try:
+                    return int(x)
+                except (TypeError, ValueError):
+                    return None
+
+            user_a = _to_int(user_answer.get("a"))
+            user_b = _to_int(user_answer.get("b"))
+            user_sum = _to_int(user_answer.get("answer"))
+            question_text = (user_answer.get("question") or "").strip()
+
+            logger.info(f"Drag-drop check: a={user_a}, b={user_b}, sum={user_sum}, question={question_text!r}")
+
+            # Правильный ответ (сумма) — из строки "X + Y = Z" или "Решите: ? + ? = Z"
+            correct_sum = None
+            match = re.search(r'=\s*(\d+)\s*$', question_text)
             if match:
-                correct_sum = int(match.group(1))  # Правильный ответ из вопроса
-                
-                # Проверяем: сумма перетащенных чисел должна равняться правильному ответу
-                # Числа могут быть в любом порядке, поэтому проверяем только сумму
-                if user_a is not None and user_b is not None:
-                    calculated_sum = user_a + user_b
-                    is_correct = (calculated_sum == correct_sum)
-                    score = 1.0 if is_correct else 0.0
-                    
-                    if is_correct:
-                        explanation = f"Правильно! {user_a} + {user_b} = {correct_sum}"
-                    else:
-                        # Находим правильные числа для объяснения
-                        # Правильные числа - это те, которые в сумме дают correct_sum
-                        # Показываем пример правильного ответа
-                        explanation = f"Неправильно. Сумма должна быть {correct_sum}. Вы указали: {user_a} + {user_b} = {calculated_sum}"
-                    
-                    return {
-                        "correct": is_correct,
-                        "score": score,
-                        "explanation": explanation,
-                    }
-                else:
-                    return {
-                        "correct": False,
-                        "score": 0.0,
-                        "explanation": f"Не получены значения a и b. Получено: a={user_a}, b={user_b}",
-                    }
-            else:
-                # Если не удалось распарсить правильный ответ из вопроса
-                # Пытаемся извлечь из формата "X + Y = Z"
+                correct_sum = int(match.group(1))
+            if correct_sum is None:
                 match_full = re.match(r'(\d+)\s*\+\s*(\d+)\s*=\s*(\d+)', question_text)
                 if match_full:
                     correct_sum = int(match_full.group(3))
-                    if user_a is not None and user_b is not None:
-                        calculated_sum = user_a + user_b
-                        is_correct = (calculated_sum == correct_sum)
-                        score = 1.0 if is_correct else 0.0
-                        
-                        if is_correct:
-                            explanation = f"Правильно! {user_a} + {user_b} = {correct_sum}"
-                        else:
-                            explanation = f"Неправильно. Сумма должна быть {correct_sum}. Вы указали: {user_a} + {user_b} = {calculated_sum}"
-                        
-                        return {
-                            "correct": is_correct,
-                            "score": score,
-                            "explanation": explanation,
-                        }
-                
-                # Если не удалось распарсить вопрос
+
+            if correct_sum is None:
                 return {
                     "correct": False,
                     "score": 0.0,
-                    "explanation": f"Не удалось распознать правильный ответ из вопроса: '{question_text}'. Получено: a={user_a}, b={user_b}, sum={user_sum}",
+                    "explanation": f"Не удалось распознать правильный ответ из вопроса: {question_text!r}. a={user_a}, b={user_b}",
                 }
+
+            if user_a is None or user_b is None:
+                return {
+                    "correct": False,
+                    "score": 0.0,
+                    "explanation": f"Не получены оба слагаемых. Получено: a={user_a}, b={user_b}",
+                }
+
+            calculated_sum = user_a + user_b
+            is_correct = calculated_sum == correct_sum
+            score = 1.0 if is_correct else 0.0
+            if is_correct:
+                explanation = f"Правильно! {user_a} + {user_b} = {correct_sum}"
+            else:
+                explanation = f"Неправильно. Сумма должна быть {correct_sum}. Вы указали: {user_a} + {user_b} = {calculated_sum}"
+
+            return {
+                "correct": is_correct,
+                "score": score,
+                "explanation": explanation,
+            }
+        
+        # Логируем для диагностики
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Plugin evaluate_answer: plugin_id={plugin_id}, user_answer type={type(user_answer)}, user_answer={user_answer}")
+        
+        # Проверяем, является ли это TSX плагином
+        # TSX плагины могут иметь plugin_id, который начинается с "tsx-" или содержит "tsx"
+        # Также проверяем по имени плагина в БД и по структуре ответа
+        is_tsx_plugin = plugin_id.startswith("tsx-") or "tsx" in plugin_id.lower()
+        
+        # Дополнительная проверка: получаем плагин из БД и проверяем его имя
+        if not is_tsx_plugin:
+            try:
+                plugin_db = await self.repo.get_by_plugin_id(plugin_id)
+                if plugin_db:
+                    # Проверяем имя плагина и manifest
+                    plugin_name_lower = (plugin_db.name or "").lower()
+                    manifest_name_lower = ((plugin_db.manifest_data or {}).get("name", "") or "").lower()
+                    if "tsx" in plugin_name_lower or "tsx" in manifest_name_lower:
+                        is_tsx_plugin = True
+                        logger.info(f"TSX plugin detected by name: plugin_id={plugin_id}, name={plugin_db.name}")
+            except Exception as e:
+                logger.warning(f"Error checking plugin in DB: {e}")
+        
+        # Также проверяем структуру ответа - TSX плагины отправляют isCorrect
+        if not is_tsx_plugin and isinstance(user_answer, dict):
+            if "isCorrect" in user_answer or "is_correct" in user_answer:
+                is_tsx_plugin = True
+                logger.info(f"TSX plugin detected by answer structure: plugin_id={plugin_id}, has isCorrect={('isCorrect' in user_answer)}")
+        
+        if is_tsx_plugin:
+            # TSX плагины отправляют ответ в формате:
+            # { "isCorrect": true/false, "userAnswer": "...", "correctAnswer": "..." }
+            is_correct_raw = user_answer.get("isCorrect")
+            user_answer_value = user_answer.get("userAnswer", "")
+            correct_answer_value = user_answer.get("correctAnswer", "")
+            
+            # Преобразуем в булево значение
+            if isinstance(is_correct_raw, bool):
+                is_correct = is_correct_raw
+            elif isinstance(is_correct_raw, str):
+                is_correct = is_correct_raw.lower() in ("true", "1", "yes")
+            elif isinstance(is_correct_raw, (int, float)):
+                is_correct = bool(is_correct_raw)
+            else:
+                is_correct = False
+                logger.warning(f"TSX plugin: isCorrect is not a valid boolean: {is_correct_raw} (type: {type(is_correct_raw)})")
+            
+            logger.info(f"TSX plugin answer: isCorrect={is_correct} (raw: {is_correct_raw}, type: {type(is_correct_raw)}), userAnswer={user_answer_value}, correctAnswer={correct_answer_value}")
+            
+            score = 1.0 if is_correct else 0.0
+            
+            if is_correct:
+                explanation = f"Правильно! Правильный ответ: {correct_answer_value}"
+            else:
+                explanation = f"Неправильно. Ваш ответ: {user_answer_value}. Правильный ответ: {correct_answer_value}"
+            
+            return {
+                "correct": is_correct,
+                "score": score,
+                "explanation": explanation,
+                "correct_answer": correct_answer_value,  # Добавляем для отображения на фронтенде
+            }
+        
+        # Для плагинов, которые отправляют уже проверенный ответ (с полем isCorrect)
+        if "isCorrect" in user_answer or user_answer.get("isCorrect") is not None:
+            is_correct_raw = user_answer.get("isCorrect")
+            # Проверяем разные варианты ключей
+            correct_answer_value = user_answer.get("correctAnswer") or user_answer.get("correct_answer", "")
+            user_answer_value = user_answer.get("userAnswer") or user_answer.get("user_answer", "")
+            
+            # Преобразуем в булево значение
+            if isinstance(is_correct_raw, bool):
+                is_correct = is_correct_raw
+            elif isinstance(is_correct_raw, str):
+                is_correct = is_correct_raw.lower() in ("true", "1", "yes")
+            elif isinstance(is_correct_raw, (int, float)):
+                is_correct = bool(is_correct_raw)
+            else:
+                is_correct = False
+                logger.warning(f"Plugin with isCorrect: isCorrect is not a valid boolean: {is_correct_raw} (type: {type(is_correct_raw)})")
+            
+            logger.info(f"Plugin with isCorrect: isCorrect={is_correct} (raw: {is_correct_raw}, type: {type(is_correct_raw)}), userAnswer={user_answer_value}, correctAnswer={correct_answer_value}")
+            
+            score = 1.0 if is_correct else 0.0
+            
+            if is_correct:
+                explanation = f"Правильно! Правильный ответ: {correct_answer_value}"
+            else:
+                explanation = f"Неправильно. Ваш ответ: {user_answer_value}. Правильный ответ: {correct_answer_value}"
+            
+            return {
+                "correct": is_correct,
+                "score": score,
+                "explanation": explanation,
+                "correct_answer": correct_answer_value,
+            }
         
         # Для других плагинов - базовая проверка
         # В будущем можно добавить специфичную логику для каждого плагина

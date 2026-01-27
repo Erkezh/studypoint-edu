@@ -379,8 +379,19 @@ class PracticeService:
             question_data = q_data.get('data', {})
         else:
             # Старый способ - получаем вопрос из БД
-            if ps.last_question_id is not None and ps.last_question_id != req.question_id:
-                raise AppError(status_code=409, code="conflict", message="Question does not match current session state")
+            # Сравниваем с учетом типов (может быть int или str)
+            if ps.last_question_id is not None:
+                # Приводим к одному типу для сравнения
+                last_q_id = str(ps.last_question_id) if ps.last_question_id is not None else None
+                req_q_id = str(req.question_id) if req.question_id is not None else None
+                
+                if last_q_id != req_q_id:
+                    logger.warning(
+                        f"Question ID mismatch: last_question_id={ps.last_question_id} (type: {type(ps.last_question_id)}), "
+                        f"req.question_id={req.question_id} (type: {type(req.question_id)}), "
+                        f"session_id={session_id}"
+                    )
+                    raise AppError(status_code=409, code="conflict", message="Question does not match current session state")
 
             question = await self.questions.get(req.question_id)
             if question is None or question.skill_id != ps.skill_id:
@@ -394,6 +405,68 @@ class PracticeService:
             question_data = question.data
             question_level = question.level
             explanation = question.explanation
+
+            if question_type == QuestionType.PLUGIN:
+                from app.plugins.service import PluginService
+                plugin_id = (question_data or {}).get("plugin_id")
+                if not plugin_id:
+                    raise AppError(status_code=400, code="validation_error", message="PLUGIN question missing data.plugin_id")
+                svc = PluginService(self.session)
+                
+                # Логируем для диагностики
+                logger.info(f"PLUGIN answer evaluation: plugin_id={plugin_id}, submitted_answer={req.submitted_answer}")
+                
+                result = await svc.evaluate_answer(
+                    plugin_id=plugin_id,
+                    task_id=str(ps.id),
+                    user_answer=req.submitted_answer,
+                )
+                
+                # Логируем полный результат от evaluate_answer
+                logger.info(
+                    f"PLUGIN evaluate_answer returned: "
+                    f"result={result}, "
+                    f"result_type={type(result)}, "
+                    f"result_keys={list(result.keys()) if isinstance(result, dict) else 'not a dict'}"
+                )
+                
+                # Получаем is_correct из результата
+                # Проверяем разные возможные ключи
+                is_correct = None
+                if isinstance(result, dict):
+                    is_correct = result.get("correct")
+                    if is_correct is None:
+                        is_correct = result.get("is_correct")
+                    if is_correct is None:
+                        is_correct = result.get("isCorrect")
+                    if is_correct is None:
+                        is_correct = False
+                        logger.warning(f"PLUGIN result does not contain 'correct', 'is_correct', or 'isCorrect' key. Result: {result}")
+                else:
+                    is_correct = False
+                    logger.error(f"PLUGIN evaluate_answer returned non-dict result: {result} (type: {type(result)})")
+                
+                explanation = result.get("explanation", "") if isinstance(result, dict) else ""
+                
+                # Логируем результат
+                logger.info(
+                    f"PLUGIN answer result: "
+                    f"is_correct={is_correct} (type: {type(is_correct)}), "
+                    f"raw_result={result}, "
+                    f"explanation={explanation[:100] if explanation else 'None'}"
+                )
+                
+                # Убеждаемся, что is_correct - это булево значение
+                if not isinstance(is_correct, bool):
+                    logger.warning(f"is_correct is not bool: {is_correct} (type: {type(is_correct)}), converting to bool")
+                    if isinstance(is_correct, str):
+                        is_correct = is_correct.lower() in ("true", "1", "yes")
+                    elif isinstance(is_correct, (int, float)):
+                        is_correct = bool(is_correct)
+                    else:
+                        is_correct = False
+                
+                logger.info(f"PLUGIN final is_correct: {is_correct} (type: {type(is_correct)})")
             
             # Для вопросов типа "last digit" вычисляем правильный ответ динамически
             # если правильный ответ в базе неправильный
@@ -455,8 +528,8 @@ class PracticeService:
                     # Пытаемся найти ближайший вариант или использовать первый
                     # Но лучше всего - исправить вопрос в базе данных
         
-        # Для генераторов is_correct уже определен, для обычных вопросов проверяем
-        if not is_generator_skill:
+        # Для генераторов is_correct уже определен; для PLUGIN — из evaluate; для остальных — _is_correct
+        if not is_generator_skill and question_type != QuestionType.PLUGIN:
             # Логируем для отладки MCQ вопросов
             if question_type == QuestionType.MCQ:
                 import structlog
@@ -472,7 +545,28 @@ class PracticeService:
                 )
             is_correct = _is_correct(question_type, question_data, correct_answer, req.submitted_answer)
         else:
-            logger.info(f"Using is_correct from GeneratorService: {is_correct}")
+            if is_generator_skill:
+                logger.info(f"Using is_correct from GeneratorService: {is_correct}")
+            elif question_type == QuestionType.PLUGIN:
+                # Проверяем, что is_correct был определен в блоке обработки PLUGIN вопросов
+                try:
+                    # Пытаемся получить значение is_correct
+                    is_correct_value = is_correct
+                    logger.info(f"Using is_correct from PluginService.evaluate_answer: {is_correct_value} (type: {type(is_correct_value)})")
+                except NameError:
+                    logger.error(f"is_correct not defined for PLUGIN question! This should not happen. Setting to False.")
+                    is_correct = False
+                else:
+                    # Убеждаемся, что is_correct - это булево значение
+                    if not isinstance(is_correct, bool):
+                        logger.warning(f"is_correct is not bool for PLUGIN: {is_correct} (type: {type(is_correct)}), converting")
+                        if isinstance(is_correct, str):
+                            is_correct = is_correct.lower() in ("true", "1", "yes")
+                        elif isinstance(is_correct, (int, float)):
+                            is_correct = bool(is_correct)
+                        else:
+                            is_correct = False
+                    logger.info(f"PLUGIN is_correct final value: {is_correct} (type: {type(is_correct)})")
 
         now = utc_now()
         zone_before = ps.current_zone or zone_for_score(ps.current_smartscore)
@@ -480,6 +574,16 @@ class PracticeService:
         window = ps.state.get("recent_window") or {"correct": 0, "total": 0}
         stats = WindowStats(correct=int(window.get("correct", 0)), total=int(window.get("total", 0)))
         score_before = int(ps.current_smartscore or 0)
+        
+        # Логируем состояние перед вычислением SmartScore
+        logger.info(
+            f"Before SmartScore computation: "
+            f"is_correct={is_correct} (type: {type(is_correct)}), "
+            f"score_before={score_before}, "
+            f"zone_before={zone_before}, "
+            f"streak_before={streak_before}, "
+            f"question_level={question_level}"
+        )
         
         # Отслеживаем серию неправильных ответов
         wrong_streak_before = int(ps.state.get("wrong_streak", 0))
@@ -489,6 +593,11 @@ class PracticeService:
         else:
             wrong_streak_after = wrong_streak_before + 1  # Увеличиваем при неправильном
         
+        # Убеждаемся, что is_correct - это булево значение
+        if not isinstance(is_correct, bool):
+            logger.warning(f"is_correct is not bool before SmartScore: {is_correct} (type: {type(is_correct)}), converting")
+            is_correct = bool(is_correct)
+        
         score_res = compute_next_smartscore(
             current_smartscore=score_before,
             zone=zone_before,
@@ -497,6 +606,17 @@ class PracticeService:
             current_streak=streak_before,
             wrong_streak=wrong_streak_before,  # Передаем текущее значение до увеличения
             recent_window_stats=stats,
+        )
+        
+        # Логируем результат вычисления SmartScore
+        logger.info(
+            f"SmartScore computation result: "
+            f"smartscore={score_res.smartscore} (was {score_before}), "
+            f"streak={score_res.streak} (was {streak_before}), "
+            f"zone={score_res.zone} (was {zone_before}), "
+            f"is_correct={is_correct} (type: {type(is_correct)}), "
+            f"question_type={question_type}, "
+            f"is_generator_skill={is_generator_skill}"
         )
 
         # Если 3 неправильных ответа подряд - завершаем тест
@@ -557,7 +677,7 @@ class PracticeService:
                     "prompt": question.prompt,
                     "data": question.data,
                     "correct_answer": question.correct_answer,
-                    "explanation": question.explanation,
+                    "explanation": explanation,
                     "level": question.level,
                 },
                 submitted_answer=req.submitted_answer,
@@ -584,7 +704,7 @@ class PracticeService:
                 "prompt": question.prompt,
                 "data": question.data,
                 "correct_answer": question.correct_answer,
-                "explanation": question.explanation,
+                "explanation": explanation,
                 "level": question.level,
             },
             submitted_answer=req.submitted_answer,
@@ -725,9 +845,19 @@ class PracticeService:
         await self.session.flush()
 
         session_resp = await self._to_session_response(ps, current_question=None)
+        # Логируем финальный результат перед возвратом
+        logger.info(
+            f"Returning PracticeSubmitResponse: "
+            f"is_correct={is_correct} (type: {type(is_correct)}), "
+            f"finished={ps.finished_at is not None}, "
+            f"smartscore={ps.current_smartscore}, "
+            f"questions_answered={ps.total_questions_answered}, "
+            f"explanation_length={len(explanation) if explanation else 0}"
+        )
+        
         return PracticeSubmitResponse(
             is_correct=is_correct,
-            explanation=(None if is_correct else question.explanation),
+            explanation=(None if is_correct else explanation),
             session=session_resp,
             next_question=_to_question_public(next_q) if next_q is not None else None,
             finished=ps.finished_at is not None,
@@ -966,6 +1096,9 @@ def _validate_submitted_answer(qtype: QuestionType, data: dict[str, Any], submit
     elif qtype == QuestionType.TEXT:
         if not isinstance(submitted.get("text"), str):
             raise AppError(status_code=400, code="validation_error", message="TEXT submitted_answer.text must be a string")
+    elif qtype in (QuestionType.INTERACTIVE, QuestionType.PLUGIN):
+        if not isinstance(submitted, dict):
+            raise AppError(status_code=400, code="validation_error", message="PLUGIN/INTERACTIVE submitted_answer must be an object")
     else:
         raise AppError(status_code=400, code="validation_error", message="Unsupported question type")
 

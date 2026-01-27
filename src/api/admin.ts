@@ -36,6 +36,17 @@ export interface SkillListItem {
   tags: string[]
 }
 
+export interface QuestionListItem {
+  id: number
+  skill_id: number
+  type: string
+  prompt: string
+  data: Record<string, any>
+  correct_answer: Record<string, any>
+  explanation: string | null
+  level: number
+}
+
 export const adminApi = {
   async createInteractiveQuestion(
     data: InteractiveQuestionCreate
@@ -113,6 +124,76 @@ export const adminApi = {
   async deletePlugin(pluginId: string): Promise<ApiResponse<Record<string, any>>> {
     const response = await apiClient.delete<ApiResponse<Record<string, any>>>(
       `/admin/plugins/${pluginId}`
+    )
+    return response.data
+  },
+
+  async createPluginQuestion(data: {
+    skill_id: number
+    plugin_id: string
+    plugin_version?: string
+  }): Promise<ApiResponse<Record<string, any>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+      '/admin/questions/plugin',
+      data
+    )
+    return response.data
+  },
+
+  async addPluginToTest(data: {
+    grade_id: number
+    plugin_id: string
+    plugin_version?: string
+  }): Promise<ApiResponse<Record<string, any>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+      '/admin/plugins/add-to-test',
+      data
+    )
+    return response.data
+  },
+
+  async uploadTsxPlugin(
+    file: File,
+    pluginName?: string,
+    gradeId?: number
+  ): Promise<ApiResponse<Record<string, any>>> {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (pluginName) {
+      formData.append('plugin_name', pluginName)
+    }
+    if (gradeId) {
+      formData.append('grade_id', gradeId.toString())
+    }
+    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+      '/admin/plugins/upload-tsx',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data
+  },
+
+  async listQuestions(params?: {
+    skill_id?: number
+    page?: number
+    page_size?: number
+  }): Promise<ApiResponse<QuestionListItem[]>> {
+    const response = await apiClient.get<ApiResponse<QuestionListItem[]>>(
+      '/admin/questions',
+      {
+        params,
+      }
+    )
+    return response.data
+  },
+
+  async deleteQuestion(questionId: number): Promise<ApiResponse<Record<string, any>>> {
+    const response = await apiClient.delete<ApiResponse<Record<string, any>>>(
+      `/admin/questions/${questionId}`
     )
     return response.data
   },

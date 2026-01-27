@@ -38,14 +38,22 @@ def scan_zip_contents(zip_path: Path, max_size_mb: int = 10) -> None:
         r"\.cmd$",
     ]
     
+    # Безопасные CDN источники (разрешены для TSX плагинов)
+    safe_cdn_patterns = [
+        r"https://unpkg\.com/(react|react-dom|@babel|lucide)/",
+        r"https://cdn\.tailwindcss\.com/",
+    ]
+    
     # Опасные паттерны в содержимом (для текстовых файлов)
     dangerous_content_patterns = [
         r"eval\s*\(",
         r"new\s+Function\s*\(",
         r"Function\s*\(",
-        r"<script[^>]*src\s*=\s*['\"]https?://",  # Remote script src
-        r"<iframe[^>]*src\s*=\s*['\"]https?://",  # Remote iframe
     ]
+    
+    # Проверка удаленных скриптов (но разрешаем безопасные CDN)
+    remote_script_pattern = r"<script[^>]*src\s*=\s*['\"](https?://[^'\"]+)['\"]"
+    remote_iframe_pattern = r"<iframe[^>]*src\s*=\s*['\"](https?://[^'\"]+)['\"]"
     
     try:
         with zipfile.ZipFile(zip_path, "r") as zip_file:
@@ -67,11 +75,29 @@ def scan_zip_contents(zip_path: Path, max_size_mb: int = 10) -> None:
                 if member.endswith((".html", ".js", ".json")):
                     try:
                         content = zip_file.read(member).decode("utf-8", errors="ignore")
+                        
+                        # Проверяем опасные паттерны
                         for pattern in dangerous_content_patterns:
                             if re.search(pattern, content, re.IGNORECASE):
                                 raise PluginSecurityError(
                                     f"Обнаружен опасный код в {member}: {pattern}"
                                 )
+                        
+                        # Проверяем удаленные скрипты (но разрешаем безопасные CDN)
+                        for match in re.finditer(remote_script_pattern, content, re.IGNORECASE):
+                            url = match.group(1)
+                            is_safe = any(re.search(pattern, url, re.IGNORECASE) for pattern in safe_cdn_patterns)
+                            if not is_safe:
+                                raise PluginSecurityError(
+                                    f"Обнаружен небезопасный внешний скрипт в {member}: {url}. "
+                                    f"Разрешены только безопасные CDN (unpkg.com для React/Babel, cdn.tailwindcss.com)"
+                                )
+                        
+                        # Проверяем удаленные iframe (не разрешаем)
+                        if re.search(remote_iframe_pattern, content, re.IGNORECASE):
+                            raise PluginSecurityError(
+                                f"Обнаружен внешний iframe в {member}. Внешние iframe не разрешены."
+                            )
                     except (UnicodeDecodeError, zipfile.BadZipFile):
                         # Пропускаем бинарные файлы или поврежденные
                         pass

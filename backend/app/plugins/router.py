@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_current_user
@@ -9,7 +9,9 @@ from app.core.errors import AppError
 from app.db.session import get_db_session
 from app.plugins.schemas import PluginEvaluateRequest, PluginEvaluateResponse
 from app.plugins.service import PluginService
+from app.schemas.admin import AddPluginToTestRequest
 from app.schemas.base import ApiResponse
+from app.services.admin_service import AdminService
 
 router = APIRouter()
 
@@ -17,6 +19,18 @@ router = APIRouter()
 def get_plugin_service(session: AsyncSession = Depends(get_db_session)) -> PluginService:
     """Dependency для получения сервиса плагинов."""
     return PluginService(session)
+
+
+@router.post(
+    "/add-to-test",
+    response_model=ApiResponse[dict],
+    dependencies=[Depends(require_roles("ADMIN"))],
+    tags=["Plugins"],
+)
+async def add_plugin_to_test(body: AddPluginToTestRequest, svc: AdminService = Depends()):
+    """Добавить плагин в тест: создаётся навык из плагина + вопрос PLUGIN. Плагин сам является навыком."""
+    result = await svc.add_plugin_to_test(body)
+    return ApiResponse(data=result)
 
 
 @router.post(
@@ -125,3 +139,53 @@ async def evaluate_answer(
         user_answer=request.user_answer,
     )
     return ApiResponse(data=PluginEvaluateResponse(**result))
+
+
+@router.post(
+    "/upload-tsx",
+    response_model=ApiResponse[dict],
+    dependencies=[Depends(require_roles("ADMIN"))],
+    tags=["Plugins"],
+)
+async def upload_tsx_plugin(
+    file: UploadFile = File(..., description="TSX файл с React компонентом"),
+    plugin_name: str | None = Form(None, description="Название плагина (опционально)"),
+    grade_id: int | None = Form(None, description="ID класса для автоматического добавления в тест (опционально)"),
+    service: PluginService = Depends(get_plugin_service),
+    admin_service: AdminService = Depends(),
+):
+    """Загружает TSX файл и создает плагин из него.
+    
+    Требования:
+    - Роль: ADMIN
+    - Файл должен быть .tsx или .ts
+    - Файл должен содержать валидный React компонент
+    
+    Опционально:
+    - plugin_name: Название плагина (если не указано, берется из имени файла)
+    - grade_id: ID класса для автоматического добавления в тест
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Upload TSX request: filename={file.filename}, plugin_name={plugin_name}, grade_id={grade_id}")
+    
+    if not file.filename or not (file.filename.endswith(".tsx") or file.filename.endswith(".ts")):
+        raise AppError(
+            status_code=400,
+            code="invalid_file",
+            message="Файл должен быть .tsx или .ts"
+        )
+    
+    try:
+        result = await service.upload_tsx_plugin(
+            file=file,
+            plugin_name=plugin_name,
+            grade_id=grade_id,
+            admin_service=admin_service,
+        )
+        logger.info(f"TSX plugin created successfully: {result.get('plugin_id')}")
+        return ApiResponse(data=result)
+    except Exception as e:
+        logger.error(f"Error uploading TSX plugin: {str(e)}", exc_info=True)
+        raise

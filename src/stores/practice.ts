@@ -133,6 +133,7 @@ export const usePracticeStore = defineStore('practice', () => {
   // Получение сессии
   const getSession = async (sessionId: string) => {
     loading.value = true
+    error.value = null
     try {
       const response = await practiceApi.getSession(sessionId)
       if (response.data) {
@@ -144,7 +145,19 @@ export const usePracticeStore = defineStore('practice', () => {
       }
       throw new Error('Session not found')
     } catch (err: any) {
-      error.value = err.message || 'Failed to get session'
+      const status = err.response?.status
+      if (status === 404) {
+        error.value = 'Сессия табылмады немесе аяқталған. Жаңа практиканы бастаңыз.'
+        try {
+          const raw = localStorage.getItem('practice_session_state')
+          if (raw) {
+            const state = JSON.parse(raw)
+            if (state?.sessionId === sessionId) localStorage.removeItem('practice_session_state')
+          }
+        } catch (_) { /* ignore */ }
+      } else {
+        error.value = err.response?.data?.error?.message || err.message || 'Сессияны жүктеу мүмкін болмады.'
+      }
       throw err
     } finally {
       loading.value = false

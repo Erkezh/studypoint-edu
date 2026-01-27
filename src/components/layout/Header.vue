@@ -55,16 +55,16 @@
             <router-link
               to="/admin/plugins"
               class="text-white hover:text-gray-100 transition-colors font-medium"
-              title="Плагиндерді жүктеу"
+              title="Плагиндерді жүктеу және тестке қосу"
             >
               🔌 Плагиндер
             </router-link>
             <router-link
-              to="/admin/questions"
+              to="/admin/questions/list"
               class="text-white hover:text-gray-100 transition-colors font-medium"
-              title="Интерактивті тапсырма қосу"
+              title="Сұрақтарды басқару және жою"
             >
-              📝 Тапсырмалар
+              📝 Сұрақтар
             </router-link>
           </div>
         </div>
@@ -87,7 +87,7 @@
               </div>
               <span class="text-white font-medium text-sm">{{ authStore.user?.full_name || 'Пайдаланушы' }}</span>
             </button>
-            
+
             <!-- Выпадающее меню -->
             <div
               v-if="showProfileMenu"
