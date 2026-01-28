@@ -314,6 +314,71 @@ import { catalogApi } from '@/api/catalog'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
+import type { AxiosError } from 'axios'
+
+interface Plugin {
+  id: string
+  plugin_id: string
+  version: string
+  name: string
+  entry: string
+  api_version: string
+  height: number
+  is_published: boolean
+  created_at: string
+}
+
+interface PluginUploadResponse {
+  name: string
+  added_to_test?: {
+    already_exists: boolean
+    skill_title: string
+  }
+}
+
+interface PluginMessage {
+  type: string
+  taskId?: string
+  userAnswer?: unknown
+  [key: string]: unknown
+}
+
+interface ErrorDetail {
+  msg?: string
+  message?: string
+  code?: string
+  details?: unknown
+}
+
+interface ApiErrorResponse {
+  error?: {
+    code?: string
+    message?: string
+    details?: unknown
+  } | string
+  detail?: string | ErrorDetail[] | { message?: string }
+  message?: string
+}
+
+interface Grade {
+  id: number
+  number: number
+  title: string
+}
+
+interface PluginSubmitData {
+  taskId?: string
+  userAnswer?: unknown
+  [key: string]: unknown
+}
+
+interface PluginResponse {
+  data?: {
+    correct?: boolean
+    score?: number
+    explanation?: string
+  }
+}
 
 const router = useRouter()
 
@@ -331,11 +396,11 @@ const tsxFileInput = ref<HTMLInputElement | null>(null)
 const tsxPluginName = ref<string>('')
 const tsxGradeId = ref<number | null>(null)
 const uploadingTsx = ref(false)
-const plugins = ref<Array<Record<string, any>>>([])
-const previewPluginData = ref<Record<string, any> | null>(null)
-const messageLog = ref<Array<{ type: string; data: any }>>([])
+const plugins = ref<Plugin[]>([])
+const previewPluginData = ref<Plugin | null>(null)
+const messageLog = ref<Array<{ type: string; data: PluginMessage }>>([])
 const messageHandler = ref<((event: MessageEvent) => void) | null>(null)
-const addToTestPlugin = ref<Record<string, any> | null>(null)
+const addToTestPlugin = ref<Plugin | null>(null)
 const addToTestGradeId = ref<number | null>(null)
 const grades = ref<Array<{ id: number; number: number; title: string }>>([])
 const addingToTest = ref<string | null>(null)
@@ -344,18 +409,20 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const handleFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    selectedFile.value = target.files[0]
+  const file = target.files?.[0]
+  if (file instanceof File) {
+    selectedFile.value = file
   }
 }
 
 const handleTsxFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    selectedTsxFile.value = target.files[0]
+  const file = target.files?.[0]
+  if (file instanceof File) {
+    selectedTsxFile.value = file
     // Автоматически заполняем название плагина из имени файла
-    if (!tsxPluginName.value) {
-      const fileName = target.files[0].name.replace(/\.(tsx|ts)$/, '')
+    if (!tsxPluginName.value && file.name) {
+      const fileName = file.name.replace(/\.(tsx|ts)$/, '')
       tsxPluginName.value = fileName.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-').toLowerCase()
     }
   }
@@ -383,58 +450,67 @@ const handleUpload = async () => {
 
   try {
     const response = await adminApi.uploadPlugin(selectedFile.value)
-    successMessage.value = `Плагин "${response.data.name}" успешно загружен!`
+    if (response.data && response.data.name) {
+      successMessage.value = `Плагин "${response.data.name}" успешно загружен!`
+    } else {
+      successMessage.value = 'Плагин успешно загружен!'
+    }
     resetUpload()
     await loadPlugins()
     setTimeout(() => {
       successMessage.value = null
     }, 5000)
-  } catch (err: any) {
-    console.error('Upload error:', err)
-    console.error('Upload error response:', err.response?.data)
+  } catch (err: unknown) {
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    console.error('Upload error:', axiosError)
+    console.error('Upload error response:', axiosError.response?.data)
 
     let errorMsg = 'Ошибка при загрузке плагина'
 
     // Обработка 400 Bad Request
-    if (err.response?.status === 400) {
-      const errorData = err.response?.data
+    if (axiosError.response?.status === 400) {
+      const errorData = axiosError.response?.data
 
       // Проверяем разные форматы ошибок от FastAPI
       if (errorData?.detail) {
         if (Array.isArray(errorData.detail)) {
-          errorMsg = errorData.detail.map((e: any) => e.msg || e.message || JSON.stringify(e)).join(', ')
+          errorMsg = errorData.detail
+            .map((e: ErrorDetail) => e.msg || e.message || JSON.stringify(e))
+            .join(', ')
         } else if (typeof errorData.detail === 'string') {
           errorMsg = errorData.detail
-        } else if (errorData.detail.message) {
-          errorMsg = errorData.detail.message
+        } else if (typeof errorData.detail === 'object' && 'message' in errorData.detail) {
+          errorMsg = (errorData.detail as { message?: string }).message || errorMsg
         }
-      } else if (errorData?.error) {
-        // Формат: { error: { code: "...", message: "..." } }
+      } else if (errorData && errorData.error) {
+        // Формат: { error: { code: '...', message: '...' } }
         if (typeof errorData.error === 'string') {
           errorMsg = errorData.error
-        } else {
+        } else if (errorData.error && typeof errorData.error === 'object') {
           // Используем код ошибки для более понятного сообщения
           const codeMessages: Record<string, string> = {
-            'invalid_zip': 'Некорректный ZIP файл. Убедитесь, что файл является валидным ZIP архивом.',
-            'manifest_not_found': 'manifest.json не найден в корне архива. Убедитесь, что manifest.json находится в корне ZIP файла.',
-            'invalid_manifest_json': 'Некорректный JSON в manifest.json. Проверьте синтаксис JSON файла.',
-            'manifest_validation_error': 'Ошибка валидации manifest.json. Проверьте, что все обязательные поля заполнены правильно.',
-            'manifest_parse_error': 'Ошибка парсинга manifest.json. Проверьте структуру файла.',
-            'entry_not_found': 'Entry файл не найден. Убедитесь, что файл, указанный в manifest.json как entry, существует в архиве.',
-            'plugin_security_error': 'Ошибка безопасности плагина. Плагин не прошел проверку безопасности.'
+            invalid_zip: 'Некорректный ZIP файл. Убедитесь, что файл является валидным ZIP архивом.',
+            manifest_not_found: 'manifest.json не найден в корне архива. Убедитесь, что manifest.json находится в корне ZIP файла.',
+            invalid_manifest_json: 'Некорректный JSON в manifest.json. Проверьте синтаксис JSON файла.',
+            manifest_validation_error: 'Ошибка валидации manifest.json. Проверьте, что все обязательные поля заполнены правильно.',
+            manifest_parse_error: 'Ошибка парсинга manifest.json. Проверьте структуру файла.',
+            entry_not_found: 'Entry файл не найден. Убедитесь, что файл, указанный в manifest.json как entry, существует в архиве.',
+            plugin_security_error: 'Ошибка безопасности плагина. Плагин не прошел проверку безопасности.',
           }
 
-          // Приоритет: message > codeMessages[code] > code
-          if (errorData.error.message) {
+          if ('message' in errorData.error && errorData.error.message) {
             errorMsg = errorData.error.message
-          } else if (errorData.error.code && codeMessages[errorData.error.code]) {
-            errorMsg = codeMessages[errorData.error.code]
-            // Добавляем детали, если есть
-            if (errorData.error.details) {
-              errorMsg += ` (${JSON.stringify(errorData.error.details)})`
+          } else if ('code' in errorData.error && errorData.error.code) {
+            const errorCode = errorData.error.code
+            const codeMessage = errorCode ? codeMessages[errorCode] : undefined
+            if (codeMessage) {
+              errorMsg = codeMessage
+              if (errorData.error.details) {
+                errorMsg += ` (${JSON.stringify(errorData.error.details)})`
+              }
+            } else if (errorCode) {
+              errorMsg = `Ошибка: ${errorCode}`
             }
-          } else if (errorData.error.code) {
-            errorMsg = `Ошибка: ${errorData.error.code}`
           }
         }
       } else if (errorData?.message) {
@@ -443,28 +519,31 @@ const handleUpload = async () => {
         errorMsg = errorData
       }
 
-      // Если все еще не нашли сообщение, показываем полный ответ для отладки
       if (errorMsg === 'Ошибка при загрузке плагина' && errorData) {
         console.error('Не удалось извлечь сообщение об ошибке. Полный ответ:', errorData)
         errorMsg = `Ошибка загрузки: ${JSON.stringify(errorData)}`
       }
-    }
-    // Обработка 409 Conflict
-    else if (err.response?.status === 409) {
-      const errorDetail = err.response?.data?.error || err.response?.data
-      errorMsg = errorDetail?.message || 'Плагин с таким ID и версией уже существует. Если он опубликован, сначала скройте его.'
-    }
-    // Другие ошибки
-    else {
-      const errorDetail = err.response?.data?.error || err.response?.data
+    } else if (axiosError.response?.status === 409) {
+      const errorDetail = axiosError.response.data?.error || axiosError.response.data
+      if (typeof errorDetail === 'string') {
+        errorMsg = errorDetail
+      } else if (errorDetail && typeof errorDetail === 'object' && 'message' in errorDetail) {
+        errorMsg =
+          (errorDetail as { message?: string }).message ||
+          'Плагин с таким ID и версией уже существует. Если он опубликован, сначала скройте его.'
+      } else {
+        errorMsg = 'Плагин с таким ID и версией уже существует. Если он опубликован, сначала скройте его.'
+      }
+    } else {
+      const errorDetail = axiosError.response?.data?.error || axiosError.response?.data
       if (errorDetail) {
         if (typeof errorDetail === 'string') {
           errorMsg = errorDetail
-        } else if (errorDetail.message) {
-          errorMsg = errorDetail.message
+        } else if (errorDetail && typeof errorDetail === 'object' && 'message' in errorDetail) {
+          errorMsg = (errorDetail as { message?: string }).message || errorMsg
         }
-      } else if (err.message) {
-        errorMsg = err.message
+      } else if (axiosError.message) {
+        errorMsg = axiosError.message
       }
     }
 
@@ -498,12 +577,17 @@ const handleTsxUpload = async () => {
       tsxGradeId.value || undefined
     )
 
-    let message = `Плагин "${response.data.name}" успешно создан из TSX файла!`
-    if (response.data.added_to_test) {
-      if (response.data.added_to_test.already_exists) {
-        message += ` Плагин уже был добавлен в тест как навык «${response.data.added_to_test.skill_title}».`
+    const responseData = (response.data ?? null) as PluginUploadResponse | null
+    let message =
+      responseData?.name !== undefined
+        ? `Плагин "${responseData.name}" успешно создан из TSX файла!`
+        : 'Плагин успешно создан из TSX файла!'
+
+    if (responseData?.added_to_test) {
+      if (responseData.added_to_test.already_exists) {
+        message += ` Плагин уже был добавлен в тест как навык «${responseData.added_to_test.skill_title}».`
       } else {
-        message += ` Плагин добавлен в тест как навык «${response.data.added_to_test.skill_title}».`
+        message += ` Плагин добавлен в тест как навык «${responseData.added_to_test.skill_title}».`
       }
     }
 
@@ -513,33 +597,35 @@ const handleTsxUpload = async () => {
     setTimeout(() => {
       successMessage.value = null
     }, 5000)
-  } catch (err: any) {
-    console.error('TSX Upload error:', err)
-    console.error('TSX Upload error response:', err.response?.data)
-    console.error('TSX Upload error status:', err.response?.status)
+  } catch (err: unknown) {
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    console.error('TSX Upload error:', axiosError)
+    console.error('TSX Upload error response:', axiosError.response?.data)
+    console.error('TSX Upload error status:', axiosError.response?.status)
 
-    const errorData = err.response?.data
+    const errorData = axiosError.response?.data
 
     let errorMsg = 'Ошибка при загрузке TSX файла'
 
     // Обработка сетевых ошибок
-    if (!err.response) {
+    if (!axiosError.response) {
       errorMsg = 'Не удалось подключиться к серверу. Проверьте, что backend запущен.'
     }
     // Обработка ошибок от сервера
     else if (errorData?.error) {
-      if (errorData.error.message) {
+      if (typeof errorData.error === 'object' && errorData.error?.message) {
         errorMsg = errorData.error.message
-      } else if (errorData.error.code) {
+      } else if (typeof errorData.error === 'object' && errorData.error?.code) {
         const codeMessages: Record<string, string> = {
-          'invalid_file': 'Некорректный файл. Файл должен быть .tsx или .ts',
-          'invalid_tsx': 'Некорректный TSX код. Проверьте синтаксис React компонента.',
-          'file_read_error': 'Ошибка при чтении файла. Убедитесь, что файл не поврежден.',
-          'file_encoding_error': 'Ошибка декодирования файла. Убедитесь, что файл в кодировке UTF-8.',
-          'empty_file': 'Файл пустой или не содержит TSX код.',
-          'tsx_transform_error': 'Ошибка при преобразовании TSX в HTML.',
+          invalid_file: 'Некорректный файл. Файл должен быть .tsx или .ts',
+          invalid_tsx: 'Некорректный TSX код. Проверьте синтаксис React компонента.',
+          file_read_error: 'Ошибка при чтении файла. Убедитесь, что файл не поврежден.',
+          file_encoding_error: 'Ошибка декодирования файла. Убедитесь, что файл в кодировке UTF-8.',
+          empty_file: 'Файл пустой или не содержит TSX код.',
+          tsx_transform_error: 'Ошибка при преобразовании TSX в HTML.',
         }
-        errorMsg = codeMessages[errorData.error.code] || errorData.error.code || errorMsg
+        const code = errorData.error.code
+        errorMsg = (code && codeMessages[code]) || code || errorMsg
         if (errorData.error.details) {
           errorMsg += ` (${JSON.stringify(errorData.error.details)})`
         }
@@ -548,12 +634,12 @@ const handleTsxUpload = async () => {
       if (typeof errorData.detail === 'string') {
         errorMsg = errorData.detail
       } else if (Array.isArray(errorData.detail)) {
-        errorMsg = errorData.detail.map((e: any) => e.msg || e.message).join(', ')
-      } else if (errorData.detail.message) {
-        errorMsg = errorData.detail.message
+        errorMsg = errorData.detail.map((e: ErrorDetail) => e.msg || e.message).join(', ')
+      } else if (typeof errorData.detail === 'object' && 'message' in errorData.detail) {
+        errorMsg = (errorData.detail as { message?: string }).message || errorMsg
       }
-    } else if (err.message) {
-      errorMsg = err.message
+    } else if (axiosError.message) {
+      errorMsg = axiosError.message
     }
 
     error.value = errorMsg
@@ -579,29 +665,36 @@ const loadPlugins = async () => {
 
   try {
     const response = await adminApi.listPlugins()
-    plugins.value = response.data || []
-  } catch (err: any) {
-    console.error('Load plugins error:', err)
+    plugins.value = (response.data || []) as Plugin[]
+  } catch (err: unknown) {
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    console.error('Load plugins error:', axiosError)
 
     // Обработка ошибок авторизации
-    if (err.response?.status === 401) {
-      const errorDetail = err.response.data?.error || err.response.data?.detail
-      if (errorDetail?.message) {
-        error.value = `Ошибка авторизации: ${errorDetail.message}. Пожалуйста, войдите снова.`
+    if (axiosError.response?.status === 401) {
+      const errorDetail = axiosError.response.data?.error || axiosError.response.data?.detail
+      if (errorDetail && typeof errorDetail === 'object' && 'message' in errorDetail) {
+        error.value = `Ошибка авторизации: ${(errorDetail as { message?: string }).message}. Пожалуйста, войдите снова.`
       } else {
         error.value = 'Ошибка авторизации. Токен истек или недействителен. Пожалуйста, войдите снова.'
       }
 
-      // Предлагаем перелогиниться
       setTimeout(() => {
         if (confirm('Токен истек. Перейти на страницу входа?')) {
           router.push({ name: 'login', query: { redirect: '/admin/plugins' } })
         }
       }, 2000)
-    } else if (err.response?.status === 403) {
+    } else if (axiosError.response?.status === 403) {
       error.value = 'У вас нет прав для доступа к этой странице. Требуется роль ADMIN.'
     } else {
-      const errorMsg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+      const errorMsg =
+        axiosError.response?.data?.message ||
+        (typeof axiosError.response?.data?.error === 'object' &&
+          (axiosError.response?.data?.error as { message?: string }).message) ||
+        (typeof axiosError.response?.data?.error === 'string'
+          ? axiosError.response?.data?.error
+          : undefined) ||
+        axiosError.message
       error.value = errorMsg || 'Ошибка при загрузке списка плагинов'
     }
   } finally {
@@ -620,9 +713,13 @@ const publishPlugin = async (pluginId: string, isPublished: boolean) => {
     setTimeout(() => {
       successMessage.value = null
     }, 3000)
-  } catch (err: any) {
+  } catch (err) {
     console.error('Publish error:', err)
-    const errorMsg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    const errorMsg = axiosError.response?.data?.message ||
+      (typeof axiosError.response?.data?.error === 'object' && axiosError.response?.data?.error?.message) ||
+      (typeof axiosError.response?.data?.error === 'string' ? axiosError.response?.data?.error : undefined) ||
+      axiosError.message
     error.value = errorMsg || 'Ошибка при изменении статуса плагина'
   } finally {
     publishing.value = null
@@ -644,9 +741,17 @@ const deletePlugin = async (pluginId: string) => {
     setTimeout(() => {
       successMessage.value = null
     }, 3000)
-  } catch (err: any) {
-    console.error('Delete error:', err)
-    const errorMsg = err.response?.data?.message || err.response?.data?.error?.message || err.message
+  } catch (err: unknown) {
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    console.error('Delete error:', axiosError)
+    const errorMsg =
+      axiosError.response?.data?.message ||
+      (typeof axiosError.response?.data?.error === 'object' &&
+        (axiosError.response?.data?.error as { message?: string }).message) ||
+      (typeof axiosError.response?.data?.error === 'string'
+        ? axiosError.response?.data?.error
+        : undefined) ||
+      axiosError.message
     error.value = errorMsg || 'Ошибка при удалении плагина'
   } finally {
     deleting.value = null
@@ -655,7 +760,7 @@ const deletePlugin = async (pluginId: string) => {
 
 const pluginUrl = ref('')
 
-const previewPlugin = (plugin: Record<string, any>) => {
+const previewPlugin = (plugin: Plugin) => {
   previewPluginData.value = plugin
   messageLog.value = []
   error.value = null
@@ -680,20 +785,18 @@ const setupMessageHandler = () => {
     // if (event.origin !== window.location.origin) return
 
     try {
-      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
+      const data = (typeof event.data === 'string' ? JSON.parse(event.data) : event.data) as PluginMessage
 
       if (data.type) {
         messageLog.value.push({
           type: data.type,
-          data: data,
+          data,
         })
 
-        // Обрабатываем SUBMIT - отправляем на сервер
         if (data.type === 'SUBMIT') {
           handlePluginSubmit(data)
         }
 
-        // Обрабатываем INIT - отправляем подтверждение
         if (data.type === 'INIT') {
           sendMessageToPlugin({
             type: 'INIT',
@@ -702,10 +805,12 @@ const setupMessageHandler = () => {
         }
         if (data.type === 'ANSWER_NOT_READY') {
           error.value = 'Заполните оба поля (перетащите числа в ячейки)'
-          setTimeout(() => { error.value = null }, 3000)
+          setTimeout(() => {
+            error.value = null
+          }, 3000)
         }
       }
-    } catch (e) {
+    } catch (e: unknown) {
       console.error('Error parsing message:', e)
     }
   }
@@ -713,7 +818,7 @@ const setupMessageHandler = () => {
   window.addEventListener('message', messageHandler.value)
 }
 
-const handlePluginSubmit = async (data: any) => {
+const handlePluginSubmit = async (data: PluginSubmitData) => {
   try {
     // Отправляем на сервер для проверки
     const response = await fetch(`${API_BASE_URL}/api/v1/admin/plugins/evaluate`, {
@@ -728,16 +833,15 @@ const handlePluginSubmit = async (data: any) => {
       }),
     })
 
-    const result = await response.json()
+    const result = (await response.json()) as PluginResponse
 
-    // Отправляем результат обратно в плагин
     sendMessageToPlugin({
       type: 'SERVER_RESULT',
       correct: result.data?.correct || false,
       score: result.data?.score || 0,
       explanation: result.data?.explanation || '',
     })
-  } catch (err) {
+  } catch (err: unknown) {
     console.error('Evaluate error:', err)
     sendMessageToPlugin({
       type: 'SERVER_RESULT',
@@ -748,7 +852,7 @@ const handlePluginSubmit = async (data: any) => {
   }
 }
 
-const sendMessageToPlugin = (data: any) => {
+const sendMessageToPlugin = (data: PluginMessage) => {
   const iframe = document.querySelector('iframe')
   if (iframe && iframe.contentWindow) {
     iframe.contentWindow.postMessage(data, '*')
@@ -780,13 +884,17 @@ const closePreview = () => {
 const loadGrades = async () => {
   try {
     const res = await catalogApi.getGrades()
-    grades.value = (res.data || []).map((g: any) => ({ id: g.id, number: g.number, title: g.title }))
+    grades.value = (res.data || []).map((g: Grade) => ({
+      id: g.id,
+      number: g.number,
+      title: g.title,
+    }))
   } catch (e) {
     console.error('Load grades error:', e)
   }
 }
 
-const openAddToTest = (plugin: Record<string, any>) => {
+const openAddToTest = (plugin: Plugin) => {
   addToTestPlugin.value = plugin
   addToTestGradeId.value = null
 }
@@ -803,23 +911,39 @@ const submitAddToTest = async () => {
     })
     const title = res.data?.skill_title ?? addToTestPlugin.value.name
     if (res.data?.already_exists) {
-      // Плагин уже был добавлен ранее
-      successMessage.value = res.data?.message || `Плагин «${addToTestPlugin.value.name}» уже добавлен в тест как навык «${title}».`
+      successMessage.value =
+        res.data?.message ||
+        `Плагин «${addToTestPlugin.value.name}» уже добавлен в тест как навык «${title}».`
     } else {
       successMessage.value = `Плагин «${addToTestPlugin.value.name}» добавлен в тест как навык «${title}».`
     }
     addToTestPlugin.value = null
-    setTimeout(() => { successMessage.value = null }, 5000)
-  } catch (err: any) {
-    console.error('Add plugin to test error:', err)
-    // Обрабатываем ошибку 409 (Conflict) более информативно
-    if (err.response?.status === 409) {
-      const detail = err.response?.data?.error || err.response?.data
-      const message = (typeof detail === 'string' ? detail : detail?.message) || 'Плагин уже добавлен в тест или возник конфликт при создании навыка'
+    setTimeout(() => {
+      successMessage.value = null
+    }, 5000)
+  } catch (err: unknown) {
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    console.error('Add plugin to test error:', axiosError)
+    if (axiosError.response?.status === 409) {
+      const detail = axiosError.response?.data?.error || axiosError.response?.data
+      const message =
+        (typeof detail === 'string'
+          ? detail
+          : detail && typeof detail === 'object' && 'message' in detail
+          ? (detail as { message?: string }).message
+          : undefined) ||
+        'Плагин уже добавлен в тест или возник конфликт при создании навыка'
       error.value = message
     } else {
-      const detail = err.response?.data?.error || err.response?.data
-      error.value = (typeof detail === 'string' ? detail : detail?.message) || err.message || 'Ошибка при добавлении плагина в тест'
+      const detail = axiosError.response?.data?.error || axiosError.response?.data
+      error.value =
+        (typeof detail === 'string'
+          ? detail
+          : detail && typeof detail === 'object' && 'message' in detail
+          ? (detail as { message?: string }).message
+          : undefined) ||
+        axiosError.message ||
+        'Ошибка при добавлении плагина в тест'
     }
   } finally {
     addingToTest.value = null

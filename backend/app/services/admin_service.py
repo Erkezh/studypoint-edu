@@ -134,9 +134,18 @@ class AdminService:
         return skill
 
     async def delete_skill(self, skill_id: int) -> None:
+        from sqlalchemy import delete
+        
         skill = await self.session.get(Skill, skill_id)
         if skill is None:
-            return
+            raise AppError(status_code=404, code="not_found", message="Skill not found")
+        
+        # Сначала удаляем все связанные вопросы (каскадное удаление может не сработать из-за ограничений БД)
+        # Используем массовое удаление для эффективности
+        await self.session.execute(delete(Question).where(Question.skill_id == skill_id))
+        
+        # Затем удаляем сам навык
+        # Транзакция коммитится автоматически через session.begin() в get_db_session()
         await self.session.delete(skill)
 
     async def list_questions(self, *, page: int, page_size: int, skill_id: int | None) -> tuple[list[Question], int]:

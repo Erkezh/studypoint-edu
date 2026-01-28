@@ -3,7 +3,7 @@
     <Header />
     <main class="flex">
       <!-- Боковая панель с классами (полукруги) -->
-      <aside class="relative flex-shrink-0">
+      <aside class="relative shrink-0">
         <nav class="flex flex-col pt-8">
           <div
             v-for="(grade, index) in grades"
@@ -66,20 +66,20 @@
             <div
               v-for="skill in skills"
               :key="skill.id"
-              @click="navigateToSkill(skill.id)"
+              @click.stop="navigateToSkill(skill.id)"
               :class="[
-                'flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-lime-400 hover:shadow-md transition-all cursor-pointer',
+                'flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-lime-400 hover:shadow-md transition-all',
                 loadingSkillId === skill.id && 'opacity-75 cursor-wait'
               ]"
             >
-              <div class="flex items-center gap-4 flex-1">
+              <div class="flex items-center gap-4 flex-1 cursor-pointer">
                 <!-- Иконка статуса -->
-                <div v-if="skillStats.has(skill.id) && skillStats.get(skill.id)!.best_smartscore >= 90" class="flex-shrink-0">
+                <div v-if="skillStats.has(skill.id) && skillStats.get(skill.id)!.best_smartscore >= 90" class="shrink-0">
                   <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                   </svg>
                 </div>
-                <div v-else class="w-5 h-5 flex-shrink-0"></div>
+                <div v-else class="w-5 h-5 shrink-0"></div>
 
                 <!-- Название темы -->
                 <div class="flex-1">
@@ -99,8 +99,23 @@
                 </div>
               </div>
 
+              <!-- Кнопка удаления для админа -->
+              <div v-if="authStore.user?.role === 'ADMIN'" class="shrink-0 ml-4">
+                <button
+                  @click.stop="confirmDeleteSkill(skill.id, skill.title)"
+                  :disabled="deletingSkillId === skill.id"
+                  class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Тестті жою"
+                >
+                  <svg v-if="deletingSkillId !== skill.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <div v-else class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
+                </button>
+              </div>
+
               <!-- Индикатор загрузки -->
-              <div v-if="loadingSkillId === skill.id" class="flex-shrink-0 ml-4">
+              <div v-if="loadingSkillId === skill.id && authStore.user?.role !== 'ADMIN'" class="shrink-0 ml-4">
                 <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
               </div>
             </div>
@@ -142,6 +157,33 @@
         </Button>
       </template>
     </Modal>
+
+    <!-- Модальное окно подтверждения удаления теста -->
+    <Modal
+      :is-open="showDeleteModal"
+      title="Тестті жою"
+      :show-close="true"
+      @close="showDeleteModal = false"
+    >
+      <template #content>
+        <div class="space-y-4">
+          <p class="text-gray-700">
+            Сіз шынымен де <strong>"{{ skillToDelete?.title }}"</strong> тестін жойғыңыз келе ме?
+          </p>
+          <p class="text-sm text-red-600">
+            ⚠ Бұл әрекетті к geri қайтару мүмкін емес. Тестпен байланысты барлық деректер жойылады.
+          </p>
+        </div>
+      </template>
+      <template #actions>
+        <Button @click="deleteSkill" variant="primary" :disabled="deletingSkillId !== null" :loading="deletingSkillId !== null" class="bg-red-600 hover:bg-red-700">
+          Жою
+        </Button>
+        <Button @click="showDeleteModal = false" variant="outline" :disabled="deletingSkillId !== null">
+          Болдырмау
+        </Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -152,6 +194,7 @@ import { useCatalogStore } from '@/stores/catalog'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
 import { useTrialQuestions } from '@/composables/useTrialQuestions'
+import { adminApi } from '@/api/admin'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
@@ -176,6 +219,9 @@ const loadingSkillId = ref<number | null>(null)
 const showTrialEndedModal = ref(false)
 const skillStats = ref<Map<number, { best_smartscore: number; last_smartscore: number; is_completed: boolean }>>(new Map())
 const loadingStats = ref(false)
+const showDeleteModal = ref(false)
+const skillToDelete = ref<{ id: number; title: string } | null>(null)
+const deletingSkillId = ref<number | null>(null)
 
 const TRIAL_QUESTIONS_LIMIT = trialQuestions.TRIAL_QUESTIONS_LIMIT
 
@@ -351,12 +397,12 @@ const loadAllSkillStats = async () => {
 }
 
 // Загрузка навыков для класса
-const loadSkillsForGrade = async (gradeNumber: number) => {
+const loadSkillsForGrade = async (gradeNumber: number, force = false) => {
   try {
     error.value = null
     const fetchedSkills = await catalogStore.getSkills({
       grade_number: gradeNumber,
-    })
+    }, force)
 
     // Загружаем статистику для всех навыков
     if (fetchedSkills && fetchedSkills.length > 0) {
@@ -404,6 +450,66 @@ onMounted(async () => {
     console.error('ClassView: Failed to initialize:', err)
   }
 })
+
+// Подтверждение удаления теста
+const confirmDeleteSkill = (skillId: number, skillTitle: string) => {
+  skillToDelete.value = { id: skillId, title: skillTitle }
+  showDeleteModal.value = true
+}
+
+// Удаление теста
+const deleteSkill = async () => {
+  if (!skillToDelete.value) return
+
+  deletingSkillId.value = skillToDelete.value.id
+  error.value = null
+
+  try {
+    await adminApi.deleteSkill(skillToDelete.value.id)
+    
+    // Закрываем модальное окно
+    showDeleteModal.value = false
+    const deletedSkillId = skillToDelete.value.id
+    skillToDelete.value = null
+
+    // Удаляем из локального списка сразу (оптимистичное обновление)
+    const index = skills.value.findIndex(s => s.id === deletedSkillId)
+    if (index !== -1) {
+      skills.value.splice(index, 1)
+    }
+    skillStats.value.delete(deletedSkillId)
+
+    // Перезагружаем список навыков с сервера, чтобы убедиться, что удаление применилось
+    // Используем force=true чтобы обойти кэш
+    await catalogStore.getSkills({ grade_number: currentGradeId.value }, true)
+    
+    // Обновляем локальный computed
+    // skills уже обновлен через catalogStore.skills
+  } catch (err: any) {
+    console.error('Failed to delete skill:', err)
+    const status = err.response?.status
+    const errorData = err.response?.data
+    
+    // Если навык уже удален (404), это не критическая ошибка
+    if (status === 404) {
+      // Удаляем из локального списка и перезагружаем
+      const index = skills.value.findIndex(s => s.id === skillToDelete.value!.id)
+      if (index !== -1) {
+        skills.value.splice(index, 1)
+      }
+      skillStats.value.delete(skillToDelete.value.id)
+      await catalogStore.getSkills({ grade_number: currentGradeId.value }, true)
+      showDeleteModal.value = false
+      skillToDelete.value = null
+      return
+    }
+    
+    const errorMsg = errorData?.detail || errorData?.message || err.message || 'Тестті жою мүмкін болмады'
+    error.value = errorMsg
+  } finally {
+    deletingSkillId.value = null
+  }
+}
 
 // Обновляем статистику при возврате на страницу
 onActivated(async () => {

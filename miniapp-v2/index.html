@@ -46,6 +46,13 @@
             <div class="stat-label">Total</div>
             <div class="stat-value total">{{ stats.correct + stats.wrong }}</div>
           </div>
+          <div v-if="lastAnswer" class="stat-box" :style="{ background: lastAnswer.isCorrect ? '#dcfce7' : '#fee2e2' }">
+            <div class="stat-label">Last Answer</div>
+            <div style="font-size: 0.875rem; margin-top: 0.5rem;">
+              <div><strong>Student:</strong> {{ lastAnswer.studentAnswer }}</div>
+              <div><strong>Correct:</strong> {{ lastAnswer.correctAnswer }}</div>
+            </div>
+          </div>
           <div class="exercise-list">
             <h3>Exercises</h3>
             <button v-for="ex in exercises" :key="ex.id" class="exercise-btn" :class="{ active: currentExercise?.id === ex.id }" @click="currentExercise = ex">
@@ -111,7 +118,7 @@
       // Inject postMessage into handleSubmit
       code = code.replace(
         /(const\s+handleSubmit\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?)(setShowResult\s*\(\s*true\s*\)\s*;?)/,
-        (m, before, setShow) => before + setShow + '\n    const __correct = userAnswer === problems[currentIndex].correctAnswer;\n    window.parent.postMessage({ type: "exercise-result", correct: __correct }, "*");'
+        (m, before, setShow) => before + setShow + '\n    const __isCorrect = userAnswer === problems[currentIndex].correctAnswer;\n    window.parent.postMessage({ type: "exercise-result", id: null, correctAnswer: problems[currentIndex].correctAnswer, studentAnswer: userAnswer, isCorrect: __isCorrect }, "*");'
       )
 
       return { code, componentName }
@@ -127,6 +134,7 @@
         const currentExercise = ref(exercises.value[0])
         const iframeSrc = ref('')
         const stats = ref({ correct: 0, wrong: 0 })
+        const lastAnswer = ref(null)
 
         // Load exercise - fetch TSX, transform, build iframe HTML
         async function loadExercise(exercise) {
@@ -156,15 +164,17 @@
 
         const handleMessage = (e) => {
           if (e.data?.type === 'exercise-result') {
-            if (e.data.correct) stats.value.correct++
+            if (e.data.isCorrect) stats.value.correct++
             else stats.value.wrong++
+            lastAnswer.value = { correctAnswer: e.data.correctAnswer, studentAnswer: e.data.studentAnswer, isCorrect: e.data.isCorrect }
+            console.log('Exercise:', e.data.id, '| Student:', e.data.studentAnswer, '| Correct:', e.data.correctAnswer)
           }
         }
 
         onMounted(() => window.addEventListener('message', handleMessage))
         onUnmounted(() => window.removeEventListener('message', handleMessage))
 
-        return { exercises, currentExercise, iframeSrc, stats }
+        return { exercises, currentExercise, iframeSrc, stats, lastAnswer }
       }
     }).mount('#app')
   </script>

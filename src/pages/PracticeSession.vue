@@ -18,7 +18,7 @@
         <!-- Информация о предыдущем прохождении теста -->
         <div v-if="previousBestScore !== null && previousBestScore > 0" class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
           <div class="flex items-center">
-            <div class="flex-shrink-0">
+            <div class="shrink-0">
               <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
               </svg>
@@ -34,7 +34,7 @@
         <!-- Предупреждение о необходимости подписки (если пробные вопросы исчерпаны и пользователь не авторизован) -->
         <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
           <div class="flex items-center">
-            <div class="flex-shrink-0">
+            <div class="shrink-0">
               <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
               </svg>
@@ -259,10 +259,21 @@
               </div>
             </div>
 
-            <!-- PLUGIN (iframe плагина из /static/plugins, embed — только задание; проверка через кнопку теста) -->
+            <!-- PLUGIN (iframe плагина из /static/plugins или TSX из miniapp-v2) -->
             <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
+              <!-- TSX плагин из miniapp-v2 (использует srcdoc) -->
               <iframe
-                v-if="pluginIframeSrc"
+                v-if="isTsxPlugin && pluginIframeSrcdoc"
+                ref="pluginIframeRef"
+                :srcdoc="pluginIframeSrcdoc"
+                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: '1px solid #e5e7eb', borderRadius: '8px' }"
+                sandbox="allow-scripts allow-same-origin"
+                scrolling="yes"
+                class="rounded-lg"
+              />
+              <!-- Обычный плагин (использует src) -->
+              <iframe
+                v-else-if="!isTsxPlugin && pluginIframeSrc"
                 ref="pluginIframeRef"
                 :src="pluginIframeSrc"
                 :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: '1px solid #e5e7eb', borderRadius: '8px' }"
@@ -271,10 +282,21 @@
                 class="rounded-lg"
               />
               <div v-else class="text-red-500 text-sm">
-                ⚠ Плагин не загружен. Отсутствуют plugin_id, plugin_version или entry.
+                ⚠ Плагин не загружен. 
+                <template v-if="isTsxPlugin">
+                  TSX файл не найден или не загружен.
+                  <div v-if="isDev" class="text-xs text-gray-500 mt-2">
+                    Путь: {{ tsxFilePath || 'не определен' }}<br>
+                    Srcdoc длина: {{ pluginIframeSrcdoc.length || 0 }}
+                  </div>
+                </template>
+                <template v-else>
+                  Отсутствуют plugin_id, plugin_version или entry.
+                </template>
               </div>
+              <!-- Кнопка отправки для обычных плагинов (TSX плагины отправляют автоматически через postMessage) -->
               <Button
-                v-if="pluginIframeSrc"
+                v-if="!isTsxPlugin && pluginIframeSrc"
                 @click="requestPluginAnswer"
                 :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
                 :loading="submitting"
@@ -354,7 +376,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
@@ -366,6 +388,7 @@ import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
 import InteractiveQuestion from '@/components/practice/InteractiveQuestion.vue'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
+import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
 interface Props {
   sessionId: string
@@ -386,17 +409,170 @@ const previousBestScore = ref<number | null>(null)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+// Computed property для проверки режима разработки (для использования в шаблоне)
+const isDev = computed(() => import.meta.env.DEV)
+
 const currentQuestion = computed(() => practiceStore.currentQuestion)
 
+// Определяем, является ли плагин TSX файлом из miniapp-v2
+const isTsxPlugin = computed(() => {
+  const q = currentQuestion.value
+  if (!q || q.type !== 'PLUGIN' || !q.data) return false
+  
+  // Проверяем наличие tsx_file или miniapp_file в данных вопроса
+  if (q.data.tsx_file || q.data.miniapp_file) return true
+  
+  // Проверяем entry с расширением .tsx
+  if (q.data.entry && q.data.entry.endsWith('.tsx')) return true
+  
+  // Проверяем по plugin_id - если содержит "kazakh-rectangle" или другие известные TSX плагины
+  const pluginId = q.data.plugin_id || q.prompt || ''
+  const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
+  if (knownTsxPlugins.some(name => pluginId.includes(name))) {
+    return true
+  }
+  
+  return false
+})
+
+// URL или путь к TSX файлу
+const tsxFilePath = computed(() => {
+  const q = currentQuestion.value
+  if (!q || q.type !== 'PLUGIN' || !q.data) return null
+  
+  // Приоритет: tsx_file > miniapp_file > entry (если заканчивается на .tsx) > определение по plugin_id
+  if (q.data.tsx_file) return q.data.tsx_file
+  if (q.data.miniapp_file) return q.data.miniapp_file
+  if (q.data.entry && q.data.entry.endsWith('.tsx')) {
+    // Если entry - это путь к TSX файлу в miniapp-v2
+    const fileName = q.data.entry.includes('/') ? q.data.entry.split('/').pop() : q.data.entry
+    return `/miniapp-v2/exercieses/${fileName}`
+  }
+  
+  // Определяем по plugin_id или prompt
+  const pluginId = q.data.plugin_id || q.prompt || ''
+  
+  // Маппинг известных плагинов на файлы
+  const pluginFileMap: Record<string, string> = {
+    'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
+    'kazakh-rectangle-area-app-1': 'kazakh_rectangle_area_app.tsx',
+    'kazakh-rectangle-area': 'kazakh_rectangle_area_app.tsx',
+    'fraction-comparison': 'fraction_comparison_app.tsx',
+    'fractioncomparisonapp': 'fraction_comparison_app.tsx',
+  }
+  
+  // Ищем совпадение в plugin_id или prompt
+  for (const [key, fileName] of Object.entries(pluginFileMap)) {
+    if (pluginId.includes(key) || pluginId.toLowerCase().includes(key.toLowerCase())) {
+      return `/miniapp-v2/exercieses/${fileName}`
+    }
+  }
+  
+  return null
+})
+
+// Содержимое iframe для TSX файлов (srcdoc)
+const pluginIframeSrcdoc = ref<string>('')
+
+// URL для обычных плагинов (src)
 const pluginIframeSrc = computed(() => {
   const q = currentQuestion.value
   if (!q || q.type !== 'PLUGIN' || !q.data) return ''
+  
+  // Если это TSX файл, используем srcdoc вместо src
+  if (isTsxPlugin.value) return ''
+  
   const id = q.data.plugin_id
   const ver = q.data.plugin_version
   const entry = q.data.entry
   if (!id || !ver || !entry) return ''
   return `${API_BASE_URL}/static/plugins/${id}/${ver}/${entry}?embed=1`
 })
+
+// Загрузка TSX файла и создание iframe содержимого
+const loadTsxPlugin = async () => {
+  const filePath = tsxFilePath.value
+  if (!filePath) {
+    if (import.meta.env.DEV) {
+      console.log('TSX plugin: No file path found', {
+        currentQuestion: currentQuestion.value,
+        questionData: currentQuestion.value?.data
+      })
+    }
+    pluginIframeSrcdoc.value = ''
+    return
+  }
+
+  if (import.meta.env.DEV) {
+    console.log('TSX plugin: Loading file:', filePath)
+  }
+
+  try {
+    // Пытаемся загрузить файл
+    let tsxCode: string
+    
+    // Если путь начинается с /, это абсолютный путь от корня сайта
+    if (filePath.startsWith('/')) {
+      const response = await fetch(filePath)
+      if (!response.ok) {
+        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
+      }
+      tsxCode = await response.text()
+    } else if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      // Полный URL
+      const response = await fetch(filePath)
+      if (!response.ok) {
+        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
+      }
+      tsxCode = await response.text()
+    } else {
+      // Относительный путь - пробуем от корня проекта
+      const response = await fetch(`/${filePath}`)
+      if (!response.ok) {
+        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
+      }
+      tsxCode = await response.text()
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('TSX plugin: File loaded successfully, length:', tsxCode.length)
+    }
+
+    // Трансформируем и создаем HTML для iframe
+    pluginIframeSrcdoc.value = createTsxIframeHtml(tsxCode)
+    
+    if (import.meta.env.DEV) {
+      console.log('TSX plugin: Iframe HTML created, length:', pluginIframeSrcdoc.value.length)
+    }
+  } catch (err: any) {
+    console.error('Failed to load TSX plugin:', err)
+    console.error('TSX plugin error details:', {
+      filePath,
+      error: err.message,
+      stack: err.stack
+    })
+    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${err.message}</p><p style="color:gray;padding:10px;font-size:12px">Путь: ${filePath}</p></body></html>`
+  }
+}
+
+// Отслеживаем изменения вопроса и загружаем TSX при необходимости
+watch([currentQuestion, isTsxPlugin], async () => {
+  if (import.meta.env.DEV) {
+    console.log('TSX plugin watch triggered:', {
+      isTsxPlugin: isTsxPlugin.value,
+      hasQuestion: !!currentQuestion.value,
+      questionType: currentQuestion.value?.type,
+      questionData: currentQuestion.value?.data,
+      tsxFilePath: tsxFilePath.value
+    })
+  }
+  
+  if (isTsxPlugin.value && currentQuestion.value) {
+    await loadTsxPlugin()
+  } else {
+    pluginIframeSrcdoc.value = ''
+  }
+}, { immediate: true })
 
 const pluginEmbedHeight = computed(() => {
   const q = currentQuestion.value
@@ -1001,6 +1177,21 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       submittedAnswer = { answer: String(answer) }
     }
 
+    // Логируем состояние перед определением questionId
+    if (import.meta.env.DEV) {
+      console.log('Before determining questionId:', {
+        questionType: currentQuestion.value?.type,
+        questionId: currentQuestion.value?.id,
+        hasSession: !!practiceStore.currentSession,
+        sessionId: practiceStore.currentSession?.id,
+        sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
+        qType: qType,
+      })
+    }
+
+    // УБРАНО: Обновление сессии перед определением questionId для PLUGIN вопросов
+    // Это вызывало проблемы - используем currentQuestion.id напрямую
+
     // Для генераторов используем оригинальный ID из data._generator_id
     // Для обычных вопросов используем числовой ID
     // ВАЖНО: Используем актуальный questionId из currentQuestion.value,
@@ -1024,9 +1215,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         })
       }
     } else {
-      // Для обычных вопросов (включая PLUGIN) используем числовой ID
-      // ВАЖНО: Для PLUGIN вопросов question_id должен совпадать с last_question_id в сессии
-      // Используем ID из currentQuestion, который должен быть синхронизирован с сервером
+      // Для обычных вопросов (включая PLUGIN) используем ID из currentQuestion
+      // Упрощенный подход: всегда используем currentQuestion.id для всех типов вопросов
       const qId = currentQuestion.value.id
       questionId = typeof qId === 'number' ? qId : Number(qId)
 
@@ -1037,30 +1227,11 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         return
       }
 
-      // Для PLUGIN вопросов проверяем, что question_id совпадает с last_question_id в сессии
-      // Если не совпадает, это может привести к 409 ошибке
-      if (currentQuestion.value.type === 'PLUGIN' && practiceStore.currentSession?.last_question_id) {
-        const sessionLastQId = typeof practiceStore.currentSession.last_question_id === 'number'
-          ? practiceStore.currentSession.last_question_id
-          : Number(practiceStore.currentSession.last_question_id)
-
-        if (!isNaN(sessionLastQId) && sessionLastQId !== questionId) {
-          console.warn('PLUGIN question ID mismatch:', {
-            currentQuestionId: questionId,
-            sessionLastQuestionId: sessionLastQId,
-            currentQuestion: currentQuestion.value,
-          })
-          // Используем last_question_id из сессии, чтобы избежать 409
-          questionId = sessionLastQId
-          console.log('Using session last_question_id instead:', questionId)
-        }
-      }
-
       if (import.meta.env.DEV) {
         console.log('Using regular question ID:', {
-          qId,
           questionId,
           questionIdType: typeof questionId,
+          currentQuestionId: currentQuestion.value?.id,
           sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
           questionType: currentQuestion.value?.type,
         })
@@ -1154,15 +1325,25 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 
       lastResult.value = response
       showingResult.value = true // Показываем результат вместо вопроса
+      
+      // Сохраняем текущий вопрос для отображения в результате
+      if (currentQuestion.value) {
+        lastQuestion.value = { ...currentQuestion.value }
+      }
+      
+      // Сохраняем ответ пользователя для отображения
+      userAnswer.value = answer
 
       // Логируем для диагностики
       if (import.meta.env.DEV) {
-        console.log('Answer submitted successfully:', {
+        console.log('Answer submitted successfully - showing result:', {
           is_correct: response.is_correct,
           finished: response.finished,
           smartscore: response.session?.current_smartscore || response.session?.smartscore,
           questions_answered: response.session?.questions_answered,
           explanation: response.explanation,
+          showingResult: showingResult.value,
+          hasLastResult: !!lastResult.value,
         })
       }
 
@@ -1240,198 +1421,37 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       // Правильный/неправильный — переход только по кнопке «Келесі», без авто-перехода
     }
   } catch (err: any) {
+    const status = err.response?.status
+    const errorData = err.response?.data
+    
     console.error('PracticeSession: Failed to submit answer:', err)
     console.error('PracticeSession: Error details:', {
-      status: err.response?.status,
-      data: err.response?.data,
+      status: status,
+      data: errorData,
       message: err.message,
       isAuthenticated: authStore.isAuthenticated,
       userRole: authStore.user?.role,
       storeError: practiceStore.error,
     })
 
-    // Используем сообщение об ошибке из store, если оно есть
+    // 409 CONFLICT: сессия уже завершена или состояние изменилось.
+    // Не пытаемся повторно отправлять ответ или грузить следующий вопрос,
+    // просто перенаправляем на результаты этой сессии.
+    if (status === 409 && practiceStore.currentSession) {
+      stopTimer()
+      router.push({
+        name: 'practice-results',
+        params: { sessionId: practiceStore.currentSession.id },
+      })
+      return
+    }
+
+    // Используем сообщение об ошибке из store, если оно есть (для других ошибок)
     if (practiceStore.error) {
       error.value = practiceStore.error
     } else {
-      // Обрабатываем ошибки напрямую
-      const status = err.response?.status
-      const errorData = err.response?.data
-
-      if (status === 409) {
-        // Конфликт - сессия уже завершена, вопрос изменен или уже отвечен
-        console.log('Session conflict detected (409), refreshing session...', {
-          errorMessage: errorData?.error?.message || errorData?.message,
-          submittedQuestionId: requestData?.question_id,
-        })
-
-        try {
-          // Обновляем состояние сессии
-          if (practiceStore.currentSession?.id) {
-            await practiceStore.getSession(practiceStore.currentSession.id)
-
-            // Если сессия завершена, переходим на результаты
-            if (practiceStore.currentSession?.finished_at) {
-              console.log('Session is finished, redirecting to results')
-              stopTimer()
-              router.push({
-                name: 'practice-results',
-                params: { sessionId: practiceStore.currentSession.id }
-              })
-              return
-            }
-
-            // Проверяем, изменился ли текущий вопрос
-            const currentQId = practiceStore.currentQuestion?.data?._generator_id
-              || practiceStore.currentQuestion?.id
-            const submittedQId = requestData?.question_id
-
-            console.log('Question comparison after refresh:', {
-              currentQId,
-              submittedQId,
-              currentQIdType: typeof currentQId,
-              submittedQIdType: typeof submittedQId,
-              match: String(currentQId) === String(submittedQId),
-            })
-
-            // Если вопрос изменился, значит он уже был отвечен или сессия продвинулась
-            // Просто загружаем актуальный вопрос (не пытаемся повторно отправить)
-            if (currentQId && submittedQId && String(currentQId) !== String(submittedQId)) {
-              console.log('Question changed after refresh, loading new question instead of retrying')
-              // Вопрос уже был отвечен или изменился - просто обновляем UI
-              // Не показываем ошибку, просто продолжаем с новым вопросом
-              submitting.value = false
-              showingResult.value = false
-              userAnswer.value = null
-              return
-            }
-
-            // Если вопрос тот же, но все равно 409 - возможно, он уже был отвечен
-            // Или сессия в неконсистентном состоянии
-            // Пытаемся повторить отправку только если вопрос совпадает
-            if (requestData && practiceStore.currentQuestion) {
-              console.log('Retrying submit after session refresh...')
-
-              // Для PLUGIN вопросов (не генераторов) используем last_question_id из сессии
-              // чтобы избежать 409 ошибки
-              let updatedQuestionId: string | number
-
-              if (practiceStore.currentQuestion.data?._generator_id) {
-                // Для генераторов используем _generator_id
-                updatedQuestionId = String(practiceStore.currentQuestion.data._generator_id)
-              } else if (practiceStore.currentQuestion.type === 'PLUGIN' && practiceStore.currentSession?.last_question_id) {
-                // Для PLUGIN вопросов используем last_question_id из сессии
-                const sessionLastQId = typeof practiceStore.currentSession.last_question_id === 'number'
-                  ? practiceStore.currentSession.last_question_id
-                  : Number(practiceStore.currentSession.last_question_id)
-
-                if (!isNaN(sessionLastQId)) {
-                  updatedQuestionId = sessionLastQId
-                  console.log('Using session last_question_id for PLUGIN question:', updatedQuestionId)
-                } else {
-                  updatedQuestionId = typeof practiceStore.currentQuestion.id === 'number'
-                    ? practiceStore.currentQuestion.id
-                    : Number(practiceStore.currentQuestion.id)
-                }
-              } else {
-                // Для обычных вопросов используем ID из currentQuestion
-                updatedQuestionId = typeof practiceStore.currentQuestion.id === 'number'
-                  ? practiceStore.currentQuestion.id
-                  : Number(practiceStore.currentQuestion.id)
-              }
-
-              if (isNaN(updatedQuestionId as number) && !practiceStore.currentQuestion.data?._generator_id) {
-                console.error('Invalid question ID after refresh')
-                error.value = 'Сессия уақытша қате көрсетті. Бетті жаңартып, қайталап көріңіз.'
-                submitting.value = false
-                return
-              }
-
-              // Обновляем requestData с актуальным question_id
-              const updatedRequestData = {
-                ...requestData,
-                question_id: updatedQuestionId
-              }
-
-              console.log('Retrying with updated question_id:', {
-                updatedQuestionId,
-                updatedQuestionIdType: typeof updatedQuestionId,
-                originalQuestionId: requestData.question_id,
-                sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
-              })
-
-              try {
-                // Повторяем отправку с обновленными данными (только один раз)
-                const retryResponse = await practiceStore.submitAnswer(
-                  practiceStore.currentSession.id,
-                  updatedRequestData
-                )
-
-                if (retryResponse) {
-                  // Успешно отправили после обновления
-                  lastResult.value = retryResponse
-                  showingResult.value = true
-                  userAnswer.value = answer
-
-                  // Безопасно копируем currentQuestion (может быть null)
-                  if (practiceStore.currentQuestion) {
-                    lastQuestion.value = { ...practiceStore.currentQuestion }
-                  }
-
-                  // Продолжаем обычную обработку ответа
-                  if (retryResponse.session?.time_elapsed_sec !== undefined) {
-                    currentTime.value = retryResponse.session.time_elapsed_sec
-                  }
-
-                  // Обрабатываем результат как обычно
-                  if (retryResponse.finished) {
-                    stopTimer()
-                  }
-
-                  submitting.value = false
-                  return // Выходим из обработки ошибки
-                }
-              } catch (retryErr: any) {
-                console.warn('Retry after 409 also failed:', retryErr)
-                // Если повторная попытка тоже не удалась, не показываем ошибку
-                // Просто обновляем UI и продолжаем с текущим вопросом
-                submitting.value = false
-                showingResult.value = false
-                userAnswer.value = null
-                // Не устанавливаем error.value, чтобы не пугать пользователя
-                // Сессия уже обновлена, пользователь может продолжить
-              }
-            } else {
-              // Вопрос не совпадает или отсутствует - просто обновляем UI
-              console.log('Question mismatch or missing, updating UI without retry')
-              submitting.value = false
-              showingResult.value = false
-              userAnswer.value = null
-            }
-          }
-        } catch (refreshErr) {
-          console.error('Failed to refresh session after 409:', refreshErr)
-          const errorDetail = errorData?.error?.message || errorData?.message || 'Сессия бұрын аяқталған немесе өзгертілген болуы мүмкін'
-
-          // Если сессия точно завершена, перенаправляем
-          if (practiceStore.currentSession?.finished_at) {
-            stopTimer()
-            setTimeout(() => {
-              if (practiceStore.currentSession?.id) {
-                router.push({ name: 'practice-results', params: { sessionId: practiceStore.currentSession.id } })
-              } else {
-                router.push({ name: 'home' })
-              }
-            }, 2000)
-          } else {
-            // Если сессия не завершена, просто обновляем UI
-            submitting.value = false
-            showingResult.value = false
-            userAnswer.value = null
-            // Не показываем ошибку, чтобы не пугать пользователя
-          }
-        }
-      } else if (status === 402) {
+      // Обрабатываем другие ошибки
+      if (status === 402) {
         // Ошибка 402 - Payment Required
         if (authStore.isAuthenticated) {
           const errorDetail = errorData?.detail || errorData?.message || 'Қол жеткізу құқығы жеткіліксіз'
@@ -1461,16 +1481,6 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         const errorDetail = errorData?.detail || errorData?.message || err.message
         error.value = typeof errorDetail === 'string' ? errorDetail : 'Жауапты жіберу мүмкін болмады. Қайталап көріңіз.'
       }
-    }
-
-    // Обработка завершения сессии при ошибке 409
-    if (err.response?.status === 409 && practiceStore.currentSession) {
-      setTimeout(() => {
-        router.push({
-          name: 'practice-results',
-          params: { sessionId: practiceStore.currentSession!.id },
-        })
-      }, 1000)
     }
   } finally {
     submitting.value = false
@@ -1517,8 +1527,40 @@ const loadNextQuestion = async () => {
     }
   } catch (err: any) {
     console.error('Failed to load next question:', err)
-    // В случае ошибки показываем результат снова
+    const status = err.response?.status
+    const errorData = err.response?.data
+    
+    // В случае ошибки показываем результат снова и ошибку
     showingResult.value = true
+    
+    if (status === 500) {
+      error.value = 'Сервер қатесі. Бетті жаңартып, қайталап көріңіз.'
+    } else if (status === 409) {
+      // Сессия изменилась - обновляем и пробуем снова
+      try {
+        await practiceStore.getSession(practiceStore.currentSession.id)
+        if (practiceStore.currentSession?.finished_at) {
+          stopTimer()
+          router.push({
+            name: 'practice-results',
+            params: { sessionId: practiceStore.currentSession.id }
+          })
+          return
+        }
+        // Пробуем загрузить следующий вопрос снова
+        if (practiceStore.currentSession?.id) {
+          await practiceStore.getNextQuestion(practiceStore.currentSession.id)
+          showingResult.value = false
+          lastResult.value = null
+          questionStartTime.value = Date.now()
+        }
+      } catch (retryErr) {
+        console.error('Failed to retry loading next question:', retryErr)
+        error.value = 'Келесі сұрақты жүктеу мүмкін болмады. Бетті жаңартып, қайталап көріңіз.'
+      }
+    } else {
+      error.value = errorData?.detail || errorData?.message || 'Келесі сұрақты жүктеу мүмкін болмады.'
+    }
   } finally {
     loadingNext.value = false
   }
@@ -1555,36 +1597,66 @@ const requestPluginAnswer = () => {
   }
 }
 
-// Флаг для предотвращения двойной отправки от плагина
-const pluginSubmitInProgress = ref(false)
-
+// Упрощенный обработчик сообщений как в miniapp-v2
 const pluginMessageHandler = (event: MessageEvent) => {
   try {
     const d = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
     if (!d || !d.type) return
+    
     const q = currentQuestion.value
-    if (!q || q.type !== 'PLUGIN') return
+    if (!q || (q.type !== 'PLUGIN' && q.type !== 'INTERACTIVE')) return
 
+    // Обрабатываем exercise-result как в miniapp-v2
+    if (d.type === 'exercise-result') {
+      const userAnswer = d.studentAnswer !== undefined ? d.studentAnswer : d.answer
+      
+      if (userAnswer === null || userAnswer === undefined) {
+        if (import.meta.env.DEV) {
+          console.warn('Exercise result received but no studentAnswer/answer field:', d)
+        }
+        return
+      }
+      
+      if (import.meta.env.DEV) {
+        console.log('Exercise result received:', {
+          id: d.id,
+          correctAnswer: d.correctAnswer,
+          studentAnswer: userAnswer,
+          isCorrect: d.isCorrect
+        })
+      }
+      
+      // Просто отправляем ответ, как в miniapp-v2
+      error.value = null
+      submitAnswer(userAnswer, q.type)
+      return
+    }
+
+    // Обрабатываем другие типы сообщений
     if (d.type === 'ANSWER_NOT_READY') {
       error.value = d.message || 'Тапсырманы толтырыңыз'
       return
     }
-    if (d.type !== 'SUBMIT') return
-    if (submitting.value || showingResult.value || pluginSubmitInProgress.value) return
-    const userAnswer = d.userAnswer
-    if (!userAnswer) return
-    error.value = null
-    pluginSubmitInProgress.value = true
-    submitAnswer(userAnswer, 'PLUGIN').finally(() => {
-      pluginSubmitInProgress.value = false
-    })
-  } catch {
-    // ignore
+
+    if (d.type === 'SUBMIT') {
+      const userAnswer = d.userAnswer
+      if (userAnswer === null || userAnswer === undefined) return
+      error.value = null
+      submitAnswer(userAnswer, 'PLUGIN')
+      return
+    }
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      console.error('Plugin message handler error:', err)
+    }
   }
 }
 
 onMounted(async () => {
   window.addEventListener('message', pluginMessageHandler)
+  if (import.meta.env.DEV) {
+    console.log('Plugin message handler registered')
+  }
   try {
     const session = await practiceStore.getSession(props.sessionId)
     console.log('Session loaded:', session)

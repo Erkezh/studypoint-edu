@@ -99,7 +99,12 @@ export const useCatalogStore = defineStore('catalog', () => {
     q?: string | null
     page?: number
     page_size?: number
-  }) => {
+  }, force = false) => {
+    // Если force=true, игнорируем кэш и всегда загружаем с сервера
+    if (!force && !isStale('skills') && skills.value.length > 0) {
+      return skills.value
+    }
+
     loading.value = true
     try {
       console.log('CatalogStore: Fetching skills with params:', params)
@@ -107,6 +112,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       console.log('CatalogStore: Skills response:', response)
       if (response.data) {
         skills.value = response.data
+        lastFetch.value.set('skills', Date.now())
       }
       return skills.value
     } catch (error: any) {

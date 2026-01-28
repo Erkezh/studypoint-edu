@@ -15,4 +15,12 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  // Настройка для раздачи статических файлов из miniapp-v2
+  publicDir: 'public',
+  server: {
+    fs: {
+      // Разрешаем доступ к файлам вне корня проекта
+      allow: ['..']
+    }
+  }
 })
