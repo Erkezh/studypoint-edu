@@ -1,17 +1,84 @@
-"""Сервис для преобразования TSX файлов в HTML плагины.
-Использует тот же подход, что и miniapp 2 для максимальной совместимости."""
+"""Сервис для преобразования TSX/JSX файлов в HTML плагины.
+Использует esbuild для компиляции TypeScript/JSX в JavaScript."""
 
 from __future__ import annotations
 
+import subprocess
+import tempfile
+import os
 import re
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def compile_with_esbuild(tsx_code: str) -> str:
+    """Компилирует TSX/JSX код в JavaScript через esbuild.
+    
+    Убирает TypeScript синтаксис и компилирует JSX в React.createElement().
+    
+    Args:
+        tsx_code: Исходный TSX/JSX код (с уже преобразованными импортами)
+        
+    Returns:
+        Скомпилированный JavaScript код
+        
+    Raises:
+        RuntimeError: Если компиляция не удалась
+    """
+    # Находим путь к esbuild
+    backend_dir = Path(__file__).parent.parent.parent
+    esbuild_path = backend_dir / "node_modules" / ".bin" / "esbuild"
+    
+    if not esbuild_path.exists():
+        # Попробуем глобальный esbuild через npx
+        esbuild_path = "npx"
+        esbuild_args = ["esbuild"]
+    else:
+        esbuild_args = []
+    
+    # Создаем временный файл с кодом
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.tsx', delete=False, encoding='utf-8') as f:
+        f.write(tsx_code)
+        temp_file = f.name
+    
+    try:
+        # Вызываем esbuild - только трансформация, без bundling
+        cmd = [str(esbuild_path)] + esbuild_args + [
+            temp_file,
+            '--loader:.tsx=tsx',
+            '--jsx=transform',
+            '--jsx-factory=React.createElement',
+            '--jsx-fragment=React.Fragment',
+            '--target=es2020',
+        ]
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        
+        if result.returncode != 0:
+            raise RuntimeError(f"esbuild compilation failed: {result.stderr}")
+        
+        return result.stdout
+        
+    finally:
+        # Удаляем временный файл
+        try:
+            os.unlink(temp_file)
+        except:
+            pass
 
 
 def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str:
-    """Преобразует TSX код в HTML плагин, используя тот же подход, что и miniapp 2.
+    """Преобразует TSX/JSX код в HTML плагин с использованием esbuild.
     
     Args:
-        tsx_code: Исходный TSX код
+        tsx_code: Исходный TSX/JSX код
         plugin_name: Название плагина
         
     Returns:
@@ -22,7 +89,6 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
     component_name = export_match.group(1) if export_match else 'App'
     
     # Lucide icons wrapper - создает React компоненты из lucide UMD
-    # Точная копия из miniapp 2
     LUCIDE_WRAPPER = '''
       window.lucideReact = new Proxy({}, {
         get(_, name) {
@@ -57,8 +123,10 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
       });
     '''
     
-    # Преобразуем импорты React (точно как в miniapp 2)
+    # Преобразуем импорты для работы с глобальными переменными (CDN)
     code = tsx_code
+    
+    # React импорты -> используем глобальный React
     code = re.sub(
         r'import\s+React\s*,?\s*\{([^}]*)\}\s*from\s*[\'"]react[\'"];?',
         lambda m: f'const {{{m.group(1)}}} = React;',
@@ -71,7 +139,7 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
         code
     )
     
-    # Преобразуем импорты lucide-react (точно как в miniapp 2)
+    # lucide-react импорты -> используем наш wrapper
     code = re.sub(
         r'import\s*\{([^}]*)\}\s*from\s*[\'"]lucide-react[\'"];?',
         lambda m: f'const {{{m.group(1)}}} = window.lucideReact;',
@@ -81,94 +149,17 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
     # Удаляем export default
     code = re.sub(r'export\s+default\s+\w+;?', '', code)
     
-    # Добавляем поддержку embed режима и postMessage (точно как в miniapp 2)
-    # Генерируем taskId на основе кода
-    task_id = f"tsx-exercise-{_simple_hash(tsx_code)}"
+    # Компилируем через esbuild (убирает TypeScript, компилирует JSX)
+    try:
+        js_code = compile_with_esbuild(code)
+        logger.info(f"esbuild compilation successful: {len(js_code)} bytes")
+    except Exception as e:
+        # Fallback: если esbuild не сработал, логируем ошибку
+        logger.error(f"esbuild compilation failed: {e}")
+        raise RuntimeError(f"Failed to compile TSX: {e}")
     
-    # Ищем handleSubmit и добавляем postMessage (точно как в miniapp 2)
-    # Паттерн из miniapp 2: ищем setShowResult(true) и добавляем postMessage после него
-    # Используем универсальную логику определения isCorrect
-    def add_postmessage(match):
-        before = match.group(1)
-        set_show = match.group(2)
-        
-        # Универсальная логика определения isCorrect (как в miniapp 2)
-        # Пытаемся найти паттерн сравнения в коде перед setShowResult
-        context_before = before[-200:] if len(before) > 200 else before  # Последние 200 символов для контекста
-        
-        # Определяем, как вычисляется isCorrect
-        is_correct_logic = None
-        if "userAnswer === problems[currentIndex].correctAnswer" in context_before:
-            is_correct_logic = "userAnswer === problems[currentIndex].correctAnswer"
-        elif "userAnswer === currentProblem.correctAnswer" in context_before:
-            is_correct_logic = "userAnswer === currentProblem.correctAnswer"
-        elif "userAnswer === problem.correctAnswer" in context_before:
-            is_correct_logic = "userAnswer === problem.correctAnswer"
-        elif "userAnswer === currentProblem?.correctAnswer" in context_before:
-            is_correct_logic = "userAnswer === currentProblem?.correctAnswer"
-        else:
-            # Универсальная логика - пытаемся найти правильный ответ из доступных переменных
-            is_correct_logic = "(userAnswer === problems[currentIndex]?.correctAnswer || userAnswer === currentProblem?.correctAnswer || userAnswer === problem?.correctAnswer)"
-        
-        postmessage_code = f'''
-    // Отправляем результат в родительское окно (как в miniapp 2)
-    const embedMode = /[?&]embed=1/i.test(window.location.search);
-    if (embedMode && window.parent) {{
-      const __correct = {is_correct_logic};
-      const __correctAnswer = problems[currentIndex]?.correctAnswer || currentProblem?.correctAnswer || problem?.correctAnswer || "";
-      window.parent.postMessage({{ 
-        type: "SUBMIT", 
-        taskId: "{task_id}",
-        userAnswer: {{ 
-          isCorrect: __correct, 
-          userAnswer: userAnswer, 
-          correctAnswer: __correctAnswer
-        }}
-      }}, "*");
-    }}'''
-        return before + set_show + postmessage_code
-    
-    # Пытаемся найти handleSubmit и добавить postMessage (точно как в miniapp 2)
-    code = re.sub(
-        r'(const\s+handleSubmit\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?)(setShowResult\s*\(\s*true\s*\)\s*;?)',
-        add_postmessage,
-        code
-    )
-    
-    # Если не нашли handleSubmit, пытаемся найти другой паттерн
-    if 'window.parent.postMessage' not in code or 'type: "SUBMIT"' not in code:
-        # Ищем место после setShowResult(true) в любом месте
-        def add_postmessage_simple(match):
-            set_show = match.group(1)
-            # Универсальная логика для определения isCorrect
-            is_correct_logic = "(userAnswer === problems[currentIndex]?.correctAnswer || userAnswer === currentProblem?.correctAnswer || userAnswer === problem?.correctAnswer)"
-            postmessage_code = f'''
-    // Отправляем результат в родительское окно
-    const embedMode = /[?&]embed=1/i.test(window.location.search);
-    if (embedMode && window.parent) {{
-      const __correct = {is_correct_logic};
-      const __correctAnswer = problems[currentIndex]?.correctAnswer || currentProblem?.correctAnswer || problem?.correctAnswer || "";
-      window.parent.postMessage({{ 
-        type: "SUBMIT", 
-        taskId: "{task_id}",
-        userAnswer: {{ 
-          isCorrect: __correct, 
-          userAnswer: userAnswer, 
-          correctAnswer: __correctAnswer
-        }}
-      }}, "*");
-    }}'''
-            return set_show + postmessage_code
-        
-        code = re.sub(
-            r'(setShowResult\s*\(\s*true\s*\)\s*;?\s*)',
-            add_postmessage_simple,
-            code,
-            count=1
-        )
-    
-    # Создаем HTML обертку (точно как в miniapp 2)
-    # Используем development версию React для лучшей отладки (как в miniapp 2)
+    # Создаем HTML обертку
+    # Теперь НЕ используем Babel в браузере - код уже скомпилирован esbuild!
     html_template = f'''<!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -177,7 +168,6 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
     <title>{plugin_name}</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -195,20 +185,23 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
 <body>
     <div id="root"></div>
     <script>{LUCIDE_WRAPPER}</script>
-    <script type="text/babel">
-        const embedMode = /[?&]embed=1/i.test(window.location.search);
-        if (embedMode) {{
-            document.body.classList.add('embed');
-        }}
-        
-        {code}
-        
-        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement({component_name}));
-        
-        // Отправляем INIT сообщение
-        if (embedMode && window.parent) {{
-            window.parent.postMessage({{ type: 'INIT', status: 'ready' }}, '*');
-        }}
+    <script>
+        (function() {{
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {{
+                document.body.classList.add('embed');
+            }}
+            
+            {js_code}
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement({component_name}));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {{
+                window.parent.postMessage({{ type: 'INIT', status: 'ready' }}, '*');
+            }}
+        }})();
     </script>
 </body>
 </html>'''

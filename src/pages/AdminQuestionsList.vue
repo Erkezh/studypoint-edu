@@ -17,23 +17,48 @@
 
       <!-- Фильтры -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Навык ID (фильтр)
+              Навык атауы бойынша іздеу
+            </label>
+            <input
+              v-model="filters.search"
+              type="text"
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+              placeholder="Навык атауын жазыңыз..."
+              @keyup.enter="loadQuestions"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Навык ID
             </label>
             <input
               v-model.number="filters.skill_id"
               type="number"
               class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-              placeholder="Барлығы (бос қалдырыңыз)"
+              placeholder="ID нөмірі"
             />
           </div>
-          <div class="flex items-end">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Сұрыптау
+            </label>
+            <select
+              v-model="filters.sort_order"
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+              @change="loadQuestions"
+            >
+              <option value="desc">Жаңалары алдымен</option>
+              <option value="asc">Ескілері алдымен</option>
+            </select>
+          </div>
+          <div class="flex items-end gap-2">
             <Button @click="loadQuestions" variant="primary" :loading="loading">
               🔍 Іздеу
             </Button>
-            <Button @click="resetFilters" variant="outline" class="ml-2">
+            <Button @click="resetFilters" variant="outline">
               🔄 Тазалау
             </Button>
           </div>
@@ -67,35 +92,41 @@
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   ID
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Навык ID
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Навык
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Тип
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Сұрақ
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Деңгей
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Құрылған күні
+                </th>
+                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Әрекеттер
                 </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
               <tr v-for="question in questionsList" :key="question.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ question.id }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ question.skill_id }}
+                <td class="px-4 py-4 text-sm text-gray-500 max-w-xs">
+                  <div class="truncate" :title="question.skill_title || `ID: ${question.skill_id}`">
+                    <span class="text-gray-400 text-xs">#{{ question.skill_id }}</span>
+                    {{ question.skill_title || '' }}
+                  </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                   <span class="px-2 py-1 text-xs font-medium rounded-full"
                     :class="{
                       'bg-blue-100 text-blue-800': question.type === 'MCQ',
@@ -108,15 +139,18 @@
                     {{ question.type }}
                   </span>
                 </td>
-                <td class="px-6 py-4 text-sm text-gray-900 max-w-md">
+                <td class="px-4 py-4 text-sm text-gray-900 max-w-xs">
                   <div class="truncate" :title="question.prompt">
                     {{ question.prompt || '(Сұрақ жоқ)' }}
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ question.level }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-400">
+                  {{ formatDate(question.created_at) }}
+                </td>
+                <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <Button
                     @click="confirmDelete(question)"
                     variant="outline"
@@ -222,11 +256,29 @@ const deletingQuestionId = ref<number | null>(null)
 
 const filters = ref({
   skill_id: undefined as number | undefined,
+  search: '' as string,
+  sort_order: 'desc' as 'asc' | 'desc',
 })
 
 const totalPages = computed(() => {
   return Math.ceil(totalQuestions.value / pageSize.value)
 })
+
+const formatDate = (dateStr: string | null | undefined): string => {
+  if (!dateStr) return '-'
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('kk-KZ', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  } catch {
+    return '-'
+  }
+}
 
 const loadQuestions = async () => {
   loading.value = true
@@ -235,10 +287,15 @@ const loadQuestions = async () => {
     const params: any = {
       page: currentPage.value,
       page_size: pageSize.value,
+      sort_order: filters.value.sort_order,
     }
 
     if (filters.value.skill_id) {
       params.skill_id = filters.value.skill_id
+    }
+    
+    if (filters.value.search && filters.value.search.trim()) {
+      params.search = filters.value.search.trim()
     }
 
     const response = await adminApi.listQuestions(params)
@@ -267,6 +324,8 @@ const loadQuestions = async () => {
 const resetFilters = () => {
   filters.value = {
     skill_id: undefined,
+    search: '',
+    sort_order: 'desc',
   }
   currentPage.value = 1
   loadQuestions()

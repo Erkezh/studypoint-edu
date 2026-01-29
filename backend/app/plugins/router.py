@@ -148,17 +148,19 @@ async def evaluate_answer(
     tags=["Plugins"],
 )
 async def upload_tsx_plugin(
-    file: UploadFile = File(..., description="TSX файл с React компонентом"),
+    file: UploadFile = File(..., description="TSX/JSX файл с React компонентом"),
     plugin_name: str | None = Form(None, description="Название плагина (опционально)"),
     grade_id: int | None = Form(None, description="ID класса для автоматического добавления в тест (опционально)"),
     service: PluginService = Depends(get_plugin_service),
     admin_service: AdminService = Depends(),
 ):
-    """Загружает TSX файл и создает плагин из него.
+    """Загружает TSX/JSX файл и создает плагин из него.
+    
+    Компиляция выполняется через esbuild на сервере (поддержка полного TypeScript).
     
     Требования:
     - Роль: ADMIN
-    - Файл должен быть .tsx или .ts
+    - Файл должен быть .tsx, .jsx, .ts или .js
     - Файл должен содержать валидный React компонент
     
     Опционально:
@@ -170,11 +172,11 @@ async def upload_tsx_plugin(
     
     logger.info(f"Upload TSX request: filename={file.filename}, plugin_name={plugin_name}, grade_id={grade_id}")
     
-    if not file.filename or not (file.filename.endswith(".tsx") or file.filename.endswith(".ts")):
+    if not file.filename or not file.filename.endswith((".tsx", ".ts", ".jsx", ".js")):
         raise AppError(
             status_code=400,
             code="invalid_file",
-            message="Файл должен быть .tsx или .ts"
+            message="Файл должен быть .tsx, .jsx, .ts или .js"
         )
     
     try:

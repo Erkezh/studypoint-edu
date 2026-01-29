@@ -13,21 +13,25 @@ router = APIRouter(dependencies=[Depends(require_roles("ADMIN"))])
 @router.get("", response_model=ApiResponse[list[dict]])
 async def list_questions(
     skill_id: int | None = Query(default=None),
+    search: str | None = Query(default=None, description="Поиск по названию навыка"),
+    sort_order: str = Query(default="desc", pattern="^(asc|desc)$", description="Сортировка: asc (старые первые) или desc (новые первые)"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
     svc: AdminService = Depends(),
 ):
-    rows, total = await svc.list_questions(page=page, page_size=page_size, skill_id=skill_id)
+    rows, total, skill_names = await svc.list_questions(page=page, page_size=page_size, skill_id=skill_id, search=search, sort_order=sort_order)
     items = [
         {
             "id": q.id,
             "skill_id": q.skill_id,
+            "skill_title": skill_names.get(q.skill_id, ""),
             "type": q.type,
             "prompt": q.prompt,
             "data": q.data,
             "correct_answer": q.correct_answer,
             "explanation": q.explanation,
             "level": q.level,
+            "created_at": q.created_at.isoformat() if q.created_at else None,
         }
         for q in rows
     ]

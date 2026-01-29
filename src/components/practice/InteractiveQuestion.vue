@@ -49,8 +49,18 @@ const handleMessage = (event: MessageEvent) => {
     emit('answer', event.data.answer)
   } else if (event.data?.type === 'exercise-result') {
     // Формат из miniapp-v2: { type: 'exercise-result', studentAnswer, correctAnswer, isCorrect }
-    // Преобразуем в формат, ожидаемый PracticeSession
-    emit('answer', event.data.studentAnswer || event.data)
+    // Если есть isCorrect/correctAnswer, передаем объект целиком для backend
+    const isCorrect = event.data?.isCorrect ?? event.data?.correct ?? event.data?.is_correct
+    const correctAnswer = event.data?.correctAnswer ?? event.data?.correct_answer
+    if (isCorrect !== undefined || correctAnswer !== undefined) {
+      emit('answer', {
+        isCorrect,
+        userAnswer: event.data?.userAnswer ?? event.data?.studentAnswer ?? event.data?.answer,
+        correctAnswer,
+      })
+    } else {
+      emit('answer', event.data.studentAnswer || event.data)
+    }
   }
 }
 

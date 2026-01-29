@@ -236,7 +236,8 @@ const navigateToGrade = (gradeNumber: number) => {
   if (currentGradeId.value === gradeNumber) return
   currentGradeId.value = gradeNumber
   router.push({ name: 'class', params: { gradeId: gradeNumber } })
-  loadSkillsForGrade(gradeNumber)
+  // Всегда загружаем с force=true при переключении класса, чтобы получить актуальные данные
+  loadSkillsForGrade(gradeNumber, true)
 }
 
 // Цвета для классов (чередуются)
@@ -479,12 +480,9 @@ const deleteSkill = async () => {
     }
     skillStats.value.delete(deletedSkillId)
 
-    // Перезагружаем список навыков с сервера, чтобы убедиться, что удаление применилось
-    // Используем force=true чтобы обойти кэш
+    // Очищаем кэш навыков и перезагружаем список
+    catalogStore.clearSkillsCache()
     await catalogStore.getSkills({ grade_number: currentGradeId.value }, true)
-    
-    // Обновляем локальный computed
-    // skills уже обновлен через catalogStore.skills
   } catch (err: any) {
     console.error('Failed to delete skill:', err)
     const status = err.response?.status

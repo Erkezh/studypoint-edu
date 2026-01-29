@@ -39,12 +39,14 @@ export interface SkillListItem {
 export interface QuestionListItem {
   id: number
   skill_id: number
+  skill_title?: string
   type: string
   prompt: string
   data: Record<string, any>
   correct_answer: Record<string, any>
   explanation: string | null
   level: number
+  created_at?: string
 }
 
 export const adminApi = {
@@ -179,6 +181,8 @@ export const adminApi = {
 
   async listQuestions(params?: {
     skill_id?: number
+    search?: string
+    sort_order?: 'asc' | 'desc'
     page?: number
     page_size?: number
   }): Promise<ApiResponse<QuestionListItem[]>> {

@@ -493,18 +493,8 @@ const pluginIframeSrc = computed(() => {
 const loadTsxPlugin = async () => {
   const filePath = tsxFilePath.value
   if (!filePath) {
-    if (import.meta.env.DEV) {
-      console.log('TSX plugin: No file path found', {
-        currentQuestion: currentQuestion.value,
-        questionData: currentQuestion.value?.data
-      })
-    }
     pluginIframeSrcdoc.value = ''
     return
-  }
-
-  if (import.meta.env.DEV) {
-    console.log('TSX plugin: Loading file:', filePath)
   }
 
   try {
@@ -534,38 +524,16 @@ const loadTsxPlugin = async () => {
       tsxCode = await response.text()
     }
 
-    if (import.meta.env.DEV) {
-      console.log('TSX plugin: File loaded successfully, length:', tsxCode.length)
-    }
-
     // Трансформируем и создаем HTML для iframe
     pluginIframeSrcdoc.value = createTsxIframeHtml(tsxCode)
-    
-    if (import.meta.env.DEV) {
-      console.log('TSX plugin: Iframe HTML created, length:', pluginIframeSrcdoc.value.length)
-    }
   } catch (err: any) {
     console.error('Failed to load TSX plugin:', err)
-    console.error('TSX plugin error details:', {
-      filePath,
-      error: err.message,
-      stack: err.stack
-    })
-    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${err.message}</p><p style="color:gray;padding:10px;font-size:12px">Путь: ${filePath}</p></body></html>`
+    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${err.message}</p></body></html>`
   }
 }
 
 // Отслеживаем изменения вопроса и загружаем TSX при необходимости
 watch([currentQuestion, isTsxPlugin], async () => {
-  if (import.meta.env.DEV) {
-    console.log('TSX plugin watch triggered:', {
-      isTsxPlugin: isTsxPlugin.value,
-      hasQuestion: !!currentQuestion.value,
-      questionType: currentQuestion.value?.type,
-      questionData: currentQuestion.value?.data,
-      tsxFilePath: tsxFilePath.value
-    })
-  }
   
   if (isTsxPlugin.value && currentQuestion.value) {
     await loadTsxPlugin()
@@ -590,6 +558,8 @@ const questionStartTime = ref(Date.now())
 const showingResult = ref(false) // Показывать ли результат вместо вопроса
 const userAnswer = ref<any>(null) // Сохраненный ответ пользователя
 const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
+const lastSubmittedQuestionId = ref<string | number | null>(null)
+const lastSubmittedAt = ref<number>(0)
 const loadingNext = ref(false) // Загрузка следующего вопроса
 const currentTime = ref(0) // Текущее время сессии в секундах
 let timeInterval: number | null = null // Интервал для обновления времени
@@ -712,7 +682,8 @@ const formatUserAnswer = (answer: any, question: QuestionPublic | null): string 
   } else if (question.type === 'NUMERIC') {
     result = String(answer)
   } else if ((question.type === 'PLUGIN' || question.type === 'INTERACTIVE') && typeof answer === 'object' && answer !== null) {
-    result = (answer as any).question || JSON.stringify(answer)
+    const answerAny = answer as any
+    result = answerAny.userAnswer ?? answerAny.user_answer ?? answerAny.answer ?? answerAny.question ?? JSON.stringify(answer)
   } else {
     result = String(answer)
   }
@@ -752,29 +723,10 @@ const extractAnswerFromExplanation = (explanation: string | null | undefined): s
 
 // Форматирование правильного ответа для отображения
 const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSubmitResponse | null): string => {
-  // Логируем только в режиме разработки
-  if (import.meta.env.DEV && !result?.is_correct) {
-    console.log('Formatting correct answer:', {
-      question,
-      result,
-      resultKeys: result ? Object.keys(result) : [],
-      explanation: result?.explanation,
-    })
-  }
 
   // Сначала проверяем результат ответа (может содержать правильный ответ)
   if (result) {
     const resultAny = result as any
-    // Логируем только в режиме разработки и только если ответ неправильный
-    if (import.meta.env.DEV && !result.is_correct) {
-      console.log('Checking result fields:', {
-        correct_answer: resultAny.correct_answer,
-        expected_answer: resultAny.expected_answer,
-        answer: resultAny.answer,
-        explanation: resultAny.explanation,
-        allKeys: Object.keys(resultAny),
-      })
-    }
 
     // Проверяем явные поля
     if (resultAny.correct_answer !== undefined && resultAny.correct_answer !== null) {
@@ -803,15 +755,31 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
     if (result.explanation) {
       const extracted = extractAnswerFromExplanation(result.explanation)
       if (extracted) {
-        // Логируем только в режиме разработки
-        if (import.meta.env.DEV) {
-          console.log('Extracted answer from explanation:', extracted)
-        }
         if (containsFraction(extracted)) {
           return formatFraction(extracted)
         }
         return extracted
       }
+    }
+  }
+
+  // Для плагинов берем правильный ответ из последнего отправленного ответа
+  const userAnswerAny = userAnswer.value as any
+  if (
+    userAnswerAny &&
+    (question?.type === 'PLUGIN' || question?.type === 'INTERACTIVE')
+  ) {
+    const pluginCorrect =
+      userAnswerAny.correctAnswer ??
+      userAnswerAny.correct_answer ??
+      userAnswerAny.expectedAnswer ??
+      userAnswerAny.expected_answer
+    if (pluginCorrect !== undefined && pluginCorrect !== null) {
+      const answer = String(pluginCorrect)
+      if (containsFraction(answer)) {
+        return formatFraction(answer)
+      }
+      return answer
     }
   }
 
@@ -826,14 +794,6 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
     return 'Правильный ответ не указан'
   }
 
-  // Логируем только в режиме разработки
-  if (import.meta.env.DEV && !result?.is_correct) {
-    console.log('Checking question data:', {
-      type: question.type,
-      data: question.data,
-      dataKeys: question.data ? Object.keys(question.data) : [],
-    })
-  }
 
   // Пытаемся получить правильный ответ из данных вопроса
   if (question.data?.correct_answer !== undefined && question.data.correct_answer !== null) {
@@ -843,13 +803,6 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
   // Для MCQ пытаемся найти правильный вариант
   if (question.type === 'MCQ') {
     const choices = question.data?.choices || question.data?.options || []
-    console.log('MCQ question - looking for correct answer:', {
-      choices,
-      choicesLength: choices.length,
-      correctIndex: question.data?.correct_index,
-      answer: question.data?.answer,
-      correctAnswer: question.data?.correct_answer
-    })
 
     // Сначала проверяем correct_answer
     if (question.data?.correct_answer !== undefined && question.data.correct_answer !== null) {
@@ -941,10 +894,6 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       if (match) {
         const number = parseInt(match[0])
         const lastDigit = number % 10
-        // Логируем только в режиме разработки
-        if (import.meta.env.DEV) {
-          console.log('Computed last digit:', { number, lastDigit })
-        }
         return String(lastDigit)
       }
     }
@@ -1019,22 +968,6 @@ const submitMCQAnswer = async (option: any, index: number) => {
     }
   }
 
-  // Логируем только в режиме разработки
-  if (import.meta.env.DEV) {
-    console.log('MCQ choice prepared:', {
-      original: option,
-      formatted: choiceValue,
-      index: index,
-      exactChoice: exactChoice,
-      allChoices: choices.map((c: any, i: number) => ({
-        index: i,
-        value: c,
-        type: typeof c,
-        id: typeof c === 'object' ? c.id : undefined,
-        asString: typeof c === 'string' ? c.trim() : (typeof c === 'number' ? String(c) : String(c))
-      }))
-    })
-  }
 
   // Сохраняем для отображения - сохраняем оригинальный вариант для правильного отображения
   userAnswer.value = typeof option === 'object' ? (option.label || option.text || option.value || String(option)) : option
@@ -1051,6 +984,17 @@ const handleInteractiveAnswer = async (answer: any) => {
 
 const submitAnswer = async (answer: any, questionType?: string) => {
   if (!currentQuestion.value || !practiceStore.currentSession || submitting.value || showingResult.value) return
+
+  const now = Date.now()
+  const currentQuestionId = currentQuestion.value.data?._generator_id ?? currentQuestion.value.id
+  if (
+    lastSubmittedQuestionId.value !== null &&
+    currentQuestionId !== null &&
+    String(lastSubmittedQuestionId.value) === String(currentQuestionId) &&
+    now - lastSubmittedAt.value < 2000
+  ) {
+    return
+  }
 
   submitting.value = true
 
@@ -1124,34 +1068,12 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         return String(c) === choiceStr
       })
 
-      if (!choiceExists && choices.length > 0) {
-        console.warn('Selected choice does not match any option:', {
-          selected: choiceStr,
-          choices: choices,
-          choiceTypes: choices.map((c: any) => typeof c),
-          allChoicesAsStrings: choices.map((c: any) => {
-            if (typeof c === 'string') return c.trim()
-            if (typeof c === 'number') return String(c)
-            if (typeof c === 'object') return String(c.value || c.label || c.text || c)
-            return String(c)
-          })
-        })
-      }
+      // Если выбор не найден, продолжаем - возможно это новый вариант
 
       submittedAnswer = { choice: choiceStr }
 
       // Логируем только важную информацию (можно отключить в production)
       if (import.meta.env.DEV) {
-        console.log('MCQ answer formatted for API:', {
-          original: answer,
-          formatted: choiceStr,
-          type: typeof choiceStr,
-          questionChoices: choices,
-          choiceExists: choiceExists,
-          submittedAnswer: submittedAnswer,
-          questionId: currentQuestion.value.id,
-          questionPrompt: currentQuestion.value.prompt,
-        })
       }
     } else if (qType === 'NUMERIC') {
       // Для NUMERIC - число в поле "value"
@@ -1177,70 +1099,20 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       submittedAnswer = { answer: String(answer) }
     }
 
-    // Логируем состояние перед определением questionId
-    if (import.meta.env.DEV) {
-      console.log('Before determining questionId:', {
-        questionType: currentQuestion.value?.type,
-        questionId: currentQuestion.value?.id,
-        hasSession: !!practiceStore.currentSession,
-        sessionId: practiceStore.currentSession?.id,
-        sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
-        qType: qType,
-      })
-    }
-
-    // УБРАНО: Обновление сессии перед определением questionId для PLUGIN вопросов
-    // Это вызывало проблемы - используем currentQuestion.id напрямую
-
-    // Для генераторов используем оригинальный ID из data._generator_id
-    // Для обычных вопросов используем числовой ID
-    // ВАЖНО: Используем актуальный questionId из currentQuestion.value,
-    // который уже должен быть синхронизирован с сервером
+    // Определяем questionId: для генераторов используем _generator_id, для остальных - id
     let questionId: string | number
-
-    // Проверяем, есть ли _generator_id (для генераторов)
     const generatorId = currentQuestion.value.data?._generator_id
     if (generatorId) {
-      // Для генераторов используем оригинальный строковый ID
-      // Бэкенд сравнивает current_q_id (строка) с str(req.question_id)
-      // ВАЖНО: _generator_id должен точно совпадать с current_question_id в state сессии
       questionId = String(generatorId)
-
-      if (import.meta.env.DEV) {
-        console.log('Using generator question ID:', {
-          generatorId,
-          questionId,
-          questionIdType: typeof questionId,
-          currentQuestionData: currentQuestion.value.data,
-        })
-      }
     } else {
-      // Для обычных вопросов (включая PLUGIN) используем ID из currentQuestion
-      // Упрощенный подход: всегда используем currentQuestion.id для всех типов вопросов
       const qId = currentQuestion.value.id
       questionId = typeof qId === 'number' ? qId : Number(qId)
-
-      // Проверяем, что ID валидный
       if (isNaN(questionId as number)) {
         error.value = 'Неверный ID вопроса. Обновите страницу.'
         submitting.value = false
         return
       }
-
-      if (import.meta.env.DEV) {
-        console.log('Using regular question ID:', {
-          questionId,
-          questionIdType: typeof questionId,
-          currentQuestionId: currentQuestion.value?.id,
-          sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
-          questionType: currentQuestion.value?.type,
-        })
-      }
     }
-
-    // Для PLUGIN вопросов (не генераторов) нужно убедиться, что question_id совпадает с last_question_id
-    // в сессии. Если они не совпадают, это может привести к 409 ошибке.
-    // Для генераторов используем _generator_id, который должен совпадать с current_question_id в state.
 
     requestData = {
       question_id: questionId,
@@ -1248,106 +1120,20 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       time_spent_sec: timeSpent,
     }
 
-    // Логируем для диагностики
-    if (import.meta.env.DEV) {
-      console.log('Preparing to submit:', {
-        questionId,
-        questionIdType: typeof questionId,
-        currentQuestionId: currentQuestion.value?.id,
-        currentQuestionType: currentQuestion.value?.type,
-        isGenerator: !!currentQuestion.value?.data?._generator_id,
-        sessionLastQuestionId: practiceStore.currentSession?.last_question_id,
-      })
-    }
-
-    // Логируем для диагностики (всегда в DEV режиме)
-    if (import.meta.env.DEV) {
-      console.log('=== SUBMIT ANSWER DEBUG ===')
-      console.log('Question ID details:', {
-        questionId,
-        questionIdType: typeof questionId,
-        questionIdAsString: String(questionId),
-        questionIdTrimmed: String(questionId).trim(),
-        currentQuestionId: currentQuestion.value?.id,
-        currentQuestionGeneratorId: currentQuestion.value?.data?._generator_id,
-        currentQuestionGeneratorIdType: typeof currentQuestion.value?.data?._generator_id,
-        currentQuestionGeneratorIdString: String(currentQuestion.value?.data?._generator_id || ''),
-        sessionId: practiceStore.currentSession?.id,
-        isGenerator: !!currentQuestion.value?.data?._generator_id,
-        currentQuestionData: currentQuestion.value?.data,
-      })
-      console.log('Request data:', {
-        ...requestData,
-        question_id_type: typeof requestData.question_id,
-        question_id_string: String(requestData.question_id),
-      })
-      console.log('=== END DEBUG ===')
-    }
-
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
 
     if (response) {
-      // Логируем только если ответ неправильный или в режиме разработки
-      if (import.meta.env.DEV && !response.is_correct) {
-        console.warn('Incorrect answer received:', {
-          is_correct: response.is_correct,
-          submittedAnswer: submittedAnswer,
-          userAnswer: userAnswer.value,
-          questionChoices: currentQuestion.value.data?.choices || currentQuestion.value.data?.options,
-          explanation: response.explanation
-        })
-      }
-
-      // Детальная диагностика для MCQ (всегда в режиме разработки)
-      if (qType === 'MCQ' && import.meta.env.DEV) {
-        const choices = currentQuestion.value.data?.choices || currentQuestion.value.data?.options || []
-        console.log('MCQ DIAGNOSTICS:', {
-          submittedChoice: submittedAnswer.choice,
-          submittedChoiceType: typeof submittedAnswer.choice,
-          submittedChoiceValue: String(submittedAnswer.choice),
-          allChoices: choices,
-          choicesTypes: choices.map((c: any) => typeof c),
-          choicesAsStrings: choices.map((c: any) => {
-            if (typeof c === 'string') return c.trim()
-            if (typeof c === 'number') return String(c)
-            if (typeof c === 'object') return String(c.value || c.label || c.text || c)
-            return String(c)
-          }),
-          questionData: currentQuestion.value.data,
-          correctAnswer: currentQuestion.value.data?.correct_answer,
-          correctIndex: currentQuestion.value.data?.correct_index,
-          answer: currentQuestion.value.data?.answer,
-          isCorrect: response.is_correct,
-          explanation: response.explanation,
-          questionId: currentQuestion.value.id
-        })
-      }
-
+      lastSubmittedQuestionId.value = questionId
+      lastSubmittedAt.value = Date.now()
+      // Сохраняем результат и показываем его
       lastResult.value = response
-      showingResult.value = true // Показываем результат вместо вопроса
-      
-      // Сохраняем текущий вопрос для отображения в результате
+      showingResult.value = true
       if (currentQuestion.value) {
         lastQuestion.value = { ...currentQuestion.value }
       }
-      
-      // Сохраняем ответ пользователя для отображения
       userAnswer.value = answer
 
-      // Логируем для диагностики
-      if (import.meta.env.DEV) {
-        console.log('Answer submitted successfully - showing result:', {
-          is_correct: response.is_correct,
-          finished: response.finished,
-          smartscore: response.session?.current_smartscore || response.session?.smartscore,
-          questions_answered: response.session?.questions_answered,
-          explanation: response.explanation,
-          showingResult: showingResult.value,
-          hasLastResult: !!lastResult.value,
-        })
-      }
-
-      // Плагин (PLUGIN): отправляем SERVER_RESULT в iframe
+      // Отправляем результат в iframe для PLUGIN
       if (qType === 'PLUGIN' && pluginIframeRef.value?.contentWindow) {
         try {
           pluginIframeRef.value.contentWindow.postMessage(
@@ -1369,21 +1155,9 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         currentTime.value = response.session.time_elapsed_sec
       }
 
-      // SmartScore 100: завершаем сессию, показываем результат и кнопку «Нәтижелерге өту» (без авто-редиректа)
+      // SmartScore 100: завершаем сессию
       const currentSmartScore = response.session?.current_smartscore || response.session?.smartscore || 0
-
-      // Логируем для диагностики
-      if (import.meta.env.DEV) {
-        console.log('Checking SmartScore completion:', {
-          currentSmartScore,
-          finished: response.finished,
-          is_correct: response.is_correct,
-          questions_answered: response.session?.questions_answered,
-        })
-      }
-
       if (currentSmartScore >= 100 && !response.finished) {
-        console.log('SmartScore reached 100, finishing session...')
         try {
           await practiceStore.finishSession(practiceStore.currentSession!.id)
         } catch (err) {
@@ -1394,50 +1168,39 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         return
       }
 
-      // Проверяем пробные вопросы после каждого ответа
-      // Счетчик уже увеличен в practiceStore.submitAnswer для неавторизованных пользователей
-      // Проверяем сразу после получения ответа, чтобы показать модальное окно, если лимит достигнут
-      if (shouldCheckTrialQuestions.value) {
-        // Проверяем текущее количество использованных вопросов
-        const currentCount = trialQuestions.getTrialQuestionsCount()
-        console.log('PracticeSession: Trial questions count after answer:', currentCount)
-
-        // Если пробные вопросы исчерпаны, показываем модальное окно сразу
-        if (trialQuestions.isTrialQuestionsExhausted.value || currentCount >= trialQuestions.TRIAL_QUESTIONS_LIMIT) {
-          console.log('PracticeSession: Trial questions exhausted after answer, showing modal')
-          showTrialEndedModal.value = true
-          // Не загружаем следующий вопрос, если пробные вопросы исчерпаны
-          return
-        }
+      // Проверяем пробные вопросы
+      if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
+        showTrialEndedModal.value = true
+        return
       }
 
-      // Сессия завершена: останавливаем таймер, без авто-редиректа (кнопка «Нәтижелерге өту»)
+      // Сессия завершена
       if (response.finished) {
         stopTimer()
         if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
           showTrialEndedModal.value = true
         }
       }
-      // Правильный/неправильный — переход только по кнопке «Келесі», без авто-перехода
     }
   } catch (err: any) {
     const status = err.response?.status
-    const errorData = err.response?.data
     
-    console.error('PracticeSession: Failed to submit answer:', err)
-    console.error('PracticeSession: Error details:', {
-      status: status,
-      data: errorData,
-      message: err.message,
-      isAuthenticated: authStore.isAuthenticated,
-      userRole: authStore.user?.role,
-      storeError: practiceStore.error,
-    })
-
-    // 409 CONFLICT: сессия уже завершена или состояние изменилось.
-    // Не пытаемся повторно отправлять ответ или грузить следующий вопрос,
-    // просто перенаправляем на результаты этой сессии.
+    // 409 CONFLICT: сессия завершена - перенаправляем на результаты
     if (status === 409 && practiceStore.currentSession) {
+      try {
+        const refreshed = await practiceStore.getSession(practiceStore.currentSession.id)
+        if (refreshed?.current_question) {
+          showingResult.value = false
+          lastResult.value = null
+          userAnswer.value = null
+          lastQuestion.value = null
+          questionStartTime.value = Date.now()
+          submitting.value = false
+          return
+        }
+      } catch (_) {
+        // fallback to results below
+      }
       stopTimer()
       router.push({
         name: 'practice-results',
@@ -1446,42 +1209,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       return
     }
 
-    // Используем сообщение об ошибке из store, если оно есть (для других ошибок)
-    if (practiceStore.error) {
-      error.value = practiceStore.error
-    } else {
-      // Обрабатываем другие ошибки
-      if (status === 402) {
-        // Ошибка 402 - Payment Required
-        if (authStore.isAuthenticated) {
-          const errorDetail = errorData?.detail || errorData?.message || 'Қол жеткізу құқығы жеткіліксіз'
-          error.value = `Қол жеткізу қатесі: ${errorDetail}. Профильде жазылымды тексеріңіз немесе қайталап көріңіз.`
-        } else if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
-          showTrialEndedModal.value = true
-          return // Не показываем ошибку, показываем модальное окно
-        } else {
-          error.value = 'Практиканы жалғастыру үшін жазылым қажет. Профильде жазылымды рәсімдеңіз.'
-        }
-      } else if (status === 401) {
-        // Ошибка 401 - не авторизован
-        if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
-          showTrialEndedModal.value = true
-          return // Не показываем ошибку, показываем модальное окно
-        }
-        error.value = 'Авторизация қажет. Жүйеге кіріңіз.'
-      } else if (!err.response) {
-        // Сетевые ошибки
-        if (err.code === 'ECONNABORTED') {
-          error.value = 'Күту уақыты асып кетті. Сервер жауап бермейді. Қайталап көріңіз.'
-        } else {
-          error.value = err.message || 'Желі қатесі. Интернет қосылымын және сервердің қолжетімділігін тексеріңіз.'
-        }
-      } else {
-        // Другие ошибки
-        const errorDetail = errorData?.detail || errorData?.message || err.message
-        error.value = typeof errorDetail === 'string' ? errorDetail : 'Жауапты жіберу мүмкін болмады. Қайталап көріңіз.'
-      }
-    }
+    // Показываем ошибку из store или общую ошибку
+    error.value = practiceStore.error || err.response?.data?.message || err.message || 'Жауапты жіберу мүмкін болмады.'
   } finally {
     submitting.value = false
   }
@@ -1491,9 +1220,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 const loadNextQuestion = async () => {
   if (!practiceStore.currentSession || loadingNext.value) return
 
-  // Проверяем пробные вопросы перед загрузкой следующего вопроса
   if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
-    console.log('PracticeSession: Trial questions exhausted, showing modal before loading next question')
     showTrialEndedModal.value = true
     return
   }
@@ -1501,66 +1228,36 @@ const loadNextQuestion = async () => {
   loadingNext.value = true
 
   try {
-    // Сохраняем информацию о следующем вопросе перед сбросом
-    const hasNextQuestion = lastResult.value?.next_question !== null && lastResult.value?.next_question !== undefined
-
     // Сбрасываем состояние результата
     showingResult.value = false
-    const savedResult = lastResult.value
     lastResult.value = null
     userAnswer.value = null
     lastQuestion.value = null
     error.value = null
-
-    // Сбрасываем форму
     numericAnswer.value = null
     textAnswer.value = ''
 
-    // Если есть следующий вопрос в ответе, он уже загружен в store через submitAnswer
-    // Просто проверяем, что вопрос доступен
-    if (hasNextQuestion && practiceStore.currentQuestion) {
-      questionStartTime.value = Date.now()
-    } else {
-      // Загружаем следующий вопрос, если его нет
+    // Загружаем следующий вопрос
+    const hasNextQuestion = lastResult.value?.next_question !== null && lastResult.value?.next_question !== undefined
+    if (!hasNextQuestion || !practiceStore.currentQuestion) {
       await practiceStore.getNextQuestion(practiceStore.currentSession.id)
-      questionStartTime.value = Date.now()
     }
+    questionStartTime.value = Date.now()
   } catch (err: any) {
-    console.error('Failed to load next question:', err)
     const status = err.response?.status
-    const errorData = err.response?.data
     
-    // В случае ошибки показываем результат снова и ошибку
     showingResult.value = true
     
-    if (status === 500) {
-      error.value = 'Сервер қатесі. Бетті жаңартып, қайталап көріңіз.'
-    } else if (status === 409) {
-      // Сессия изменилась - обновляем и пробуем снова
-      try {
-        await practiceStore.getSession(practiceStore.currentSession.id)
-        if (practiceStore.currentSession?.finished_at) {
-          stopTimer()
-          router.push({
-            name: 'practice-results',
-            params: { sessionId: practiceStore.currentSession.id }
-          })
-          return
-        }
-        // Пробуем загрузить следующий вопрос снова
-        if (practiceStore.currentSession?.id) {
-          await practiceStore.getNextQuestion(practiceStore.currentSession.id)
-          showingResult.value = false
-          lastResult.value = null
-          questionStartTime.value = Date.now()
-        }
-      } catch (retryErr) {
-        console.error('Failed to retry loading next question:', retryErr)
-        error.value = 'Келесі сұрақты жүктеу мүмкін болмады. Бетті жаңартып, қайталап көріңіз.'
-      }
-    } else {
-      error.value = errorData?.detail || errorData?.message || 'Келесі сұрақты жүктеу мүмкін болмады.'
+    if (status === 409 && practiceStore.currentSession) {
+      stopTimer()
+      router.push({
+        name: 'practice-results',
+        params: { sessionId: practiceStore.currentSession.id }
+      })
+      return
     }
+    
+    error.value = err.response?.data?.message || err.message || 'Келесі сұрақты жүктеу мүмкін болмады.'
   } finally {
     loadingNext.value = false
   }
@@ -1601,69 +1298,43 @@ const requestPluginAnswer = () => {
 const pluginMessageHandler = (event: MessageEvent) => {
   try {
     const d = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-    if (!d || !d.type) return
-    
+    if (!d || d.type !== 'exercise-result') return
+
     const q = currentQuestion.value
-    if (!q || (q.type !== 'PLUGIN' && q.type !== 'INTERACTIVE')) return
+    if (!q || q.type !== 'PLUGIN') return
 
-    // Обрабатываем exercise-result как в miniapp-v2
-    if (d.type === 'exercise-result') {
-      const userAnswer = d.studentAnswer !== undefined ? d.studentAnswer : d.answer
-      
-      if (userAnswer === null || userAnswer === undefined) {
-        if (import.meta.env.DEV) {
-          console.warn('Exercise result received but no studentAnswer/answer field:', d)
-        }
-        return
-      }
-      
-      if (import.meta.env.DEV) {
-        console.log('Exercise result received:', {
-          id: d.id,
-          correctAnswer: d.correctAnswer,
-          studentAnswer: userAnswer,
-          isCorrect: d.isCorrect
-        })
-      }
-      
-      // Просто отправляем ответ, как в miniapp-v2
-      error.value = null
-      submitAnswer(userAnswer, q.type)
+    // Если плагин уже определил корректность, передаем это в backend
+    const isCorrect = d.isCorrect ?? d.correct ?? d.is_correct
+    const userAnswer = d.userAnswer ?? d.user_answer ?? d.studentAnswer ?? d.answer ?? d.value
+    const correctAnswer = d.correctAnswer ?? d.correct_answer ?? d.expectedAnswer ?? d.expected_answer
+
+    error.value = null
+
+    if (isCorrect !== undefined || correctAnswer !== undefined) {
+      submitAnswer(
+        {
+          isCorrect,
+          userAnswer,
+          correctAnswer,
+        },
+        'PLUGIN'
+      )
       return
     }
 
-    // Обрабатываем другие типы сообщений
-    if (d.type === 'ANSWER_NOT_READY') {
-      error.value = d.message || 'Тапсырманы толтырыңыз'
-      return
-    }
+    if (userAnswer === null || userAnswer === undefined) return
 
-    if (d.type === 'SUBMIT') {
-      const userAnswer = d.userAnswer
-      if (userAnswer === null || userAnswer === undefined) return
-      error.value = null
-      submitAnswer(userAnswer, 'PLUGIN')
-      return
-    }
+    // Фолбэк: отправляем только ответ
+    submitAnswer(userAnswer, 'PLUGIN')
   } catch (err) {
-    if (import.meta.env.DEV) {
-      console.error('Plugin message handler error:', err)
-    }
+    console.error('Plugin message handler error:', err)
   }
 }
 
 onMounted(async () => {
   window.addEventListener('message', pluginMessageHandler)
-  if (import.meta.env.DEV) {
-    console.log('Plugin message handler registered')
-  }
   try {
     const session = await practiceStore.getSession(props.sessionId)
-    console.log('Session loaded:', session)
-    console.log('Current question:', session?.current_question)
-    console.log('Session smartscore:', session?.current_smartscore || session?.smartscore)
-    console.log('Session time:', session?.time_elapsed_sec)
-    console.log('Session questions answered:', session?.questions_answered)
 
     // Загружаем статистику навыка для отображения предыдущего результата
     if (session?.skill_id) {
@@ -1671,10 +1342,9 @@ onMounted(async () => {
         const skillStats = await catalogStore.getSkillStats(session.skill_id)
         if (skillStats && skillStats.best_smartscore) {
           previousBestScore.value = skillStats.best_smartscore
-          console.log('Previous best score for skill:', skillStats.best_smartscore)
         }
       } catch (err) {
-        console.warn('Failed to load skill stats:', err)
+        // Игнорируем ошибку загрузки статистики
       }
     }
 
@@ -1684,24 +1354,10 @@ onMounted(async () => {
     }
 
     if (session && !session.current_question) {
-      // Если нет текущего вопроса, запрашиваем следующий
-      const nextQuestion = await practiceStore.getNextQuestion(props.sessionId)
-      console.log('Next question received:', nextQuestion)
-    }
-
-    // Логируем текущий вопрос для отладки
-    if (practiceStore.currentQuestion) {
-      console.log('Current question in store:', {
-        id: practiceStore.currentQuestion.id,
-        type: practiceStore.currentQuestion.type,
-        prompt: practiceStore.currentQuestion.prompt,
-        data: practiceStore.currentQuestion.data,
-      })
+      await practiceStore.getNextQuestion(props.sessionId)
     }
 
     questionStartTime.value = Date.now()
-
-    // Запускаем таймер
     startTimer()
   } catch (err: any) {
     console.error('Failed to load session:', err)

@@ -260,7 +260,11 @@ class PracticeService:
         
         await self.session.flush()
 
-        return {"finished": False, "question": q.model_dump(mode="json")}
+        if isinstance(q, QuestionPublic):
+            q_public = q
+        else:
+            q_public = _to_question_public(q)
+        return {"finished": False, "question": q_public.model_dump(mode="json")}
 
     async def submit(self, *, user_id, session_id: str, req: PracticeSubmitRequest) -> PracticeSubmitResponse:
         import logging
@@ -397,8 +401,9 @@ class PracticeService:
             if question is None or question.skill_id != ps.skill_id:
                 raise AppError(status_code=404, code="not_found", message="Question not found")
 
-            if await self.practice.has_attempt(session_id=ps.id, question_id=question.id):
-                raise AppError(status_code=409, code="conflict", message="Question already answered in this session")
+            if question.type not in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                if await self.practice.has_attempt(session_id=ps.id, question_id=question.id):
+                    raise AppError(status_code=409, code="conflict", message="Question already answered in this session")
 
             _validate_submitted_answer(question.type, question.data, req.submitted_answer)
             question_type = question.type
@@ -663,12 +668,13 @@ class PracticeService:
             logger.info(f"PracticeAttempt created for generator, adding to database")
         else:
             logger.info(f"Creating PracticeAttempt for regular question {question.id if question else 'None'}")
-            # Для обычных вопросов используем данные из question
+            # Для PLUGIN/INTERACTIVE разрешаем несколько попыток, не привязывая к question_id
+            is_plugin_like = question.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE)
             attempt = PracticeAttempt(
                 session_id=ps.id,
                 user_id=user_uuid,
                 skill_id=ps.skill_id,
-                question_id=question.id,
+                question_id=None if is_plugin_like else question.id,
                 question_level=question.level,
                 question_payload={
                     "id": question.id,
@@ -690,33 +696,6 @@ class PracticeService:
                 zone_before=zone_before,
                 zone_after=score_res.zone,
             )
-            # Для обычных вопросов используем данные из question
-        attempt = PracticeAttempt(
-            session_id=ps.id,
-            user_id=user_uuid,
-            skill_id=ps.skill_id,
-            question_id=question.id,
-            question_level=question.level,
-            question_payload={
-                "id": question.id,
-                "skill_id": question.skill_id,
-                "type": question.type.value,
-                "prompt": question.prompt,
-                "data": question.data,
-                "correct_answer": question.correct_answer,
-                "explanation": explanation,
-                "level": question.level,
-            },
-            submitted_answer=req.submitted_answer,
-            is_correct=is_correct,
-            mistake_type=None if is_correct else MistakeType.WRONG,
-            answered_at=now,
-            time_spent_sec=req.time_spent_sec,
-            smartscore_before=score_before,
-            smartscore_after=score_res.smartscore,
-            zone_before=zone_before,
-            zone_after=score_res.zone,
-        )
         
         logger.info(f"Adding PracticeAttempt to database: session_id={attempt.session_id}, question_id={attempt.question_id}, is_correct={attempt.is_correct}")
         await self.practice.add_attempt(attempt)

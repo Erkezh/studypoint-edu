@@ -15,6 +15,8 @@ export const useCatalogStore = defineStore('catalog', () => {
   const grades = ref<GradeResponse[]>([])
   const skills = ref<SkillListItem[]>([])
   const skillDetails = ref<Map<number, SkillDetailResponse>>(new Map())
+  // Кэш навыков по параметрам (ключ - строка параметров)
+  const skillsCache = ref<Map<string, SkillListItem[]>>(new Map())
 
   const loading = ref(false)
   const lastFetch = ref<Map<string, number>>(new Map())
@@ -23,6 +25,24 @@ export const useCatalogStore = defineStore('catalog', () => {
     const lastTime = lastFetch.value.get(key)
     if (!lastTime) return true
     return Date.now() - lastTime > CACHE_TTL
+  }
+
+  // Создает ключ кэша из параметров
+  const getCacheKey = (params?: {
+    subject_slug?: string | null
+    grade_number?: number | null
+    q?: string | null
+    page?: number
+    page_size?: number
+  }): string => {
+    if (!params) return 'all'
+    const parts: string[] = []
+    if (params.subject_slug) parts.push(`subject:${params.subject_slug}`)
+    if (params.grade_number !== null && params.grade_number !== undefined) parts.push(`grade:${params.grade_number}`)
+    if (params.q) parts.push(`q:${params.q}`)
+    if (params.page) parts.push(`page:${params.page}`)
+    if (params.page_size) parts.push(`size:${params.page_size}`)
+    return parts.length > 0 ? parts.join('|') : 'all'
   }
 
   const getSubjects = async (force = false) => {
@@ -161,6 +181,12 @@ export const useCatalogStore = defineStore('catalog', () => {
     }
   }
 
+  const clearSkillsCache = () => {
+    skills.value = []
+    skillsCache.value.clear()
+    lastFetch.value.delete('skills')
+  }
+
   // Инициализация из localStorage при создании store
   const init = () => {
     try {
@@ -202,5 +228,6 @@ export const useCatalogStore = defineStore('catalog', () => {
     getSkills,
     getSkill,
     getSkillStats,
+    clearSkillsCache,
   }
 })

@@ -148,18 +148,52 @@ class AdminService:
         # Транзакция коммитится автоматически через session.begin() в get_db_session()
         await self.session.delete(skill)
 
-    async def list_questions(self, *, page: int, page_size: int, skill_id: int | None) -> tuple[list[Question], int]:
+    async def list_questions(
+        self, 
+        *, 
+        page: int, 
+        page_size: int, 
+        skill_id: int | None,
+        search: str | None = None,
+        sort_order: str = "desc"
+    ) -> tuple[list[Question], int, dict[int, str]]:
         from sqlalchemy import func
+        from app.models.catalog import Skill
 
         stmt = select(Question)
         count_stmt = select(func.count()).select_from(Question)
+        
+        # Фильтр по skill_id
         if skill_id is not None:
             stmt = stmt.where(Question.skill_id == skill_id)
             count_stmt = count_stmt.where(Question.skill_id == skill_id)
+        
+        # Поиск по названию навыка
+        if search:
+            search_pattern = f"%{search}%"
+            stmt = stmt.join(Skill, Question.skill_id == Skill.id).where(Skill.title.ilike(search_pattern))
+            count_stmt = count_stmt.join(Skill, Question.skill_id == Skill.id).where(Skill.title.ilike(search_pattern))
+        
         total = int((await self.session.execute(count_stmt)).scalar_one())
-        stmt = stmt.order_by(Question.id).offset((page - 1) * page_size).limit(page_size)
+        
+        # Сортировка по дате создания
+        if sort_order == "asc":
+            stmt = stmt.order_by(Question.created_at.asc(), Question.id.asc())
+        else:
+            stmt = stmt.order_by(Question.created_at.desc(), Question.id.desc())
+        
+        stmt = stmt.offset((page - 1) * page_size).limit(page_size)
         items = list((await self.session.execute(stmt)).scalars().all())
-        return items, total
+        
+        # Получаем названия навыков
+        skill_ids = list(set(q.skill_id for q in items))
+        skill_names: dict[int, str] = {}
+        if skill_ids:
+            skills_stmt = select(Skill.id, Skill.title).where(Skill.id.in_(skill_ids))
+            skills_result = await self.session.execute(skills_stmt)
+            skill_names = {row[0]: row[1] for row in skills_result.all()}
+        
+        return items, total, skill_names
 
     async def create_question(self, req: QuestionCreate) -> Question:
         from sqlalchemy.exc import IntegrityError

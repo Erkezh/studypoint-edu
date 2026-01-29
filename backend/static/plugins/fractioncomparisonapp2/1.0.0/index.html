@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>fractioncomparisonapp</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <title>fractioncomparisonapp 2</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -22,6 +23,39 @@
 </head>
 <body>
     <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
     <script type="text/babel">
         const embedMode = /[?&]embed=1/i.test(window.location.search);
         if (embedMode) {
@@ -29,7 +63,7 @@
         }
         
         const { useState, useEffect } = React;
-
+const { RefreshCw, Check, X } = window.lucideReact;
 
 const FractionComparison = () => {
   const [problems, setProblems] = useState([]);
@@ -89,18 +123,39 @@ const FractionComparison = () => {
   const handleSubmit = () => {
     if (!userAnswer) return;
     setShowResult(true);
-    // Отправляем результат в родительское окно
+    // Отправляем результат в родительское окно (как в miniapp 2)
     const embedMode = /[?&]embed=1/i.test(window.location.search);
     if (embedMode && window.parent) {
-      const isCorrect = userAnswer === problems[currentIndex].correctAnswer;
-      window.parent.postMessage({
-        type: "SUBMIT",
-        taskId: "tsx-exercise-568407",
-        userAnswer: { isCorrect, userAnswer, correctAnswer: problems[currentIndex].correctAnswer }
+      const __correct = (userAnswer === problems[currentIndex]?.correctAnswer || userAnswer === currentProblem?.correctAnswer);
+      const __correctAnswer = problems[currentIndex]?.correctAnswer || currentProblem?.correctAnswer || "";
+      window.parent.postMessage({ 
+        type: "SUBMIT", 
+        taskId: "tsx-exercise-978982",
+        userAnswer: { 
+          isCorrect: __correct, 
+          userAnswer: userAnswer, 
+          correctAnswer: __correctAnswer
+        }
       }, "*");
     }
-    if (userAnswer === problems[currentIndex].correctAnswer) {
+    const correctAnswer = problems[currentIndex].correctAnswer;
+    const isCorrect = userAnswer === correctAnswer;
+    if (isCorrect) {
       setScore(score + 1);
+    }
+    // Отправляем результат в родительское окно (PracticeSession)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: 'exercise-result',
+          isCorrect,
+          userAnswer,
+          correctAnswer,
+          studentAnswer: userAnswer,
+          question: `Compare fractions #${currentIndex + 1}`,
+        },
+        '*'
+      );
     }
   };
 
@@ -138,7 +193,7 @@ const FractionComparison = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="mb-8">
@@ -177,13 +232,13 @@ const FractionComparison = () => {
                   <div className="mt-6 text-center">
                     {userAnswer === currentProblem.correctAnswer ? (
                       <div className="flex items-center justify-center gap-2 text-green-600 text-xl font-semibold">
-                        <svg size={28} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+                        <Check size={28} />
                         Correct!
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-red-600 text-xl font-semibold">
                         <div className="flex items-center gap-2">
-                          <svg size={28} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                          <X size={28} />
                           Incorrect
                         </div>
                         <div className="text-gray-700">

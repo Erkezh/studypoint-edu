@@ -1,14 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Check, X } from 'lucide-react';
+import { Check, X } from 'lucide-react';
+
+type Fraction = {
+  whole: number;
+  numerator: number;
+  denominator: number;
+  isMixed: boolean;
+};
+
+type Problem = {
+  id: number;
+  frac1: Fraction;
+  frac2: Fraction;
+  correctAnswer: string;
+};
 
 const FractionComparison = () => {
-  const [problems, setProblems] = useState([]);
+  const [problems, setProblems] = useState<Problem[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userAnswer, setUserAnswer] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState(0);
 
-  const generateFraction = () => {
+  const generateFraction = (): Fraction => {
     const isMixed = Math.random() > 0.3;
     if (isMixed) {
       const whole = Math.floor(Math.random() * 2) + 1;
@@ -22,11 +36,11 @@ const FractionComparison = () => {
     }
   };
 
-  const fractionToDecimal = (frac) => {
+  const fractionToDecimal = (frac: Fraction) => {
     return frac.whole + (frac.numerator / frac.denominator);
   };
 
-  const getCorrectAnswer = (frac1, frac2) => {
+  const getCorrectAnswer = (frac1: Fraction, frac2: Fraction) => {
     const val1 = fractionToDecimal(frac1);
     const val2 = fractionToDecimal(frac2);
     if (Math.abs(val1 - val2) < 0.001) return '=';
@@ -34,7 +48,7 @@ const FractionComparison = () => {
   };
 
   const generateProblems = () => {
-    const newProblems = [];
+    const newProblems: Problem[] = [];
     for (let i = 0; i < 8; i++) {
       const frac1 = generateFraction();
       const frac2 = generateFraction();
@@ -52,15 +66,33 @@ const FractionComparison = () => {
     generateProblems();
   }, []);
 
-  const handleAnswerSelect = (value) => {
+  const handleAnswerSelect = (value: string) => {
     setUserAnswer(value);
   };
 
   const handleSubmit = () => {
     if (!userAnswer) return;
     setShowResult(true);
-    if (userAnswer === problems[currentIndex].correctAnswer) {
+    const correctAnswer = problems[currentIndex].correctAnswer;
+    const userAnswerStr = String(userAnswer);
+    const correctAnswerStr = String(correctAnswer);
+    const isCorrect = userAnswerStr === correctAnswerStr;
+    if (isCorrect) {
       setScore(score + 1);
+    }
+    // Отправляем результат в родительское окно (PracticeSession)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: 'exercise-result',
+          isCorrect,
+          userAnswer: userAnswerStr,
+          correctAnswer: correctAnswerStr,
+          studentAnswer: userAnswerStr,
+          question: `Compare fractions #${currentIndex + 1}`,
+        },
+        '*'
+      );
     }
   };
 
@@ -77,7 +109,7 @@ const FractionComparison = () => {
 
   const currentProblem = problems[currentIndex];
 
-  const FractionDisplay = ({ frac }) => {
+  const FractionDisplay = ({ frac }: { frac: Fraction }) => {
     if (frac.isMixed && frac.whole > 0) {
       return (
         <div className="flex items-center gap-1">
@@ -98,7 +130,7 @@ const FractionComparison = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-indigo-100 p-8">
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="mb-8">
