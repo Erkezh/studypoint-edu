@@ -1,6 +1,6 @@
 {
-  "id": "additiondragdrop",
-  "name": "additiondragdrop",
+  "id": "divisibility-game333",
+  "name": "divisibility-game 333",
   "version": "1.0.0",
   "entry": "index.html",
   "api_version": "1",
@@ -8,5 +8,5 @@
     "submit": true,
     "explanation": true
   },
-  "height": 800
+  "height": 400
 }

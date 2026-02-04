@@ -15,22 +15,6 @@
       </div>
 
       <div v-else-if="practiceStore.currentSession && (currentQuestion || showingResult)">
-        <!-- Информация о предыдущем прохождении теста -->
-        <div v-if="previousBestScore !== null && previousBestScore > 0" class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
-          <div class="flex items-center">
-            <div class="shrink-0">
-              <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-              </svg>
-            </div>
-            <div class="ml-3">
-              <p class="text-sm text-blue-700">
-                <strong>Сіз бұл тестті бұрын өткенсіз.</strong> <span v-if="authStore.isAuthenticated">Сіздің ең жақсы нәтижеңіз: <strong class="text-blue-800">{{ previousBestScore }}</strong> SmartScore</span>
-              </p>
-            </div>
-          </div>
-        </div>
-
         <!-- Предупреждение о необходимости подписки (если пробные вопросы исчерпаны и пользователь не авторизован) -->
         <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
           <div class="flex items-center">
@@ -53,9 +37,6 @@
             <div>
               <div v-if="authStore.isAuthenticated" class="flex items-center gap-3">
                 <h2 class="text-xl font-semibold">SmartScore: {{ practiceStore.smartscore }}</h2>
-                <span v-if="previousBestScore !== null && previousBestScore > 0" class="text-sm text-gray-600">
-                  (Ең жақсы: {{ previousBestScore }})
-                </span>
               </div>
               <span
                 :class="[
@@ -113,21 +94,57 @@
             </p>
 
             <!-- Показываем ответ пользователя и правильный ответ при неправильном ответе -->
-            <div v-if="!lastResult.is_correct" class="space-y-3 mt-4">
-              <div>
-                <p class="font-medium mb-1">Сіздің жауабыңыз:</p>
-                <p
-                  class="text-sm bg-white px-3 py-2 rounded border border-red-400"
-                  v-html="formatUserAnswer(userAnswer, lastQuestion)"
-                ></p>
-              </div>
-              <div>
-                <p class="font-medium mb-1">Дұрыс жауап:</p>
-                <p
-                  class="text-sm bg-white px-3 py-2 rounded border border-green-400"
-                  v-html="formatCorrectAnswer(lastQuestion, lastResult)"
-                ></p>
-              </div>
+            <div v-if="!lastResult.is_correct" class="space-y-4 mt-4">
+
+              <!-- ТИП B: Визуальные ОТВЕТЫ (answerData) - когда пользователь рисует/выбирает -->
+              <template v-if="lastAnswerData && !lastQuestionData">
+                <!-- Дұрыс жауап с визуализацией -->
+                <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+                  <p class="font-semibold text-green-700 mb-3">✓ Дұрыс жауап:</p>
+                  <p v-if="lastAnswerData.correctDisplay?.note" class="text-sm text-gray-600 mb-3 italic">
+                    {{ lastAnswerData.correctDisplay.note }}
+                  </p>
+                  <AnswerVisualizer
+                    :data="{ type: lastAnswerData.type, ...lastAnswerData.correctDisplay }"
+                    variant="correct"
+                    class="mb-3"
+                  />
+                  <p class="text-green-700 font-medium">
+                    {{ lastAnswerData.correctDisplay?.text || formatCorrectAnswer(lastQuestion, lastResult) }}
+                  </p>
+                </div>
+
+                <!-- Сіздің жауабыңыз с визуализацией -->
+                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                  <p class="font-semibold text-gray-700 mb-3">👤 Сіздің жауабыңыз:</p>
+                  <AnswerVisualizer
+                    :data="{ type: lastAnswerData.type, ...lastAnswerData.userDisplay }"
+                    variant="user"
+                    class="mb-3"
+                  />
+                  <p class="text-gray-700 font-medium">
+                    {{ lastAnswerData.userDisplay?.text || formatUserAnswer(userAnswer, lastQuestion) }}
+                  </p>
+                </div>
+              </template>
+
+              <!-- Текстовое отображение (для вопросов с визуалом или обычных) -->
+              <template v-else>
+                <div>
+                  <p class="font-medium mb-1">Сіздің жауабыңыз:</p>
+                  <p
+                    class="text-sm bg-white px-3 py-2 rounded border border-red-400"
+                    v-html="formatUserAnswer(userAnswer, lastQuestion)"
+                  ></p>
+                </div>
+                <div>
+                  <p class="font-medium mb-1">Дұрыс жауап:</p>
+                  <p
+                    class="text-sm bg-white px-3 py-2 rounded border border-green-400"
+                    v-html="formatCorrectAnswer(lastQuestion, lastResult)"
+                  ></p>
+                </div>
+              </template>
             </div>
 
             <p v-if="lastResult.explanation" class="text-sm mt-4 italic">{{ lastResult.explanation }}</p>
@@ -173,13 +190,16 @@
             </div>
           </div>
 
-          <div class="mb-4">
+          <!-- Скрываем уровень для плагинов -->
+          <div v-if="currentQuestion.type !== 'PLUGIN'" class="mb-4">
             <span class="text-sm text-gray-500">Деңгей:</span>
             <span class="ml-2 font-medium">{{ currentQuestion.level }}</span>
           </div>
 
           <div class="mb-6">
+            <!-- Скрываем prompt для плагинов - у них свой UI внутри iframe -->
             <p
+              v-if="currentQuestion.type !== 'PLUGIN'"
               class="text-lg font-medium mb-4"
               v-html="containsFraction(currentQuestion.prompt) ? formatFraction(currentQuestion.prompt) : currentQuestion.prompt"
             ></p>
@@ -266,9 +286,8 @@
                 v-if="isTsxPlugin && pluginIframeSrcdoc"
                 ref="pluginIframeRef"
                 :srcdoc="pluginIframeSrcdoc"
-                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: '1px solid #e5e7eb', borderRadius: '8px' }"
+                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '8px' }"
                 sandbox="allow-scripts allow-same-origin"
-                scrolling="yes"
                 class="rounded-lg"
               />
               <!-- Обычный плагин (использует src) -->
@@ -276,13 +295,12 @@
                 v-else-if="!isTsxPlugin && pluginIframeSrc"
                 ref="pluginIframeRef"
                 :src="pluginIframeSrc"
-                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: '1px solid #e5e7eb', borderRadius: '8px' }"
+                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '8px' }"
                 sandbox="allow-scripts allow-same-origin"
-                scrolling="yes"
                 class="rounded-lg"
               />
               <div v-else class="text-red-500 text-sm">
-                ⚠ Плагин не загружен. 
+                ⚠ Плагин не загружен.
                 <template v-if="isTsxPlugin">
                   TSX файл не найден или не загружен.
                   <div v-if="isDev" class="text-xs text-gray-500 mt-2">
@@ -387,6 +405,7 @@ import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
 import InteractiveQuestion from '@/components/practice/InteractiveQuestion.vue'
+import AnswerVisualizer from '@/components/analytics/AnswerVisualizer.vue'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
 import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
@@ -418,20 +437,20 @@ const currentQuestion = computed(() => practiceStore.currentQuestion)
 const isTsxPlugin = computed(() => {
   const q = currentQuestion.value
   if (!q || q.type !== 'PLUGIN' || !q.data) return false
-  
+
   // Проверяем наличие tsx_file или miniapp_file в данных вопроса
   if (q.data.tsx_file || q.data.miniapp_file) return true
-  
+
   // Проверяем entry с расширением .tsx
   if (q.data.entry && q.data.entry.endsWith('.tsx')) return true
-  
+
   // Проверяем по plugin_id - если содержит "kazakh-rectangle" или другие известные TSX плагины
   const pluginId = q.data.plugin_id || q.prompt || ''
   const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
   if (knownTsxPlugins.some(name => pluginId.includes(name))) {
     return true
   }
-  
+
   return false
 })
 
@@ -439,7 +458,7 @@ const isTsxPlugin = computed(() => {
 const tsxFilePath = computed(() => {
   const q = currentQuestion.value
   if (!q || q.type !== 'PLUGIN' || !q.data) return null
-  
+
   // Приоритет: tsx_file > miniapp_file > entry (если заканчивается на .tsx) > определение по plugin_id
   if (q.data.tsx_file) return q.data.tsx_file
   if (q.data.miniapp_file) return q.data.miniapp_file
@@ -448,10 +467,10 @@ const tsxFilePath = computed(() => {
     const fileName = q.data.entry.includes('/') ? q.data.entry.split('/').pop() : q.data.entry
     return `/miniapp-v2/exercieses/${fileName}`
   }
-  
+
   // Определяем по plugin_id или prompt
   const pluginId = q.data.plugin_id || q.prompt || ''
-  
+
   // Маппинг известных плагинов на файлы
   const pluginFileMap: Record<string, string> = {
     'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
@@ -460,14 +479,14 @@ const tsxFilePath = computed(() => {
     'fraction-comparison': 'fraction_comparison_app.tsx',
     'fractioncomparisonapp': 'fraction_comparison_app.tsx',
   }
-  
+
   // Ищем совпадение в plugin_id или prompt
   for (const [key, fileName] of Object.entries(pluginFileMap)) {
     if (pluginId.includes(key) || pluginId.toLowerCase().includes(key.toLowerCase())) {
       return `/miniapp-v2/exercieses/${fileName}`
     }
   }
-  
+
   return null
 })
 
@@ -478,10 +497,10 @@ const pluginIframeSrcdoc = ref<string>('')
 const pluginIframeSrc = computed(() => {
   const q = currentQuestion.value
   if (!q || q.type !== 'PLUGIN' || !q.data) return ''
-  
+
   // Если это TSX файл, используем srcdoc вместо src
   if (isTsxPlugin.value) return ''
-  
+
   const id = q.data.plugin_id
   const ver = q.data.plugin_version
   const entry = q.data.entry
@@ -500,7 +519,7 @@ const loadTsxPlugin = async () => {
   try {
     // Пытаемся загрузить файл
     let tsxCode: string
-    
+
     // Если путь начинается с /, это абсолютный путь от корня сайта
     if (filePath.startsWith('/')) {
       const response = await fetch(filePath)
@@ -532,9 +551,14 @@ const loadTsxPlugin = async () => {
   }
 }
 
+// Динамическая высота iframe от плагина
+const dynamicPluginHeight = ref<number | null>(null)
+
 // Отслеживаем изменения вопроса и загружаем TSX при необходимости
 watch([currentQuestion, isTsxPlugin], async () => {
-  
+  // Сбрасываем динамическую высоту при смене вопроса
+  dynamicPluginHeight.value = null
+
   if (isTsxPlugin.value && currentQuestion.value) {
     await loadTsxPlugin()
   } else {
@@ -543,10 +567,16 @@ watch([currentQuestion, isTsxPlugin], async () => {
 }, { immediate: true })
 
 const pluginEmbedHeight = computed(() => {
+  // Если плагин сообщил свою высоту через postMessage, используем её
+  if (dynamicPluginHeight.value && dynamicPluginHeight.value > 0) {
+    return dynamicPluginHeight.value + 50 // +50 для padding
+  }
+
   const q = currentQuestion.value
-  if (!q?.data?.height) return 250
-  // Используем высоту из manifest или минимум 200, максимум 400
-  return Math.min(400, Math.max(200, Number(q.data.height) || 250))
+  // Дефолтная высота 900px, достаточная для большинства плагинов
+  if (!q?.data?.height) return 900
+  // Используем высоту из manifest или минимум 800, максимум 1400
+  return Math.min(1400, Math.max(800, Number(q.data.height) || 900))
 })
 
 const submitting = ref(false)
@@ -558,6 +588,8 @@ const questionStartTime = ref(Date.now())
 const showingResult = ref(false) // Показывать ли результат вместо вопроса
 const userAnswer = ref<any>(null) // Сохраненный ответ пользователя
 const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
+const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
+const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
 const lastSubmittedQuestionId = ref<string | number | null>(null)
 const lastSubmittedAt = ref<number>(0)
 const loadingNext = ref(false) // Загрузка следующего вопроса
@@ -724,7 +756,27 @@ const extractAnswerFromExplanation = (explanation: string | null | undefined): s
 // Форматирование правильного ответа для отображения
 const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSubmitResponse | null): string => {
 
-  // Сначала проверяем результат ответа (может содержать правильный ответ)
+  // ДЛЯ ПЛАГИНОВ: сначала берем правильный ответ от плагина (приоритет!)
+  const userAnswerAny = userAnswer.value as any
+  if (
+    userAnswerAny &&
+    (question?.type === 'PLUGIN' || question?.type === 'INTERACTIVE')
+  ) {
+    const pluginCorrect =
+      userAnswerAny.correctAnswer ??
+      userAnswerAny.correct_answer ??
+      userAnswerAny.expectedAnswer ??
+      userAnswerAny.expected_answer
+    if (pluginCorrect !== undefined && pluginCorrect !== null) {
+      const answer = String(pluginCorrect)
+      if (containsFraction(answer)) {
+        return formatFraction(answer)
+      }
+      return answer
+    }
+  }
+
+  // Проверяем результат ответа от сервера
   if (result) {
     const resultAny = result as any
 
@@ -751,8 +803,8 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       return answer
     }
 
-    // Пытаемся извлечь из explanation
-    if (result.explanation) {
+    // Пытаемся извлечь из explanation (только если не плагин)
+    if (result.explanation && question?.type !== 'PLUGIN' && question?.type !== 'INTERACTIVE') {
       const extracted = extractAnswerFromExplanation(result.explanation)
       if (extracted) {
         if (containsFraction(extracted)) {
@@ -760,26 +812,6 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
         }
         return extracted
       }
-    }
-  }
-
-  // Для плагинов берем правильный ответ из последнего отправленного ответа
-  const userAnswerAny = userAnswer.value as any
-  if (
-    userAnswerAny &&
-    (question?.type === 'PLUGIN' || question?.type === 'INTERACTIVE')
-  ) {
-    const pluginCorrect =
-      userAnswerAny.correctAnswer ??
-      userAnswerAny.correct_answer ??
-      userAnswerAny.expectedAnswer ??
-      userAnswerAny.expected_answer
-    if (pluginCorrect !== undefined && pluginCorrect !== null) {
-      const answer = String(pluginCorrect)
-      if (containsFraction(answer)) {
-        return formatFraction(answer)
-      }
-      return answer
     }
   }
 
@@ -1005,6 +1037,16 @@ const submitAnswer = async (answer: any, questionType?: string) => {
   if (userAnswer.value === null) {
     userAnswer.value = answer
     lastQuestion.value = { ...currentQuestion.value }
+    // Сохраняем данные для визуализации от плагина
+    if (answer && typeof answer === 'object') {
+      // questionData - визуал ВОПРОСА (числовая прямая, дробная полоска и т.д.)
+      lastQuestionData.value = answer.questionData ?? null
+      // answerData - визуал ОТВЕТОВ (сетки, drag-drop и т.д.)
+      lastAnswerData.value = answer.answerData ?? null
+    } else {
+      lastQuestionData.value = null
+      lastAnswerData.value = null
+    }
   }
 
   // Определяем тип вопроса
@@ -1184,7 +1226,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
     }
   } catch (err: any) {
     const status = err.response?.status
-    
+
     // 409 CONFLICT: сессия завершена - перенаправляем на результаты
     if (status === 409 && practiceStore.currentSession) {
       try {
@@ -1194,6 +1236,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           lastResult.value = null
           userAnswer.value = null
           lastQuestion.value = null
+          lastQuestionData.value = null
+          lastAnswerData.value = null
           questionStartTime.value = Date.now()
           submitting.value = false
           return
@@ -1233,6 +1277,8 @@ const loadNextQuestion = async () => {
     lastResult.value = null
     userAnswer.value = null
     lastQuestion.value = null
+    lastQuestionData.value = null
+    lastAnswerData.value = null
     error.value = null
     numericAnswer.value = null
     textAnswer.value = ''
@@ -1245,9 +1291,9 @@ const loadNextQuestion = async () => {
     questionStartTime.value = Date.now()
   } catch (err: any) {
     const status = err.response?.status
-    
+
     showingResult.value = true
-    
+
     if (status === 409 && practiceStore.currentSession) {
       stopTimer()
       router.push({
@@ -1256,7 +1302,7 @@ const loadNextQuestion = async () => {
       })
       return
     }
-    
+
     error.value = err.response?.data?.message || err.message || 'Келесі сұрақты жүктеу мүмкін болмады.'
   } finally {
     loadingNext.value = false
@@ -1298,7 +1344,18 @@ const requestPluginAnswer = () => {
 const pluginMessageHandler = (event: MessageEvent) => {
   try {
     const d = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
-    if (!d || d.type !== 'exercise-result') return
+    if (!d) return
+
+    // Обработка сообщений о высоте контента от плагина
+    if (d.type === 'resize' || d.type === 'RESIZE' || d.type === 'content-height') {
+      const height = d.height ?? d.contentHeight ?? d.scrollHeight
+      if (typeof height === 'number' && height > 0) {
+        dynamicPluginHeight.value = Math.max(height, 400) // Минимум 400px
+      }
+      return
+    }
+
+    if (d.type !== 'exercise-result') return
 
     const q = currentQuestion.value
     if (!q || q.type !== 'PLUGIN') return
@@ -1307,6 +1364,12 @@ const pluginMessageHandler = (event: MessageEvent) => {
     const isCorrect = d.isCorrect ?? d.correct ?? d.is_correct
     const userAnswer = d.userAnswer ?? d.user_answer ?? d.studentAnswer ?? d.answer ?? d.value
     const correctAnswer = d.correctAnswer ?? d.correct_answer ?? d.expectedAnswer ?? d.expected_answer
+    // Извлекаем текст вопроса от плагина (разные плагины могут использовать разные поля)
+    const question = d.question ?? d.prompt ?? d.equation ?? d.problem ?? d.questionText ?? null
+    // Данные для визуализации ВОПРОСА (если вопрос содержит картинку/график)
+    const questionData = d.questionData ?? null
+    // Данные для визуализации ОТВЕТОВ (если ответ визуальный - сетка, drag-drop и т.д.)
+    const answerData = d.answerData ?? null
 
     error.value = null
 
@@ -1316,6 +1379,9 @@ const pluginMessageHandler = (event: MessageEvent) => {
           isCorrect,
           userAnswer,
           correctAnswer,
+          question, // Сохраняем текст вопроса от плагина
+          questionData, // Визуальные данные ВОПРОСА (для аналитики)
+          answerData, // Визуальные данные ОТВЕТОВ
         },
         'PLUGIN'
       )
@@ -1325,7 +1391,7 @@ const pluginMessageHandler = (event: MessageEvent) => {
     if (userAnswer === null || userAnswer === undefined) return
 
     // Фолбэк: отправляем только ответ
-    submitAnswer(userAnswer, 'PLUGIN')
+    submitAnswer({ userAnswer, question, questionData, answerData }, 'PLUGIN')
   } catch (err) {
     console.error('Plugin message handler error:', err)
   }

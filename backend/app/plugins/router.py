@@ -141,6 +141,46 @@ async def evaluate_answer(
     return ApiResponse(data=PluginEvaluateResponse(**result))
 
 
+@router.put(
+    "/{plugin_id}/update-tsx",
+    response_model=ApiResponse[dict],
+    dependencies=[Depends(require_roles("ADMIN"))],
+    tags=["Plugins"],
+)
+async def update_tsx_plugin(
+    plugin_id: str,
+    file: UploadFile = File(..., description="Новый TSX/JSX файл с React компонентом"),
+    service: PluginService = Depends(get_plugin_service),
+):
+    """Обновляет существующий плагин новым TSX файлом.
+    
+    Заменяет файлы плагина, сохраняя его ID и связи с тестами.
+    
+    Требования:
+    - Роль: ADMIN
+    - Файл должен быть .tsx, .jsx, .ts или .js
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Update TSX request: plugin_id={plugin_id}, filename={file.filename}")
+    
+    if not file.filename or not file.filename.endswith((".tsx", ".ts", ".jsx", ".js")):
+        raise AppError(
+            status_code=400,
+            code="invalid_file",
+            message="Файл должен быть .tsx, .jsx, .ts или .js"
+        )
+    
+    try:
+        result = await service.update_tsx_plugin(plugin_id=plugin_id, file=file)
+        logger.info(f"TSX plugin updated successfully: {plugin_id}")
+        return ApiResponse(data=result)
+    except Exception as e:
+        logger.error(f"Error updating TSX plugin: {str(e)}", exc_info=True)
+        raise
+
+
 @router.post(
     "/upload-tsx",
     response_model=ApiResponse[dict],

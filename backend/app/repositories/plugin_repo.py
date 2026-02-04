@@ -48,6 +48,28 @@ class PluginRepository:
             await self.session.flush()
         return plugin
 
+    async def touch_updated(self, plugin_id: str) -> Plugin | None:
+        """Обновить updated_at плагина."""
+        from datetime import datetime, timezone
+        plugin = await self.get_by_id(plugin_id)
+        if plugin:
+            plugin.updated_at = datetime.now(timezone.utc)
+            await self.session.flush()
+        return plugin
+
+    async def update_version(self, plugin_id: str, new_version: str) -> Plugin | None:
+        """Обновить версию плагина."""
+        from datetime import datetime, timezone
+        plugin = await self.get_by_id(plugin_id)
+        if plugin:
+            plugin.version = new_version
+            plugin.updated_at = datetime.now(timezone.utc)
+            # Обновляем версию в manifest_data
+            if plugin.manifest_data:
+                plugin.manifest_data = {**plugin.manifest_data, "version": new_version}
+            await self.session.flush()
+        return plugin
+
     async def delete(self, plugin_id: str) -> bool:
         """Удалить плагин по UUID (id в БД)."""
         plugin = await self.get_by_id(plugin_id)

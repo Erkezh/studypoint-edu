@@ -22,7 +22,7 @@
         <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded">
           <p class="text-sm text-purple-800 mb-2"><strong>Как это работает:</strong></p>
           <ul class="text-sm text-purple-700 list-disc list-inside space-y-1">
-            <li>Загрузите TSX файл с React компонентом (как в примере <code class="bg-purple-100 px-1 rounded">fraction_comparison_app.tsx</code>)</li>
+            <li>Загрузите TSX/JSX файл с React компонентом (как в примере <code class="bg-purple-100 px-1 rounded">fraction_comparison_app.tsx</code>)</li>
             <li>Система автоматически преобразует TSX в HTML плагин</li>
             <li>Плагин будет создан и опционально добавлен в тест для выбранного класса</li>
             <li>Максимальный размер: 1MB</li>
@@ -32,12 +32,12 @@
         <form @submit.prevent="handleTsxUpload" class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              TSX файл
+              TSX/JSX файл
             </label>
             <input
               ref="tsxFileInput"
               type="file"
-              accept=".tsx,.ts"
+              accept=".tsx,.ts,.jsx,.js"
               @change="handleTsxFileSelect"
               class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
             />
@@ -58,66 +58,11 @@
             />
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Добавить в тест для класса (опционально)
-            </label>
-            <select
-              v-model="tsxGradeId"
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none"
-            >
-              <option :value="null">— Не добавлять в тест —</option>
-              <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
-            </select>
-          </div>
-
           <div class="flex gap-4">
             <Button type="submit" variant="primary" :loading="uploadingTsx">
               Загрузить TSX и создать плагин
             </Button>
             <Button type="button" variant="outline" @click="resetTsxUpload">
-              Очистить
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Загрузка плагина -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-4">Загрузить новый плагин (ZIP)</h2>
-
-        <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded">
-          <p class="text-sm text-blue-800 mb-2"><strong>Требования к плагину:</strong></p>
-          <ul class="text-sm text-blue-700 list-disc list-inside space-y-1">
-            <li>ZIP архив с файлами плагина</li>
-            <li>В корне архива должен быть <code class="bg-blue-100 px-1 rounded">manifest.json</code></li>
-            <li>Entry файл (обычно <code class="bg-blue-100 px-1 rounded">index.html</code>) должен существовать</li>
-            <li>Максимальный размер: 10MB</li>
-          </ul>
-        </div>
-
-        <form @submit.prevent="handleUpload" class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              ZIP файл плагина
-            </label>
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".zip"
-              @change="handleFileSelect"
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-            />
-            <p v-if="selectedFile" class="text-sm text-gray-600 mt-2">
-              Выбран файл: {{ selectedFile.name }} ({{ formatFileSize(selectedFile.size) }})
-            </p>
-          </div>
-
-          <div class="flex gap-4">
-            <Button type="submit" variant="primary" :loading="uploading">
-              Загрузить плагин
-            </Button>
-            <Button type="button" variant="outline" @click="resetUpload">
               Очистить
             </Button>
           </div>
@@ -144,10 +89,14 @@
           >
             <div class="flex items-start justify-between">
               <div class="flex-1">
-                <h3 class="text-lg font-semibold text-gray-800">{{ plugin.name }}</h3>
+                <div class="flex items-center gap-3">
+                  <h3 class="text-lg font-semibold text-gray-800">{{ plugin.name }}</h3>
+                  <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-sm font-medium rounded-full">
+                    v{{ plugin.version }}
+                  </span>
+                </div>
                 <div class="mt-2 space-y-1 text-sm text-gray-600">
                   <p><strong>ID:</strong> {{ plugin.plugin_id }}</p>
-                  <p><strong>Версия:</strong> {{ plugin.version }}</p>
                   <p><strong>Entry:</strong> {{ plugin.entry }}</p>
                   <p><strong>API Version:</strong> {{ plugin.api_version }}</p>
                   <p><strong>Высота:</strong> {{ plugin.height }}px</p>
@@ -156,7 +105,11 @@
                       {{ plugin.is_published ? 'Опубликован' : 'Не опубликован' }}
                     </span>
                   </p>
-                  <p><strong>Загружен:</strong> {{ formatDate(plugin.created_at) }}</p>
+                  <p><strong>Создан:</strong> {{ formatDate(plugin.created_at) }}</p>
+                  <p v-if="plugin.updated_at && plugin.updated_at !== plugin.created_at">
+                    <strong>Обновлён:</strong>
+                    <span class="text-yellow-600 font-medium">{{ formatDate(plugin.updated_at) }}</span>
+                  </p>
                 </div>
               </div>
 
@@ -195,6 +148,26 @@
                 >
                   Добавить в тест
                 </Button>
+                <!-- Кнопка обновления плагина -->
+                <label class="cursor-pointer">
+                  <input
+                    type="file"
+                    accept=".tsx,.ts,.jsx,.js"
+                    class="hidden"
+                    @change="(e) => handleUpdatePlugin(plugin.id, e)"
+                    :disabled="updating === plugin.id"
+                  />
+                  <span
+                    :class="[
+                      'inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
+                      updating === plugin.id
+                        ? 'bg-gray-200 text-gray-500 cursor-wait'
+                        : 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
+                    ]"
+                  >
+                    {{ updating === plugin.id ? 'Обновление...' : 'Обновить' }}
+                  </span>
+                </label>
                 <Button
                   v-if="!plugin.is_published"
                   variant="danger"
@@ -326,6 +299,7 @@ interface Plugin {
   height: number
   is_published: boolean
   created_at: string
+  updated_at?: string
 }
 
 interface PluginUploadResponse {
@@ -384,17 +358,14 @@ const router = useRouter()
 
 const authStore = useAuthStore()
 const loading = ref(false)
-const uploading = ref(false)
 const publishing = ref<string | null>(null)
 const deleting = ref<string | null>(null)
+const updating = ref<string | null>(null)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
-const selectedFile = ref<File | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 const selectedTsxFile = ref<File | null>(null)
 const tsxFileInput = ref<HTMLInputElement | null>(null)
 const tsxPluginName = ref<string>('')
-const tsxGradeId = ref<number | null>(null)
 const uploadingTsx = ref(false)
 const plugins = ref<Plugin[]>([])
 const previewPluginData = ref<Plugin | null>(null)
@@ -406,14 +377,6 @@ const grades = ref<Array<{ id: number; number: number; title: string }>>([])
 const addingToTest = ref<string | null>(null)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
-const handleFileSelect = (event: Event) => {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (file instanceof File) {
-    selectedFile.value = file
-  }
-}
 
 const handleTsxFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -438,128 +401,6 @@ const formatDate = (dateString: string): string => {
   return new Date(dateString).toLocaleString('ru-RU')
 }
 
-const handleUpload = async () => {
-  if (!selectedFile.value) {
-    error.value = 'Выберите файл для загрузки'
-    return
-  }
-
-  uploading.value = true
-  error.value = null
-  successMessage.value = null
-
-  try {
-    const response = await adminApi.uploadPlugin(selectedFile.value)
-    if (response.data && response.data.name) {
-      successMessage.value = `Плагин "${response.data.name}" успешно загружен!`
-    } else {
-      successMessage.value = 'Плагин успешно загружен!'
-    }
-    resetUpload()
-    await loadPlugins()
-    setTimeout(() => {
-      successMessage.value = null
-    }, 5000)
-  } catch (err: unknown) {
-    const axiosError = err as AxiosError<ApiErrorResponse>
-    console.error('Upload error:', axiosError)
-    console.error('Upload error response:', axiosError.response?.data)
-
-    let errorMsg = 'Ошибка при загрузке плагина'
-
-    // Обработка 400 Bad Request
-    if (axiosError.response?.status === 400) {
-      const errorData = axiosError.response?.data
-
-      // Проверяем разные форматы ошибок от FastAPI
-      if (errorData?.detail) {
-        if (Array.isArray(errorData.detail)) {
-          errorMsg = errorData.detail
-            .map((e: ErrorDetail) => e.msg || e.message || JSON.stringify(e))
-            .join(', ')
-        } else if (typeof errorData.detail === 'string') {
-          errorMsg = errorData.detail
-        } else if (typeof errorData.detail === 'object' && 'message' in errorData.detail) {
-          errorMsg = (errorData.detail as { message?: string }).message || errorMsg
-        }
-      } else if (errorData && errorData.error) {
-        // Формат: { error: { code: '...', message: '...' } }
-        if (typeof errorData.error === 'string') {
-          errorMsg = errorData.error
-        } else if (errorData.error && typeof errorData.error === 'object') {
-          // Используем код ошибки для более понятного сообщения
-          const codeMessages: Record<string, string> = {
-            invalid_zip: 'Некорректный ZIP файл. Убедитесь, что файл является валидным ZIP архивом.',
-            manifest_not_found: 'manifest.json не найден в корне архива. Убедитесь, что manifest.json находится в корне ZIP файла.',
-            invalid_manifest_json: 'Некорректный JSON в manifest.json. Проверьте синтаксис JSON файла.',
-            manifest_validation_error: 'Ошибка валидации manifest.json. Проверьте, что все обязательные поля заполнены правильно.',
-            manifest_parse_error: 'Ошибка парсинга manifest.json. Проверьте структуру файла.',
-            entry_not_found: 'Entry файл не найден. Убедитесь, что файл, указанный в manifest.json как entry, существует в архиве.',
-            plugin_security_error: 'Ошибка безопасности плагина. Плагин не прошел проверку безопасности.',
-          }
-
-          if ('message' in errorData.error && errorData.error.message) {
-            errorMsg = errorData.error.message
-          } else if ('code' in errorData.error && errorData.error.code) {
-            const errorCode = errorData.error.code
-            const codeMessage = errorCode ? codeMessages[errorCode] : undefined
-            if (codeMessage) {
-              errorMsg = codeMessage
-              if (errorData.error.details) {
-                errorMsg += ` (${JSON.stringify(errorData.error.details)})`
-              }
-            } else if (errorCode) {
-              errorMsg = `Ошибка: ${errorCode}`
-            }
-          }
-        }
-      } else if (errorData?.message) {
-        errorMsg = errorData.message
-      } else if (typeof errorData === 'string') {
-        errorMsg = errorData
-      }
-
-      if (errorMsg === 'Ошибка при загрузке плагина' && errorData) {
-        console.error('Не удалось извлечь сообщение об ошибке. Полный ответ:', errorData)
-        errorMsg = `Ошибка загрузки: ${JSON.stringify(errorData)}`
-      }
-    } else if (axiosError.response?.status === 409) {
-      const errorDetail = axiosError.response.data?.error || axiosError.response.data
-      if (typeof errorDetail === 'string') {
-        errorMsg = errorDetail
-      } else if (errorDetail && typeof errorDetail === 'object' && 'message' in errorDetail) {
-        errorMsg =
-          (errorDetail as { message?: string }).message ||
-          'Плагин с таким ID и версией уже существует. Если он опубликован, сначала скройте его.'
-      } else {
-        errorMsg = 'Плагин с таким ID и версией уже существует. Если он опубликован, сначала скройте его.'
-      }
-    } else {
-      const errorDetail = axiosError.response?.data?.error || axiosError.response?.data
-      if (errorDetail) {
-        if (typeof errorDetail === 'string') {
-          errorMsg = errorDetail
-        } else if (errorDetail && typeof errorDetail === 'object' && 'message' in errorDetail) {
-          errorMsg = (errorDetail as { message?: string }).message || errorMsg
-        }
-      } else if (axiosError.message) {
-        errorMsg = axiosError.message
-      }
-    }
-
-    error.value = errorMsg
-  } finally {
-    uploading.value = false
-  }
-}
-
-const resetUpload = () => {
-  selectedFile.value = null
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
-
 const handleTsxUpload = async () => {
   if (!selectedTsxFile.value) {
     error.value = 'Выберите TSX файл для загрузки'
@@ -573,8 +414,7 @@ const handleTsxUpload = async () => {
   try {
     const response = await adminApi.uploadTsxPlugin(
       selectedTsxFile.value,
-      tsxPluginName.value || undefined,
-      tsxGradeId.value || undefined
+      tsxPluginName.value || undefined
     )
 
     const responseData = (response.data ?? null) as PluginUploadResponse | null
@@ -617,7 +457,7 @@ const handleTsxUpload = async () => {
         errorMsg = errorData.error.message
       } else if (typeof errorData.error === 'object' && errorData.error?.code) {
         const codeMessages: Record<string, string> = {
-          invalid_file: 'Некорректный файл. Файл должен быть .tsx или .ts',
+          invalid_file: 'Некорректный файл. Файл должен быть .tsx, .jsx, .ts или .js',
           invalid_tsx: 'Некорректный TSX код. Проверьте синтаксис React компонента.',
           file_read_error: 'Ошибка при чтении файла. Убедитесь, что файл не поврежден.',
           file_encoding_error: 'Ошибка декодирования файла. Убедитесь, что файл в кодировке UTF-8.',
@@ -651,7 +491,6 @@ const handleTsxUpload = async () => {
 const resetTsxUpload = () => {
   selectedTsxFile.value = null
   tsxPluginName.value = ''
-  tsxGradeId.value = null
   if (tsxFileInput.value) {
     tsxFileInput.value.value = ''
   }
@@ -755,6 +594,45 @@ const deletePlugin = async (pluginId: string) => {
     error.value = errorMsg || 'Ошибка при удалении плагина'
   } finally {
     deleting.value = null
+  }
+}
+
+const handleUpdatePlugin = async (pluginId: string, event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  updating.value = pluginId
+  error.value = null
+
+  try {
+    const response = await adminApi.updateTsxPlugin(pluginId, file)
+    const data = response.data?.data as { old_version?: string; version?: string } | undefined
+    if (data?.old_version && data?.version) {
+      successMessage.value = `Плагин обновлён! Версия: ${data.old_version} → ${data.version}`
+    } else {
+      successMessage.value = 'Плагин успешно обновлен!'
+    }
+    await loadPlugins()
+    setTimeout(() => {
+      successMessage.value = null
+    }, 5000)
+  } catch (err: unknown) {
+    const axiosError = err as AxiosError<ApiErrorResponse>
+    console.error('Update plugin error:', axiosError)
+    const errorMsg =
+      axiosError.response?.data?.message ||
+      (typeof axiosError.response?.data?.error === 'object' &&
+        (axiosError.response?.data?.error as { message?: string }).message) ||
+      (typeof axiosError.response?.data?.error === 'string'
+        ? axiosError.response?.data?.error
+        : undefined) ||
+      axiosError.message
+    error.value = errorMsg || 'Ошибка при обновлении плагина'
+  } finally {
+    updating.value = null
+    // Очищаем input, чтобы можно было выбрать тот же файл снова
+    target.value = ''
   }
 }
 

@@ -624,12 +624,12 @@ class PracticeService:
             f"is_generator_skill={is_generator_skill}"
         )
 
-        # Если 3 неправильных ответа подряд - завершаем тест
-        if wrong_streak_after >= 3:
-            logger.info(f"Session {ps.id} finished: 3 wrong answers in a row (questions: {ps.total_questions_answered})")
-            ps.finished_at = now
-            ps.last_question_id = None
-            ps.state["current_question_id"] = None
+        # Убрано ограничение на 3 ошибки подряд - пользователь может делать неограниченное количество ошибок
+        # if wrong_streak_after >= 3:
+        #     logger.info(f"Session {ps.id} finished: 3 wrong answers in a row (questions: {ps.total_questions_answered})")
+        #     ps.finished_at = now
+        #     ps.last_question_id = None
+        #     ps.state["current_question_id"] = None
 
         # Для генераторов создаем вопрос с данными из q_data
         if is_generator_skill:

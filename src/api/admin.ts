@@ -179,6 +179,24 @@ export const adminApi = {
     return response.data
   },
 
+  async updateTsxPlugin(
+    pluginId: string,
+    file: File
+  ): Promise<ApiResponse<Record<string, any>>> {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.put<ApiResponse<Record<string, any>>>(
+      `/admin/plugins/${pluginId}/update-tsx`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    )
+    return response.data
+  },
+
   async listQuestions(params?: {
     skill_id?: number
     search?: string

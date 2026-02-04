@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
@@ -126,7 +127,7 @@ class AnalyticsService:
                 elif "answer" in attempt.submitted_answer:
                     user_answer_text = str(attempt.submitted_answer["answer"])
                 else:
-                    user_answer_text = JSON.dumps(attempt.submitted_answer)
+                    user_answer_text = json.dumps(attempt.submitted_answer)
             
             # Форматируем правильный ответ
             correct_answer_text = ""
@@ -150,7 +151,7 @@ class AnalyticsService:
                 elif "answer" in correct_answer:
                     correct_answer_text = str(correct_answer["answer"])
                 else:
-                    correct_answer_text = JSON.dumps(correct_answer)
+                    correct_answer_text = json.dumps(correct_answer)
             # Если не нашли в correct_answer, проверяем question_data
             elif question_data:
                 if "correct_answer" in question_data:
@@ -173,7 +174,7 @@ class AnalyticsService:
                             else:
                                 correct_answer_text = str(choice_id)
                         else:
-                            correct_answer_text = JSON.dumps(answer)
+                            correct_answer_text = json.dumps(answer)
                     else:
                         correct_answer_text = str(answer)
                 elif "correct_index" in question_data and "choices" in question_data:
@@ -187,13 +188,19 @@ class AnalyticsService:
                         else:
                             correct_answer_text = str(choice)
             
+            # Для PLUGIN вопросов передаём полный submitted_answer (содержит questionData, answerData)
+            if question_type in ("PLUGIN", "INTERACTIVE"):
+                user_answer_raw = attempt.submitted_answer
+            else:
+                user_answer_raw = user_answer_text
+            
             questions.append({
                 "attempt_id": str(attempt.id),
                 "question_id": attempt.question_id,
                 "skill_id": attempt.skill_id,
                 "question_prompt": question_payload.get("prompt", ""),
                 "question_type": question_payload.get("type", ""),
-                "user_answer": user_answer_text,
+                "user_answer": user_answer_raw,  # Для PLUGIN - объект с questionData, для остальных - строка
                 "correct_answer": correct_answer_text,
                 "is_correct": attempt.is_correct,
                 "answered_at": attempt.answered_at,

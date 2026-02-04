@@ -149,6 +149,10 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
     # Удаляем export default
     code = re.sub(r'export\s+default\s+\w+;?', '', code)
     
+    # Логируем код перед компиляцией для отладки
+    logger.info(f"Code before esbuild (first 500 chars): {code[:500]}")
+    logger.info(f"Code before esbuild (lines 60-75): {chr(10).join(code.split(chr(10))[59:75])}")
+    
     # Компилируем через esbuild (убирает TypeScript, компилирует JSX)
     try:
         js_code = compile_with_esbuild(code)

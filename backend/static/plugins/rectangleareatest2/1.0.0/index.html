@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>rectangleareatest2</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect } = React;
+const { Check, X } = window.lucideReact;
+const RectangleAreaTest = () => {
+  const [problems, setProblems] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedCells, setSelectedCells] = useState(/* @__PURE__ */ new Set());
+  const [showResult, setShowResult] = useState(false);
+  const [score, setScore] = useState(0);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const GRID_SIZE = 8;
+  const generateProblem = (id) => {
+    const areas = [6, 8, 10, 12, 15, 16, 18, 20];
+    const targetArea = areas[Math.floor(Math.random() * areas.length)];
+    const validDimensions = [];
+    for (let w = 2; w <= GRID_SIZE; w++) {
+      for (let h = 2; h <= GRID_SIZE; h++) {
+        if (w * h === targetArea) {
+          validDimensions.push([w, h]);
+        }
+      }
+    }
+    const validOptions = validDimensions.map(([w, h]) => `${w}\xD7${h}`);
+    return {
+      id,
+      targetArea,
+      validDimensions,
+      validOptions,
+      question: `${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0441\u044B\u0437\u044B\u04A3\u044B\u0437`
+    };
+  };
+  const generateProblems = () => {
+    const newProblems = [];
+    for (let i = 0; i < 10; i++) {
+      newProblems.push(generateProblem(i));
+    }
+    setProblems(newProblems);
+    setCurrentIndex(0);
+    setSelectedCells(/* @__PURE__ */ new Set());
+    setShowResult(false);
+    setScore(0);
+  };
+  useEffect(() => {
+    generateProblems();
+  }, []);
+  const getCellKey = (row, col) => `${row}-${col}`;
+  const handleMouseDown = (row, col) => {
+    if (showResult) return;
+    setIsDragging(true);
+    setDragStart({ row, col });
+    setSelectedCells(/* @__PURE__ */ new Set([getCellKey(row, col)]));
+  };
+  const handleMouseEnter = (row, col) => {
+    if (!isDragging || !dragStart) return;
+    const minRow = Math.min(dragStart.row, row);
+    const maxRow = Math.max(dragStart.row, row);
+    const minCol = Math.min(dragStart.col, col);
+    const maxCol = Math.max(dragStart.col, col);
+    const newSelected = /* @__PURE__ */ new Set();
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        newSelected.add(getCellKey(r, c));
+      }
+    }
+    setSelectedCells(newSelected);
+  };
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragStart(null);
+  };
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        setDragStart(null);
+      }
+    };
+    window.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
+  }, [isDragging]);
+  const isValidRectangle = (cells) => {
+    if (cells.size === 0) return false;
+    const positions = Array.from(cells).map((key) => {
+      const [r, c] = key.split("-").map(Number);
+      return { r, c };
+    });
+    const rows = positions.map((p) => p.r);
+    const cols = positions.map((p) => p.c);
+    const minRow = Math.min(...rows);
+    const maxRow = Math.max(...rows);
+    const minCol = Math.min(...cols);
+    const maxCol = Math.max(...cols);
+    const width = maxCol - minCol + 1;
+    const height = maxRow - minRow + 1;
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        if (!cells.has(getCellKey(r, c))) {
+          return false;
+        }
+      }
+    }
+    return cells.size === width * height;
+  };
+  const getDimensions = (cells) => {
+    if (cells.size === 0) return { width: 0, height: 0, area: 0 };
+    const positions = Array.from(cells).map((key) => {
+      const [r, c] = key.split("-").map(Number);
+      return { r, c };
+    });
+    const rows = positions.map((p) => p.r);
+    const cols = positions.map((p) => p.c);
+    const width = Math.max(...cols) - Math.min(...cols) + 1;
+    const height = Math.max(...rows) - Math.min(...rows) + 1;
+    return { width, height, area: cells.size };
+  };
+  const formatUserAnswer = (cells) => {
+    if (!cells || cells.size === 0) return "\u0415\u0448\u0442\u0435\u04A3\u0435 \u0442\u0430\u04A3\u0434\u0430\u043B\u043C\u0430\u0493\u0430\u043D";
+    const { width, height, area } = getDimensions(cells);
+    const isValid = isValidRectangle(cells);
+    if (!isValid) {
+      return `${area} \u04B1\u044F\u0448\u044B\u049B \u0442\u0430\u04A3\u0434\u0430\u043B\u0434\u044B (\u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448 \u0435\u043C\u0435\u0441)`;
+    }
+    return `${area} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A (${width}\xD7${height})`;
+  };
+  const formatCorrectAnswer = (problem) => {
+    const options = problem.validOptions.join(" \u043D\u0435\u043C\u0435\u0441\u0435 ");
+    return `${problem.targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A (${options})`;
+  };
+  const handleSubmit = () => {
+    if (selectedCells.size === 0) return;
+    const problem = problems[currentIndex];
+    const selectedArea2 = selectedCells.size;
+    const isValidRect = isValidRectangle(selectedCells);
+    const correct = selectedArea2 === problem.targetArea && isValidRect;
+    setIsCorrect(correct);
+    if (correct) setScore(score + 1);
+    if (window.parent && window.parent !== window) {
+      const [correctW, correctH] = problem.validDimensions[0];
+      const correctFilled = [];
+      for (let r = 0; r < correctH; r++) {
+        for (let c = 0; c < correctW; c++) {
+          correctFilled.push(`${r}-${c}`);
+        }
+      }
+      window.parent.postMessage({
+        type: "exercise-result",
+        isCorrect: correct,
+        // Вопрос - что нужно было сделать
+        question: problem.question,
+        // Ответ пользователя - что он сделал
+        userAnswer: formatUserAnswer(selectedCells),
+        studentAnswer: formatUserAnswer(selectedCells),
+        // Правильный ответ - что нужно было сделать
+        correctAnswer: formatCorrectAnswer(problem),
+        // === ДАННЫЕ ДЛЯ ВИЗУАЛИЗАЦИИ (как в IXL) ===
+        answerData: {
+          type: "grid",
+          // Вопрос (исходное состояние)
+          questionDisplay: {
+            grids: [{ rows: GRID_SIZE, cols: GRID_SIZE, filled: [] }],
+            text: problem.question
+          },
+          // Правильный ответ
+          correctDisplay: {
+            grids: [{ rows: GRID_SIZE, cols: GRID_SIZE, filled: correctFilled }],
+            text: formatCorrectAnswer(problem),
+            note: "\u0411\u0456\u0440\u043D\u0435\u0448\u0435 \u0434\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F \u0431\u0430\u0440. \u041C\u0456\u043D\u0435, \u0441\u043E\u043B\u0430\u0440\u0434\u044B\u04A3 \u0431\u0456\u0440\u0456."
+          },
+          // Ответ пользователя
+          userDisplay: {
+            grids: [{ rows: GRID_SIZE, cols: GRID_SIZE, filled: Array.from(selectedCells) }],
+            text: formatUserAnswer(selectedCells)
+          }
+        }
+      }, "*");
+    }
+    setShowResult(true);
+  };
+  const handleNext = () => {
+    if (currentIndex < problems.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setSelectedCells(/* @__PURE__ */ new Set());
+      setShowResult(false);
+      setIsDragging(false);
+      setDragStart(null);
+    }
+  };
+  const handleReset = () => {
+    setSelectedCells(/* @__PURE__ */ new Set());
+    setIsDragging(false);
+    setDragStart(null);
+  };
+  if (problems.length === 0) {
+    return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-gray-50 flex items-center justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xl text-gray-600" }, "\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435..."));
+  }
+  const currentProblem = problems[currentIndex];
+  const selectedArea = selectedCells.size;
+  return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-gray-50 p-6" }, /* @__PURE__ */ React.createElement("div", { className: "max-w-3xl mx-auto" }, /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600" }, "\u0421\u04B1\u0440\u0430\u049B ", currentIndex + 1)), /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-2xl shadow-lg p-8 mb-6" }, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-bold text-gray-800 mb-2" }, currentProblem.question), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-500 mb-6" }, "\u0422\u0456\u043D\u0442\u0443\u0456\u0440\u0434\u0456 \u0431\u0430\u0441\u044B\u043F \u04B1\u0441\u0442\u0430\u043F, \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448 \u0441\u0430\u043B\u044B\u04A3\u044B\u0437 \u043D\u0435\u043C\u0435\u0441\u0435 \u0436\u0435\u043A\u0435 \u0442\u043E\u0440\u043A\u04E9\u0437\u0434\u0435\u0440\u0434\u0456 \u0431\u0430\u0441\u044B\u04A3\u044B\u0437"), /* @__PURE__ */ React.createElement("div", { className: "mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200" }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ React.createElement("span", { className: "text-gray-700" }, "\u0422\u0430\u04A3\u0434\u0430\u043B\u0493\u0430\u043D \u0430\u0443\u0434\u0430\u043D:"), /* @__PURE__ */ React.createElement("span", { className: "text-2xl font-bold text-blue-600" }, selectedArea, " ", selectedArea === 1 ? "\u04B1\u044F\u0448\u044B\u049B" : "\u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A"))), /* @__PURE__ */ React.createElement("div", { className: "mb-6 flex justify-center" }, /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "inline-grid gap-1 p-4 bg-gray-50 rounded-xl select-none",
+      style: {
+        gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`,
+        gridTemplateRows: `repeat(${GRID_SIZE}, 1fr)`
+      }
+    },
+    Array.from({ length: GRID_SIZE }).map(
+      (_, row) => Array.from({ length: GRID_SIZE }).map((_2, col) => {
+        const key = getCellKey(row, col);
+        const isSelected = selectedCells.has(key);
+        return /* @__PURE__ */ React.createElement(
+          "button",
+          {
+            key,
+            onMouseDown: () => handleMouseDown(row, col),
+            onMouseEnter: () => handleMouseEnter(row, col),
+            onMouseUp: handleMouseUp,
+            disabled: showResult,
+            className: `
+                        w-10 h-10 border-2 transition-all duration-100 rounded
+                        ${isSelected ? "bg-blue-500 border-blue-600 shadow-md" : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50"}
+                        ${showResult ? "cursor-not-allowed" : "cursor-pointer"}
+                      `
+          }
+        );
+      })
+    )
+  )), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4" }, !showResult ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleReset,
+      className: "px-6 py-3 bg-white border-2 border-gray-300 hover:border-gray-400 text-gray-700 font-semibold rounded-xl transition-all"
+    },
+    "\u0422\u0430\u0437\u0430\u043B\u0430\u0443"
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleSubmit,
+      disabled: selectedCells.size === 0,
+      className: `
+                    flex-1 font-semibold py-3 rounded-xl shadow-md transition-all
+                    ${selectedCells.size === 0 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white"}
+                  `
+    },
+    "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+  )) : /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleNext,
+      disabled: currentIndex >= problems.length - 1,
+      className: `
+                  flex-1 font-semibold py-3 rounded-xl transition-all
+                  ${currentIndex >= problems.length - 1 ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700 text-white shadow-md"}
+                `
+    },
+    currentIndex >= problems.length - 1 ? "\u0410\u044F\u049B\u0442\u0430\u043B\u0434\u044B" : "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B"
+  ))), showResult && /* @__PURE__ */ React.createElement("div", { className: `
+            rounded-xl p-6 shadow-md
+            ${isCorrect ? "bg-green-50 border border-green-200" : "bg-red-50 border border-red-200"}
+          ` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 mb-4" }, isCorrect ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 bg-green-500 rounded-full flex items-center justify-center" }, /* @__PURE__ */ React.createElement(Check, { className: "w-6 h-6 text-white" })), /* @__PURE__ */ React.createElement("span", { className: "text-xl font-bold text-green-700" }, "\u0414\u04B1\u0440\u044B\u0441!")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 bg-red-500 rounded-full flex items-center justify-center" }, /* @__PURE__ */ React.createElement(X, { className: "w-6 h-6 text-white" })), /* @__PURE__ */ React.createElement("span", { className: "text-xl font-bold text-red-700" }, "\u049A\u0430\u0442\u0435"))), /* @__PURE__ */ React.createElement("div", { className: "space-y-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-semibold text-gray-600" }, "\u0421\u0456\u0437\u0434\u0456\u04A3 \u0436\u0430\u0443\u0430\u0431\u044B\u04A3\u044B\u0437:"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-800 font-medium" }, formatUserAnswer(selectedCells))), !isCorrect && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "text-sm font-semibold text-gray-600" }, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F:"), /* @__PURE__ */ React.createElement("p", { className: "text-gray-800 font-medium" }, formatCorrectAnswer(currentProblem)))))));
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(RectangleAreaTest));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

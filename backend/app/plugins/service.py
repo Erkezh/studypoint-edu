@@ -381,6 +381,131 @@ class PluginService:
         
         return result
 
+    def _increment_version(self, version: str) -> str:
+        """Увеличивает patch-версию (1.0.0 -> 1.0.1)."""
+        parts = version.split(".")
+        if len(parts) == 3:
+            try:
+                major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
+                return f"{major}.{minor}.{patch + 1}"
+            except ValueError:
+                pass
+        # Если не удалось распарсить, просто добавляем .1
+        return f"{version}.1"
+
+    async def update_tsx_plugin(
+        self,
+        plugin_id: str,
+        file: UploadFile,
+    ) -> dict:
+        """Обновляет существующий плагин новым TSX файлом.
+        
+        При обновлении автоматически увеличивается версия (1.0.0 -> 1.0.1).
+        
+        Args:
+            plugin_id: UUID плагина в БД
+            file: Новый TSX файл
+            
+        Returns:
+            dict с информацией об обновленном плагине
+        """
+        import logging
+        import re
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Updating TSX plugin: plugin_id={plugin_id}")
+        
+        # Находим плагин в БД
+        plugin = await self.repo.get_by_id(plugin_id)
+        if not plugin:
+            raise AppError(status_code=404, code="plugin_not_found", message="Плагин не найден")
+        
+        old_version = plugin.version
+        new_version = self._increment_version(old_version)
+        logger.info(f"Incrementing version: {old_version} -> {new_version}")
+        
+        # Читаем TSX код
+        try:
+            if hasattr(file, 'seek') and hasattr(file.file, 'seek'):
+                await file.seek(0)
+            content = await file.read()
+            tsx_code = content.decode("utf-8")
+            logger.info(f"TSX file read successfully: {len(tsx_code)} characters")
+            
+            if not tsx_code or len(tsx_code.strip()) == 0:
+                raise AppError(
+                    status_code=400,
+                    code="empty_file",
+                    message="Файл пустой или не содержит TSX код"
+                )
+        except UnicodeDecodeError as e:
+            raise AppError(
+                status_code=400,
+                code="file_encoding_error",
+                message=f"Ошибка декодирования файла. Убедитесь, что файл в кодировке UTF-8: {str(e)}"
+            )
+        except Exception as e:
+            if isinstance(e, AppError):
+                raise
+            raise AppError(
+                status_code=400,
+                code="file_read_error",
+                message=f"Ошибка при чтении файла: {str(e)}"
+            )
+        
+        # Преобразуем TSX в HTML
+        try:
+            logger.info("Transforming TSX to HTML...")
+            html_content = transform_tsx_to_html(tsx_code, plugin.name)
+            logger.info(f"TSX transformed successfully: {len(html_content)} characters")
+        except Exception as e:
+            logger.error(f"TSX transformation error: {str(e)}", exc_info=True)
+            raise AppError(
+                status_code=400,
+                code="tsx_transform_error",
+                message=f"Ошибка при преобразовании TSX: {str(e)}"
+            )
+        
+        # Создаём новую директорию для новой версии
+        new_plugin_dir = self.plugins_dir / plugin.plugin_id / new_version
+        new_plugin_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Копируем manifest.json из старой версии и обновляем версию
+        old_plugin_dir = self.plugins_dir / plugin.plugin_id / old_version
+        old_manifest_path = old_plugin_dir / "manifest.json"
+        new_manifest_path = new_plugin_dir / "manifest.json"
+        
+        if old_manifest_path.exists():
+            manifest_data = json.loads(old_manifest_path.read_text(encoding="utf-8"))
+            manifest_data["version"] = new_version
+            new_manifest_path.write_text(json.dumps(manifest_data, indent=2, ensure_ascii=False), encoding="utf-8")
+        
+        # Записываем новый index.html
+        (new_plugin_dir / "index.html").write_text(html_content, encoding="utf-8")
+        
+        # Создаём ZIP архив для новой версии
+        import zipfile
+        zip_path = self.plugins_dir / plugin.plugin_id / f"{plugin.plugin_id}-{new_version}.zip"
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+            zip_file.write(new_plugin_dir / "index.html", "index.html")
+            if new_manifest_path.exists():
+                zip_file.write(new_manifest_path, "manifest.json")
+        
+        # Обновляем версию в БД
+        await self.repo.update_version(plugin_id, new_version)
+        
+        logger.info(f"Plugin updated successfully: plugin_id={plugin.plugin_id}, version: {old_version} -> {new_version}")
+        
+        return {
+            "id": str(plugin.id),
+            "plugin_id": plugin.plugin_id,
+            "name": plugin.name,
+            "old_version": old_version,
+            "version": new_version,
+            "is_published": plugin.is_published,
+            "updated": True,
+        }
+
     async def delete_plugin(self, plugin_id: str) -> dict:
         """Удаляет плагин (только если не опубликован).
         

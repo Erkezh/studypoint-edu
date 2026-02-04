@@ -1,12 +1,12 @@
 {
-  "id": "additiondragdrop",
-  "name": "additiondragdrop",
-  "version": "1.0.0",
+  "id": "kazakh-fractions-app",
+  "name": "kazakh-fractions-app",
+  "version": "1.0.2",
   "entry": "index.html",
   "api_version": "1",
   "capabilities": {
     "submit": true,
     "explanation": true
   },
-  "height": 800
+  "height": 400
 }

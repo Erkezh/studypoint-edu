@@ -89,11 +89,11 @@
                   <p v-if="skillStats.has(skill.id) && authStore.isAuthenticated" class="text-sm text-gray-500 mt-1">
                     SmartScore:
                     <span :class="{
-                      'text-green-600 font-semibold': skillStats.get(skill.id)!.best_smartscore >= 90,
-                      'text-blue-600': skillStats.get(skill.id)!.best_smartscore >= 70 && skillStats.get(skill.id)!.best_smartscore < 90,
-                      'text-yellow-600': skillStats.get(skill.id)!.best_smartscore < 70
+                      'text-green-600 font-semibold': (skillStats.get(skill.id)!.last_smartscore || 0) >= 90,
+                      'text-blue-600': (skillStats.get(skill.id)!.last_smartscore || 0) >= 70 && (skillStats.get(skill.id)!.last_smartscore || 0) < 90,
+                      'text-yellow-600': (skillStats.get(skill.id)!.last_smartscore || 0) < 70
                     }">
-                      {{ skillStats.get(skill.id)!.best_smartscore || skillStats.get(skill.id)!.last_smartscore || 0 }}
+                      {{ skillStats.get(skill.id)!.last_smartscore || 0 }}
                     </span>
                   </p>
                 </div>
@@ -467,7 +467,7 @@ const deleteSkill = async () => {
 
   try {
     await adminApi.deleteSkill(skillToDelete.value.id)
-    
+
     // Закрываем модальное окно
     showDeleteModal.value = false
     const deletedSkillId = skillToDelete.value.id
@@ -487,7 +487,7 @@ const deleteSkill = async () => {
     console.error('Failed to delete skill:', err)
     const status = err.response?.status
     const errorData = err.response?.data
-    
+
     // Если навык уже удален (404), это не критическая ошибка
     if (status === 404) {
       // Удаляем из локального списка и перезагружаем
@@ -501,7 +501,7 @@ const deleteSkill = async () => {
       skillToDelete.value = null
       return
     }
-    
+
     const errorMsg = errorData?.detail || errorData?.message || err.message || 'Тестті жою мүмкін болмады'
     error.value = errorMsg
   } finally {
