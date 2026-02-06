@@ -53,6 +53,10 @@ class AnalyticsService:
 
     async def skills(self, *, user_id: str) -> list[dict[str, Any]]:
         uid = _parse_uuid(user_id)
+        
+        # Import Skill model for join
+        from app.models.catalog import Skill, Grade
+        
         stmt = (
             select(
                 ProgressSnapshot.skill_id,
@@ -61,7 +65,12 @@ class AnalyticsService:
                 ProgressSnapshot.last_practiced_at,
                 ProgressSnapshot.total_questions,
                 ProgressSnapshot.accuracy_percent,
+                Skill.title.label('skill_name'),
+                Skill.grade_id,
+                Grade.number.label('grade_number'),
             )
+            .join(Skill, Skill.id == ProgressSnapshot.skill_id)
+            .join(Grade, Grade.id == Skill.grade_id)
             .where(ProgressSnapshot.user_id == uid)
             .order_by(ProgressSnapshot.last_practiced_at.desc().nullslast())
         )
@@ -79,6 +88,9 @@ class AnalyticsService:
             
             result.append({
                 "skill_id": r.skill_id,
+                "skill_name": r.skill_name,
+                "grade_id": r.grade_id,
+                "grade_number": r.grade_number,
                 "best_smartscore": r.best_smartscore,
                 "last_smartscore": r.last_smartscore,
                 "last_practiced_at": r.last_practiced_at,

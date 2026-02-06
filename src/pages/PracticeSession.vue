@@ -1,12 +1,28 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100">
     <Header />
-    <main class="container mx-auto px-4 py-8">
+
+    <!-- Breadcrumb -->
+    <div class="bg-gray-100 border-b border-gray-200 py-2 px-4">
+      <div class="container mx-auto">
+        <nav class="flex items-center text-sm text-gray-600">
+          <router-link to="/" class="hover:text-green-600">Басты бет</router-link>
+          <span class="mx-2">›</span>
+          <span v-if="skillInfo" class="text-gray-800">{{ skillInfo.gradeNumber }} сынып</span>
+          <span class="mx-2">›</span>
+          <span v-if="skillInfo" class="font-medium text-gray-900">{{ skillInfo.code }} {{ skillInfo.title }}</span>
+        </nav>
+      </div>
+    </div>
+
+    <main class="container mx-auto px-4 py-6">
+      <!-- Loading -->
       <div v-if="practiceStore.loading && !practiceStore.currentSession" class="text-center py-12">
-        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
         <p class="mt-4 text-gray-600">Сессия жүктелуде...</p>
       </div>
 
+      <!-- Error -->
       <div v-else-if="practiceStore.error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
         <p>{{ practiceStore.error }}</p>
         <Button @click="router.push({ name: 'home' })" class="mt-4" variant="primary">
@@ -14,365 +30,323 @@
         </Button>
       </div>
 
+      <!-- Main content -->
       <div v-else-if="practiceStore.currentSession && (currentQuestion || showingResult)">
-        <!-- Предупреждение о необходимости подписки (если пробные вопросы исчерпаны и пользователь не авторизован) -->
-        <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
+
+        <!-- Trial warning -->
+        <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value"
+          class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4">
           <div class="flex items-center">
             <div class="shrink-0">
               <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                <path fill-rule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clip-rule="evenodd" />
               </svg>
             </div>
             <div class="ml-3">
               <p class="text-sm text-yellow-700">
-                <strong>Сынақ кезеңі аяқталды.</strong> Практиканы жалғастыру үшін аккаунтқа кіріп, жазылымды рәсімдеңіз.
+                <strong>Сынақ кезеңі аяқталды.</strong> Практиканы жалғастыру үшін аккаунтқа кіріп, жазылымды
+                рәсімдеңіз.
               </p>
             </div>
           </div>
         </div>
 
-        <!-- Прогресс сессии -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6" :class="{ 'opacity-50': shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value }">
-          <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
-            <div>
-              <div v-if="authStore.isAuthenticated" class="flex items-center gap-3">
-                <h2 class="text-xl font-semibold">SmartScore: {{ practiceStore.smartscore }}</h2>
-              </div>
-              <span
-                :class="[
-                  'px-3 py-1 rounded-full text-sm font-medium',
-                  {
-                    'bg-yellow-100 text-yellow-800': practiceStore.zone === 'LEARNING',
-                    'bg-blue-100 text-blue-800': practiceStore.zone === 'REFINING',
-                    'bg-purple-100 text-purple-800': practiceStore.zone === 'CHALLENGE',
-                  },
-                ]"
-              >
-                {{ getZoneText(practiceStore.zone) }}
-              </span>
-            </div>
-            <div class="flex gap-4 text-sm">
-              <div>
-                <span class="text-gray-500">Уақыт:</span>
-                <span class="ml-2 font-medium text-blue-600 font-mono">{{ formatTime(currentTime) }}</span>
-              </div>
-              <div>
-                <span class="text-gray-500">Дұрыс:</span>
-                <span class="ml-2 font-medium text-green-600">{{ practiceStore.correctCount }}</span>
-              </div>
-              <div>
-                <span class="text-gray-500">Қате:</span>
-                <span class="ml-2 font-medium text-red-600">{{ practiceStore.wrongCount }}</span>
-              </div>
-              <div>
-                <span class="text-gray-500">Сұрақтар:</span>
-                <span class="ml-2 font-medium">{{ practiceStore.questionsAnswered }}</span>
-              </div>
-            </div>
-          </div>
+        <!-- Two-column layout -->
+        <div class="flex flex-col lg:flex-row gap-6">
 
-          <div v-if="practiceStore.rateLimitMessage" class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-            {{ practiceStore.rateLimitMessage }}
-          </div>
-          <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            {{ error }}
-          </div>
-        </div>
+          <!-- Main question area -->
+          <div class="flex-1 lg:w-3/4">
+            <!-- Question card -->
+            <div class="bg-white rounded-xl shadow-lg p-8 mb-6 relative"
+              :class="{ 'opacity-75': shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value }">
 
-        <!-- Результат ответа (показывается вместо вопроса после отправки) -->
-        <div v-if="showingResult && lastResult" class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div
-            :class="[
-              'rounded-lg p-6 mb-6',
-              lastResult.is_correct
-                ? 'bg-green-100 border border-green-300 text-green-800'
-                : 'bg-red-100 border border-red-300 text-red-800',
-            ]"
-          >
-            <p class="font-semibold text-lg mb-4">
-              {{ lastResult.is_correct ? '✓ Дұрыс!' : '✗ Қате' }}
-            </p>
+              <!-- Overlay for trial exhausted -->
+              <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value"
+                class="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center rounded-xl">
+                <div class="text-center p-4 bg-white bg-opacity-90 rounded-lg border-2 border-yellow-300">
+                  <p class="text-lg font-semibold text-gray-700 mb-2">Жазылым қажет</p>
+                  <p class="text-sm text-gray-600">Жалғастыру үшін аккаунтқа кіріңіз</p>
+                </div>
+              </div>
 
-            <!-- Показываем ответ пользователя и правильный ответ при неправильном ответе -->
-            <div v-if="!lastResult.is_correct" class="space-y-4 mt-4">
+              <!-- Question display - always visible when there's a question -->
+              <div v-if="currentQuestion">
+                <!-- Question prompt (hide for plugins) -->
+                <p v-if="currentQuestion.type !== 'PLUGIN'" class="text-xl text-gray-800 mb-8 leading-relaxed"
+                  v-html="containsFraction(currentQuestion.prompt) ? formatFraction(currentQuestion.prompt) : currentQuestion.prompt">
+                </p>
 
-              <!-- ТИП B: Визуальные ОТВЕТЫ (answerData) - когда пользователь рисует/выбирает -->
-              <template v-if="lastAnswerData && !lastQuestionData">
-                <!-- Дұрыс жауап с визуализацией -->
-                <div class="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <p class="font-semibold text-green-700 mb-3">✓ Дұрыс жауап:</p>
-                  <p v-if="lastAnswerData.correctDisplay?.note" class="text-sm text-gray-600 mb-3 italic">
-                    {{ lastAnswerData.correctDisplay.note }}
-                  </p>
-                  <AnswerVisualizer
-                    :data="{ type: lastAnswerData.type, ...lastAnswerData.correctDisplay }"
-                    variant="correct"
-                    class="mb-3"
-                  />
-                  <p class="text-green-700 font-medium">
-                    {{ lastAnswerData.correctDisplay?.text || formatCorrectAnswer(lastQuestion, lastResult) }}
-                  </p>
+                <!-- MCQ -->
+                <div v-if="currentQuestion.type === 'MCQ'" class="space-y-3">
+                  <button
+                    v-for="(option, index) in (currentQuestion.data?.choices || currentQuestion.data?.options || [])"
+                    :key="index" @click="submitMCQAnswer(option, Number(index))"
+                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    class="w-full text-left p-4 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <span v-html="formatMCQOption(option)"></span>
+                  </button>
                 </div>
 
-                <!-- Сіздің жауабыңыз с визуализацией -->
-                <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                  <p class="font-semibold text-gray-700 mb-3">👤 Сіздің жауабыңыз:</p>
-                  <AnswerVisualizer
-                    :data="{ type: lastAnswerData.type, ...lastAnswerData.userDisplay }"
-                    variant="user"
-                    class="mb-3"
-                  />
-                  <p class="text-gray-700 font-medium">
-                    {{ lastAnswerData.userDisplay?.text || formatUserAnswer(userAnswer, lastQuestion) }}
-                  </p>
-                </div>
-              </template>
-
-              <!-- Текстовое отображение (для вопросов с визуалом или обычных) -->
-              <template v-else>
-                <div>
-                  <p class="font-medium mb-1">Сіздің жауабыңыз:</p>
-                  <p
-                    class="text-sm bg-white px-3 py-2 rounded border border-red-400"
-                    v-html="formatUserAnswer(userAnswer, lastQuestion)"
-                  ></p>
-                </div>
-                <div>
-                  <p class="font-medium mb-1">Дұрыс жауап:</p>
-                  <p
-                    class="text-sm bg-white px-3 py-2 rounded border border-green-400"
-                    v-html="formatCorrectAnswer(lastQuestion, lastResult)"
-                  ></p>
-                </div>
-              </template>
-            </div>
-
-            <p v-if="lastResult.explanation" class="text-sm mt-4 italic">{{ lastResult.explanation }}</p>
-          </div>
-
-          <!-- Кнопки: Келесі (при !finished), К результатам (при finished). Без авто-перехода. -->
-          <div class="flex gap-4 justify-center mt-4">
-            <Button
-              v-if="!lastResult.finished"
-              @click="loadNextQuestion"
-              :disabled="loadingNext"
-              :loading="loadingNext"
-              class="px-8"
-            >
-              Келесі
-            </Button>
-            <Button
-              v-if="lastResult.finished"
-              @click="goToResults"
-              :disabled="loadingNext"
-              class="px-8"
-            >
-              Нәтижелерге өту
-            </Button>
-            <Button
-              v-if="!lastResult.finished"
-              @click="finishSession"
-              variant="outline"
-              :disabled="loadingNext"
-            >
-              Сессияны аяқтау
-            </Button>
-          </div>
-        </div>
-
-        <!-- Вопрос (скрывается после отправки ответа) -->
-        <div v-else-if="currentQuestion && !showingResult" class="bg-white rounded-lg shadow-md p-6 mb-6 relative" :class="{ 'opacity-75': shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value }">
-          <!-- Overlay для блокировки взаимодействия, если пробные вопросы исчерпаны и пользователь не авторизован -->
-          <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value" class="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center rounded-lg">
-            <div class="text-center p-4 bg-white bg-opacity-90 rounded-lg border-2 border-yellow-300">
-              <p class="text-lg font-semibold text-gray-700 mb-2">Жазылым қажет</p>
-              <p class="text-sm text-gray-600">Жалғастыру үшін аккаунтқа кіріңіз</p>
-            </div>
-          </div>
-
-          <!-- Скрываем уровень для плагинов -->
-          <div v-if="currentQuestion.type !== 'PLUGIN'" class="mb-4">
-            <span class="text-sm text-gray-500">Деңгей:</span>
-            <span class="ml-2 font-medium">{{ currentQuestion.level }}</span>
-          </div>
-
-          <div class="mb-6">
-            <!-- Скрываем prompt для плагинов - у них свой UI внутри iframe -->
-            <p
-              v-if="currentQuestion.type !== 'PLUGIN'"
-              class="text-lg font-medium mb-4"
-              v-html="containsFraction(currentQuestion.prompt) ? formatFraction(currentQuestion.prompt) : currentQuestion.prompt"
-            ></p>
-
-            <!-- MCQ (Multiple Choice Question) -->
-            <div v-if="currentQuestion.type === 'MCQ'" class="space-y-2">
-              <div v-if="!currentQuestion.data?.choices && !currentQuestion.data?.options" class="text-red-500 text-sm mb-2">
-                ⚠ Жауап нұсқалары жүктелмеді. Сұрақ деректерін тексеріңіз.
-              </div>
-              <div v-else class="text-sm text-gray-500 mb-2">
-                Нұсқалар: {{ (currentQuestion.data?.choices || currentQuestion.data?.options || []).length }}
-              </div>
-              <button
-                v-for="(option, index) in (currentQuestion.data?.choices || currentQuestion.data?.options || [])"
-                :key="index"
-                @click="submitMCQAnswer(option, index)"
-                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                class="w-full text-left p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <span v-html="formatMCQOption(option)"></span>
-              </button>
-              <div v-if="(currentQuestion.data?.choices || currentQuestion.data?.options || []).length === 0" class="text-gray-500 text-sm">
-                Қолжетімді жауап нұсқалары жоқ
-              </div>
-            </div>
-
-            <!-- NUMERIC -->
-            <div v-else-if="currentQuestion.type === 'NUMERIC'" class="space-y-4">
-              <input
-                v-model.number="numericAnswer"
-                type="number"
-                step="any"
-                placeholder="Санды енгізіңіз"
-                class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                @keyup.enter="submitAnswer(numericAnswer)"
-                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-              />
-              <Button
-                @click="submitAnswer(numericAnswer)"
-                :disabled="submitting || numericAnswer === null || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                :loading="submitting"
-              >
-                Жіберу
-              </Button>
-            </div>
-
-            <!-- TEXT -->
-            <div v-else-if="currentQuestion.type === 'TEXT'" class="space-y-4">
-              <input
-                v-model="textAnswer"
-                type="text"
-                placeholder="Жауапты енгізіңіз"
-                class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                @keyup.enter="submitAnswer(textAnswer)"
-                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-              />
-              <Button
-                @click="submitAnswer(textAnswer)"
-                :disabled="submitting || !textAnswer || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                :loading="submitting"
-              >
-                Жіберу
-              </Button>
-            </div>
-
-            <!-- INTERACTIVE (интерактивные задания с кодом) -->
-            <div v-else-if="currentQuestion.type === 'INTERACTIVE'" class="space-y-4">
-              <InteractiveQuestion
-                v-if="currentQuestion.data?.component_code"
-                :component-code="currentQuestion.data.component_code"
-                :question-data="currentQuestion.data"
-                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                @answer="handleInteractiveAnswer"
-              />
-              <div v-else class="text-red-500 text-sm">
-                ⚠ Интерактивное задание не загружено. Код компонента отсутствует.
-              </div>
-            </div>
-
-            <!-- PLUGIN (iframe плагина из /static/plugins или TSX из miniapp-v2) -->
-            <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
-              <!-- TSX плагин из miniapp-v2 (использует srcdoc) -->
-              <iframe
-                v-if="isTsxPlugin && pluginIframeSrcdoc"
-                ref="pluginIframeRef"
-                :srcdoc="pluginIframeSrcdoc"
-                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '8px' }"
-                sandbox="allow-scripts allow-same-origin"
-                class="rounded-lg"
-              />
-              <!-- Обычный плагин (использует src) -->
-              <iframe
-                v-else-if="!isTsxPlugin && pluginIframeSrc"
-                ref="pluginIframeRef"
-                :src="pluginIframeSrc"
-                :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '8px' }"
-                sandbox="allow-scripts allow-same-origin"
-                class="rounded-lg"
-              />
-              <div v-else class="text-red-500 text-sm">
-                ⚠ Плагин не загружен.
-                <template v-if="isTsxPlugin">
-                  TSX файл не найден или не загружен.
-                  <div v-if="isDev" class="text-xs text-gray-500 mt-2">
-                    Путь: {{ tsxFilePath || 'не определен' }}<br>
-                    Srcdoc длина: {{ pluginIframeSrcdoc.length || 0 }}
+                <!-- NUMERIC -->
+                <div v-else-if="currentQuestion.type === 'NUMERIC'" class="space-y-4">
+                  <div class="flex items-center gap-3">
+                    <input v-model.number="numericAnswer" type="number" step="any" placeholder="Жауап"
+                      class="w-40 p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg"
+                      @keyup.enter="submitAnswer(numericAnswer)"
+                      :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)" />
+                    <span v-if="currentQuestion.data?.unit" class="text-gray-600 text-lg">{{ currentQuestion.data.unit
+                      }}</span>
                   </div>
-                </template>
-                <template v-else>
-                  Отсутствуют plugin_id, plugin_version или entry.
-                </template>
-              </div>
-              <!-- Кнопка отправки для обычных плагинов (TSX плагины отправляют автоматически через postMessage) -->
-              <Button
-                v-if="!isTsxPlugin && pluginIframeSrc"
-                @click="requestPluginAnswer"
-                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                :loading="submitting"
-              >
-                Жіберу
-              </Button>
-            </div>
+                  <button @click="submitAnswer(numericAnswer)"
+                    :disabled="submitting || numericAnswer === null || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                  </button>
+                </div>
 
-            <!-- MULTI_SELECT или неизвестный тип -->
-            <div v-else class="space-y-4">
-              <p class="text-sm text-gray-500 mb-2">
-                Сұрақ түрі: {{ currentQuestion.type || 'Белгісіз' }}
-              </p>
-              <!-- По умолчанию показываем текстовое поле -->
-              <input
-                v-model="textAnswer"
-                type="text"
-                placeholder="Жауапты енгізіңіз"
-                class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                @keyup.enter="submitAnswer(textAnswer)"
-                :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-              />
-              <Button
-                @click="submitAnswer(textAnswer)"
-                :disabled="submitting || !textAnswer || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                :loading="submitting"
-              >
-                Жіберу
-              </Button>
+                <!-- TEXT -->
+                <div v-else-if="currentQuestion.type === 'TEXT'" class="space-y-4">
+                  <input v-model="textAnswer" type="text" placeholder="Жауапты енгізіңіз"
+                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none text-lg"
+                    @keyup.enter="submitAnswer(textAnswer)"
+                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)" />
+                  <button @click="submitAnswer(textAnswer)"
+                    :disabled="submitting || !textAnswer || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                  </button>
+                </div>
+
+                <!-- INTERACTIVE -->
+                <div v-else-if="currentQuestion.type === 'INTERACTIVE'" class="space-y-4">
+                  <InteractiveQuestion v-if="currentQuestion.data?.component_code"
+                    :component-code="currentQuestion.data.component_code" :question-data="currentQuestion.data"
+                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    @answer="handleInteractiveAnswer" />
+                  <div v-else class="text-red-500 text-sm">
+                    ⚠ Интерактивное задание не загружено.
+                  </div>
+                </div>
+
+                <!-- PLUGIN -->
+                <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
+                  <iframe v-if="isTsxPlugin && pluginIframeSrcdoc" ref="pluginIframeRef" :srcdoc="pluginIframeSrcdoc"
+                    :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
+                    sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
+                  <iframe v-else-if="!isTsxPlugin && pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
+                    :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
+                    sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
+                  <div v-else class="text-red-500 text-sm">
+                    ⚠ Плагин не загружен.
+                  </div>
+                  <button v-if="!isTsxPlugin && pluginIframeSrc" @click="requestPluginAnswer"
+                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                  </button>
+                </div>
+
+                <!-- Unknown type -->
+                <div v-else class="space-y-4">
+                  <input v-model="textAnswer" type="text" placeholder="Жауапты енгізіңіз"
+                    class="w-full p-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none"
+                    @keyup.enter="submitAnswer(textAnswer)"
+                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)" />
+                  <button @click="submitAnswer(textAnswer)"
+                    :disabled="submitting || !textAnswer || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                  </button>
+                </div>
+
+                <!-- Finish button at bottom -->
+                <div class="flex justify-end mt-8 pt-4 border-t border-gray-100">
+                  <button @click="finishSession"
+                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                    class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Сессияны аяқтау
+                  </button>
+                </div>
+              </div>
+
+              <!-- Result display - shows below question/iframe -->
+              <div v-if="showingResult && lastResult" class="mt-6">
+                <div :class="[
+                  'rounded-xl p-6',
+                  lastResult.is_correct
+                    ? 'bg-green-50 border-2 border-green-300 text-green-800'
+                    : 'bg-red-50 border-2 border-red-300 text-red-800',
+                ]">
+                  <p class="font-bold text-xl mb-4">
+                    {{ lastResult.is_correct ? '✓ Дұрыс!' : '✗ Қате' }}
+                  </p>
+
+                  <!-- Answer comparison for wrong answer -->
+                  <div v-if="!lastResult.is_correct" class="space-y-4 mt-4">
+                    <template v-if="lastAnswerData && !lastQuestionData">
+                      <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+                        <p class="font-semibold text-green-700 mb-3">✓ Дұрыс жауап:</p>
+                        <p v-if="lastAnswerData.correctDisplay?.note" class="text-sm text-gray-600 mb-3 italic">
+                          {{ lastAnswerData.correctDisplay.note }}
+                        </p>
+                        <AnswerVisualizer :data="{ type: lastAnswerData.type, ...lastAnswerData.correctDisplay }"
+                          variant="correct" class="mb-3" />
+                        <p class="text-green-700 font-medium">
+                          {{ lastAnswerData.correctDisplay?.text || formatCorrectAnswer(lastQuestion, lastResult) }}
+                        </p>
+                      </div>
+
+                      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                        <p class="font-semibold text-gray-700 mb-3">👤 Сіздің жауабыңыз:</p>
+                        <AnswerVisualizer :data="{ type: lastAnswerData.type, ...lastAnswerData.userDisplay }"
+                          variant="user" class="mb-3" />
+                        <p class="text-gray-700 font-medium">
+                          {{ lastAnswerData.userDisplay?.text || formatUserAnswer(userAnswer, lastQuestion) }}
+                        </p>
+                      </div>
+                    </template>
+
+                    <template v-else>
+                      <div>
+                        <p class="font-medium mb-1">Сіздің жауабыңыз:</p>
+                        <p class="text-sm bg-white px-3 py-2 rounded border border-red-400"
+                          v-html="formatUserAnswer(userAnswer, lastQuestion)"></p>
+                      </div>
+                      <div>
+                        <p class="font-medium mb-1">Дұрыс жауап:</p>
+                        <p class="text-sm bg-white px-3 py-2 rounded border border-green-400"
+                          v-html="formatCorrectAnswer(lastQuestion, lastResult)"></p>
+                      </div>
+                    </template>
+                  </div>
+
+                  <p v-if="lastResult.explanation" class="text-sm mt-4 italic">{{ lastResult.explanation }}</p>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="flex gap-4 justify-center mt-6">
+                  <Button v-if="!lastResult.finished" @click="loadNextQuestion" :disabled="loadingNext"
+                    :loading="loadingNext"
+                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg">
+                    Келесі
+                  </Button>
+                  <Button v-if="lastResult.finished" @click="goToResults" :disabled="loadingNext"
+                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg">
+                    Нәтижелерге өту
+                  </Button>
+                  <Button v-if="!lastResult.finished" @click="finishSession" variant="outline" :disabled="loadingNext"
+                    class="px-6 py-3">
+                    Сессияны аяқтау
+                  </Button>
+                </div>
+              </div>
+
             </div>
           </div>
 
-              <div class="flex gap-4">
-                <Button
-                  @click="finishSession"
-                  variant="outline"
-                  :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                >
-                  Сессияны аяқтау
-                </Button>
+          <!-- Right sidebar - Statistics -->
+          <div class="lg:w-64 space-y-4">
+            <!-- Questions answered -->
+            <div class="rounded-xl overflow-hidden shadow-lg">
+              <div class="bg-orange-500 text-white text-center py-2 px-4">
+                <span class="text-sm font-medium">Жауап берілді</span>
               </div>
+              <div class="bg-white text-center py-6">
+                <span class="text-4xl font-bold text-gray-800">{{ practiceStore.questionsAnswered }}</span>
+              </div>
+            </div>
+
+            <!-- Time elapsed -->
+            <div class="rounded-xl overflow-hidden shadow-lg">
+              <div class="bg-blue-500 text-white text-center py-2 px-4">
+                <span class="text-sm font-medium">Уақыт</span>
+              </div>
+              <div class="bg-white text-center py-4">
+                <div class="flex justify-center gap-1 text-gray-800">
+                  <div class="text-center">
+                    <div class="text-2xl font-bold font-mono">{{ formatTimeHours(currentTime) }}</div>
+                    <div class="text-xs text-gray-500">САҒ</div>
+                  </div>
+                  <span class="text-2xl font-bold">:</span>
+                  <div class="text-center">
+                    <div class="text-2xl font-bold font-mono">{{ formatTimeMinutes(currentTime) }}</div>
+                    <div class="text-xs text-gray-500">МИН</div>
+                  </div>
+                  <span class="text-2xl font-bold">:</span>
+                  <div class="text-center">
+                    <div class="text-2xl font-bold font-mono">{{ formatTimeSeconds(currentTime) }}</div>
+                    <div class="text-xs text-gray-500">СЕК</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SmartScore -->
+            <div class="relative group" v-if="authStore.isAuthenticated">
+              <!-- Tooltip - positioned above the container -->
+              <div
+                class="absolute bottom-full left-0 right-0 mb-2 w-72 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none"
+                style="z-index: 9999;">
+                <p class="mb-2"><strong>SmartScore</strong> — бұл пайызға негізделген баға емес, шеберлікке қарай
+                  прогресті
+                  динамикалық түрде өлшейді.</p>
+                <p>Ол сіздің деңгейіңізді қиындау сұрақтарға жауап бергенде қадағалайды. Тамаша нәтижеге (90) жету үшін
+                  сұрақтарға
+                  дұрыс жауап беріңіз, ал шеберлікке (100) жету үшін Сынақ аймағын жеңіп шығыңыз!</p>
+              </div>
+
+              <div class="rounded-xl shadow-lg">
+                <div
+                  class="bg-green-500 text-white text-center py-2 px-4 flex items-center justify-center gap-2 rounded-t-xl">
+                  <span class="text-sm font-medium">SmartScore</span>
+                  <span class="text-xs bg-white/20 px-2 py-0.5 rounded">100-ден</span>
+                  <svg class="w-4 h-4 cursor-help" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                      clip-rule="evenodd" />
+                  </svg>
+                </div>
+                <div class="bg-white text-center py-6 rounded-b-xl">
+                  <span class="text-5xl font-bold text-gray-800">{{ practiceStore.smartscore }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Correct/Wrong stats -->
+            <div class="bg-white rounded-xl p-4 shadow-lg">
+              <div class="flex justify-between items-center">
+                <div class="text-center flex-1">
+                  <div class="text-2xl font-bold text-green-600">{{ practiceStore.correctCount }}</div>
+                  <div class="text-xs text-gray-500">Дұрыс</div>
+                </div>
+                <div class="w-px h-10 bg-gray-200"></div>
+                <div class="text-center flex-1">
+                  <div class="text-2xl font-bold text-red-500">{{ practiceStore.wrongCount }}</div>
+                  <div class="text-xs text-gray-500">Қате</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
+      <!-- No session found -->
       <div v-else class="text-center py-12 text-gray-600">
-        <p>Сессия не найдена или завершена</p>
+        <p>Сессия табылмады немесе аяқталды</p>
         <Button @click="router.push({ name: 'home' })" class="mt-4">Басты бетке</Button>
       </div>
     </main>
+
     <Footer />
 
-    <!-- Модальное окно о завершении пробного периода -->
-    <Modal
-      :is-open="showTrialEndedModal"
-      title="Сынақ кезеңі аяқталды"
-      :show-close="false"
-      @close="showTrialEndedModal = false"
-    >
+    <!-- Trial ended modal -->
+    <Modal :is-open="showTrialEndedModal" title="Сынақ кезеңі аяқталды" :show-close="false"
+      @close="showTrialEndedModal = false">
       <template #content>
         <p class="text-gray-700 mb-4">
           Сіз бүгін барлық {{ TRIAL_QUESTIONS_LIMIT }} тегін сұрақтарды пайдаландыңыз.
@@ -393,9 +367,11 @@
   </div>
 </template>
 
+
 <script setup lang="ts">
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
 import { useTrialQuestions } from '@/composables/useTrialQuestions'
@@ -415,7 +391,6 @@ interface Props {
 
 const props = defineProps<Props>()
 const router = useRouter()
-const route = useRoute()
 const practiceStore = usePracticeStore()
 const authStore = useAuthStore()
 
@@ -428,8 +403,8 @@ const previousBestScore = ref<number | null>(null)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
-// Computed property для проверки режима разработки (для использования в шаблоне)
-const isDev = computed(() => import.meta.env.DEV)
+// Режим разработки - временно закомментировано
+// const isDev = computed(() => import.meta.env.DEV)
 
 const currentQuestion = computed(() => practiceStore.currentQuestion)
 
@@ -545,9 +520,10 @@ const loadTsxPlugin = async () => {
 
     // Трансформируем и создаем HTML для iframe
     pluginIframeSrcdoc.value = createTsxIframeHtml(tsxCode)
-  } catch (err: any) {
+  } catch (err: Error | unknown) {
     console.error('Failed to load TSX plugin:', err)
-    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${err.message}</p></body></html>`
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${errorMessage}</p></body></html>`
   }
 }
 
@@ -586,7 +562,7 @@ const lastResult = ref<PracticeSubmitResponse | null>(null)
 const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
 const questionStartTime = ref(Date.now())
 const showingResult = ref(false) // Показывать ли результат вместо вопроса
-const userAnswer = ref<any>(null) // Сохраненный ответ пользователя
+const userAnswer = ref<unknown>(null) // Сохраненный ответ пользователя
 const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
 const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
 const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
@@ -598,14 +574,15 @@ let timeInterval: number | null = null // Интервал для обновле
 const error = ref<string | null>(null) // Ошибка для отображения
 
 // Для всех авторизованных пользователей ограничения не применяются
-const hasActiveSubscription = computed(() => {
-  // Все авторизованные пользователи имеют доступ без ограничений
-  return authStore.isAuthenticated
-})
+// hasActiveSubscription используется для будущего функционала подписок
+const _hasActiveSubscription = computed(() => authStore.isAuthenticated)
+void _hasActiveSubscription.value // suppress unused warning
+
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 // Для авторизованных пользователей пробные вопросы не применяются
 const shouldCheckTrialQuestions = computed(() => !isAuthenticated.value)
-const remainingTrialQuestions = computed(() => trialQuestions.remainingTrialQuestions.value)
+const _remainingTrialQuestions = computed(() => trialQuestions.remainingTrialQuestions.value)
+void _remainingTrialQuestions.value // suppress unused warning
 const TRIAL_QUESTIONS_LIMIT = trialQuestions.TRIAL_QUESTIONS_LIMIT
 
 // Модальное окно для завершения пробного периода
@@ -627,7 +604,8 @@ const goToHome = () => {
   router.push({ name: 'home' })
 }
 
-const getZoneText = (zone: string) => {
+// getZoneText - для будущего функционала зон
+const _getZoneText = (zone: string) => {
   const zones: Record<string, string> = {
     LEARNING: 'Оқу',
     REFINING: 'Жетілдіру',
@@ -635,9 +613,10 @@ const getZoneText = (zone: string) => {
   }
   return zones[zone] || zone
 }
+void _getZoneText // suppress unused warning
 
-// Форматирование времени в формат MM:SS или HH:MM:SS
-const formatTime = (seconds: number): string => {
+// Форматирование времени в формат MM:SS или HH:MM:SS - для будущего использования
+const _formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
@@ -647,6 +626,45 @@ const formatTime = (seconds: number): string => {
   }
   return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
+void _formatTime // suppress unused warning
+
+// Форматирование компонентов времени для IXL-стиля отображения
+const formatTimeHours = (seconds: number): string => {
+  return Math.floor(seconds / 3600).toString().padStart(2, '0')
+}
+
+const formatTimeMinutes = (seconds: number): string => {
+  return Math.floor((seconds % 3600) / 60).toString().padStart(2, '0')
+}
+
+const formatTimeSeconds = (seconds: number): string => {
+  return (seconds % 60).toString().padStart(2, '0')
+}
+
+// Информация о навыке для хлебных крошек
+const skillInfo = computed(() => {
+  const session = practiceStore.currentSession
+  if (!session) return null
+
+  // Получаем информацию о навыке из store или данных сессии
+  const skillId = session.skill_id
+  const skill = catalogStore.skillDetails.get(skillId)
+
+  if (skill) {
+    return {
+      gradeNumber: skill.grade_id || 6,
+      code: skill.code || 'A.1',
+      title: skill.title
+    }
+  }
+
+  // Fallback: используем данные из сессии
+  return {
+    gradeNumber: (session as any).grade_number || 6,
+    code: (session as any).skill_code || 'A.1',
+    title: (session as any).skill_title || 'Тапсырма'
+  }
+})
 
 // Запуск таймера
 const startTimer = () => {
@@ -734,20 +752,20 @@ const extractAnswerFromExplanation = (explanation: string | null | undefined): s
   // Пытаемся найти ответ в формате "= 104" или "=104" в конце строки
   const equalsMatch = explanation.match(/=\s*(\d+(?:\.\d+)?)\s*$/i)
   if (equalsMatch) {
-    return equalsMatch[1]
+    return equalsMatch[1] ?? null
   }
 
   // Пытаемся найти число после знака равенства в любом месте
   const equalsAnywhere = explanation.match(/=\s*(\d+(?:\.\d+)?)/i)
   if (equalsAnywhere) {
-    return equalsAnywhere[1]
+    return equalsAnywhere[1] ?? null
   }
 
   // Пытаемся найти последнее число в строке (может быть ответом)
   const numbers = explanation.match(/\d+(?:\.\d+)?/g)
   if (numbers && numbers.length > 0) {
     // Берем последнее число как потенциальный ответ
-    return numbers[numbers.length - 1]
+    return numbers[numbers.length - 1] ?? null
   }
 
   return null
@@ -969,7 +987,7 @@ const submitMCQAnswer = async (option: any, index: number) => {
     // Если вариант - объект без "id", используем value, label, text или choice
     else if (typeof exactChoice === 'object' && exactChoice !== null) {
       const extracted = exactChoice.value !== undefined ? String(exactChoice.value) :
-                        (exactChoice.label || exactChoice.text || exactChoice.choice || String(exactChoice))
+        (exactChoice.label || exactChoice.text || exactChoice.choice || String(exactChoice))
       choiceValue = typeof extracted === 'string' ? extracted.trim() : String(extracted)
     }
     // Если вариант - строка или число, используем его значение
@@ -992,7 +1010,7 @@ const submitMCQAnswer = async (option: any, index: number) => {
         choiceValue = String(option.id).trim()
       } else {
         const extracted = option.value !== undefined ? String(option.value) :
-                          (option.label || option.text || option.choice || String(option))
+          (option.label || option.text || option.choice || String(option))
         choiceValue = typeof extracted === 'string' ? extracted.trim() : String(extracted)
       }
     } else {
@@ -1092,7 +1110,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 
       // Проверяем, что выбранный вариант существует в списке choices
       // Важно: сравниваем точно, учитывая тип исходного варианта
-      const choiceExists = choices.some((c: any) => {
+      // Проверка выполняется, но результат не используется, т.к. мы продолжаем в любом случае
+      choices.some((c: any) => {
         // Если вариант - число, сравниваем как число и как строка
         if (typeof c === 'number') {
           return String(c) === choiceStr || c === Number(choiceStr)
@@ -1137,7 +1156,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
     }
 
     // Убеждаемся, что объект не пустой
-    if (Object.keys(submittedAnswer).length === 0) {
+    if (!submittedAnswer || Object.keys(submittedAnswer).length === 0) {
       submittedAnswer = { answer: String(answer) }
     }
 
@@ -1198,7 +1217,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       }
 
       // SmartScore 100: завершаем сессию
-      const currentSmartScore = response.session?.current_smartscore || response.session?.smartscore || 0
+      const sessionAny = response.session as any
+      const currentSmartScore = sessionAny?.current_smartscore || sessionAny?.smartscore || 0
       if (currentSmartScore >= 100 && !response.finished) {
         try {
           await practiceStore.finishSession(practiceStore.currentSession!.id)
@@ -1242,7 +1262,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           submitting.value = false
           return
         }
-      } catch (_) {
+      } catch {
         // fallback to results below
       }
       stopTimer()
@@ -1284,8 +1304,8 @@ const loadNextQuestion = async () => {
     textAnswer.value = ''
 
     // Загружаем следующий вопрос
-    const hasNextQuestion = lastResult.value?.next_question !== null && lastResult.value?.next_question !== undefined
-    if (!hasNextQuestion || !practiceStore.currentQuestion) {
+    // lastResult.value уже null, поэтому всегда загружаем следующий вопрос
+    if (!practiceStore.currentQuestion) {
       await practiceStore.getNextQuestion(practiceStore.currentSession.id)
     }
     questionStartTime.value = Date.now()
@@ -1409,7 +1429,7 @@ onMounted(async () => {
         if (skillStats && skillStats.best_smartscore) {
           previousBestScore.value = skillStats.best_smartscore
         }
-      } catch (err) {
+      } catch {
         // Игнорируем ошибку загрузки статистики
       }
     }

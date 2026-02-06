@@ -464,25 +464,24 @@ const deleteSkill = async () => {
 
   deletingSkillId.value = skillToDelete.value.id
   error.value = null
+  const deletedSkillId = skillToDelete.value.id
 
   try {
-    await adminApi.deleteSkill(skillToDelete.value.id)
+    await adminApi.deleteSkill(deletedSkillId)
 
     // Закрываем модальное окно
     showDeleteModal.value = false
-    const deletedSkillId = skillToDelete.value.id
     skillToDelete.value = null
 
-    // Удаляем из локального списка сразу (оптимистичное обновление)
-    const index = skills.value.findIndex(s => s.id === deletedSkillId)
-    if (index !== -1) {
-      skills.value.splice(index, 1)
-    }
+    // Удаляем из store сразу (оптимистичное обновление)
+    // Это обновление UI будет мгновенным
+    catalogStore.removeSkillFromCache(deletedSkillId)
     skillStats.value.delete(deletedSkillId)
 
-    // Очищаем кэш навыков и перезагружаем список
-    catalogStore.clearSkillsCache()
-    await catalogStore.getSkills({ grade_number: currentGradeId.value }, true)
+    // Принудительно очищаем кэш запросов, чтобы при следующем заходе данные обновились
+    // Но НЕ вызываем перезагрузку прямо сейчас, чтобы избежать race condition (когда база еще не обновилась)
+    // catalogStore.clearSkillsCache() НЕ вызываем, так как removeSkillFromCache уже чистит конкретные записи
+
   } catch (err: any) {
     console.error('Failed to delete skill:', err)
     const status = err.response?.status
@@ -490,13 +489,9 @@ const deleteSkill = async () => {
 
     // Если навык уже удален (404), это не критическая ошибка
     if (status === 404) {
-      // Удаляем из локального списка и перезагружаем
-      const index = skills.value.findIndex(s => s.id === skillToDelete.value!.id)
-      if (index !== -1) {
-        skills.value.splice(index, 1)
-      }
-      skillStats.value.delete(skillToDelete.value.id)
-      await catalogStore.getSkills({ grade_number: currentGradeId.value }, true)
+      // Удаляем из store и закрываем модалку
+      catalogStore.removeSkillFromCache(deletedSkillId)
+      skillStats.value.delete(deletedSkillId)
       showDeleteModal.value = false
       skillToDelete.value = null
       return

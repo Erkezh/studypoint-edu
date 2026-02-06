@@ -56,7 +56,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       if (response.data) {
         subjects.value = response.data
         lastFetch.value.set('subjects', Date.now())
-        
+
         // Сохраняем в localStorage для кэша
         localStorage.setItem('catalog_subjects', JSON.stringify(response.data))
         localStorage.setItem('catalog_subjects_time', Date.now().toString())
@@ -91,7 +91,7 @@ export const useCatalogStore = defineStore('catalog', () => {
       if (response.data) {
         grades.value = response.data
         lastFetch.value.set('grades', Date.now())
-        
+
         localStorage.setItem('catalog_grades', JSON.stringify(response.data))
         localStorage.setItem('catalog_grades_time', Date.now().toString())
       }
@@ -187,6 +187,20 @@ export const useCatalogStore = defineStore('catalog', () => {
     lastFetch.value.delete('skills')
   }
 
+  // Удаляет навык из кэша по ID (для оптимистичного обновления UI)
+  const removeSkillFromCache = (skillId: number) => {
+    skills.value = skills.value.filter(s => s.id !== skillId)
+    // Также очищаем из skillsCache если есть
+    skillsCache.value.forEach((cachedSkills, key) => {
+      const filtered = cachedSkills.filter(s => s.id !== skillId)
+      if (filtered.length !== cachedSkills.length) {
+        skillsCache.value.set(key, filtered)
+      }
+    })
+    // Удаляем детали навыка если есть
+    skillDetails.value.delete(skillId)
+  }
+
   // Инициализация из localStorage при создании store
   const init = () => {
     try {
@@ -229,5 +243,6 @@ export const useCatalogStore = defineStore('catalog', () => {
     getSkill,
     getSkillStats,
     clearSkillsCache,
+    removeSkillFromCache,
   }
 })

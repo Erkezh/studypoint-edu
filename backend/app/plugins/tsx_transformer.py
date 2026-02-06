@@ -13,6 +13,69 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def fix_invalid_function_syntax(tsx_code: str) -> str:
+    """Исправляет неправильный синтаксис функций, сгенерированный AI.
+    
+    AI модели иногда генерируют невалидный синтаксис:
+        ComponentName() { ... }
+    
+    Вместо правильного:
+        function ComponentName() { ... }
+    
+    Эта функция автоматически исправляет такие ошибки.
+    
+    Args:
+        tsx_code: Исходный TSX/JSX код
+        
+    Returns:
+        Исправленный код
+    """
+    # Паттерн: в начале строки (с возможными пробелами) идёт имя функции,
+    # потом круглые скобки, потом открывающая фигурная скобка
+    # Но это НЕ внутри класса (не метод) и НЕ после "function" или "const" или "=>"
+    
+    # Разбиваем код на строки для анализа
+    lines = tsx_code.split('\n')
+    fixed_lines = []
+    
+    # Паттерн для невалидного синтаксиса (имя функции в начале строки)
+    # Ищем: [пробелы]ИмяКомпонента([параметры]) {
+    # Но НЕ если перед ним есть function, const, let, var, class, или это метод класса
+    invalid_pattern = re.compile(
+        r'^(\s*)([A-Z][a-zA-Z0-9_]*)\s*\(([^)]*)\)\s*\{',
+        re.MULTILINE
+    )
+    
+    # Проверяем каждую строку
+    for i, line in enumerate(lines):
+        match = invalid_pattern.match(line)
+        if match:
+            indent = match.group(1)
+            func_name = match.group(2)
+            params = match.group(3)
+            
+            # Проверяем, что это не метод класса (предыдущая строка не содержит class или {)
+            # и что строка не начинается с ключевых слов
+            prev_lines_text = '\n'.join(lines[max(0, i-5):i])
+            
+            # Проверяем контекст - если мы внутри класса, не трогаем
+            # Подсчитываем баланс фигурных скобок
+            open_braces = prev_lines_text.count('{') - prev_lines_text.count('}')
+            
+            # Если мы НЕ внутри класса (open_braces == 0 или строка на верхнем уровне),
+            # и это выглядит как компонент React (начинается с заглавной)
+            if open_braces == 0:
+                # Это невалидный синтаксис на верхнем уровне - исправляем
+                fixed_line = f"{indent}function {func_name}({params}) {{"
+                fixed_lines.append(fixed_line)
+                logger.info(f"Auto-fixed invalid syntax at line {i+1}: '{line.strip()}' -> '{fixed_line.strip()}'")
+                continue
+        
+        fixed_lines.append(line)
+    
+    return '\n'.join(fixed_lines)
+
+
 def compile_with_esbuild(tsx_code: str) -> str:
     """Компилирует TSX/JSX код в JavaScript через esbuild.
     
@@ -84,6 +147,9 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
     Returns:
         HTML код плагина
     """
+    # Автоисправление неправильного синтаксиса функций (AI иногда генерирует невалидный код)
+    tsx_code = fix_invalid_function_syntax(tsx_code)
+    
     # Извлекаем имя компонента
     export_match = re.search(r'export\s+default\s+(\w+)', tsx_code)
     component_name = export_match.group(1) if export_match else 'App'

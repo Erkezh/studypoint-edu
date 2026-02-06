@@ -143,10 +143,12 @@ class AdminService:
         # Сначала удаляем все связанные вопросы (каскадное удаление может не сработать из-за ограничений БД)
         # Используем массовое удаление для эффективности
         await self.session.execute(delete(Question).where(Question.skill_id == skill_id))
+        await self.session.flush()  # Важно: flush() сохраняет изменения в БД
         
         # Затем удаляем сам навык
-        # Транзакция коммитится автоматически через session.begin() в get_db_session()
         await self.session.delete(skill)
+        await self.session.flush()  # Важно: flush() сохраняет изменения в БД
+        # Транзакция коммитится автоматически через session.begin() в get_db_session()
 
     async def list_questions(
         self, 

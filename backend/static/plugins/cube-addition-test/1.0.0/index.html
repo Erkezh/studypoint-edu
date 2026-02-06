@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>cube-addition-test</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect, useRef } = React;
+const { Check, X } = window.lucideReact;
+const CubeAdditionTest = () => {
+  const [problem, setProblem] = useState(null);
+  const [addedCubes, setAddedCubes] = useState(0);
+  const [userAnswer, setUserAnswer] = useState("");
+  const [showResult, setShowResult] = useState(false);
+  const [draggedCube, setDraggedCube] = useState(null);
+  const containerRef = useRef(null);
+  const generateProblem = () => {
+    const initial = Math.floor(Math.random() * 7) + 3;
+    const toAdd = Math.floor(Math.random() * 5) + 1;
+    const total = initial + toAdd;
+    return {
+      id: Date.now(),
+      question: `\u041C\u04B1\u043D\u0434\u0430 ${initial} \u0442\u0435\u043A\u0448\u0435 \u0431\u0430\u0440. \u0422\u0430\u0493\u044B ${toAdd} \u0442\u0435\u043A\u0448\u0435 \u049B\u043E\u0441\u044B\u04A3\u044B\u0437`,
+      initialCubes: initial,
+      cubesToAdd: toAdd,
+      correctAnswer: String(total),
+      visualData: {
+        type: "cubes",
+        cubes: {
+          initial,
+          toAdd,
+          total
+        }
+      }
+    };
+  };
+  const sendHeight = () => {
+    if (window.parent !== window && containerRef.current) {
+      window.parent.postMessage(
+        { type: "resize", height: containerRef.current.scrollHeight + 20 },
+        "*"
+      );
+    }
+  };
+  useEffect(() => {
+    setProblem(generateProblem());
+  }, []);
+  useEffect(() => {
+    console.log("addedCubes changed:", addedCubes);
+  }, [addedCubes]);
+  useEffect(() => {
+    sendHeight();
+    setTimeout(sendHeight, 100);
+  }, [problem, showResult, addedCubes]);
+  const handleDragStart = () => {
+    setDraggedCube(1);
+  };
+  const handleDragEnd = () => {
+    setDraggedCube(null);
+  };
+  const handleDragOver = (e) => {
+    e.preventDefault();
+  };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    const newCount = addedCubes + 1;
+    console.log("Adding cube:", newCount);
+    setAddedCubes(newCount);
+    setDraggedCube(null);
+  };
+  const handleRemoveCube = () => {
+    if (addedCubes > 0) {
+      setAddedCubes((prev) => prev - 1);
+      console.log("Removing cube, new count:", addedCubes - 1);
+    }
+  };
+  const handleSubmit = () => {
+    if (!userAnswer || !problem) return;
+    const isCorrect = userAnswer === problem.correctAnswer;
+    window.parent.postMessage(
+      {
+        type: "exercise-result",
+        isCorrect,
+        question: problem.question,
+        userAnswer,
+        correctAnswer: problem.correctAnswer,
+        questionData: problem.visualData
+      },
+      "*"
+    );
+    setShowResult(true);
+  };
+  const handleNext = () => {
+    setProblem(generateProblem());
+    setUserAnswer("");
+    setShowResult(false);
+    setAddedCubes(0);
+  };
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && userAnswer && !showResult) {
+      handleSubmit();
+    }
+  };
+  if (!problem) return null;
+  const canSubmit = userAnswer;
+  return /* @__PURE__ */ React.createElement("div", { ref: containerRef, className: "p-6 max-w-3xl mx-auto" }, /* @__PURE__ */ React.createElement("div", { className: "mb-6 text-center" }, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-semibold text-gray-800 mb-2" }, problem.question), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600" }, "\u0422\u0435\u043A\u0448\u0435\u043B\u0435\u0440\u0434\u0456 \u0431\u0456\u0440-\u0431\u0456\u0440\u043B\u0435\u043F \u0441\u04AF\u0439\u0440\u0435\u043F \u04D9\u043A\u0435\u043B\u0456\u04A3\u0456\u0437")), /* @__PURE__ */ React.createElement("div", { className: "bg-gradient-to-b from-blue-50 to-white rounded-xl p-8 mb-6 border-2 border-blue-200" }, /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 mb-3 text-center" }, "\u0411\u0430\u0441\u0442\u0430\u043F\u049B\u044B \u0442\u0435\u043A\u0448\u0435\u043B\u0435\u0440:", addedCubes > 0 && /* @__PURE__ */ React.createElement("span", { className: "ml-2 text-green-600" }, "(\u0416\u0430\u0441\u044B\u043B \u0442\u0435\u043A\u0448\u0435\u043D\u0456 \u0431\u0430\u0441\u044B\u043F \u0436\u043E\u044E)")), /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: "flex flex-wrap gap-3 justify-center p-4 bg-white rounded-lg border-2 border-dashed border-blue-300 min-h-[100px]",
+      onDragOver: handleDragOver,
+      onDrop: handleDrop
+    },
+    Array.from({ length: problem.initialCubes }).map((_, i) => /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: `initial-${i}`,
+        className: "w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg flex items-center justify-center transform transition-transform hover:scale-105",
+        style: {
+          boxShadow: "4px 4px 8px rgba(0,0,0,0.2), inset -2px -2px 4px rgba(0,0,0,0.1)"
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 border-2 border-blue-300 rounded" })
+    )),
+    Array.from({ length: addedCubes }).map((_, i) => /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: `added-${i}`,
+        onClick: handleRemoveCube,
+        className: "w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow-lg flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity relative group",
+        style: {
+          boxShadow: "4px 4px 8px rgba(0,0,0,0.2), inset -2px -2px 4px rgba(0,0,0,0.1)"
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 border-2 border-green-300 rounded" }),
+      /* @__PURE__ */ React.createElement("div", { className: "absolute inset-0 bg-red-500 bg-opacity-0 group-hover:bg-opacity-20 rounded-lg flex items-center justify-center transition-all" }, /* @__PURE__ */ React.createElement("span", { className: "text-white text-2xl font-bold opacity-0 group-hover:opacity-100" }, "\xD7"))
+    ))
+  )), /* @__PURE__ */ React.createElement("div", { className: "border-t-2 border-gray-200 pt-6" }, /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 mb-3 text-center" }, "\u0422\u0435\u043A\u0448\u0435\u043D\u0456 \u0436\u043E\u0493\u0430\u0440\u044B\u0493\u0430 \u0441\u04AF\u0439\u0440\u0435\u04A3\u0456\u0437:"), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      draggable: true,
+      onDragStart: handleDragStart,
+      onDragEnd: handleDragEnd,
+      className: `w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg shadow-lg flex items-center justify-center cursor-move transform transition-all hover:scale-110 ${draggedCube ? "opacity-40 scale-95" : ""}`,
+      style: {
+        boxShadow: "4px 4px 8px rgba(0,0,0,0.2), inset -2px -2px 4px rgba(0,0,0,0.1)"
+      }
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "w-10 h-10 border-2 border-amber-300 rounded" })
+  )))), addedCubes > 0 && /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-lg border-2 border-purple-200 p-6 mb-6" }, /* @__PURE__ */ React.createElement("p", { className: "text-lg font-medium text-gray-800 mb-4 text-center" }, "\u0411\u0430\u0440\u043B\u044B\u0493\u044B \u049B\u0430\u043D\u0448\u0430 \u0442\u0435\u043A\u0448\u0435 \u0431\u043E\u043B\u0434\u044B?"), /* @__PURE__ */ React.createElement("div", { className: "flex items-center justify-center gap-3" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswer,
+      onChange: (e) => setUserAnswer(e.target.value.replace(/[^0-9]/g, "")),
+      onKeyPress: handleKeyPress,
+      placeholder: "\u0416\u0430\u0443\u0430\u043F\u0442\u044B \u0435\u043D\u0433\u0456\u0437\u0456\u04A3\u0456\u0437",
+      disabled: showResult,
+      className: "w-32 px-4 py-3 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 disabled:bg-gray-100"
+    }
+  ), /* @__PURE__ */ React.createElement("span", { className: "text-2xl text-gray-600" }, "\u0442\u0435\u043A\u0448\u0435"))), showResult && /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      className: `p-6 rounded-lg mb-6 ${userAnswer === problem.correctAnswer ? "bg-green-50 border-2 border-green-300" : "bg-red-50 border-2 border-red-300"}`
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-3 mb-3" }, userAnswer === problem.correctAnswer ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(Check, { className: "w-6 h-6 text-green-600" }), /* @__PURE__ */ React.createElement("span", { className: "text-lg font-semibold text-green-700" }, "\u0414\u04B1\u0440\u044B\u0441!")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(X, { className: "w-6 h-6 text-red-600" }), /* @__PURE__ */ React.createElement("span", { className: "text-lg font-semibold text-red-700" }, "\u049A\u0430\u0442\u0435"))),
+    /* @__PURE__ */ React.createElement("div", { className: "text-gray-700" }, /* @__PURE__ */ React.createElement("p", { className: "mb-1" }, "\u0421\u0456\u0437\u0434\u0456\u04A3 \u0436\u0430\u0443\u0430\u0431\u044B\u04A3\u044B\u0437: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold" }, userAnswer)), userAnswer !== problem.correctAnswer && /* @__PURE__ */ React.createElement("p", null, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u0431\u044B: ", /* @__PURE__ */ React.createElement("span", { className: "font-bold text-green-600" }, problem.correctAnswer)), /* @__PURE__ */ React.createElement("p", { className: "mt-2 text-sm text-gray-600" }, problem.initialCubes, " + ", problem.cubesToAdd, " = ", problem.correctAnswer))
+  ), /* @__PURE__ */ React.createElement("div", { className: "flex gap-3 justify-center" }, !showResult ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleSubmit,
+      disabled: !canSubmit,
+      className: `px-8 py-3 rounded-lg font-semibold transition-all ${canSubmit ? "bg-purple-600 text-white hover:bg-purple-700 shadow-md hover:shadow-lg" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`
+    },
+    "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+  ) : /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleNext,
+      className: "px-8 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg"
+    },
+    "\u041A\u0435\u043B\u0435\u0441\u0456 \u0442\u0430\u043F\u0441\u044B\u0440\u043C\u0430"
+  )));
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(CubeAdditionTest));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>
