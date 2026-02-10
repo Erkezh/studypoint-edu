@@ -7,7 +7,12 @@
       <nav class="analytics-tabs">
         <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
           :class="['tab-item', { active: activeTab === tab.id }]">
-          <span class="tab-icon">{{ tab.icon }}</span>
+          <span class="tab-icon">
+            <svg v-if="tab.id === 'summary'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            <svg v-else-if="tab.id === 'trouble'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+            <svg v-else-if="tab.id === 'questions'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+            <svg v-else-if="tab.id === 'progress'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+          </span>
           {{ tab.label }}
         </button>
       </nav>
@@ -18,19 +23,19 @@
       <div class="filter-group grade-range-filter">
         <label @click="toggleGradeDropdown" class="filter-label clickable">
           СЫНЫП ДЕҢГЕЙІ: {{ gradeRangeLabel }}
-          <span class="dropdown-arrow">▼</span>
+          <svg class="dropdown-arrow w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
         </label>
         <div v-if="showGradeDropdown" class="grade-dropdown-popup">
           <p class="dropdown-title">Осы сыныптардағы дағдыларды көрсету:</p>
           <div class="grade-range-selectors">
             <select v-model="gradeFrom" class="filter-select small">
-              <option :value="-1">-1</option>
+              <option :value="-1">Pre-K</option>
               <option :value="0">0</option>
               <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
             </select>
             <span class="range-separator">-</span>
             <select v-model="gradeTo" class="filter-select small">
-              <option :value="-1">-1</option>
+              <option :value="-1">Pre-K</option>
               <option :value="0">0</option>
               <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
             </select>
@@ -171,11 +176,15 @@
                 <tr>
                   <th @click="sortBy('skill')">
                     Дағды
-                    <span class="sort-icon">↕</span>
+                    <span class="sort-icon inline-block ml-1">
+                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                    </span>
                   </th>
                   <th @click="sortBy('lastPracticed')">
                     Соңғы жаттығу
-                    <span class="sort-icon">↕</span>
+                    <span class="sort-icon inline-block ml-1">
+                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                    </span>
                   </th>
                 </tr>
               </thead>
@@ -196,14 +205,18 @@
         <!-- ========== TROUBLE SPOTS TAB ========== -->
         <div v-if="activeTab === 'trouble'">
           <div class="trouble-section">
-            <h2 class="section-header">
-              <span class="icon-warning">⚠️</span>
+            <h2 class="section-header flex items-center gap-2">
+              <span class="icon-warning">
+                <svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+              </span>
               Қиындықтар — Қайталау керек тақырыптар
             </h2>
             <p class="section-desc">Бұл сұрақтарға қате жауап берілді. Оларды қайта қарап, түсініңіз.</p>
 
             <div v-if="incorrectQuestions.length === 0" class="empty-state success">
-              <span class="success-icon">✓</span>
+              <span class="success-icon flex items-center justify-center">
+                <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              </span>
               <p class="success-text">Керемет! Қателер жоқ!</p>
               <p class="success-subtext">Барлық сұрақтарға дұрыс жауап бердіңіз.</p>
             </div>
@@ -217,11 +230,17 @@
                 <p v-if="question.question_prompt" class="problem-text">{{ question.question_prompt }}</p>
                 <div class="answer-comparison">
                   <div class="user-answer">
-                    <span class="answer-label">❌ Сіздің жауабыңыз:</span>
+                    <span class="answer-label flex items-center gap-1">
+                      <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      Сіздің жауабыңыз:
+                    </span>
                     <span class="answer-value">{{ formatAnswer(question.user_answer) }}</span>
                   </div>
                   <div class="correct-answer">
-                    <span class="answer-label">✓ Дұрыс жауап:</span>
+                    <span class="answer-label flex items-center gap-1">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                      Дұрыс жауап:
+                    </span>
                     <span class="answer-value">{{ formatAnswer(question.correct_answer) }}</span>
                   </div>
                 </div>
@@ -233,7 +252,10 @@
         <!-- ========== QUESTIONS TAB ========== -->
         <div v-if="activeTab === 'questions'">
           <div class="questions-section">
-            <h2 class="section-header">📝 Барлық сұрақтар</h2>
+            <h2 class="section-header flex items-center gap-2">
+              <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+              Барлық сұрақтар
+            </h2>
 
             <div v-if="analyticsStore.allQuestions.length === 0" class="empty-state">
               <p>Әзірге сұрақтар жоқ</p>
@@ -243,8 +265,10 @@
               <div v-for="question in analyticsStore.allQuestions" :key="question.attempt_id"
                 :class="['question-card', question.is_correct ? 'correct' : 'incorrect']">
                 <div class="question-header">
-                  <span :class="['status-badge', question.is_correct ? 'success' : 'error']">
-                    {{ question.is_correct ? '✓ Дұрыс' : '✗ Қате' }}
+                  <span :class="['status-badge flex items-center gap-1', question.is_correct ? 'success' : 'error']">
+                    <svg v-if="question.is_correct" class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <svg v-else class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    {{ question.is_correct ? 'Дұрыс' : 'Қате' }}
                   </span>
                   <span class="question-date">{{ formatDate(question.answered_at) }}</span>
                 </div>
@@ -267,7 +291,10 @@
         <!-- ========== PROGRESS TAB ========== -->
         <div v-if="activeTab === 'progress'">
           <div class="progress-section">
-            <h2 class="section-header">📈 Прогресс</h2>
+            <h2 class="section-header flex items-center gap-2">
+              <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+              Прогресс
+            </h2>
 
             <div class="progress-stats">
               <div class="progress-card">
@@ -316,10 +343,10 @@ const catalogStore = useCatalogStore()
 
 // Tab configuration
 const tabs = [
-  { id: 'summary', label: 'Қорытынды', icon: '📊' },
-  { id: 'trouble', label: 'Қиындықтар', icon: '⚠️' },
-  { id: 'questions', label: 'Сұрақтар', icon: '📝' },
-  { id: 'progress', label: 'Прогресс', icon: '📈' },
+  { id: 'summary', label: 'Қорытынды' },
+  { id: 'trouble', label: 'Қиындықтар' },
+  { id: 'questions', label: 'Сұрақтар' },
+  { id: 'progress', label: 'Прогресс' },
 ]
 
 const activeTab = ref<string>('summary')
@@ -333,19 +360,16 @@ const skillNames = ref<Map<number, string>>(new Map())
 
 // Grade range label for display
 const gradeRangeLabel = computed(() => {
+  const formatGrade = (g: number) => g === -1 ? 'Pre-K' : g
   if (gradeFrom.value === -1 && gradeTo.value === 12) {
     return 'Барлық сыныптар'
   }
   if (gradeFrom.value === gradeTo.value) {
-    return `${gradeFrom.value} сынып`
+    return `${formatGrade(gradeFrom.value)} сынып`
   }
-  return `${gradeFrom.value} - ${gradeTo.value} сынып`
+  return `${formatGrade(gradeFrom.value)} - ${formatGrade(gradeTo.value)} сынып`
 })
 
-// Toggle grade dropdown visibility
-const toggleGradeDropdown = () => {
-  showGradeDropdown.value = !showGradeDropdown.value
-}
 
 // Apply grade filter and close dropdown
 const applyGradeFilter = () => {
@@ -463,10 +487,10 @@ const formatAnswer = (answer: unknown): string => {
 // Get question type
 const getQuestionType = (question: Record<string, unknown>): string => {
   const type = question.question_type as string || ''
-  if (type.includes('PLUGIN')) return '🎮 Интерактивті'
-  if (type.includes('MCQ')) return '📝 Таңдау'
-  if (type.includes('NUMERIC')) return '🔢 Сандық'
-  return '📋 Сұрақ'
+  if (type.includes('PLUGIN')) return 'Интерактивті'
+  if (type.includes('MCQ')) return 'Таңдау'
+  if (type.includes('NUMERIC')) return 'Сандық'
+  return 'Сұрақ'
 }
 
 // Skills with progress (practiced at least once), filtered by grade range

@@ -97,10 +97,22 @@ export interface GradeResponse {
   title: string
 }
 
+export interface TopicResponse {
+  id: number
+  slug: string
+  title: string
+  description: string
+  icon: string | null
+  order: number
+  is_published: boolean
+}
+
 export interface SkillListItem {
   id: number
   subject_id: number
   grade_id: number
+  topic_id: number | null
+  topic_title: string | null
   code: string
   title: string
   difficulty: number
@@ -111,6 +123,8 @@ export interface SkillDetailResponse {
   id: number
   subject_id: number
   grade_id: number
+  topic_id: number | null
+  topic_title: string | null
   code: string
   title: string
   difficulty: number

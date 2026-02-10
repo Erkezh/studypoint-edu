@@ -251,7 +251,7 @@
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
           <h3 class="text-lg font-semibold mb-4">Добавить плагин «{{ addToTestPlugin.name }}» в тест</h3>
           <p class="text-sm text-gray-600 mb-4">
-            Плагин станет отдельным навыком. Выберите класс — навык появится в практике по этому классу.
+            Плагин станет отдельным навыком. Выберите класс и тему — навык появится в практике.
           </p>
           <div class="space-y-4">
             <div>
@@ -262,6 +262,16 @@
               >
                 <option :value="null">— Выберите класс —</option>
                 <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Тема (тақырып) — необязательно</label>
+              <select
+                v-model="addToTestTopicId"
+                class="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option :value="null">— Без темы —</option>
+                <option v-for="t in topics" :key="t.id" :value="t.id">{{ t.icon ? t.icon + ' ' : '' }}{{ t.title }}</option>
               </select>
             </div>
           </div>
@@ -373,7 +383,9 @@ const messageLog = ref<Array<{ type: string; data: PluginMessage }>>([])
 const messageHandler = ref<((event: MessageEvent) => void) | null>(null)
 const addToTestPlugin = ref<Plugin | null>(null)
 const addToTestGradeId = ref<number | null>(null)
+const addToTestTopicId = ref<number | null>(null)
 const grades = ref<Array<{ id: number; number: number; title: string }>>([])
+const topics = ref<Array<{ id: number; title: string; icon: string | null }>>([])
 const addingToTest = ref<string | null>(null)
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -772,9 +784,23 @@ const loadGrades = async () => {
   }
 }
 
+const loadTopics = async () => {
+  try {
+    const res = await catalogApi.getTopics()
+    topics.value = (res.data || []).map((t: { id: number; title: string; icon?: string | null }) => ({
+      id: t.id,
+      title: t.title,
+      icon: t.icon ?? null,
+    }))
+  } catch (e) {
+    console.error('Load topics error:', e)
+  }
+}
+
 const openAddToTest = (plugin: Plugin) => {
   addToTestPlugin.value = plugin
   addToTestGradeId.value = null
+  addToTestTopicId.value = null
 }
 
 const submitAddToTest = async () => {
@@ -784,6 +810,7 @@ const submitAddToTest = async () => {
   try {
     const res = await adminApi.addPluginToTest({
       grade_id: addToTestGradeId.value,
+      topic_id: addToTestTopicId.value,
       plugin_id: addToTestPlugin.value.plugin_id,
       plugin_version: addToTestPlugin.value.version,
     })
@@ -847,6 +874,7 @@ onMounted(async () => {
   // Загружаем плагины
   await loadPlugins()
   await loadGrades()
+  await loadTopics()
 })
 
 onUnmounted(() => {

@@ -5,6 +5,7 @@ from app.models.practice import PracticeAttempt, PracticeSession, ProgressSnapsh
 from app.models.profile import StudentProfile
 from app.models.question import Question
 from app.models.subscription import Subscription
+from app.models.topic import Topic
 from app.models.user import User
 from app.models.awards import AwardEvent
 from app.models.plugin import Plugin
@@ -25,5 +26,6 @@ __all__ = [
     "StudentProfile",
     "Subject",
     "Subscription",
+    "Topic",
     "User",
 ]

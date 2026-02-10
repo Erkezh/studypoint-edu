@@ -4,6 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.catalog import Grade, Skill, Subject
+from app.models.topic import Topic
 
 
 class SubjectRepository:
@@ -55,6 +56,7 @@ class SkillRepository:
         *,
         subject_id: int | None,
         grade_id: int | None,
+        topic_id: int | None = None,
         query: str | None,
         page: int,
         page_size: int,
@@ -68,6 +70,9 @@ class SkillRepository:
         if grade_id is not None:
             stmt = stmt.where(Skill.grade_id == grade_id)
             count_stmt = count_stmt.where(Skill.grade_id == grade_id)
+        if topic_id is not None:
+            stmt = stmt.where(Skill.topic_id == topic_id)
+            count_stmt = count_stmt.where(Skill.topic_id == topic_id)
         if query:
             q = f"%{query.strip()}%"
             stmt = stmt.where((Skill.title.ilike(q)) | (Skill.code.ilike(q)))
@@ -86,4 +91,22 @@ class SkillRepository:
         self.session.add(skill)
         await self.session.flush()
         return skill
+
+
+class TopicRepository:
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    async def list(self, *, published_only: bool = True) -> list[Topic]:
+        stmt = select(Topic).order_by(Topic.order, Topic.id)
+        if published_only:
+            stmt = stmt.where(Topic.is_published.is_(True))
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def get(self, topic_id: int) -> Topic | None:
+        return await self.session.get(Topic, topic_id)
+
+    async def get_by_slug(self, slug: str) -> Topic | None:
+        return (await self.session.execute(select(Topic).where(Topic.slug == slug))).scalar_one_or_none()
+
 

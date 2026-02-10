@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   SubjectResponse,
   GradeResponse,
+  TopicResponse,
   SkillListItem,
   SkillDetailResponse,
 } from '@/types/api'
@@ -18,9 +19,15 @@ export const catalogApi = {
     return response.data
   },
 
+  async getTopics(): Promise<ApiResponse<TopicResponse[]>> {
+    const response = await apiClient.get<ApiResponse<TopicResponse[]>>('/topics')
+    return response.data
+  },
+
   async getSkills(params?: {
     subject_slug?: string | null
     grade_number?: number | null
+    topic_id?: number | null
     q?: string | null
     page?: number
     page_size?: number
@@ -38,8 +45,8 @@ export const catalogApi = {
     return response.data
   },
 
-  async getSkillStats(skillId: number): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.get<ApiResponse<Record<string, any>>>(
+  async getSkillStats(skillId: number): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
       `/skills/${skillId}/stats`
     )
     return response.data

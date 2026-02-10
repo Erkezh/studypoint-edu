@@ -7,9 +7,13 @@
       <div class="container mx-auto">
         <nav class="flex items-center text-sm text-gray-600">
           <router-link to="/" class="hover:text-green-600">Басты бет</router-link>
-          <span class="mx-2">›</span>
+          <span class="mx-2 text-gray-400">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </span>
           <span v-if="skillInfo" class="text-gray-800">{{ skillInfo.gradeNumber }} сынып</span>
-          <span class="mx-2">›</span>
+          <span class="mx-2 text-gray-400">
+             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </span>
           <span v-if="skillInfo" class="font-medium text-gray-900">{{ skillInfo.code }} {{ skillInfo.title }}</span>
         </nav>
       </div>
@@ -125,8 +129,9 @@
                     :component-code="currentQuestion.data.component_code" :question-data="currentQuestion.data"
                     :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
                     @answer="handleInteractiveAnswer" />
-                  <div v-else class="text-red-500 text-sm">
-                    ⚠ Интерактивное задание не загружено.
+                  <div v-else class="text-red-500 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                    Интерактивное задание не загружено.
                   </div>
                 </div>
 
@@ -138,8 +143,9 @@
                   <iframe v-else-if="!isTsxPlugin && pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
                     :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
                     sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
-                  <div v-else class="text-red-500 text-sm">
-                    ⚠ Плагин не загружен.
+                  <div v-else class="text-red-500 text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                    Плагин не загружен.
                   </div>
                   <button v-if="!isTsxPlugin && pluginIframeSrc" @click="requestPluginAnswer"
                     :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
@@ -182,15 +188,20 @@
                     ? 'bg-green-50 border-2 border-green-300 text-green-800'
                     : 'bg-red-50 border-2 border-red-300 text-red-800',
                 ]">
-                  <p class="font-bold text-xl mb-4">
-                    {{ lastResult.is_correct ? '✓ Дұрыс!' : '✗ Қате' }}
+                  <p class="font-bold text-xl mb-4 flex items-center gap-2">
+                    <svg v-if="lastResult.is_correct" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    {{ lastResult.is_correct ? 'Дұрыс!' : 'Қате' }}
                   </p>
 
                   <!-- Answer comparison for wrong answer -->
                   <div v-if="!lastResult.is_correct" class="space-y-4 mt-4">
                     <template v-if="lastAnswerData && !lastQuestionData">
                       <div class="bg-green-50 border border-green-200 rounded-xl p-4">
-                        <p class="font-semibold text-green-700 mb-3">✓ Дұрыс жауап:</p>
+                        <p class="font-semibold text-green-700 mb-3 flex items-center gap-2">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                          Дұрыс жауап:
+                        </p>
                         <p v-if="lastAnswerData.correctDisplay?.note" class="text-sm text-gray-600 mb-3 italic">
                           {{ lastAnswerData.correctDisplay.note }}
                         </p>
@@ -202,7 +213,10 @@
                       </div>
 
                       <div class="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                        <p class="font-semibold text-gray-700 mb-3">👤 Сіздің жауабыңыз:</p>
+                        <p class="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                          Сіздің жауабыңыз:
+                        </p>
                         <AnswerVisualizer :data="{ type: lastAnswerData.type, ...lastAnswerData.userDisplay }"
                           variant="user" class="mb-3" />
                         <p class="text-gray-700 font-medium">

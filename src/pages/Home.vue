@@ -29,7 +29,7 @@
             @click="navigateToClass(grade.number)"
           >
             <h3 class="text-xl font-semibold mb-2">{{ grade.title }}</h3>
-            <p class="text-gray-600">{{ grade.number }} сынып</p>
+            <p class="text-gray-600">{{ grade.number === -1 ? 'Pre-K' : (grade.number === 0 ? 'K' : grade.number + ' сынып') }}</p>
           </Card>
         </div>
       </div>

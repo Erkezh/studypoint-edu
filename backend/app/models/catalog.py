@@ -38,6 +38,7 @@ class Skill(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id", ondelete="CASCADE"), index=True, nullable=False)
     grade_id: Mapped[int] = mapped_column(ForeignKey("grades.id", ondelete="CASCADE"), index=True, nullable=False)
+    topic_id: Mapped[int | None] = mapped_column(ForeignKey("topics.id", ondelete="SET NULL"), index=True, nullable=True)
 
     code: Mapped[str] = mapped_column(String(16), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -54,5 +55,6 @@ class Skill(Base, TimestampMixin):
 
     subject: Mapped[Subject] = relationship(back_populates="skills")
     grade: Mapped[Grade] = relationship(back_populates="skills")
+    topic: Mapped["Topic"] = relationship(back_populates="skills")
     questions: Mapped[list["Question"]] = relationship(back_populates="skill")
 

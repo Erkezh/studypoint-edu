@@ -5,15 +5,16 @@ export interface InteractiveQuestionCreate {
   skill_id: number
   prompt: string
   component_code: string
-  correct_answer?: Record<string, any>
+  correct_answer?: Record<string, unknown>
   explanation?: string
   level?: number
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export interface SkillCreate {
   subject_id: number
   grade_id: number
+  topic_id?: number | null
   code: string
   title: string
   description?: string
@@ -23,13 +24,43 @@ export interface SkillCreate {
   video_url?: string
   is_published?: boolean
   generator_code?: string
-  generator_metadata?: Record<string, any>
+  generator_metadata?: Record<string, unknown>
+}
+
+export interface TopicCreate {
+  slug: string
+  title: string
+  description?: string
+  icon?: string | null
+  order?: number
+  is_published?: boolean
+}
+
+export interface TopicUpdate {
+  slug?: string
+  title?: string
+  description?: string
+  icon?: string | null
+  order?: number
+  is_published?: boolean
+}
+
+export interface TopicListItem {
+  id: number
+  slug: string
+  title: string
+  description: string
+  icon: string | null
+  order: number
+  is_published: boolean
 }
 
 export interface SkillListItem {
   id: number
   subject_id: number
   grade_id: number
+  topic_id: number | null
+  topic_title: string | null
   code: string
   title: string
   difficulty: number
@@ -42,8 +73,8 @@ export interface QuestionListItem {
   skill_title?: string
   type: string
   prompt: string
-  data: Record<string, any>
-  correct_answer: Record<string, any>
+  data: Record<string, unknown>
+  correct_answer: Record<string, unknown>
   explanation: string | null
   level: number
   created_at?: string
@@ -52,8 +83,8 @@ export interface QuestionListItem {
 export const adminApi = {
   async createInteractiveQuestion(
     data: InteractiveQuestionCreate
-  ): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       '/admin/questions/interactive',
       data
     )
@@ -62,8 +93,8 @@ export const adminApi = {
 
   async createSkill(
     data: SkillCreate
-  ): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       '/admin/skills',
       data
     )
@@ -83,17 +114,60 @@ export const adminApi = {
     return response.data
   },
 
-  async deleteSkill(skillId: number): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.delete<ApiResponse<Record<string, any>>>(
+  async deleteSkill(skillId: number): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
       `/admin/skills/${skillId}`
     )
     return response.data
   },
 
-  async uploadPlugin(file: File): Promise<ApiResponse<Record<string, any>>> {
+  // --- Topic CRUD ---
+
+  async createTopic(
+    data: TopicCreate
+  ): Promise<ApiResponse<TopicListItem>> {
+    const response = await apiClient.post<ApiResponse<TopicListItem>>(
+      '/admin/topics',
+      data
+    )
+    return response.data
+  },
+
+  async listTopics(
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<ApiResponse<TopicListItem[]>> {
+    const response = await apiClient.get<ApiResponse<TopicListItem[]>>(
+      '/admin/topics',
+      {
+        params: { page, page_size: pageSize },
+      }
+    )
+    return response.data
+  },
+
+  async updateTopic(
+    topicId: number,
+    data: TopicUpdate
+  ): Promise<ApiResponse<TopicListItem>> {
+    const response = await apiClient.patch<ApiResponse<TopicListItem>>(
+      `/admin/topics/${topicId}`,
+      data
+    )
+    return response.data
+  },
+
+  async deleteTopic(topicId: number): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
+      `/admin/topics/${topicId}`
+    )
+    return response.data
+  },
+
+  async uploadPlugin(file: File): Promise<ApiResponse<Record<string, unknown>>> {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       '/admin/plugins/upload',
       formData,
       {
@@ -105,8 +179,8 @@ export const adminApi = {
     return response.data
   },
 
-  async listPlugins(): Promise<ApiResponse<Array<Record<string, any>>>> {
-    const response = await apiClient.get<ApiResponse<Array<Record<string, any>>>>(
+  async listPlugins(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
+    const response = await apiClient.get<ApiResponse<Array<Record<string, unknown>>>>(
       '/admin/plugins'
     )
     return response.data
@@ -115,16 +189,16 @@ export const adminApi = {
   async publishPlugin(
     pluginId: string,
     isPublished: boolean
-  ): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       `/admin/plugins/${pluginId}/publish?is_published=${isPublished}`,
       null
     )
     return response.data
   },
 
-  async deletePlugin(pluginId: string): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.delete<ApiResponse<Record<string, any>>>(
+  async deletePlugin(pluginId: string): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
       `/admin/plugins/${pluginId}`
     )
     return response.data
@@ -134,8 +208,8 @@ export const adminApi = {
     skill_id: number
     plugin_id: string
     plugin_version?: string
-  }): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       '/admin/questions/plugin',
       data
     )
@@ -144,10 +218,11 @@ export const adminApi = {
 
   async addPluginToTest(data: {
     grade_id: number
+    topic_id?: number | null
     plugin_id: string
     plugin_version?: string
-  }): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  }): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       '/admin/plugins/add-to-test',
       data
     )
@@ -158,7 +233,7 @@ export const adminApi = {
     file: File,
     pluginName?: string,
     gradeId?: number
-  ): Promise<ApiResponse<Record<string, any>>> {
+  ): Promise<ApiResponse<Record<string, unknown>>> {
     const formData = new FormData()
     formData.append('file', file)
     if (pluginName) {
@@ -167,7 +242,7 @@ export const adminApi = {
     if (gradeId) {
       formData.append('grade_id', gradeId.toString())
     }
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       '/admin/plugins/upload-tsx',
       formData,
       {
@@ -182,10 +257,10 @@ export const adminApi = {
   async updateTsxPlugin(
     pluginId: string,
     file: File
-  ): Promise<ApiResponse<Record<string, any>>> {
+  ): Promise<ApiResponse<Record<string, unknown>>> {
     const formData = new FormData()
     formData.append('file', file)
-    const response = await apiClient.put<ApiResponse<Record<string, any>>>(
+    const response = await apiClient.put<ApiResponse<Record<string, unknown>>>(
       `/admin/plugins/${pluginId}/update-tsx`,
       formData,
       {
@@ -213,8 +288,8 @@ export const adminApi = {
     return response.data
   },
 
-  async deleteQuestion(questionId: number): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.delete<ApiResponse<Record<string, any>>>(
+  async deleteQuestion(questionId: number): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
       `/admin/questions/${questionId}`
     )
     return response.data

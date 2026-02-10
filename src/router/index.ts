@@ -16,6 +16,19 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    path: '/topics',
+    name: 'topics',
+    component: () => import('@/pages/TopicsView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/topics/:topicSlug',
+    name: 'topic-detail',
+    component: () => import('@/pages/TopicDetailView.vue'),
+    meta: { requiresAuth: false },
+    props: true,
+  },
+  {
     path: '/skill/:skillId',
     name: 'skill',
     component: () => import('@/pages/SkillView.vue'),
@@ -61,6 +74,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/admin',
+    name: 'admin-dashboard',
+    component: () => import('@/pages/AdminDashboard.vue'),
+    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+  },
+  {
     path: '/admin/skills',
     name: 'admin-skills',
     component: () => import('@/pages/AdminSkills.vue'),
@@ -82,6 +101,12 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/questions/list',
     name: 'admin-questions-list',
     component: () => import('@/pages/AdminQuestionsList.vue'),
+    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+  },
+  {
+    path: '/admin/topics',
+    name: 'admin-topics',
+    component: () => import('@/pages/AdminTopics.vue'),
     meta: { requiresAuth: true, requiresRole: 'ADMIN' },
   },
   {
@@ -110,7 +135,7 @@ router.beforeEach(async (to, from, next) => {
       if (!authStore.user) {
         try {
           await authStore.fetchUser()
-        } catch (error) {
+        } catch {
           // Если не удалось получить пользователя, редирект на логин
           next({ name: 'login', query: { redirect: to.fullPath } })
           return

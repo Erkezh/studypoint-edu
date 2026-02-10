@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { catalogApi } from '@/api/catalog'
 import type {
   SubjectResponse,
   GradeResponse,
+  TopicResponse,
   SkillListItem,
   SkillDetailResponse,
 } from '@/types/api'
@@ -13,6 +14,7 @@ const CACHE_TTL = 5 * 60 * 1000 // 5 минут
 export const useCatalogStore = defineStore('catalog', () => {
   const subjects = ref<SubjectResponse[]>([])
   const grades = ref<GradeResponse[]>([])
+  const topics = ref<TopicResponse[]>([])
   const skills = ref<SkillListItem[]>([])
   const skillDetails = ref<Map<number, SkillDetailResponse>>(new Map())
   // Кэш навыков по параметрам (ключ - строка параметров)
@@ -28,22 +30,7 @@ export const useCatalogStore = defineStore('catalog', () => {
   }
 
   // Создает ключ кэша из параметров
-  const getCacheKey = (params?: {
-    subject_slug?: string | null
-    grade_number?: number | null
-    q?: string | null
-    page?: number
-    page_size?: number
-  }): string => {
-    if (!params) return 'all'
-    const parts: string[] = []
-    if (params.subject_slug) parts.push(`subject:${params.subject_slug}`)
-    if (params.grade_number !== null && params.grade_number !== undefined) parts.push(`grade:${params.grade_number}`)
-    if (params.q) parts.push(`q:${params.q}`)
-    if (params.page) parts.push(`page:${params.page}`)
-    if (params.page_size) parts.push(`size:${params.page_size}`)
-    return parts.length > 0 ? parts.join('|') : 'all'
-  }
+
 
   const getSubjects = async (force = false) => {
     if (!force && !isStale('subjects') && subjects.value.length > 0) {
@@ -107,6 +94,27 @@ export const useCatalogStore = defineStore('catalog', () => {
           console.error('Failed to parse cached grades', e)
         }
       }
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const getTopics = async (force = false) => {
+    if (!force && !isStale('topics') && topics.value.length > 0) {
+      return topics.value
+    }
+
+    loading.value = true
+    try {
+      const response = await catalogApi.getTopics()
+      if (response.data) {
+        topics.value = response.data
+        lastFetch.value.set('topics', Date.now())
+      }
+      return topics.value
+    } catch (error) {
+      console.error('Failed to fetch topics:', error)
       throw error
     } finally {
       loading.value = false
@@ -234,11 +242,13 @@ export const useCatalogStore = defineStore('catalog', () => {
   return {
     subjects,
     grades,
+    topics,
     skills,
     skillDetails,
     loading,
     getSubjects,
     getGrades,
+    getTopics,
     getSkills,
     getSkill,
     getSkillStats,

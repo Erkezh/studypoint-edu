@@ -13,10 +13,16 @@
 
       <!-- Инструкция -->
       <div class="bg-blue-50 border-l-4 border-blue-400 p-6 mb-6 rounded">
-        <h2 class="text-xl font-semibold text-blue-800 mb-3">📋 Нұсқаулық</h2>
+        <h2 class="text-xl font-semibold text-blue-800 mb-3 flex items-center gap-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+          Нұсқаулық
+        </h2>
         <div class="space-y-3 text-gray-700">
           <div class="bg-white p-4 rounded border border-blue-200">
-            <p class="font-semibold text-blue-900 mb-2">✅ Оңай 3 қадам:</p>
+            <p class="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Оңай 3 қадам:
+            </p>
             <ol class="list-decimal list-inside space-y-1 ml-2">
               <li><strong>"Кодты кірістіру"</strong> бөліміне дайын React кодты толығымен көшіріп қойыңыз</li>
               <li><strong>"Сақтау"</strong> батырмасын басыңыз</li>
@@ -24,8 +30,9 @@
             </ol>
           </div>
           <div class="bg-green-50 p-3 rounded border border-green-200">
-            <p class="text-sm text-green-800">
-              <strong>💡 Важно:</strong> Вам не нужно ничего настраивать! Просто вставьте код - всё остальное система сделает автоматически:
+            <p class="text-sm text-green-800 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <strong>Важно:</strong> Вам не нужно ничего настраивать! Просто вставьте код - всё остальное система сделает автоматически:
             </p>
             <ul class="text-sm text-green-700 mt-2 space-y-1 list-disc list-inside ml-2">
               <li>Тест автоматически появится в системе</li>
@@ -40,7 +47,7 @@
       <!-- Форма создания интерактивного задания -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-xl font-semibold mb-6">Жаңа тапсырма қосу</h2>
-        
+
         <form @submit.prevent="handleSubmit" class="space-y-6">
           <!-- Навык ID полностью скрыт - создается автоматически -->
           <!-- Админу не нужно знать об этом -->
@@ -65,9 +72,12 @@
               Кодты кірістіру <span class="text-red-500">*</span>
             </label>
             <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-2">
-              <p class="text-sm text-green-800 font-medium mb-2">✅ Оңай:</p>
+              <p class="text-sm text-green-800 font-medium mb-2 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Оңай:
+              </p>
               <p class="text-sm text-green-700">
-                Дайын React кодты толығымен көшіріп, төмендегі өріске қойыңыз. 
+                Дайын React кодты толығымен көшіріп, төмендегі өріске қойыңыз.
                 Барлық қажетті ақпарат автоматты түрде анықталады!
               </p>
             </div>
@@ -79,21 +89,23 @@
               class="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-xs"
               placeholder="Мұнда React кодты кірістіріңіз... (Барлық қажетті ақпарат автоматты түрде анықталады)"
             ></textarea>
-            <div v-if="autoFilled" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-              ✅ Автоматты түрде толтырылды: {{ autoFilledFields.join(', ') }}
+            <div v-if="autoFilled" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              Автоматты түрде толтырылды: {{ autoFilledFields.join(', ') }}
             </div>
-            <p class="text-xs text-gray-500 mt-1">
-              💡 Кеңес: Бүкіл кодты (import-тан бастап export default-қа дейін) көшіріп қойыңыз
+            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Кеңес: Бүкіл кодты (import-тан бастап export default-қа дейін) көшіріп қойыңыз
             </p>
           </div>
 
           <!-- Расширенные настройки (скрыты по умолчанию) -->
           <div v-if="showAdvanced" class="border-t pt-4 space-y-4">
             <h3 class="text-lg font-semibold text-gray-800">Расширенные настройки</h3>
-            
+
             <!-- Навык создается автоматически - админу не нужно об этом знать -->
             <!-- skill_id всегда 0, система сама создаст новый навык -->
-            
+
             <!-- Дұрыс жауап -->
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
@@ -153,11 +165,13 @@
 
           <!-- Кнопки -->
           <div class="flex gap-4 pt-4">
-            <Button type="submit" variant="primary" :loading="submitting" class="px-8">
-              ✅ Сақтау
+            <Button type="submit" variant="primary" :loading="submitting" class="px-8 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              Сақтау
             </Button>
-            <Button type="button" variant="outline" @click="resetForm">
-              🔄 Тазалау
+            <Button type="button" variant="outline" @click="resetForm" class="flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Тазалау
             </Button>
           </div>
         </form>
@@ -165,7 +179,10 @@
 
       <!-- Пример кода -->
       <div class="bg-gray-50 border border-gray-200 rounded-lg p-6 mb-6">
-        <h3 class="text-lg font-semibold text-gray-800 mb-3">📝 Мысал коды:</h3>
+        <h3 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+          Мысал коды:
+        </h3>
         <p class="text-sm text-gray-600 mb-3">
           Төменде мысал көрсетілген. Осындай кодты көшіріп, жоғарыдағы өріске қойыңыз:
         </p>
@@ -174,15 +191,17 @@
         </div>
         <button
           @click="copyExampleCode"
-          class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+          class="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
         >
-          📋 Мысал кодты көшіру
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+          Мысал кодты көшіру
         </button>
       </div>
 
       <!-- Успешное создание -->
-      <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        ✅ {{ successMessage }}
+      <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4 flex items-center gap-2">
+        <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        {{ successMessage }}
       </div>
     </main>
     <Footer />
@@ -226,7 +245,7 @@ const KazakhPlaceValueGenerator = () => {
   const [selectedAnswer, setSelectedAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
   const [score, setScore] = useState({ correct: 0, total: 0 });
-  
+
   const placeValues = {
     ones: { kz: "бірліктер орны", en: "ones place" },
     tens: { kz: "ондықтар орны", en: "tens place" },
@@ -237,7 +256,7 @@ const KazakhPlaceValueGenerator = () => {
     const number = Math.floor(Math.random() * 900) + 100;
     const place = 'ones';
     const correctAnswer = number % 10;
-    
+
     setCurrentQuestion({
       number: number.toString(),
       place: place,
@@ -270,13 +289,13 @@ const KazakhPlaceValueGenerator = () => {
     <div className="max-w-4xl mx-auto p-6">
       <div className="bg-white rounded-xl shadow-lg p-8">
         <h1 className="text-3xl font-bold text-gray-800 mb-2">Разрядтар</h1>
-        
+
         {currentQuestion && (
           <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
             <h2 className="text-xl font-semibold text-gray-800 mb-4 text-center">
               {currentQuestion.question}
             </h2>
-            
+
             <div className="text-center mb-6">
               <div className="text-4xl font-bold text-blue-600 font-mono">
                 {currentQuestion.number}
@@ -384,7 +403,7 @@ const handleSubmit = async () => {
       formData.value.prompt = 'Интерактивті тапсырма'
     }
   }
-  
+
   // Убеждаемся, что prompt не пустой (убираем пробелы)
   formData.value.prompt = formData.value.prompt.trim() || 'Интерактивті тапсырма'
 
@@ -412,14 +431,14 @@ const handleSubmit = async () => {
         const catalogStore = useCatalogStore()
         const subjects = await catalogStore.getSubjects()
         const grades = await catalogStore.getGrades()
-        
+
         const firstSubject = subjects[0]
         const firstGrade = grades[0]
-        
+
         if (firstSubject && firstGrade) {
           // Создаем навык через админ API
           const skillCode = `INTERACTIVE_${Date.now()}`
-          
+
           // Убеждаемся, что prompt не пустой - если пустой, используем название из кода или дефолтное
           let skillTitle = (formData.value.prompt || '').trim()
           if (!skillTitle) {
@@ -433,14 +452,14 @@ const handleSubmit = async () => {
                 .trim()
             }
           }
-          
+
           // Если все еще пустой, используем дефолтное значение
           if (!skillTitle || skillTitle.length < 3) {
             skillTitle = 'Интерактивті тапсырма'
           }
-          
+
           console.log('Creating skill:', { subject_id: firstSubject.id, grade_id: firstGrade.id, code: skillCode, title: skillTitle })
-          
+
           const skillResponse = await adminApi.createSkill({
             subject_id: firstSubject.id,
             grade_id: firstGrade.id,
@@ -449,13 +468,13 @@ const handleSubmit = async () => {
             description: 'Автоматически созданный навык для интерактивного теста',
             is_published: true
           })
-          
+
           console.log('Skill created:', skillResponse)
-          
+
           if (!skillResponse.data || !skillResponse.data.id) {
             throw new Error('Не удалось получить ID созданного навыка')
           }
-          
+
           finalSkillId = skillResponse.data.id
           console.log('Using skill_id:', finalSkillId)
           successMessage.value = `✅ Автоматически создан новый навык: ${skillTitle} (ID: ${finalSkillId})`
@@ -503,7 +522,7 @@ const handleSubmit = async () => {
       status: err.response?.status,
       url: err.config?.url
     })
-    
+
     if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
       error.value = 'Желі қатесі: Серверге қосылу мүмкін емес. Сервер жұмыс істеп тұрғанын тексеріңіз (http://localhost:8000).'
     } else if (err.response?.status === 401) {
@@ -513,7 +532,7 @@ const handleSubmit = async () => {
       } else {
         error.value = 'Авторизация қажет! Токен мерзімі аяқталған болуы мүмкін. Жүйеге қайта кіріңіз.'
       }
-      
+
       // Предлагаем перелогиниться через 2 секунды
       setTimeout(() => {
         if (confirm('Токен мерзімі аяқталған сияқты. Жүйеге қайта кіру керек пе?')) {

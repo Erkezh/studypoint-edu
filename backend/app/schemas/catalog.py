@@ -15,10 +15,22 @@ class GradeResponse(BaseModel):
     title: str
 
 
+class TopicResponse(BaseModel):
+    id: int
+    slug: str
+    title: str
+    description: str = ""
+    icon: str | None = None
+    order: int = 0
+    is_published: bool = True
+
+
 class SkillListItem(BaseModel):
     id: int
     subject_id: int
     grade_id: int
+    topic_id: int | None = None
+    topic_title: str | None = None
     code: str
     title: str
     difficulty: int
@@ -30,4 +42,5 @@ class SkillDetailResponse(SkillListItem):
     example_url: str | None = None
     video_url: str | None = None
     is_published: bool
+
 

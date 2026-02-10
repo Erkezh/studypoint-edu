@@ -1,50 +1,68 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
+  <div class="min-h-screen bg-gray-50 overflow-x-hidden">
     <Header />
+    <div class="bg-white border-b border-gray-200">
+      <ViewByToggle />
+    </div>
     <main class="flex">
-      <!-- Боковая панель с классами (полукруги) -->
-      <aside class="relative shrink-0">
-        <nav class="flex flex-col pt-8">
-          <div
-            v-for="(grade, index) in grades"
-            :key="grade.id"
-            class="relative group"
-            style="margin-bottom: 2px;"
-          >
-            <button
-              @click="navigateToGrade(grade.number)"
-              :class="[
-                'relative w-12 h-16 flex items-center justify-center text-white font-bold text-xl transition-all shadow-lg z-10',
-                currentGradeId === grade.number ? 'scale-110' : 'hover:scale-105',
-              ]"
-              :style="{
-                backgroundColor: getGradeColor(index, currentGradeId === grade.number),
-                borderRadius: '24px 0 0 24px',
-              }"
-            >
-              {{ grade.number }}
-            </button>
+      <!-- Боковая панель с классами (IXL style - Popout Overlay) -->
+      <aside class="relative shrink-0 w-12 z-30 pt-4 select-none">
+        <!-- Sidebar Border Line -->
+        <div class="absolute right-0 top-0 bottom-0 w-px bg-gray-200 z-10"></div>
 
-            <!-- Всплывающая подсказка с полным названием -->
-            <div
-              class="absolute left-full top-1/2 transform -translate-y-1/2 bg-gray-900 text-white px-3 py-2 rounded-lg text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg ml-1"
-            >
-              {{ grade.number }} {{ grade.title }}
-              <div class="absolute right-full top-1/2 transform -translate-y-1/2 w-0 h-0 border-t-4 border-t-transparent border-r-4 border-r-gray-900 border-b-4 border-b-transparent"></div>
-            </div>
+        <nav class="flex flex-col gap-1 w-full relative z-20">
+          <div v-for="(grade, index) in grades" :key="grade.number"
+               class="relative h-14 w-full">
+
+            <!-- Tab Button (Absolute positioned to grow right) -->
+            <button @click="navigateToGrade(grade.number)"
+              class="group absolute left-0 top-1 h-12 flex items-center transition-all duration-300 ease-out shadow-sm overflow-hidden border border-transparent"
+              :class="[
+                currentGradeId === grade.number
+                  ? 'w-[49px] hover:w-56 md:hover:w-64 z-50 rounded-l-full rounded-r-none hover:rounded-r-full pr-0 shadow-none -mr-px border-gray-200 border-r-0 hover:border-r'
+                  : 'w-12 hover:w-56 md:hover:w-64 z-30 rounded-l-full rounded-r-none hover:rounded-r-full hover:shadow-md hover:z-50',
+              ]"
+              :style="currentGradeId === grade.number
+                ? { backgroundColor: '#f9fafb', color: getGradeColor(index), borderColor: '#e5e7eb' }
+                : { backgroundColor: getGradeColor(index), color: 'white' }">
+
+               <!-- Grade Title (Visible ONLY on Hover) -->
+               <span class="absolute left-14 font-medium whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100 delay-75 pointer-events-none">
+                 {{ getKazakhGradeTitle(grade.number) }}
+               </span>
+
+               <!-- Grade Number (Always visible circle part) -->
+               <span class="absolute left-0 w-12 h-12 flex items-center justify-center font-bold text-xl shrink-0 z-10">
+                 {{ grade.number === -1 ? 'PK' : (grade.number === 0 ? 'K' : grade.number) }}
+               </span>
+            </button>
           </div>
         </nav>
       </aside>
 
       <!-- Основной контент -->
-      <div class="flex-1 px-8 py-8">
-        <div class="mb-6">
-          <h1 class="text-3xl font-bold text-orange-600 mb-2">
-            {{ currentGradeTitle }}
-          </h1>
-          <p class="text-gray-600">
-            Math Edu сотыңызға жүздеген математика дағдыларын ұсынады!
-          </p>
+      <div class="flex-1 pl-6 pr-8 py-8">
+        <div class="mb-8 flex items-end justify-between border-b pb-4">
+          <div>
+             <h1 class="text-3xl font-bold text-orange-600 mb-2">
+              {{ currentGradeTitle }}
+            </h1>
+            <p class="text-gray-600 max-w-3xl">
+              Math Edu offers hundreds of {{ currentGradeTitle.toLowerCase() }} skills to explore and learn! Not sure where to start?
+            </p>
+          </div>
+
+          <!-- Mock Stats (IXL Style) -->
+          <div class="hidden md:flex gap-4">
+             <div class="flex flex-col items-center px-4 py-1 bg-orange-50 rounded-full border border-orange-200">
+               <span class="text-lg font-bold text-orange-600">{{ skills.length }}</span>
+               <span class="text-xs text-orange-800 uppercase font-semibold">skills</span>
+             </div>
+             <div class="flex flex-col items-center px-4 py-1 bg-orange-50 rounded-full border border-orange-200">
+               <span class="text-lg font-bold text-orange-600">--</span>
+               <span class="text-xs text-orange-800 uppercase font-semibold">lessons</span>
+             </div>
+          </div>
         </div>
 
         <div v-if="catalogStore.loading" class="text-center py-12">
@@ -56,82 +74,62 @@
           {{ error }}
         </div>
 
-        <div v-else>
-          <div v-if="!skills || skills.length === 0" class="text-center py-12 text-gray-600">
-            <p>Дағдылар табылмады</p>
-          </div>
+          <!-- Grouped Skills List (Masonry Layout) -->
+          <div v-else class="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
+            <div v-for="group in groupedSkills" :key="group.id" class="break-inside-avoid mb-8">
+              <!-- Topic Header -->
+              <h3 class="text-lg font-bold mb-3 flex items-start gap-2 text-green-700 hover:text-green-800 cursor-pointer">
+                 <span class="text-xl -mt-0.5">{{ group.letter }}.</span>
+                 <span class="leading-tight">{{ group.title }}</span>
+              </h3>
 
-          <!-- Список тем -->
-          <div v-else-if="skills && skills.length > 0" class="space-y-1">
-            <div
-              v-for="skill in skills"
-              :key="skill.id"
-              @click.stop="navigateToSkill(skill.id)"
-              :class="[
-                'flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:border-lime-400 hover:shadow-md transition-all',
-                loadingSkillId === skill.id && 'opacity-75 cursor-wait'
-              ]"
-            >
-              <div class="flex items-center gap-4 flex-1 cursor-pointer">
-                <!-- Иконка статуса -->
-                <div v-if="skillStats.has(skill.id) && skillStats.get(skill.id)!.best_smartscore >= 90" class="shrink-0">
-                  <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <div v-else class="w-5 h-5 shrink-0"></div>
+              <!-- Skills List -->
+              <div class="space-y-1">
+                <div v-for="(skill, index) in group.skills" :key="skill.id"
+                  @click.stop="navigateToSkill(skill.id)"
+                  class="group/skill flex items-start gap-2 py-0.5 px-2 -mx-2 rounded hover:bg-green-50 cursor-pointer transition-colors relative">
 
-                <!-- Название темы -->
-                <div class="flex-1">
-                  <h3 class="text-base font-medium text-gray-900 hover:text-lime-600">
+                  <!-- Skill Number -->
+                  <span class="text-sm font-bold text-gray-500 w-5 text-right shrink-0 group-hover/skill:text-green-600">
+                    {{ index + 1 }}
+                  </span>
+
+                  <!-- Skill Title -->
+                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2">
                     {{ skill.title }}
-                  </h3>
-                  <p v-if="skillStats.has(skill.id) && authStore.isAuthenticated" class="text-sm text-gray-500 mt-1">
-                    SmartScore:
-                    <span :class="{
-                      'text-green-600 font-semibold': (skillStats.get(skill.id)!.last_smartscore || 0) >= 90,
-                      'text-blue-600': (skillStats.get(skill.id)!.last_smartscore || 0) >= 70 && (skillStats.get(skill.id)!.last_smartscore || 0) < 90,
-                      'text-yellow-600': (skillStats.get(skill.id)!.last_smartscore || 0) < 70
-                    }">
-                      {{ skillStats.get(skill.id)!.last_smartscore || 0 }}
-                    </span>
-                  </p>
+                  </span>
+
+                  <!-- Status Icon (Medal/Ribbon) -->
+                  <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-2">
+                     <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-yellow-500">
+                       🏅
+                     </span>
+                     <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
+                       {{ skillStats.get(skill.id)!.best_smartscore }}
+                     </span>
+                  </div>
+
+                  <!-- Admin Delete Button -->
+                  <button v-if="authStore.user?.role === 'ADMIN'"
+                    @click.stop="confirmDeleteSkill(skill.id, skill.title)"
+                    class="ml-2 text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity"
+                    title="Delete Skill">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+
+                  <!-- Hover Preview (Tooltip style could go here) -->
                 </div>
-              </div>
-
-              <!-- Кнопка удаления для админа -->
-              <div v-if="authStore.user?.role === 'ADMIN'" class="shrink-0 ml-4">
-                <button
-                  @click.stop="confirmDeleteSkill(skill.id, skill.title)"
-                  :disabled="deletingSkillId === skill.id"
-                  class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Тестті жою"
-                >
-                  <svg v-if="deletingSkillId !== skill.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <div v-else class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-red-600"></div>
-                </button>
-              </div>
-
-              <!-- Индикатор загрузки -->
-              <div v-if="loadingSkillId === skill.id && authStore.user?.role !== 'ADMIN'" class="shrink-0 ml-4">
-                <div class="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
               </div>
             </div>
           </div>
-        </div>
       </div>
     </main>
     <Footer />
 
     <!-- Модальное окно о завершении пробного периода или необходимости авторизации -->
-    <Modal
-      :is-open="showTrialEndedModal"
+    <Modal :is-open="showTrialEndedModal"
       :title="trialQuestions.isTrialQuestionsExhausted.value ? 'Сынақ кезеңі аяқталды' : 'Авторизация қажет'"
-      :show-close="true"
-      @close="showTrialEndedModal = false"
-    >
+      :show-close="true" @close="showTrialEndedModal = false">
       <template #content>
         <div class="space-y-4">
           <p class="text-gray-700" v-if="trialQuestions.isTrialQuestionsExhausted.value">
@@ -159,24 +157,21 @@
     </Modal>
 
     <!-- Модальное окно подтверждения удаления теста -->
-    <Modal
-      :is-open="showDeleteModal"
-      title="Тестті жою"
-      :show-close="true"
-      @close="showDeleteModal = false"
-    >
+    <Modal :is-open="showDeleteModal" title="Тестті жою" :show-close="true" @close="showDeleteModal = false">
       <template #content>
         <div class="space-y-4">
           <p class="text-gray-700">
             Сіз шынымен де <strong>"{{ skillToDelete?.title }}"</strong> тестін жойғыңыз келе ме?
           </p>
-          <p class="text-sm text-red-600">
-            ⚠ Бұл әрекетті к geri қайтару мүмкін емес. Тестпен байланысты барлық деректер жойылады.
+          <p class="text-sm text-red-600 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+            Бұл әрекетті қайтару мүмкін емес. Тестпен байланысты барлық деректер жойылады.
           </p>
         </div>
       </template>
       <template #actions>
-        <Button @click="deleteSkill" variant="primary" :disabled="deletingSkillId !== null" :loading="deletingSkillId !== null" class="bg-red-600 hover:bg-red-700">
+        <Button @click="deleteSkill" variant="primary" :disabled="deletingSkillId !== null"
+          :loading="deletingSkillId !== null" class="bg-red-600 hover:bg-red-700">
           Жою
         </Button>
         <Button @click="showDeleteModal = false" variant="outline" :disabled="deletingSkillId !== null">
@@ -197,11 +192,20 @@ import { useTrialQuestions } from '@/composables/useTrialQuestions'
 import { adminApi } from '@/api/admin'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
+import ViewByToggle from '@/components/ui/ViewByToggle.vue'
 import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
 
 interface Props {
   gradeId: string
+}
+
+interface Skill {
+  id: number
+  title: string
+  code: string
+  topic_id?: number | null
+  topic_title?: string | null
 }
 
 const props = defineProps<Props>()
@@ -216,6 +220,29 @@ const grades = ref(catalogStore.grades)
 const currentGradeId = ref<number>(parseInt(props.gradeId, 10))
 const error = ref<string | null>(null)
 const loadingSkillId = ref<number | null>(null)
+
+const getKazakhGradeTitle = (gradeNumber: number) => {
+  if (gradeNumber === -1) return 'Мектепалды даярлық'
+  if (gradeNumber === 0) return 'Даярлық сынып'
+  const mapping: Record<number, string> = {
+    1: 'Бірінші',
+    2: 'Екінші',
+    3: 'Үшінші',
+    4: 'Төртінші',
+    5: 'Бесінші',
+    6: 'Алтыншы',
+    7: 'Жетінші',
+    8: 'Сегізінші',
+    9: 'Тоғызыншы',
+    10: 'Оныншы',
+    11: 'Он бірінші'
+  }
+  return `${mapping[gradeNumber] || gradeNumber} сынып`
+}
+
+const currentGradeTitle = computed(() => {
+  return getKazakhGradeTitle(currentGradeId.value)
+})
 const showTrialEndedModal = ref(false)
 const skillStats = ref<Map<number, { best_smartscore: number; last_smartscore: number; is_completed: boolean }>>(new Map())
 const loadingStats = ref(false)
@@ -223,13 +250,68 @@ const showDeleteModal = ref(false)
 const skillToDelete = ref<{ id: number; title: string } | null>(null)
 const deletingSkillId = ref<number | null>(null)
 
+
 const TRIAL_QUESTIONS_LIMIT = trialQuestions.TRIAL_QUESTIONS_LIMIT
 
-// Название текущего класса
-const currentGradeTitle = computed(() => {
-  const grade = grades.value.find(g => g.number === currentGradeId.value)
-  return grade ? grade.title : `${currentGradeId.value} сынып`
+// Grouped Skills for IXL Layout
+const groupedSkills = computed(() => {
+  const groups: Record<string, { id: number | string; title: string; skills: Skill[] }> = {}
+  const otherSkills: Skill[] = []
+
+  // 1. Group by Topic
+  // 1. Group by Topic
+  for (const skill of skills.value) {
+    if (skill.topic_id && skill.topic_title) {
+      if (!groups[skill.topic_id]) {
+        groups[skill.topic_id] = {
+          id: skill.topic_id,
+          title: skill.topic_title,
+          skills: []
+        }
+      }
+      // Use non-null assertion or check existence (we just created it if missing)
+      if (skill.topic_id != null && groups[skill.topic_id]) {
+        groups[skill.topic_id]!.skills.push(skill)
+      }
+    } else {
+      otherSkills.push(skill)
+    }
+  }
+
+  // 2. Sort Topics (by ID or Title) and Assign Letters
+  const sortedGroups = Object.values(groups).sort((a, b) => a.title.localeCompare(b.title))
+
+  // Add "Other" group if needed
+  if (otherSkills.length > 0) {
+    sortedGroups.push({
+      id: 'other',
+      title: 'Common Skills',
+      skills: otherSkills
+    })
+  }
+
+  // 3. Map to Final Structure with Letters
+  return sortedGroups.map((group, index) => {
+    // Generate Letter: A, B, C... Z, AA, AB...
+    const letter = index < 26
+      ? String.fromCharCode(65 + index)
+      : String.fromCharCode(65 + Math.floor(index / 26) - 1) + String.fromCharCode(65 + (index % 26))
+
+    // Sort skills within group (by ID or difficulty code naturally)
+    const sortedSkills = group.skills.sort((a, b) => {
+        // Try to sort by code tail number if available e.g. A.1, A.2
+        return a.code.localeCompare(b.code, undefined, { numeric: true })
+    })
+
+    return {
+      ...group,
+      letter,
+      skills: sortedSkills
+    }
+  })
 })
+
+// Название текущего класса (удалено дублирование)
 
 // Переход к другому классу
 const navigateToGrade = (gradeNumber: number) => {
@@ -241,23 +323,20 @@ const navigateToGrade = (gradeNumber: number) => {
 }
 
 // Цвета для классов (чередуются)
-const getGradeColor = (index: number, isActive: boolean): string => {
+// Цвета для классов (IXL colors)
+const getGradeColor = (index: number): string => {
   const colors = [
-    '#3B82F6', // синий
-    '#F97316', // оранжевый
-    '#10B981', // зеленый
-    '#EF4444', // красный
-    '#8B5CF6', // фиолетовый
-    '#06B6D4', // голубой
-    '#F59E0B', // желтый
-    '#EC4899', // розовый
+    '#00A7FA', // Kindergarten (Blue)
+    '#70B62C', // 1st (Green)
+    '#E05206', // 2nd (Orange)
+    '#009DD9', // 3rd (Blue)
+    '#913D88', // 4th (Purple)
+    '#F59E0B', // 5th (Yellow)
+    '#F26622', // 6th (Orange-Red)
+    '#00B388', // 7th (Teal)
+    '#D91E18', // 8th (Red)
   ]
-  const color = colors[index % colors.length] || '#3B82F6'
-  if (isActive) {
-    // Делаем активный цвет немного темнее
-    return color
-  }
-  return color
+  return colors[index % colors.length] || '#3B82F6'
 }
 
 const goToLogin = () => {
@@ -373,8 +452,8 @@ const loadSkillStats = async (skillId: number) => {
   try {
     const stats = await catalogStore.getSkillStats(skillId)
     skillStats.value.set(skillId, {
-      best_smartscore: stats.best_smartscore || 0,
-      last_smartscore: stats.last_smartscore || 0,
+      best_smartscore: Number(stats.best_smartscore || 0),
+      last_smartscore: Number(stats.last_smartscore || 0),
       is_completed: (stats.best_smartscore || 0) >= 90,
     })
   } catch (err) {

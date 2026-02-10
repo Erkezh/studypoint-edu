@@ -27,9 +27,28 @@ class GradeUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=64)
 
 
+class TopicCreate(BaseModel):
+    slug: str = Field(min_length=1, max_length=64)
+    title: str = Field(min_length=1, max_length=128)
+    description: str = ""
+    icon: str | None = Field(default=None, max_length=64)
+    order: int = Field(default=0, ge=0)
+    is_published: bool = True
+
+
+class TopicUpdate(BaseModel):
+    slug: str | None = Field(default=None, min_length=1, max_length=64)
+    title: str | None = Field(default=None, min_length=1, max_length=128)
+    description: str | None = None
+    icon: str | None = None
+    order: int | None = Field(default=None, ge=0)
+    is_published: bool | None = None
+
+
 class SkillCreate(BaseModel):
     subject_id: int
     grade_id: int
+    topic_id: int | None = None
     code: str = Field(min_length=1, max_length=16)
     title: str = Field(min_length=1, max_length=255)
     description: str = ""
@@ -45,6 +64,7 @@ class SkillCreate(BaseModel):
 
 
 class SkillUpdate(BaseModel):
+    topic_id: int | None = None
     code: str | None = Field(default=None, min_length=1, max_length=16)
     title: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
@@ -87,6 +107,7 @@ class PluginQuestionCreate(BaseModel):
 class AddPluginToTestRequest(BaseModel):
     """Добавить плагин в тест: создаётся навык из плагина + вопрос PLUGIN."""
     grade_id: int = Field(description="ID класса (grade)")
+    topic_id: int | None = Field(default=None, description="ID темы (topic); если не указан — без темы")
     plugin_id: str = Field(description="ID плагина из manifest")
     plugin_version: str | None = Field(default=None, description="Версия плагина; если не указана — последняя")
 

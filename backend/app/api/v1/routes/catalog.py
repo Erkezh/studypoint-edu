@@ -9,6 +9,7 @@ from app.schemas.catalog import (
     SkillDetailResponse,
     SkillListItem,
     SubjectResponse,
+    TopicResponse,
 )
 from app.services.catalog_service import CatalogService
 
@@ -25,10 +26,16 @@ async def list_grades(svc: CatalogService = Depends()):
     return ApiResponse(data=await svc.list_grades())
 
 
+@router.get("/topics", response_model=ApiResponse[list[TopicResponse]])
+async def list_topics(svc: CatalogService = Depends()):
+    return ApiResponse(data=await svc.list_topics())
+
+
 @router.get("/skills", response_model=ApiResponse[list[SkillListItem]])
 async def list_skills(
     subject_slug: str | None = Query(default=None),
     grade_number: int | None = Query(default=None),
+    topic_id: int | None = Query(default=None),
     q: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
@@ -37,6 +44,7 @@ async def list_skills(
     items, total = await svc.list_skills(
         subject_slug=subject_slug,
         grade_number=grade_number,
+        topic_id=topic_id,
         query=q,
         page=page,
         page_size=page_size,

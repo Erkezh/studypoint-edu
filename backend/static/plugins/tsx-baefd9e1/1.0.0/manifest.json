@@ -1,0 +1,12 @@
+{
+  "id": "tsx-baefd9e1",
+  "name": "Сандарды өсу ретімен орналастыру",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "api_version": "1",
+  "capabilities": {
+    "submit": true,
+    "explanation": true
+  },
+  "height": 400
+}

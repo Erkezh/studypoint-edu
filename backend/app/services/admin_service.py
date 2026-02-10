@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.db.session import get_db_session
 from app.models.catalog import Grade, Skill, Subject
+from app.models.topic import Topic
 from app.models.question import Question
 from app.models.enums import QuestionType
 from app.repositories.plugin_repo import PluginRepository
@@ -24,6 +25,8 @@ from app.schemas.admin import (
     SkillUpdate,
     SubjectCreate,
     SubjectUpdate,
+    TopicCreate,
+    TopicUpdate,
 )
 
 
@@ -94,6 +97,62 @@ class AdminService:
         if grade is None:
             return
         await self.session.delete(grade)
+
+    # --- Topic CRUD ---
+
+    async def list_topics(self, *, page: int, page_size: int) -> tuple[list[Topic], int]:
+        from sqlalchemy import func
+
+        total = int((await self.session.execute(select(func.count()).select_from(Topic))).scalar_one())
+        stmt = select(Topic).order_by(Topic.order, Topic.id).offset((page - 1) * page_size).limit(page_size)
+        items = list((await self.session.execute(stmt)).scalars().all())
+        return items, total
+
+    async def create_topic(self, req: TopicCreate) -> Topic:
+        topic = Topic(
+            slug=req.slug,
+            title=req.title,
+            description=req.description,
+            icon=req.icon,
+            order=req.order,
+            is_published=req.is_published,
+        )
+        self.session.add(topic)
+        try:
+            await self.session.flush()
+        except IntegrityError as e:
+            raise AppError(status_code=409, code="conflict", message="Topic slug already exists") from e
+        return topic
+
+    async def update_topic(self, topic_id: int, req: TopicUpdate) -> Topic:
+        topic = await self.session.get(Topic, topic_id)
+        if topic is None:
+            raise AppError(status_code=404, code="not_found", message="Topic not found")
+        if req.slug is not None:
+            topic.slug = req.slug
+        if req.title is not None:
+            topic.title = req.title
+        if req.description is not None:
+            topic.description = req.description
+        if req.icon is not None:
+            topic.icon = req.icon
+        if req.order is not None:
+            topic.order = req.order
+        if req.is_published is not None:
+            topic.is_published = req.is_published
+        try:
+            await self.session.flush()
+        except IntegrityError as e:
+            raise AppError(status_code=409, code="conflict", message="Topic slug already exists") from e
+        return topic
+
+    async def delete_topic(self, topic_id: int) -> None:
+        topic = await self.session.get(Topic, topic_id)
+        if topic is None:
+            return
+        await self.session.delete(topic)
+
+    # --- Skill CRUD ---
 
     async def list_skills(self, *, page: int, page_size: int) -> tuple[list[Skill], int]:
         from sqlalchemy import func
@@ -369,6 +428,7 @@ class AdminService:
         skill_req = SkillCreate(
             subject_id=subject_id,
             grade_id=req.grade_id,
+            topic_id=req.topic_id,
             code=code,
             title=plugin.name,
             description="",

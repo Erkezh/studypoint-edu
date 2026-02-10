@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.errors import AppError
 from app.db.session import get_db_session
-from app.repositories.catalog_repo import GradeRepository, SkillRepository, SubjectRepository
+from app.repositories.catalog_repo import GradeRepository, SkillRepository, SubjectRepository, TopicRepository
 from app.repositories.practice_repo import PracticeRepository
-from app.schemas.catalog import GradeResponse, SkillDetailResponse, SkillListItem, SubjectResponse
+from app.schemas.catalog import GradeResponse, SkillDetailResponse, SkillListItem, SubjectResponse, TopicResponse
 from app.utils.redis import get_redis
 
 
@@ -19,6 +19,7 @@ class CatalogService:
         self.session = session
         self.subjects = SubjectRepository(session)
         self.grades = GradeRepository(session)
+        self.topics = TopicRepository(session)
         self.skills = SkillRepository(session)
         self.practice = PracticeRepository(session)
 
@@ -44,17 +45,37 @@ class CatalogService:
         await redis.setex(key, settings.cache_ttl_sec, json.dumps([d.model_dump(mode="json") for d in data]))
         return data
 
+    async def list_topics(self) -> list[TopicResponse]:
+        redis = get_redis()
+        key = "cache:topics"
+        cached = await redis.get(key)
+        if cached:
+            return [TopicResponse.model_validate(x) for x in json.loads(cached)]
+        rows = await self.topics.list(published_only=True)
+        data = [TopicResponse(
+            id=t.id,
+            slug=t.slug,
+            title=t.title,
+            description=t.description,
+            icon=t.icon,
+            order=t.order,
+            is_published=t.is_published,
+        ) for t in rows]
+        await redis.setex(key, settings.cache_ttl_sec, json.dumps([d.model_dump(mode="json") for d in data]))
+        return data
+
     async def list_skills(
         self,
         *,
         subject_slug: str | None,
         grade_number: int | None,
+        topic_id: int | None = None,
         query: str | None,
         page: int,
         page_size: int,
     ) -> tuple[list[SkillListItem], int]:
         redis = get_redis()
-        key = f"cache:skills:{subject_slug}:{grade_number}:{query}:{page}:{page_size}"
+        key = f"cache:skills:{subject_slug}:{grade_number}:{topic_id}:{query}:{page}:{page_size}"
         cached = await redis.get(key)
         if cached:
             payload = json.loads(cached)
@@ -76,6 +97,7 @@ class CatalogService:
         rows, total = await self.skills.list(
             subject_id=subject_id,
             grade_id=grade_id,
+            topic_id=topic_id,
             query=query,
             page=page,
             page_size=page_size,
@@ -85,6 +107,8 @@ class CatalogService:
                 id=s.id,
                 subject_id=s.subject_id,
                 grade_id=s.grade_id,
+                topic_id=s.topic_id,
+                topic_title=s.topic.title if s.topic else None,
                 code=s.code,
                 title=s.title,
                 difficulty=s.difficulty,

@@ -19,10 +19,16 @@
 
       <!-- Инструкция -->
       <div class="bg-blue-50 border-l-4 border-blue-400 p-6 mb-6 rounded">
-        <h2 class="text-xl font-semibold text-blue-800 mb-3">📋 Нұсқаулық</h2>
+        <h2 class="text-xl font-semibold text-blue-800 mb-3 flex items-center gap-2">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+          Нұсқаулық
+        </h2>
         <div class="space-y-3 text-gray-700">
           <div class="bg-white p-4 rounded border border-blue-200">
-            <p class="font-semibold text-blue-900 mb-2">✅ Генератор қалай жұмыс істейді:</p>
+            <p class="font-semibold text-blue-900 mb-2 flex items-center gap-2">
+              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Генератор қалай жұмыс істейді:
+            </p>
             <ol class="list-decimal list-inside space-y-1 ml-2">
               <li>Сіз код-генераторды кірістіресіз</li>
               <li>Генератор әр сұрақ үшін жаңа тапсырмалар жасайды</li>
@@ -31,10 +37,11 @@
             </ol>
           </div>
           <div class="bg-green-50 p-3 rounded border border-green-200">
-            <p class="text-sm text-green-800">
-              <strong>💡 Важно:</strong> Генератор должен быть написан на <strong>Python</strong>! 
+            <p class="text-sm text-green-800 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <strong>Важно:</strong> Генератор должен быть написан на <strong>Python</strong>!
               Функция <code>generate(metadata)</code> должна возвращать словарь (dict) с полями:
-              <code>prompt</code>, <code>type</code>, <code>data</code>, <code>correct_answer</code>, 
+              <code>prompt</code>, <code>type</code>, <code>data</code>, <code>correct_answer</code>,
               <code>explanation</code> (опционально).
             </p>
           </div>
@@ -44,20 +51,16 @@
       <!-- Форма создания навыка с генератором -->
       <div class="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 class="text-xl font-semibold mb-6">Жаңа навык қосу</h2>
-        
+
         <form @submit.prevent="handleSubmit" class="space-y-6">
           <!-- Название навыка -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Навык атауы <span class="text-red-500">*</span>
             </label>
-            <input
-              v-model="formData.title"
-              type="text"
-              required
+            <input v-model="formData.title" type="text" required
               class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-              placeholder="Мысалы: Разрядтар"
-            />
+              placeholder="Мысалы: Разрядтар" />
           </div>
 
           <!-- Предмет (только Математика) -->
@@ -68,10 +71,7 @@
             <div class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-700">
               Математика
             </div>
-            <input
-              v-model.number="formData.subject_id"
-              type="hidden"
-            />
+            <input v-model.number="formData.subject_id" type="hidden" />
           </div>
 
           <!-- Класс -->
@@ -79,16 +79,28 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Сынып <span class="text-red-500">*</span>
             </label>
-            <select
-              v-model.number="formData.grade_id"
-              required
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-            >
+            <select v-model.number="formData.grade_id" required
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
               <option value="">Сынып таңдаңыз</option>
               <option v-for="grade in grades" :key="grade.id" :value="grade.id">
                 {{ grade.title }}
               </option>
             </select>
+          </div>
+
+          <!-- Тақырып (Topic) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Тақырып (категория)
+            </label>
+            <select v-model="formData.topic_id"
+              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+              <option :value="null">Тақырып таңдаңыз (міндетті емес)</option>
+              <option v-for="topic in topicsList" :key="topic.id" :value="topic.id">
+                {{ topic.icon }} {{ topic.title }}
+              </option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Навықты категорияға топтастыру үшін тақырып таңдаңыз</p>
           </div>
 
           <!-- Код генератора -->
@@ -97,16 +109,19 @@
               Код генератора <span class="text-red-500">*</span>
             </label>
             <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-2">
-              <p class="text-sm text-green-800 font-medium mb-2">✅ Формат (Python код):</p>
+              <p class="text-sm text-green-800 font-medium mb-2 flex items-center gap-2">
+                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Формат (Python код):
+              </p>
               <pre class="text-xs text-green-700 bg-white p-2 rounded overflow-x-auto"><code>def generate(metadata):
     # Генерируем задачу
     import random
-    
+
     # Пример: генерация простой задачи на сложение
     a = random.randint(1, 10)
     b = random.randint(1, 10)
     answer = a + b
-    
+
     return {
         "prompt": f"Сколько будет {a} + {b}?",
         "type": "MCQ",  # или "NUMERIC", "TEXT", "MULTI_SELECT"
@@ -122,17 +137,14 @@
         "explanation": f"{a} + {b} = {answer}"
     }</code></pre>
             </div>
-            <textarea
-              v-model="formData.generator_code"
-              required
-              rows="20"
+            <textarea v-model="formData.generator_code" required rows="20"
               class="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-xs"
-              placeholder="Мұнда генератор кодты кірістіріңіз..."
-            ></textarea>
-            <p class="text-xs text-gray-500 mt-1">
-              <strong>⚠️ Важно:</strong> Генератор должен быть написан на <strong>Python</strong>, а не на JavaScript! 
-              Функция <code>generate(metadata)</code> должна возвращать словарь с полями: 
-              <code>prompt</code>, <code>type</code>, <code>data</code>, <code>correct_answer</code>, 
+              placeholder="Мұнда генератор кодты кірістіріңіз..."></textarea>
+            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
+              <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+              <strong>Важно:</strong> Генератор должен быть написан на <strong>Python</strong>, а не на JavaScript!
+              Функция <code>generate(metadata)</code> должна возвращать словарь с полями:
+              <code>prompt</code>, <code>type</code>, <code>data</code>, <code>correct_answer</code>,
               <code>explanation</code> (опционально).
             </p>
           </div>
@@ -142,12 +154,9 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Метаданные генератора (JSON, опционально)
             </label>
-            <textarea
-              v-model="generatorMetadataJson"
-              rows="4"
+            <textarea v-model="generatorMetadataJson" rows="4"
               class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-sm"
-              placeholder='{"min": 1, "max": 100, ...}'
-            ></textarea>
+              placeholder='{"min": 1, "max": 100, ...}'></textarea>
             <p class="text-xs text-gray-500 mt-1">Параметры для генератора (если нужны)</p>
           </div>
 
@@ -156,21 +165,20 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">
               Сипаттама
             </label>
-            <textarea
-              v-model="formData.description"
-              rows="3"
+            <textarea v-model="formData.description" rows="3"
               class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-              placeholder="Навык сипаттамасы"
-            ></textarea>
+              placeholder="Навык сипаттамасы"></textarea>
           </div>
 
           <!-- Кнопки -->
           <div class="flex gap-4 pt-4">
-            <Button type="submit" variant="primary" :loading="submitting" class="px-8">
-              ✅ Сақтау
+            <Button type="submit" variant="primary" :loading="submitting" class="px-8 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+              Сақтау
             </Button>
-            <Button type="button" variant="outline" @click="resetForm">
-              🔄 Тазалау
+            <Button type="button" variant="outline" @click="resetForm" class="flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+              Тазалау
             </Button>
           </div>
         </form>
@@ -180,8 +188,9 @@
       <div class="bg-white rounded-lg shadow-md p-6">
         <div class="flex items-center justify-between mb-6">
           <h2 class="text-xl font-semibold">Барлық тақырыптар</h2>
-          <Button @click="loadSkills" variant="outline" :loading="loadingSkills">
-            🔄 Жаңарту
+          <Button @click="loadSkills" variant="outline" :loading="loadingSkills" class="flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+            Жаңарту
           </Button>
         </div>
 
@@ -236,13 +245,10 @@
                   {{ skill.difficulty }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Button
-                    @click="confirmDelete(skill)"
-                    variant="outline"
-                    class="text-red-600 hover:text-red-800 hover:bg-red-50"
-                    :loading="deletingSkillId === skill.id"
-                  >
-                    🗑️ Жою
+                  <Button @click="confirmDelete(skill)" variant="outline"
+                    class="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1" :loading="deletingSkillId === skill.id">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    Жою
                   </Button>
                 </td>
               </tr>
@@ -254,28 +260,19 @@
     <Footer />
 
     <!-- Модальное окно подтверждения удаления -->
-    <Modal
-      :isOpen="!!skillToDelete"
-      @close="skillToDelete = null"
-      title="Тақырыпты жою"
-      :showClose="true"
-    >
+    <Modal :isOpen="!!skillToDelete" @close="skillToDelete = null" title="Тақырыпты жою" :showClose="true">
       <template #content>
         <p class="text-gray-700 mb-4">
           Сіз шынымен "<strong>{{ skillToDelete?.title }}</strong>" тақырыбын жойғыңыз келе ме?
         </p>
-        <p class="text-sm text-red-600 mb-4">
-          ⚠️ Бұл әрекетті қайтару мүмкін емес! Тақырыппен байланысты барлық деректер жойылады.
+        <p class="text-sm text-red-600 mb-4 flex items-center gap-2">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+          Бұл әрекетті қайтару мүмкін емес! Тақырыппен байланысты барлық деректер жойылады.
         </p>
       </template>
       <template #actions>
-        <Button 
-          v-if="skillToDelete"
-          @click="handleDelete" 
-          variant="primary" 
-          :loading="deletingSkillId === skillToDelete.id" 
-          class="bg-red-600 hover:bg-red-700"
-        >
+        <Button v-if="skillToDelete" @click="handleDelete" variant="primary"
+          :loading="deletingSkillId === skillToDelete.id" class="bg-red-600 hover:bg-red-700">
           Иә, жою
         </Button>
         <Button @click="skillToDelete = null" variant="outline">
@@ -290,7 +287,7 @@
 import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
-import { adminApi, type SkillListItem } from '@/api/admin'
+import { adminApi, type SkillListItem, type TopicListItem } from '@/api/admin'
 import { useRouter } from 'vue-router'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
@@ -315,11 +312,13 @@ const skillsList = ref<SkillListItem[]>([])
 const loadingSkills = ref(false)
 const skillToDelete = ref<SkillListItem | null>(null)
 const deletingSkillId = ref<number | null>(null)
+const topicsList = ref<TopicListItem[]>([])
 
 const formData = ref({
   title: '',
-    subject_id: mathSubjectId.value, // Сохраняем выбранную математику
+  subject_id: mathSubjectId.value, // Сохраняем выбранную математику
   grade_id: 0,
+  topic_id: null as number | null,
   code: '',
   description: '',
   generator_code: '',
@@ -333,6 +332,7 @@ const resetForm = () => {
     title: '',
     subject_id: mathSubjectId.value, // Сохраняем выбранную математику
     grade_id: 0,
+    topic_id: null,
     code: '',
     description: '',
     generator_code: '',
@@ -402,6 +402,7 @@ const handleSubmit = async () => {
     await adminApi.createSkill({
       subject_id: formData.value.subject_id,
       grade_id: formData.value.grade_id,
+      topic_id: formData.value.topic_id,
       code: skillCode,
       title: formData.value.title,
       description: formData.value.description || '',
@@ -426,7 +427,7 @@ const handleSubmit = async () => {
       data: err.response?.data,
       message: err.message,
     })
-    
+
     if (err.response?.status === 401) {
       error.value = 'Авторизация қатесі. Жүйеге қайта кіріңіз.'
       // Редирект на логин
@@ -434,7 +435,7 @@ const handleSubmit = async () => {
     } else if (err.response?.status === 422) {
       const validationErrors = err.response?.data?.detail || err.response?.data?.error?.details
       if (Array.isArray(validationErrors)) {
-        const errorMessages = validationErrors.map((e: any) => 
+        const errorMessages = validationErrors.map((e: any) =>
           `${e.loc?.join('.')}: ${e.msg}`
         ).join(', ')
         error.value = `Валидация қатесі: ${errorMessages}`
@@ -510,14 +511,22 @@ onMounted(async () => {
   try {
     subjects.value = await catalogStore.getSubjects()
     grades.value = await catalogStore.getGrades()
-    
+
+    // Загружаем список тем
+    try {
+      const topicsResponse = await adminApi.listTopics()
+      topicsList.value = topicsResponse.data || []
+    } catch (e) {
+      console.error('Failed to load topics:', e)
+    }
+
     // Автоматически выбираем Математику (первый предмет или по названию)
-    const mathSubject = subjects.value.find(s => 
-      s.title?.toLowerCase().includes('math') || 
+    const mathSubject = subjects.value.find(s =>
+      s.title?.toLowerCase().includes('math') ||
       s.title?.toLowerCase().includes('математика') ||
       s.slug?.toLowerCase().includes('math')
     ) || subjects.value[0]
-    
+
     if (mathSubject) {
       mathSubjectId.value = mathSubject.id
       formData.value.subject_id = mathSubject.id
