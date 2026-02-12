@@ -51,4 +51,12 @@ export const catalogApi = {
     )
     return response.data
   },
+
+  async updateSkill(skillId: number, data: { grade_id?: number; topic_id?: number | null; code?: string; title?: string }): Promise<ApiResponse<SkillDetailResponse>> {
+    const response = await apiClient.patch<ApiResponse<SkillDetailResponse>>(
+      `/skills/${skillId}`,
+      data
+    )
+    return response.data
+  }
 }

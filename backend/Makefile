@@ -1,26 +1,25 @@
 .PHONY: install install-dev run fmt lint test migrate revision downgrade seed
 
 install:
-\tpip install -r requirements.txt
+	pip install -r requirements.txt
 
 install-dev:
-\tpip install -r requirements-dev.txt
+	pip install -r requirements-dev.txt
 
 run:
-\tuvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
 migrate:
-\talembic upgrade head
+	alembic upgrade head
 
 revision:
-\talembic revision --autogenerate -m "$(m)"
+	alembic revision --autogenerate -m "$(m)"
 
 downgrade:
-\talembic downgrade -1
+	alembic downgrade -1
 
 seed:
-\tpython -m app.db.seed
+	python -m app.db.seed
 
 test:
-\tpytest -q
-
+	pytest -q

@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.orm import selectinload
 from app.models.catalog import Grade, Skill, Subject
 from app.models.topic import Topic
 
@@ -61,7 +62,7 @@ class SkillRepository:
         page: int,
         page_size: int,
     ) -> tuple[list[Skill], int]:
-        stmt = select(Skill).where(Skill.is_published.is_(True))
+        stmt = select(Skill).options(selectinload(Skill.topic)).where(Skill.is_published.is_(True))
         count_stmt = select(func.count()).select_from(Skill).where(Skill.is_published.is_(True))
 
         if subject_id is not None:
@@ -90,7 +91,15 @@ class SkillRepository:
         skill = Skill(**kwargs)
         self.session.add(skill)
         await self.session.flush()
-        return skill
+    async def update(self, skill: Skill, **kwargs) -> Skill:
+        for key, value in kwargs.items():
+            setattr(skill, key, value)
+        await self.session.flush()
+        # Refresh to load relationships if needed or just return
+        await self.session.refresh(skill)
+        # Eager load topic similar to get/list
+        stmt = select(Skill).options(selectinload(Skill.topic)).where(Skill.id == skill.id)
+        return (await self.session.execute(stmt)).scalar_one()
 
 
 class TopicRepository:

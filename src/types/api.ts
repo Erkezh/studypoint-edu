@@ -193,5 +193,12 @@ export interface AssignmentResponse {
 }
 
 // Analytics types (используем generic dict, так как точная схема не указана в OpenAPI)
-export type AnalyticsOverview = Record<string, any>
+export interface AnalyticsOverview {
+  total_time_sec: number
+  skills_practiced: number
+  avg_accuracy_percent: number
+  total_questions_answered: number
+  total_skills_by_grade?: Record<string, number>
+  [key: string]: any
+}
 export type AnalyticsSkills = Array<Record<string, any>>

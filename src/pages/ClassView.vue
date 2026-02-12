@@ -74,51 +74,46 @@
           {{ error }}
         </div>
 
-          <!-- Grouped Skills List (Masonry Layout) -->
-          <div v-else class="columns-1 md:columns-2 lg:columns-3 gap-8 space-y-8">
-            <div v-for="group in groupedSkills" :key="group.id" class="break-inside-avoid mb-8">
-              <!-- Topic Header -->
-              <h3 class="text-lg font-bold mb-3 flex items-start gap-2 text-green-700 hover:text-green-800 cursor-pointer">
-                 <span class="text-xl -mt-0.5">{{ group.letter }}.</span>
-                 <span class="leading-tight">{{ group.title }}</span>
-              </h3>
+          <!-- Skills List (Flat, IXL-style) -->
+          <div v-else class="columns-1 md:columns-2 lg:columns-3 gap-8">
+            <div class="space-y-0.5">
+              <div v-for="(skill, index) in flatSkills" :key="skill.id"
+                @click.stop="navigateToSkill(skill.id)"
+                class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors break-inside-avoid">
 
-              <!-- Skills List -->
-              <div class="space-y-1">
-                <div v-for="(skill, index) in group.skills" :key="skill.id"
-                  @click.stop="navigateToSkill(skill.id)"
-                  class="group/skill flex items-start gap-2 py-0.5 px-2 -mx-2 rounded hover:bg-green-50 cursor-pointer transition-colors relative">
+                <!-- Skill Number -->
+                <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
+                  {{ index + 1 }}
+                </span>
 
-                  <!-- Skill Number -->
-                  <span class="text-sm font-bold text-gray-500 w-5 text-right shrink-0 group-hover/skill:text-green-600">
-                    {{ index + 1 }}
-                  </span>
+                <!-- Skill Title -->
+                <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
+                  {{ skill.title }}
+                </span>
 
-                  <!-- Skill Title -->
-                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2">
-                    {{ skill.title }}
-                  </span>
-
-                  <!-- Status Icon (Medal/Ribbon) -->
-                  <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-2">
-                     <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-yellow-500">
-                       🏅
-                     </span>
-                     <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
-                       {{ skillStats.get(skill.id)!.best_smartscore }}
-                     </span>
-                  </div>
-
-                  <!-- Admin Delete Button -->
-                  <button v-if="authStore.user?.role === 'ADMIN'"
-                    @click.stop="confirmDeleteSkill(skill.id, skill.title)"
-                    class="ml-2 text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity"
-                    title="Delete Skill">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-
-                  <!-- Hover Preview (Tooltip style could go here) -->
+                <!-- Status Icon -->
+                <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
+                   <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
+                   <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
+                     {{ skillStats.get(skill.id)!.best_smartscore }}
+                   </span>
                 </div>
+
+                <!-- Admin Edit Button -->
+                <button v-if="authStore.user?.role === 'ADMIN'"
+                  @click.stop="openEditModal(skill)"
+                  class="ml-auto text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1"
+                  title="Edit Skill">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </button>
+
+                <!-- Admin Delete Button -->
+                <button v-if="authStore.user?.role === 'ADMIN'"
+                  @click.stop="confirmDeleteSkill(skill.id, skill.title)"
+                  class="text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0"
+                  title="Delete Skill">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
               </div>
             </div>
           </div>
@@ -179,6 +174,14 @@
         </Button>
       </template>
     </Modal>
+
+    <!-- Edit Skill Modal -->
+    <EditSkillModal
+      :is-visible="isEditModalOpen"
+      :skill="editingSkill"
+      @close="closeEditModal"
+      @save="onSkillSaved"
+    />
   </div>
 </template>
 
@@ -195,18 +198,14 @@ import Footer from '@/components/layout/Footer.vue'
 import ViewByToggle from '@/components/ui/ViewByToggle.vue'
 import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
+import EditSkillModal from '@/components/catalog/EditSkillModal.vue'
+import type { SkillListItem } from '@/types/api'
 
 interface Props {
   gradeId: string
 }
 
-interface Skill {
-  id: number
-  title: string
-  code: string
-  topic_id?: number | null
-  topic_title?: string | null
-}
+
 
 const props = defineProps<Props>()
 const router = useRouter()
@@ -249,66 +248,17 @@ const loadingStats = ref(false)
 const showDeleteModal = ref(false)
 const skillToDelete = ref<{ id: number; title: string } | null>(null)
 const deletingSkillId = ref<number | null>(null)
+const isEditModalOpen = ref(false)
+const editingSkill = ref<SkillListItem | null>(null)
 
 
 const TRIAL_QUESTIONS_LIMIT = trialQuestions.TRIAL_QUESTIONS_LIMIT
 
-// Grouped Skills for IXL Layout
-const groupedSkills = computed(() => {
-  const groups: Record<string, { id: number | string; title: string; skills: Skill[] }> = {}
-  const otherSkills: Skill[] = []
-
-  // 1. Group by Topic
-  // 1. Group by Topic
-  for (const skill of skills.value) {
-    if (skill.topic_id && skill.topic_title) {
-      if (!groups[skill.topic_id]) {
-        groups[skill.topic_id] = {
-          id: skill.topic_id,
-          title: skill.topic_title,
-          skills: []
-        }
-      }
-      // Use non-null assertion or check existence (we just created it if missing)
-      if (skill.topic_id != null && groups[skill.topic_id]) {
-        groups[skill.topic_id]!.skills.push(skill)
-      }
-    } else {
-      otherSkills.push(skill)
-    }
-  }
-
-  // 2. Sort Topics (by ID or Title) and Assign Letters
-  const sortedGroups = Object.values(groups).sort((a, b) => a.title.localeCompare(b.title))
-
-  // Add "Other" group if needed
-  if (otherSkills.length > 0) {
-    sortedGroups.push({
-      id: 'other',
-      title: 'Common Skills',
-      skills: otherSkills
-    })
-  }
-
-  // 3. Map to Final Structure with Letters
-  return sortedGroups.map((group, index) => {
-    // Generate Letter: A, B, C... Z, AA, AB...
-    const letter = index < 26
-      ? String.fromCharCode(65 + index)
-      : String.fromCharCode(65 + Math.floor(index / 26) - 1) + String.fromCharCode(65 + (index % 26))
-
-    // Sort skills within group (by ID or difficulty code naturally)
-    const sortedSkills = group.skills.sort((a, b) => {
-        // Try to sort by code tail number if available e.g. A.1, A.2
-        return a.code.localeCompare(b.code, undefined, { numeric: true })
-    })
-
-    return {
-      ...group,
-      letter,
-      skills: sortedSkills
-    }
-  })
+// Flat Skills List (sorted by code)
+const flatSkills = computed(() => {
+  return [...skills.value].sort((a, b) =>
+    a.code.localeCompare(b.code, undefined, { numeric: true })
+  )
 })
 
 // Название текущего класса (удалено дублирование)
@@ -454,7 +404,7 @@ const loadSkillStats = async (skillId: number) => {
     skillStats.value.set(skillId, {
       best_smartscore: Number(stats.best_smartscore || 0),
       last_smartscore: Number(stats.last_smartscore || 0),
-      is_completed: (stats.best_smartscore || 0) >= 90,
+      is_completed: Number(stats.best_smartscore || 0) >= 90,
     })
   } catch (err) {
     // Игнорируем ошибки загрузки статистики (может быть неавторизованный пользователь)
@@ -581,6 +531,27 @@ const deleteSkill = async () => {
   } finally {
     deletingSkillId.value = null
   }
+}
+
+// Редактирование навыка
+const openEditModal = (skill: SkillListItem) => {
+  editingSkill.value = skill
+  isEditModalOpen.value = true
+}
+
+const closeEditModal = () => {
+  isEditModalOpen.value = false
+  editingSkill.value = null
+}
+
+const onSkillSaved = async () => {
+  // Перезагружаем список, так как навык мог переместиться в другой класс или измениться порядок
+  // Но если мы просто обновили название, то перезагрузка не обязательна, если store обновился.
+  // Однако, если изменился класс, навык должен исчезнуть из текущего списка.
+  // Store updateSkill уже обновляет локальный объект.
+  // Проверим, соответствует ли навык текущему классу.
+  // Проще всего перезагрузить список
+  await loadSkillsForGrade(currentGradeId.value, true)
 }
 
 // Обновляем статистику при возврате на страницу

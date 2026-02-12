@@ -297,9 +297,11 @@ const handleDeleteTopic = async (topic: TopicListItem) => {
   error.value = null
   try {
     await adminApi.deleteTopic(topic.id)
+    // Удаляем из локального списка сразу (не перезагружаем, чтобы избежать race condition)
+    topicsList.value = topicsList.value.filter(t => t.id !== topic.id)
+    stats.value.topics = topicsList.value.length
     successMessage.value = `"${topic.title}" тақырыбы жойылды`
     setTimeout(() => { successMessage.value = null }, 3000)
-    await Promise.all([loadTopics(), loadStats()])
   } catch (e: unknown) {
     console.error('Delete topic error:', e)
     const err = e as { response?: { data?: { detail?: string } } }

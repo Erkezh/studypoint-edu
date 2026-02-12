@@ -9,10 +9,10 @@
 
     <main class="flex flex-1 relative">
       <!-- Sidebar (Topics List) -->
-      <aside class="relative shrink-0 w-64 z-30 hidden md:block border-r border-gray-200 bg-gray-50">
+      <aside class="relative shrink-0 w-48 z-30 hidden md:block border-r border-gray-200 bg-gray-50">
         <div class="sticky top-0 h-[calc(100vh-120px)] overflow-y-auto py-4">
-             <div class="px-4 mb-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Topics</div>
-             <nav class="flex flex-col gap-1 px-2">
+             <div class="px-4 mb-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Тақырыптар</div>
+             <nav class="flex flex-col gap-0.5 px-2">
                 <router-link
                   v-for="(topic, index) in topics"
                   :key="topic.id"
@@ -20,82 +20,104 @@
                   class="flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   :class="[
                     currentTopicSlug === topic.slug
-                      ? 'bg-white text-sky-600 shadow-sm border border-gray-100'
+                      ? 'bg-white text-green-700 shadow-sm border border-gray-100 font-bold'
                       : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   ]"
                 >
                   <!-- Color Dot -->
-                  <div :class="['w-2 h-2 rounded-full mr-3', getColorClass(index)]"></div>
-                  {{ topic.title }}
+                  <div :class="['w-2.5 h-2.5 rounded-full mr-2.5 shrink-0', getColorClass(index)]"></div>
+                  <span class="truncate">{{ topic.title }}</span>
                 </router-link>
              </nav>
         </div>
       </aside>
 
       <!-- Main Content -->
-      <div class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="flex-1 w-full px-6 lg:px-10 py-8">
 
         <div v-if="loading" class="flex justify-center py-12">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-600"></div>
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
         </div>
 
         <div v-else-if="currentTopic">
             <!-- Hero Header -->
-            <div class="mb-10">
-                <h1 class="text-4xl font-bold text-sky-600 mb-4">{{ currentTopic.title }}</h1>
-                <p class="text-gray-600 text-lg max-w-3xl">
-                    {{ currentTopic.description || `Here is a list of all of the skills that cover ${currentTopic.title.toLowerCase()}! These skills are organized by grade, and you can move your mouse over any skill name to preview the skill.` }}
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-green-700 mb-3">{{ currentTopic.title }}</h1>
+                <p class="text-gray-600 text-base max-w-4xl leading-relaxed">
+                    {{ currentTopic.description || `Мұнда "${currentTopic.title}" тақырыбына қатысты барлық дағдылар тізімі берілген. Бұл дағдылар сынып бойынша топтастырылған. Кез келген дағды атауына басып, жаттығуды бастаңыз.` }}
                 </p>
             </div>
 
-            <!-- Skills Grouped by Grade -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
-                <div v-for="(skills, gradeKey) in skillsByGrade" :key="gradeKey" class="break-inside-avoid mb-8">
-                    <h2 :class="['text-xl font-bold mb-4', getGradeColorClass(gradeKey)]">
-                         {{ getGradeTitle(gradeKey) }}
+            <!-- Skills Grouped by Grade (Masonry Columns) -->
+            <div class="columns-1 md:columns-2 lg:columns-3 gap-8">
+                <div v-for="gradeGroup in gradeGroups" :key="gradeGroup.gradeId" class="break-inside-avoid mb-8">
+                    <h2 :class="['text-lg font-bold mb-3', gradeGroup.colorClass]">
+                         {{ gradeGroup.title }}
                     </h2>
 
-                    <ul class="space-y-2">
-                        <li v-for="skill in skills" :key="skill.id" class="group relative pl-6">
-                            <span class="absolute left-0 text-xs font-medium text-gray-400 w-5 pt-1">{{ skill.code }}</span>
-                            <router-link :to="{ name: 'skill', params: { skillId: skill.id } }"
-                                class="text-gray-700 hover:text-sky-600 hover:underline decoration-sky-600 decoration-1 underline-offset-2 leading-tight block">
-                                {{ skill.title }}
-                            </router-link>
-
-                            <!-- Preview Popover (Placeholder) -->
-                            <!-- Actual implementation would require complex hovering logic -->
-                        </li>
-                    </ul>
+                    <div class="space-y-0.5 pl-1">
+                        <div v-for="(skill, idx) in gradeGroup.skills" :key="skill.id"
+                          class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors"
+                          @click="navigateToSkill(skill.id)">
+                            <span class="text-sm font-medium text-gray-400 w-5 text-right shrink-0 pt-px">{{ idx + 1 }}</span>
+                            <div class="flex-1 flex items-center justify-between min-w-0 gap-2">
+                                <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug truncate">
+                                    {{ skill.title }}
+                                </span>
+                                <!-- Admin Edit Button -->
+                                <button v-if="authStore.user?.role === 'ADMIN'"
+                                  @click.stop="openEditModal(skill)"
+                                  class="text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0"
+                                  title="Edit Skill">
+                                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div v-if="Object.keys(skillsByGrade).length === 0" class="text-center py-12 text-gray-500">
-                No skills found for this topic yet.
+            <div v-if="gradeGroups.length === 0" class="text-center py-12 text-gray-500">
+                Бұл тақырып бойынша дағдылар әлі қосылмаған.
             </div>
         </div>
 
         <div v-else class="text-center py-12 text-red-500">
-            Topic not found.
+            Тақырып табылмады.
         </div>
 
       </div>
+
+      <!-- Edit Skill Modal -->
+      <EditSkillModal
+        :is-visible="isEditModalOpen"
+        :skill="editingSkill"
+        @close="closeEditModal"
+        @save="onSkillSaved"
+      />
     </main>
     <Footer />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, watch, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useCatalogStore } from '@/stores/catalog'
+import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import ViewByToggle from '@/components/ui/ViewByToggle.vue'
+import EditSkillModal from '@/components/catalog/EditSkillModal.vue'
 import type { SkillListItem } from '@/types/api'
 
 const route = useRoute()
+const router = useRouter()
 const catalogStore = useCatalogStore()
+const authStore = useAuthStore()
+
+const isEditModalOpen = ref(false)
+const editingSkill = ref<SkillListItem | null>(null)
 
 const currentTopicSlug = computed(() => route.params.topicSlug as string)
 const topics = computed(() => catalogStore.topics)
@@ -105,40 +127,87 @@ const currentTopic = computed(() => {
     return topics.value.find(t => t.slug === currentTopicSlug.value)
 })
 
-// Group skills by grade
-const skillsByGrade = computed(() => {
-    // This assumes we fetch ALL skills for the topic.
-    // In reality we might need a specific endpoint or simply filter if we already have them.
-    // For now we'll rely on catalogStore.skills if appropriately fetched.
+// Build a map of grade_id -> grade info for proper titles
+const gradeMap = computed(() => {
+    const map = new Map<number, { number: number; title: string }>()
+    for (const g of catalogStore.grades) {
+        map.set(g.id, { number: g.number, title: g.title })
+    }
+    return map
+})
+
+const getKazakhGradeTitle = (gradeNumber: number): string => {
+    if (gradeNumber === -1) return 'Мектепалды даярлық дағдылары'
+    if (gradeNumber === 0) return 'Даярлық сынып дағдылары'
+    const mapping: Record<number, string> = {
+        1: 'Бірінші',
+        2: 'Екінші',
+        3: 'Үшінші',
+        4: 'Төртінші',
+        5: 'Бесінші',
+        6: 'Алтыншы',
+        7: 'Жетінші',
+        8: 'Сегізінші',
+        9: 'Тоғызыншы',
+        10: 'Оныншы',
+        11: 'Он бірінші'
+    }
+    return `${mapping[gradeNumber] || gradeNumber}-сынып дағдылары`
+}
+
+// Group skills by grade, produce array of groups sorted by grade number
+const gradeGroups = computed(() => {
     const grouped: Record<string, SkillListItem[]> = {}
 
-    // Sort skills by grade, then by code
     const sortedSkills = [...catalogStore.skills].sort((a, b) => {
         if (a.grade_id !== b.grade_id) return a.grade_id - b.grade_id
-        return a.code.localeCompare(b.code)
+        return a.code.localeCompare(b.code, undefined, { numeric: true })
     })
 
     sortedSkills.forEach(skill => {
-        // Since we fetch skills filtered by topic_id from API, we can trust they belong here.
-        // We still check just in case, but relax it or remove strictly if API is trusted.
-        // Actually, let's trust the API result for now to debug visibility issues.
         const key = skill.grade_id.toString()
         if (!grouped[key]) grouped[key] = []
         grouped[key].push(skill)
     })
 
-    return grouped
+    const gradeColors = [
+        'text-sky-600', 'text-green-600', 'text-orange-600',
+        'text-purple-600', 'text-teal-600', 'text-red-600',
+        'text-blue-600', 'text-lime-600', 'text-indigo-600'
+    ]
+
+    return Object.entries(grouped).map(([gradeIdStr, skills], idx) => {
+        const gradeId = parseInt(gradeIdStr)
+        const gradeInfo = gradeMap.value.get(gradeId)
+        const gradeNumber = gradeInfo?.number ?? gradeId
+        const title = getKazakhGradeTitle(gradeNumber)
+
+        return {
+            gradeId,
+            gradeNumber,
+            title,
+            skills,
+            colorClass: gradeColors[idx % gradeColors.length]
+        }
+    }).sort((a, b) => a.gradeNumber - b.gradeNumber)
 })
 
+const navigateToSkill = (skillId: number) => {
+    router.push({ name: 'skill', params: { skillId } })
+}
+
 const fetchTopicData = async () => {
+    // Load grades for proper grade titles
+    if (catalogStore.grades.length === 0) {
+        await catalogStore.getGrades()
+    }
+
     if (topics.value.length === 0) {
         await catalogStore.getTopics()
     }
 
     if (currentTopic.value) {
-        // Fetch all skills for this topic across all grades
-        // We use topic_id parameter. 'grade_number' is omitted to get all grades.
-        await catalogStore.getSkills({ topic_id: currentTopic.value.id } as any, true)
+        await catalogStore.getSkills({ topic_id: currentTopic.value.id }, true)
     }
 }
 
@@ -156,28 +225,21 @@ const getColorClass = (index: number) => {
     return colors[index % colors.length]
 }
 
-const getGradeColorClass = (gradeKey: string) => {
-    // Map arbitrary keys to colors for variety
-    const num = parseInt(gradeKey)
-    const colors = ['text-orange-600', 'text-teal-600', 'text-purple-600', 'text-lime-600', 'text-red-600', 'text-blue-600']
-    return colors[num % colors.length] || 'text-gray-700'
+const openEditModal = (skill: SkillListItem) => {
+  editingSkill.value = skill
+  isEditModalOpen.value = true
 }
 
-const getGradeTitle = (gradeKey: string) => {
-    const num = parseInt(gradeKey)
-    if (num === -1) return 'Pre-K skills'
-    if (num === 0) return 'Kindergarten skills'
-    if (num === 1) return 'First-grade skills'
-    if (num === 2) return 'Second-grade skills'
-    if (num === 3) return 'Third-grade skills'
-    if (num === 4) return 'Fourth-grade skills'
-    if (num === 5) return 'Fifth-grade skills'
+const closeEditModal = () => {
+  isEditModalOpen.value = false
+  editingSkill.value = null
+}
 
-    // Fallback logic
-    const mapping: Record<number, string> = {
-        6: 'Sixth-grade', 7: 'Seventh-grade', 8: 'Eighth-grade',
-        9: 'Ninth-grade', 10: 'Tenth-grade', 11: 'Eleventh-grade'
-    }
-    return (mapping[num] || `${num}th-grade`) + ' skills'
+const onSkillSaved = async () => {
+    // Refresh skills for current topic
+    // if (currentTopic.value) {
+    //     await catalogStore.getSkills({ topic_id: currentTopic.value.id }, true)
+    // }
+    // No need to refetch, store is updated optimistically
 }
 </script>

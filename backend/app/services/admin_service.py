@@ -156,9 +156,10 @@ class AdminService:
 
     async def list_skills(self, *, page: int, page_size: int) -> tuple[list[Skill], int]:
         from sqlalchemy import func
+        from sqlalchemy.orm import selectinload
 
         total = int((await self.session.execute(select(func.count()).select_from(Skill))).scalar_one())
-        stmt = select(Skill).order_by(Skill.id).offset((page - 1) * page_size).limit(page_size)
+        stmt = select(Skill).options(selectinload(Skill.topic)).order_by(Skill.id).offset((page - 1) * page_size).limit(page_size)
         items = list((await self.session.execute(stmt)).scalars().all())
         return items, total
 

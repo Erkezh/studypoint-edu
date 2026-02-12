@@ -121,6 +121,17 @@ export const adminApi = {
     return response.data
   },
 
+  async updateSkill(
+    skillId: number,
+    data: { grade_id?: number; topic_id?: number | null; code?: string; title?: string }
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.patch<ApiResponse<Record<string, unknown>>>(
+      `/admin/skills/${skillId}`,
+      data
+    )
+    return response.data
+  },
+
   // --- Topic CRUD ---
 
   async createTopic(

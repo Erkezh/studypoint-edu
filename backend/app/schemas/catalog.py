@@ -44,3 +44,9 @@ class SkillDetailResponse(SkillListItem):
     is_published: bool
 
 
+
+class SkillUpdate(BaseModel):
+    grade_id: int | None = None
+    topic_id: int | None = None
+    code: str | None = None
+    title: str | None = None

@@ -44,11 +44,27 @@ class AnalyticsService:
         correct_attempts = int(correct_attempts)
         avg_accuracy = int(round((correct_attempts / max(1, total_attempts)) * 100))
 
+        # Get total skills by grade
+        # We need to import Skill and Grade inside the method to avoid circular imports if they are not already imported at top level
+        # Based on previous file view, they were imported inside `skills` method, so we should do same or import at top if possible.
+        # Checking file content again, they are not imported at top level.
+        from app.models.catalog import Skill, Grade
+
+        skills_by_grade_stmt = (
+            select(Grade.number, func.count(Skill.id))
+            .join(Skill.grade)
+            .where(Skill.is_published.is_(True))
+            .group_by(Grade.number)
+        )
+        skills_by_grade_rows = (await self.session.execute(skills_by_grade_stmt)).all()
+        total_skills_by_grade = {row[0]: row[1] for row in skills_by_grade_rows}
+
         return {
             "total_time_sec": total_time,
             "skills_practiced": skills_practiced,
             "avg_accuracy_percent": avg_accuracy,
             "total_questions_answered": total_attempts,
+            "total_skills_by_grade": total_skills_by_grade,
         }
 
     async def skills(self, *, user_id: str) -> list[dict[str, Any]]:
@@ -56,6 +72,7 @@ class AnalyticsService:
         
         # Import Skill model for join
         from app.models.catalog import Skill, Grade
+        from app.models.topic import Topic
         
         stmt = (
             select(
@@ -67,10 +84,13 @@ class AnalyticsService:
                 ProgressSnapshot.accuracy_percent,
                 Skill.title.label('skill_name'),
                 Skill.grade_id,
+                Skill.topic_id,
                 Grade.number.label('grade_number'),
+                Topic.title.label('topic_title'),
             )
             .join(Skill, Skill.id == ProgressSnapshot.skill_id)
             .join(Grade, Grade.id == Skill.grade_id)
+            .outerjoin(Topic, Topic.id == Skill.topic_id)
             .where(ProgressSnapshot.user_id == uid)
             .order_by(ProgressSnapshot.last_practiced_at.desc().nullslast())
         )
@@ -91,6 +111,8 @@ class AnalyticsService:
                 "skill_name": r.skill_name,
                 "grade_id": r.grade_id,
                 "grade_number": r.grade_number,
+                "topic_id": r.topic_id,
+                "topic_title": r.topic_title,
                 "best_smartscore": r.best_smartscore,
                 "last_smartscore": r.last_smartscore,
                 "last_practiced_at": r.last_practiced_at,

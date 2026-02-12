@@ -64,6 +64,7 @@ class SkillCreate(BaseModel):
 
 
 class SkillUpdate(BaseModel):
+    grade_id: int | None = None
     topic_id: int | None = None
     code: str | None = Field(default=None, min_length=1, max_length=16)
     title: str | None = Field(default=None, min_length=1, max_length=255)

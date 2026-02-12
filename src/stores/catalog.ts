@@ -124,6 +124,7 @@ export const useCatalogStore = defineStore('catalog', () => {
   const getSkills = async (params?: {
     subject_slug?: string | null
     grade_number?: number | null
+    topic_id?: number | null
     q?: string | null
     page?: number
     page_size?: number
@@ -209,6 +210,40 @@ export const useCatalogStore = defineStore('catalog', () => {
     skillDetails.value.delete(skillId)
   }
 
+  const updateSkill = async (skillId: number, data: { grade_id?: number; topic_id?: number | null; code?: string; title?: string }) => {
+    try {
+      const response = await catalogApi.updateSkill(skillId, data)
+      if (response.data) {
+        // Update skill details cache
+        skillDetails.value.set(skillId, response.data)
+
+        // Update skills list if present
+        const index = skills.value.findIndex(s => s.id === skillId)
+        if (index !== -1) {
+          const updated = response.data
+          skills.value[index] = {
+            ...skills.value[index],
+            grade_id: updated.grade_id,
+            topic_id: updated.topic_id,
+            topic_title: updated.topic_title,
+            code: updated.code,
+            title: updated.title
+          } as SkillListItem
+        }
+
+        // Clear list cache to be safe
+        skillsCache.value.clear()
+        lastFetch.value.delete('skills')
+
+        return response.data
+      }
+      throw new Error('Failed to update skill')
+    } catch (error) {
+      console.error('Failed to update skill:', error)
+      throw error
+    }
+  }
+
   // Инициализация из localStorage при создании store
   const init = () => {
     try {
@@ -254,5 +289,6 @@ export const useCatalogStore = defineStore('catalog', () => {
     getSkillStats,
     clearSkillsCache,
     removeSkillFromCache,
+    updateSkill,
   }
 })

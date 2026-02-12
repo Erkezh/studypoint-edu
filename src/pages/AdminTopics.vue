@@ -302,7 +302,16 @@ const handleSubmit = async () => {
                 order: formData.value.order,
                 is_published: formData.value.is_published,
             }
-            await adminApi.updateTopic(editingTopicId.value, updateData)
+            const response = await adminApi.updateTopic(editingTopicId.value, updateData)
+
+            // Обновляем локальный список без перезагрузки (избегаем race condition)
+            if (response.data) {
+                const index = topicsList.value.findIndex(t => t.id === editingTopicId.value)
+                if (index !== -1) {
+                    topicsList.value.splice(index, 1, response.data)
+                }
+            }
+
             successMessage.value = 'Тақырып сәтті жаңартылды!'
         } else {
             // Создание
@@ -314,12 +323,20 @@ const handleSubmit = async () => {
                 order: formData.value.order,
                 is_published: formData.value.is_published,
             }
-            await adminApi.createTopic(createData)
+            const response = await adminApi.createTopic(createData)
+
+            // Добавляем в локальный список
+            if (response.data) {
+                topicsList.value.push(response.data)
+                // Сортируем по order
+                topicsList.value.sort((a, b) => a.order - b.order)
+            }
+
             successMessage.value = 'Тақырып сәтті қосылды!'
         }
 
         resetForm()
-        await loadTopics()
+        // await loadTopics() - Removed to avoid race condition
     } catch (e: unknown) {
         console.error('Failed to save topic:', e)
         const err = e as { response?: { data?: { detail?: string } } }
@@ -336,14 +353,17 @@ const confirmDelete = (topic: TopicListItem) => {
 const deleteTopic = async () => {
     if (!topicToDelete.value) return
 
-    deletingTopicId.value = topicToDelete.value.id
+    const deletedId = topicToDelete.value.id
+    const deletedTitle = topicToDelete.value.title
+    deletingTopicId.value = deletedId
     error.value = null
 
     try {
-        await adminApi.deleteTopic(topicToDelete.value.id)
-        successMessage.value = `"${topicToDelete.value.title}" тақырыбы жойылды`
+        await adminApi.deleteTopic(deletedId)
+        // Удаляем из локального списка сразу (не перезагружаем, чтобы избежать race condition)
+        topicsList.value = topicsList.value.filter(t => t.id !== deletedId)
+        successMessage.value = `"${deletedTitle}" тақырыбы жойылды`
         topicToDelete.value = null
-        await loadTopics()
     } catch (e: unknown) {
         console.error('Failed to delete topic:', e)
         const err = e as { response?: { data?: { detail?: string } } }

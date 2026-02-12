@@ -52,7 +52,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/analytics',
     name: 'analytics',
-    component: () => import('@/pages/Analytics.vue'),
+    component: () => import('@/pages/AnalyticsView.vue'),
     meta: { requiresAuth: true },
   },
   {
