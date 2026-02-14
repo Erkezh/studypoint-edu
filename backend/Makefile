@@ -1,25 +1,27 @@
 .PHONY: install install-dev run fmt lint test migrate revision downgrade seed
 
+PYTHON ?= ./venv/bin/python
+
 install:
-	pip install -r requirements.txt
+	$(PYTHON) -m pip install -r requirements.txt
 
 install-dev:
-	pip install -r requirements-dev.txt
+	$(PYTHON) -m pip install -r requirements-dev.txt
 
 run:
-	uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+	$(PYTHON) -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
 migrate:
-	alembic upgrade head
+	$(PYTHON) -m alembic upgrade head
 
 revision:
-	alembic revision --autogenerate -m "$(m)"
+	$(PYTHON) -m alembic revision --autogenerate -m "$(m)"
 
 downgrade:
-	alembic downgrade -1
+	$(PYTHON) -m alembic downgrade -1
 
 seed:
-	python -m app.db.seed
+	$(PYTHON) -m app.db.seed
 
 test:
-	pytest -q
+	$(PYTHON) -m pytest -q

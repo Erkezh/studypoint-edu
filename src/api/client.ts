@@ -5,7 +5,7 @@ import type { ApiResponse } from '@/types/api'
 // Генерация UUID для idempotency
 let idempotencyKey: string | null = null
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 // Проверка доступности сервера при инициализации
 if (typeof window !== 'undefined') {

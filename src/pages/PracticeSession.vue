@@ -415,7 +415,7 @@ const catalogStore = useCatalogStore()
 // Статистика навыка для отображения предыдущего результата
 const previousBestScore = ref<number | null>(null)
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 // Режим разработки - временно закомментировано
 // const isDev = computed(() => import.meta.env.DEV)

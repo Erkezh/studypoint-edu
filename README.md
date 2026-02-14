@@ -2,6 +2,8 @@
 
 Frontend приложение для образовательной платформы Math Edu, построенное на Vue 3 + Vite + TypeScript.
 
+Серверный деплой (Git + Docker + Nginx): `SERVER_DEPLOYMENT.md`
+
 ## Технологический стек
 
 - **Vue 3** с Composition API
@@ -18,7 +20,7 @@ Frontend приложение для образовательной платфо
 
 - Node.js ^20.19.0 или >=22.12.0
 - npm или yarn
-- Backend API должен быть доступен на `http://localhost:8000` (или настроен через `VITE_API_URL`)
+- Backend API должен быть доступен на `http://localhost:8001` (или настроен через `VITE_API_URL`)
 
 ## Установка
 
@@ -41,16 +43,17 @@ npm run type-check
 # Линтинг
 npm run lint
 ```
+Dev server listens on `http://localhost:5174`.
 
 ## Конфигурация
 
 Создайте файл `.env` в корне проекта (опционально):
 
 ```env
-VITE_API_URL=http://localhost:8000
+VITE_API_URL=http://localhost:8001
 ```
 
-Если переменная не указана, используется значение по умолчанию: `http://localhost:8000`
+Если переменная не указана, используется значение по умолчанию: `http://localhost:8001`
 
 ## Структура проекта
 
@@ -107,7 +110,7 @@ src/
 
 ## API Endpoints
 
-Приложение использует следующие эндпоинты из OpenAPI спецификации (`http://localhost:8000/docs`):
+Приложение использует следующие эндпоинты из OpenAPI спецификации (`http://localhost:8001/docs`):
 
 ### Auth
 - `POST /api/v1/auth/register` - Регистрация
@@ -189,7 +192,7 @@ npm test -- --coverage
 
 Если при использовании обнаруживаются несоответствия между фронтендом и бэкендом API:
 
-1. Проверьте OpenAPI спецификацию на `http://localhost:8000/docs`
+1. Проверьте OpenAPI спецификацию на `http://localhost:8001/docs`
 2. Сравните схемы ответов с типами в `src/types/api.ts`
 3. При необходимости обновите типы и API клиенты
 

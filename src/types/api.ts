@@ -1,5 +1,5 @@
 // TypeScript типы на основе OpenAPI спецификации
-// Сгенерировано на основе http://localhost:8000/api/v1/openapi.json
+// Сгенерировано на основе http://localhost:8001/api/v1/openapi.json
 
 export enum UserRole {
   ADMIN = 'ADMIN',

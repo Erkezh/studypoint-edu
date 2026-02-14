@@ -4,7 +4,7 @@ import urllib.request
 import urllib.error
 import sys
 
-BASE_URL = "http://localhost:8000/api/v1"
+BASE_URL = "http://localhost:8001/api/v1"
 AUTH_data = {"username": "admin@example.com", "password": "Password123!"}
 
 def request(url, method="GET", data=None, headers={}):

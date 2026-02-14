@@ -388,7 +388,7 @@ const grades = ref<Array<{ id: number; number: number; title: string }>>([])
 const topics = ref<Array<{ id: number; title: string; icon: string | null }>>([])
 const addingToTest = ref<string | null>(null)
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 const handleTsxFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement

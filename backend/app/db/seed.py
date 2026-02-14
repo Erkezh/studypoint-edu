@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import datetime, timezone
 
+from redis.asyncio import Redis
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,8 @@ from app.models.question import Question
 from app.models.subscription import Subscription
 from app.models.user import User
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 async def _ensure_subjects(session: AsyncSession) -> None:
@@ -175,6 +179,19 @@ async def _reset_sequences(session: AsyncSession) -> None:
         )
 
 
+async def _clear_cache() -> None:
+    # Prevent stale Redis values (e.g. cached empty lists) after reseed.
+    try:
+        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            async for key in redis.scan_iter(match="cache:*"):
+                await redis.delete(key)
+        finally:
+            await redis.aclose()
+    except Exception as exc:  # pragma: no cover - non-fatal cleanup
+        logger.warning("Could not clear redis cache after seed: %s", exc)
+
+
 async def seed() -> None:
     init_engine(settings.database_url)
     sessionmaker = get_sessionmaker()
@@ -187,6 +204,7 @@ async def seed() -> None:
                 await _ensure_demo_content(session)
                 await _ensure_demo_users(session)
                 await _reset_sequences(session)
+            await _clear_cache()
     finally:
         await close_engine()
 

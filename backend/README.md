@@ -20,22 +20,33 @@ cp .env.example .env
 ```bash
 docker compose up --build
 ```
+`docker-compose.yml` forces container-safe connection URLs (`postgres`, `redis`) for the API service,
+so Docker startup will not fail from `localhost` Redis/Postgres values in `.env`.
+It also runs `alembic upgrade head` automatically before starting Uvicorn.
 
 3) Run migrations + seed:
 ```bash
-docker compose exec api alembic upgrade head
 docker compose exec api python -m app.db.seed
 ```
 
-OpenAPI: `http://localhost:8000/docs`
+OpenAPI: `http://localhost:8001/docs`
 
 ## Run without Docker (local Postgres + Redis)
 Set `.env` to local services (e.g. `DATABASE_URL=...@localhost:5432/ixl`, `REDIS_URL=redis://localhost:6379/0`), then:
 ```bash
-alembic upgrade head
-python3 -m app.db.seed
-uvicorn app.main:app --reload
+./venv/bin/python -m alembic upgrade head
+./venv/bin/python -m app.db.seed
+./venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 ```
+
+If your shell resolves global binaries (for example `/Library/Frameworks/Python.framework/.../uvicorn`),
+run backend commands via `python -m ...` (or `./venv/bin/python -m ...`) to guarantee packages from `backend/venv`.
+
+### Common local DB error
+If you see `asyncpg.exceptions.InvalidAuthorizationSpecificationError: role "<name>" does not exist`,
+your `DATABASE_URL` username does not exist in your local Postgres instance.
+Fix `backend/.env` `DATABASE_URL` to a valid local role (for Docker setup use `postgres:postgres`),
+or create that role in Postgres.
 
 ## IXL-like practice mapping (MVP)
 - SmartScore zones: `LEARNING` (0–69), `REFINING` (70–89), `CHALLENGE` (90–100)
@@ -49,14 +60,14 @@ uvicorn app.main:app --reload
 ## Example flow (curl)
 Register:
 ```bash
-curl -sS -X POST http://localhost:8000/api/v1/auth/register \
+curl -sS -X POST http://localhost:8001/api/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"student@example.com","password":"Password123!","full_name":"Student","role":"STUDENT","grade_level":5}' | jq
 ```
 
 Login:
 ```bash
-TOKENS=$(curl -sS -X POST http://localhost:8000/api/v1/auth/login \
+TOKENS=$(curl -sS -X POST http://localhost:8001/api/v1/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"email":"student@example.com","password":"Password123!"}')
 ACCESS=$(echo "$TOKENS" | jq -r '.data.access_token')
@@ -64,7 +75,7 @@ ACCESS=$(echo "$TOKENS" | jq -r '.data.access_token')
 
 Start practice session:
 ```bash
-curl -sS -X POST http://localhost:8000/api/v1/practice/sessions \
+curl -sS -X POST http://localhost:8001/api/v1/practice/sessions \
   -H "Authorization: Bearer $ACCESS" \
   -H 'Content-Type: application/json' \
   -d '{"skill_id":1}' | jq
@@ -72,7 +83,7 @@ curl -sS -X POST http://localhost:8000/api/v1/practice/sessions \
 
 Submit answer:
 ```bash
-curl -sS -X POST http://localhost:8000/api/v1/practice/sessions/<session_id>/submit \
+curl -sS -X POST http://localhost:8001/api/v1/practice/sessions/<session_id>/submit \
   -H "Authorization: Bearer $ACCESS" \
   -H 'Content-Type: application/json' \
   -d '{"question_id":1,"submitted_answer":{"choice":"A"},"time_spent_sec":12}' | jq

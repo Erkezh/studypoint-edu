@@ -37,3 +37,24 @@ __screenshots__/
 
 # Вложенные git репозитории
 studypoint-edu/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+backend/venv/
+venv/
+
+# Env files
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example

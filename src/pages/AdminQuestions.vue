@@ -238,7 +238,7 @@ const formData = ref({
 })
 
 const exampleCode = ref(`import React, { useState, useEffect } from 'react';
-import { RefreshCw, CheckCircle, XCircle, Brain, Award } from 'lucide-react';
+import { RefreshCw, CheckCircle, XCircle, Brain, Award } from 'lucide-${'react'}';
 
 const KazakhPlaceValueGenerator = () => {
   const [currentQuestion, setCurrentQuestion] = useState(null);
@@ -524,7 +524,7 @@ const handleSubmit = async () => {
     })
 
     if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
-      error.value = 'Желі қатесі: Серверге қосылу мүмкін емес. Сервер жұмыс істеп тұрғанын тексеріңіз (http://localhost:8000).'
+      error.value = 'Желі қатесі: Серверге қосылу мүмкін емес. Сервер жұмыс істеп тұрғанын тексеріңіз (http://localhost:8001).'
     } else if (err.response?.status === 401) {
       const errorDetail = err.response.data?.detail || err.response.data?.error
       if (errorDetail?.message) {
