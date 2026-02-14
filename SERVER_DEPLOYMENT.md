@@ -9,10 +9,17 @@ This guide deploys the project from Git with these runtime ports:
 
 ```bash
 sudo apt update
-sudo apt install -y ca-certificates curl gnupg lsb-release nginx nodejs npm
+sudo apt install -y ca-certificates curl gnupg lsb-release nginx
 ```
 
-Install Docker + Compose plugin (official docs are recommended for latest steps), then verify:
+Install Node.js 22.x (recommended, required by current Vite/Vue toolchain):
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+```
+
+Install Docker + Compose plugin (official docs are recommended for latest steps), then verify versions:
 
 ```bash
 docker --version
@@ -21,6 +28,9 @@ node -v
 npm -v
 nginx -v
 ```
+
+Node must be `>=22.12.0` (or `20.19.x`). Older versions can fail with:
+`[vite:vue] crypto.hash is not a function`.
 
 ## 2. Clone project
 
@@ -100,6 +110,12 @@ nohup npm run preview -- --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.lo
 
 Rebuild/restart preview whenever `.env` changes.
 This guide uses `npm run build-only` (without `vue-tsc`) to avoid blocking deploy on current TS typing issues.
+
+If install/build fails due Node version:
+```bash
+node -v
+npm run check:node
+```
 
 Optional (recommended) process manager with `systemd`:
 
