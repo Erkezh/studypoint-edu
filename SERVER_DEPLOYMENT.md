@@ -3,7 +3,7 @@
 This guide deploys the project from Git with these runtime ports:
 - Backend API: `127.0.0.1:8001`
 - Frontend: `127.0.0.1:5174`
-- Public entrypoint: Nginx on `:80` (and optional `:443`)
+- Edge entrypoint: shared-domain vhost on `:80/:443` or dedicated upstream proxy port `127.0.0.1:8088`
 
 ## 1. Install prerequisites (Ubuntu)
 
@@ -128,20 +128,38 @@ sudo systemctl status studypoint-frontend
 
 ## 6. Configure Nginx reverse proxy
 
-Copy provided config:
+Use one of these two modes.
+
+1) Shared Nginx with a new domain (recommended)
 
 ```bash
 sudo cp /opt/studypoint-edu/deploy/nginx/studypoint.conf /etc/nginx/sites-available/studypoint
 sudo ln -sf /etc/nginx/sites-available/studypoint /etc/nginx/sites-enabled/studypoint
-sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-Now open:
+Edit `/etc/nginx/sites-available/studypoint` and replace `server_name` with your real domain.
+
+Now open with that domain:
 - `http://<server-ip-or-domain>/` -> frontend (`5174`)
 - `http://<server-ip-or-domain>/api/v1/...` -> backend (`8001`)
 - `http://<server-ip-or-domain>/docs` -> backend Swagger
+
+2) Dedicated upstream port (for another proxy/domain gateway)
+
+```bash
+sudo cp /opt/studypoint-edu/deploy/nginx/studypoint-proxy-port.conf /etc/nginx/sites-available/studypoint-proxy-port
+sudo ln -sf /etc/nginx/sites-available/studypoint-proxy-port /etc/nginx/sites-enabled/studypoint-proxy-port
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Then, in your outer proxy/domain panel, forward your new domain to:
+- `http://127.0.0.1:8088` (same server), or
+- `http://<server-private-ip>:8088` (if proxy is on another machine)
+
+Use full-host proxying (all paths) and keep/preserve the `Host` header.
 
 ## 7. Optional: enable HTTPS (Let's Encrypt)
 
