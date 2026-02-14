@@ -1,11 +1,10 @@
 import axios, { type AxiosInstance, AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { v4 as uuidv4 } from 'uuid'
 import type { ApiResponse } from '@/types/api'
+import { API_BASE_URL } from '@/config/api'
 
 // Генерация UUID для idempotency
 let idempotencyKey: string | null = null
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 // Проверка доступности сервера при инициализации
 if (typeof window !== 'undefined') {

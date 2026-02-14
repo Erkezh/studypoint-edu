@@ -294,6 +294,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { adminApi } from '@/api/admin'
 import { catalogApi } from '@/api/catalog'
+import { API_BASE_URL } from '@/config/api'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
@@ -387,8 +388,6 @@ const addToTestTopicId = ref<number | null>(null)
 const grades = ref<Array<{ id: number; number: number; title: string }>>([])
 const topics = ref<Array<{ id: number; title: string; icon: string | null }>>([])
 const addingToTest = ref<string | null>(null)
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 const handleTsxFileSelect = (event: Event) => {
   const target = event.target as HTMLInputElement

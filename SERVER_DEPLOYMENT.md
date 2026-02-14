@@ -102,7 +102,8 @@ sudo systemctl status studypoint-backend
 cd /opt/studypoint-edu
 npm ci
 cat > /opt/studypoint-edu/.env <<'ENV'
-VITE_API_URL=http://127.0.0.1:8001
+# Keep empty in production to use same-origin proxy (/api via Nginx/NPM gateway)
+VITE_API_URL=
 ENV
 npm run build-only
 nohup npm run preview -- --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.log 2>&1 &
@@ -110,6 +111,7 @@ nohup npm run preview -- --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.lo
 
 Rebuild/restart preview whenever `.env` changes.
 This guide uses `npm run build-only` (without `vue-tsc`) to avoid blocking deploy on current TS typing issues.
+Do not set `VITE_API_URL` to `127.0.0.1` or `localhost` in production browser builds.
 
 If install/build fails due Node version:
 ```bash

@@ -524,7 +524,11 @@ const handleSubmit = async () => {
     })
 
     if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
-      error.value = 'Желі қатесі: Серверге қосылу мүмкін емес. Сервер жұмыс істеп тұрғанын тексеріңіз (http://localhost:8001).'
+      const apiHint =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}/api/v1/grades`
+          : '/api/v1/grades'
+      error.value = `Желі қатесі: Серверге қосылу мүмкін емес. API қолжетімдігін тексеріңіз: ${apiHint}`
     } else if (err.response?.status === 401) {
       const errorDetail = err.response.data?.detail || err.response.data?.error
       if (errorDetail?.message) {

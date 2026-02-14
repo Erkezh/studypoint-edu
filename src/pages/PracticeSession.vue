@@ -396,6 +396,7 @@ import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
 import InteractiveQuestion from '@/components/practice/InteractiveQuestion.vue'
 import AnswerVisualizer from '@/components/analytics/AnswerVisualizer.vue'
+import { API_BASE_URL } from '@/config/api'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
 import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
@@ -414,8 +415,6 @@ const catalogStore = useCatalogStore()
 
 // Статистика навыка для отображения предыдущего результата
 const previousBestScore = ref<number | null>(null)
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8001'
 
 // Режим разработки - временно закомментировано
 // const isDev = computed(() => import.meta.env.DEV)
