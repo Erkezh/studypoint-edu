@@ -144,7 +144,44 @@ sudo systemctl status studypoint-frontend
 
 ## 6. Configure Nginx reverse proxy
 
-Use one of these two modes.
+Use one mode that matches your environment.
+
+0) You already use Nginx Proxy Manager (NPM) on `80/443`
+
+If NPM is already serving other projects, do **not** add another host-level Nginx site on `:80/:443`.
+Use an internal gateway container and proxy only this new domain to it.
+
+Add this service to your existing NPM `docker-compose.yml`:
+
+```yaml
+  studypoint-gateway:
+    image: nginx:1.27-alpine
+    container_name: studypoint-gateway
+    restart: unless-stopped
+    volumes:
+      - /studypoint-edu/studypoint-edu/deploy/nginx/studypoint-gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - nginx
+```
+
+Then apply safely:
+
+```bash
+cd /path/to/your/npm-compose
+docker compose up -d studypoint-gateway
+```
+
+In NPM UI, create a new Proxy Host for your new domain:
+- `Forward Hostname / IP`: `studypoint-gateway`
+- `Forward Port`: `8080`
+- `Scheme`: `http`
+- `Websockets Support`: enabled
+
+This will not affect existing proxy hosts/domains.
+If frontend gives `403` while backend works, your old gateway config is still mounted.
+Update `studypoint-gateway.conf` to set `proxy_set_header Host 127.0.0.1;` in `location /`, then recreate `studypoint-gateway`.
 
 1) Shared Nginx with a new domain (recommended)
 
