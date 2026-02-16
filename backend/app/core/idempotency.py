@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 from pydantic import BaseModel
+from redis.exceptions import RedisError
 
 from app.schemas.base import ApiResponse
 from app.utils.redis import get_redis
@@ -21,9 +22,12 @@ def _request_hash(body: Any) -> str:
 async def idempotency_get(*, user_id: str, key: str | None, request_body: Any) -> ApiResponse | None:
     if not key:
         return None
-    redis = get_redis()
     redis_key = f"idem:{user_id}:{key}"
-    stored = await redis.get(redis_key)
+    try:
+        redis = get_redis()
+        stored = await redis.get(redis_key)
+    except RedisError:
+        return None
     if not stored:
         return None
     payload = json.loads(stored)
@@ -42,11 +46,13 @@ async def idempotency_set(
 ) -> None:
     if not key:
         return None
-    redis = get_redis()
-    redis_key = f"idem:{user_id}:{key}"
     payload = {
         "request_hash": _request_hash(request_body),
         "response": response.model_dump(mode="json"),
     }
-    await redis.setex(redis_key, ttl_sec, json.dumps(payload))
-
+    redis_key = f"idem:{user_id}:{key}"
+    try:
+        redis = get_redis()
+        await redis.setex(redis_key, ttl_sec, json.dumps(payload))
+    except RedisError:
+        return None

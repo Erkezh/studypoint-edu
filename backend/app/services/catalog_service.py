@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import logging
 
 from fastapi import Depends
+from redis.exceptions import RedisError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -12,6 +14,8 @@ from app.repositories.catalog_repo import GradeRepository, SkillRepository, Subj
 from app.repositories.practice_repo import PracticeRepository
 from app.schemas.catalog import GradeResponse, SkillDetailResponse, SkillListItem, SkillUpdate, SubjectResponse, TopicResponse
 from app.utils.redis import get_redis
+
+logger = logging.getLogger(__name__)
 
 
 class CatalogService:
@@ -23,32 +27,51 @@ class CatalogService:
         self.skills = SkillRepository(session)
         self.practice = PracticeRepository(session)
 
+    async def _cache_get(self, key: str) -> str | None:
+        try:
+            redis = get_redis()
+            return await redis.get(key)
+        except RedisError as exc:
+            logger.warning("Cache read failed for key %s: %s", key, exc)
+            return None
+
+    async def _cache_setex(self, key: str, value: str) -> None:
+        try:
+            redis = get_redis()
+            await redis.setex(key, settings.cache_ttl_sec, value)
+        except RedisError as exc:
+            logger.warning("Cache write failed for key %s: %s", key, exc)
+
+    async def _cache_delete(self, key: str) -> None:
+        try:
+            redis = get_redis()
+            await redis.delete(key)
+        except RedisError as exc:
+            logger.warning("Cache delete failed for key %s: %s", key, exc)
+
     async def list_subjects(self) -> list[SubjectResponse]:
-        redis = get_redis()
         key = "cache:subjects"
-        cached = await redis.get(key)
+        cached = await self._cache_get(key)
         if cached:
             return [SubjectResponse.model_validate(x) for x in json.loads(cached)]
         rows = await self.subjects.list()
         data = [SubjectResponse(id=s.id, slug=s.slug, title=s.title) for s in rows]
-        await redis.setex(key, settings.cache_ttl_sec, json.dumps([d.model_dump(mode="json") for d in data]))
+        await self._cache_setex(key, json.dumps([d.model_dump(mode="json") for d in data]))
         return data
 
     async def list_grades(self) -> list[GradeResponse]:
-        redis = get_redis()
         key = "cache:grades"
-        cached = await redis.get(key)
+        cached = await self._cache_get(key)
         if cached:
             return [GradeResponse.model_validate(x) for x in json.loads(cached)]
         rows = await self.grades.list()
         data = [GradeResponse(id=g.id, number=g.number, title=g.title) for g in rows]
-        await redis.setex(key, settings.cache_ttl_sec, json.dumps([d.model_dump(mode="json") for d in data]))
+        await self._cache_setex(key, json.dumps([d.model_dump(mode="json") for d in data]))
         return data
 
     async def list_topics(self) -> list[TopicResponse]:
-        redis = get_redis()
         key = "cache:topics"
-        cached = await redis.get(key)
+        cached = await self._cache_get(key)
         if cached:
             return [TopicResponse.model_validate(x) for x in json.loads(cached)]
         rows = await self.topics.list(published_only=True)
@@ -61,7 +84,7 @@ class CatalogService:
             order=t.order,
             is_published=t.is_published,
         ) for t in rows]
-        await redis.setex(key, settings.cache_ttl_sec, json.dumps([d.model_dump(mode="json") for d in data]))
+        await self._cache_setex(key, json.dumps([d.model_dump(mode="json") for d in data]))
         return data
 
     async def list_skills(
@@ -74,9 +97,8 @@ class CatalogService:
         page: int,
         page_size: int,
     ) -> tuple[list[SkillListItem], int]:
-        redis = get_redis()
         key = f"cache:skills:{subject_slug}:{grade_number}:{topic_id}:{query}:{page}:{page_size}"
-        cached = await redis.get(key)
+        cached = await self._cache_get(key)
         if cached:
             payload = json.loads(cached)
             return ([SkillListItem.model_validate(x) for x in payload["items"]], payload["total"])
@@ -116,17 +138,12 @@ class CatalogService:
             )
             for s in rows
         ]
-        await redis.setex(
-            key,
-            settings.cache_ttl_sec,
-            json.dumps({"items": [i.model_dump(mode="json") for i in items], "total": total}),
-        )
+        await self._cache_setex(key, json.dumps({"items": [i.model_dump(mode="json") for i in items], "total": total}))
         return items, total
 
     async def get_skill(self, skill_id: int) -> SkillDetailResponse:
-        redis = get_redis()
         key = f"cache:skill:{skill_id}"
-        cached = await redis.get(key)
+        cached = await self._cache_get(key)
         if cached:
             return SkillDetailResponse.model_validate_json(cached)
 
@@ -146,7 +163,7 @@ class CatalogService:
             video_url=s.video_url,
             is_published=s.is_published,
         )
-        await redis.setex(key, settings.cache_ttl_sec, resp.model_dump_json())
+        await self._cache_setex(key, resp.model_dump_json())
         return resp
 
     async def update_skill(self, skill_id: int, data: SkillUpdate) -> SkillDetailResponse:
@@ -176,9 +193,8 @@ class CatalogService:
         updated_skill = await self.skills.update(s, **update_data)
 
         # Invalidate cache
-        redis = get_redis()
         # 1. Skill detail cache
-        await redis.delete(f"cache:skill:{skill_id}")
+        await self._cache_delete(f"cache:skill:{skill_id}")
         # 2. List cache is harder to clear precisely because of pagination keys.
         # For now, we can iterate scan or accept eventual consistency (TTL).
         # Or clear by grade/subject pattern if possible.

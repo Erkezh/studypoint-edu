@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+import logging
 
 from fastapi import Depends, Request
+from redis.exceptions import RedisError
 
 from app.core.deps import get_current_user_optional, get_or_create_guest_user
 from app.core.errors import AppError
 from app.utils.redis import get_redis
+
+logger = logging.getLogger(__name__)
 
 
 def rate_limit_dep(*, limit: int, window_sec: int, per_user: bool = False) -> Callable:
@@ -24,12 +28,17 @@ def rate_limit_dep(*, limit: int, window_sec: int, per_user: bool = False) -> Ca
             ip = request.client.host if request.client else "unknown"
             key = f"rl:ip:{ip}:{request.url.path}"
 
-        count = await redis.incr(key)
-        if count == 1:
-            await redis.expire(key, window_sec)
+        try:
+            count = await redis.incr(key)
+            if count == 1:
+                await redis.expire(key, window_sec)
+        except RedisError as exc:
+            # Fail open: auth/practice endpoints must not return 500 if Redis is read-only/unhealthy.
+            logger.warning("Rate limit skipped due to Redis error: %s", exc)
+            return None
+
         if count > limit:
             raise AppError(status_code=429, code="rate_limited", message="Too many requests")
         return None
 
     return _dep
-

@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import Depends
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -947,12 +948,16 @@ class PracticeService:
         redis = get_redis()
         date_key = utc_now().date().isoformat()
         key = f"usage:questions:{user_id}:{date_key}"
-        count = await redis.incr(key)
-        if count == 1:
-            # Expire at next UTC midnight.
-            tomorrow = datetime.combine(utc_now().date(), datetime.min.time(), tzinfo=utc_now().tzinfo).timestamp() + 86400
-            ttl = int(tomorrow - utc_now().timestamp())
-            await redis.expire(key, max(60, ttl))
+        try:
+            count = await redis.incr(key)
+            if count == 1:
+                # Expire at next UTC midnight.
+                tomorrow = datetime.combine(utc_now().date(), datetime.min.time(), tzinfo=utc_now().tzinfo).timestamp() + 86400
+                ttl = int(tomorrow - utc_now().timestamp())
+                await redis.expire(key, max(60, ttl))
+        except RedisError as exc:
+            logger.warning("Skipping free-question usage increment due to Redis error: %s", exc)
+            return
         if count > settings.free_daily_question_limit:
             raise AppError(status_code=402, code="subscription_required", message="Daily free question limit exceeded")
 

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import Depends
+from redis.exceptions import RedisError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +27,8 @@ from app.schemas.auth import AuthLoginRequest, AuthRegisterRequest, AuthTokensRe
 from app.schemas.user import StudentProfileResponse, SubscriptionResponse, UserMeResponse
 from app.utils.redis import get_redis
 
+logger = logging.getLogger(__name__)
+
 
 class AuthService:
     def __init__(self, session: AsyncSession = Depends(get_db_session)) -> None:
@@ -33,8 +38,12 @@ class AuthService:
     async def _issue_tokens(self, *, user_id: str, role: str) -> TokenPair:
         access, _ = create_access_token(user_id=user_id, role=role)
         refresh, refresh_jti = create_refresh_token(user_id=user_id, role=role)
-        redis = get_redis()
-        await redis.setex(f"auth:refresh:{refresh_jti}", settings.jwt_refresh_ttl_sec, user_id)
+        try:
+            redis = get_redis()
+            await redis.setex(f"auth:refresh:{refresh_jti}", settings.jwt_refresh_ttl_sec, user_id)
+        except RedisError as exc:
+            # Keep login/register available even when Redis is temporarily read-only.
+            logger.warning("Failed to persist refresh token in Redis: %s", exc)
         return TokenPair(access_token=access, refresh_token=refresh)
 
     async def register(self, req: AuthRegisterRequest) -> AuthTokensResponse:
@@ -98,12 +107,26 @@ class AuthService:
         if not user_id or not jti:
             raise AppError(status_code=401, code="unauthorized", message="Invalid refresh token")
 
-        redis = get_redis()
-        stored_user = await redis.get(f"auth:refresh:{jti}")
+        try:
+            redis = get_redis()
+            stored_user = await redis.get(f"auth:refresh:{jti}")
+        except RedisError as exc:
+            raise AppError(
+                status_code=503,
+                code="service_unavailable",
+                message="Authentication storage temporarily unavailable",
+            ) from exc
         if stored_user != user_id:
             raise AppError(status_code=401, code="unauthorized", message="Refresh token revoked")
 
-        await redis.delete(f"auth:refresh:{jti}")
+        try:
+            await redis.delete(f"auth:refresh:{jti}")
+        except RedisError as exc:
+            raise AppError(
+                status_code=503,
+                code="service_unavailable",
+                message="Authentication storage temporarily unavailable",
+            ) from exc
         user = await self.users.get_by_id(user_id)
         if user is None or not user.is_active:
             raise AppError(status_code=401, code="unauthorized", message="User not found or inactive")
@@ -130,5 +153,9 @@ class AuthService:
         require_token_type(payload, "refresh")
         jti = payload.get("jti")
         if jti:
-            redis = get_redis()
-            await redis.delete(f"auth:refresh:{jti}")
+            try:
+                redis = get_redis()
+                await redis.delete(f"auth:refresh:{jti}")
+            except RedisError as exc:
+                # Logout should remain best-effort and never crash on Redis state issues.
+                logger.warning("Failed to revoke refresh token in Redis during logout: %s", exc)
