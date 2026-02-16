@@ -226,17 +226,27 @@ sudo certbot --nginx -d your-domain.com -d www.your-domain.com
 ## 8. Update flow after `git pull`
 
 ```bash
-cd /opt/studypoint-edu
+cd /studypoint-edu/studypoint-edu
 git pull
 
 # frontend
 npm ci
+cat > /studypoint-edu/studypoint-edu/.env <<'ENV'
+VITE_API_URL=
+ENV
 npm run build-only
-pkill -f "vite preview" || true
-nohup npm run preview -- --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.log 2>&1 &
+sudo systemctl restart studypoint-frontend
 
 # backend
-cd /opt/studypoint-edu/backend
-docker compose up -d --build
-docker compose exec api alembic upgrade head
+cd /studypoint-edu/studypoint-edu/backend
+sudo docker compose up -d --build
+sudo docker compose run --rm api alembic upgrade head
 ```
+
+## 9. Optional CI/CD (GitHub Actions)
+
+Use:
+- `/Users/nursat/Desktop/Projects/studypoint_edu/studypoint-edu/.github/workflows/deploy-production.yml`
+- `/Users/nursat/Desktop/Projects/studypoint_edu/studypoint-edu/CICD_SETUP.md`
+
+After setup, every push to `main` will auto-deploy backend + frontend.
