@@ -106,7 +106,7 @@ cat > /opt/studypoint-edu/.env <<'ENV'
 VITE_API_URL=
 ENV
 npm run build-only
-nohup npm run preview -- --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.log 2>&1 &
+nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoint-frontend.log 2>&1 &
 ```
 
 Rebuild/restart preview whenever `.env` changes.
@@ -131,7 +131,7 @@ After=network.target
 Type=simple
 WorkingDirectory=/opt/studypoint-edu
 Environment=NODE_ENV=production
-ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5174
+ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5174 --strictPort
 Restart=always
 RestartSec=5
 
@@ -231,12 +231,28 @@ git pull
 
 # frontend
 npm ci
+cat > /opt/studypoint-edu/.env <<'ENV'
+VITE_API_URL=
+ENV
 npm run build-only
-pkill -f "vite preview" || true
-nohup npm run preview -- --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.log 2>&1 &
+
+if sudo systemctl list-unit-files | grep -q '^studypoint-frontend.service'; then
+  sudo systemctl restart studypoint-frontend
+else
+  pkill -f "vite preview -- --host 0.0.0.0 --port 5174" || true
+  nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoint-frontend.log 2>&1 &
+fi
 
 # backend
 cd /opt/studypoint-edu/backend
-docker compose up -d --build
-docker compose exec api alembic upgrade head
+sudo docker compose up -d --build
+sudo docker compose run --rm api python -m alembic upgrade head
 ```
+
+## 9. Optional CI/CD (GitHub Actions)
+
+You can automate full deploy from `main` branch using:
+- `.github/workflows/deploy-production.yml`
+- `CICD_SETUP.md`
+
+After setup, every push to `main` can auto-deploy backend + frontend.

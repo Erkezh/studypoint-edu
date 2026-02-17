@@ -7,10 +7,34 @@ import subprocess
 import tempfile
 import os
 import re
+import shutil
 from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _resolve_esbuild_path() -> str | None:
+    """Находит бинарник esbuild без зависимости от npx."""
+    backend_dir = Path(__file__).resolve().parents[2]
+    project_dir = backend_dir.parent
+
+    candidates = [
+        backend_dir / "node_modules" / ".bin" / "esbuild",
+        backend_dir / "node_modules" / "esbuild" / "bin" / "esbuild",
+        project_dir / "node_modules" / ".bin" / "esbuild",
+        project_dir / "node_modules" / "esbuild" / "bin" / "esbuild",
+    ]
+
+    if os.name == "nt":
+        windows_candidates = [path.with_suffix(".cmd") for path in candidates]
+        candidates = windows_candidates + candidates
+
+    for candidate in candidates:
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+
+    return shutil.which("esbuild")
 
 
 def fix_invalid_function_syntax(tsx_code: str) -> str:
@@ -90,16 +114,13 @@ def compile_with_esbuild(tsx_code: str) -> str:
     Raises:
         RuntimeError: Если компиляция не удалась
     """
-    # Находим путь к esbuild
-    backend_dir = Path(__file__).parent.parent.parent
-    esbuild_path = backend_dir / "node_modules" / ".bin" / "esbuild"
-    
-    if not esbuild_path.exists():
-        # Попробуем глобальный esbuild через npx
-        esbuild_path = "npx"
-        esbuild_args = ["esbuild"]
-    else:
-        esbuild_args = []
+    # Находим путь к esbuild без fallback на npx (он может отсутствовать в runtime)
+    esbuild_path = _resolve_esbuild_path()
+    if not esbuild_path:
+        raise RuntimeError(
+            "esbuild binary not found. Install Node dependencies "
+            "(npm install in backend/ or project root) or add esbuild to PATH."
+        )
     
     # Создаем временный файл с кодом
     with tempfile.NamedTemporaryFile(mode='w', suffix='.tsx', delete=False, encoding='utf-8') as f:
@@ -108,7 +129,7 @@ def compile_with_esbuild(tsx_code: str) -> str:
     
     try:
         # Вызываем esbuild - только трансформация, без bundling
-        cmd = [str(esbuild_path)] + esbuild_args + [
+        cmd = [esbuild_path] + [
             temp_file,
             '--loader:.tsx=tsx',
             '--jsx=transform',
@@ -137,6 +158,79 @@ def compile_with_esbuild(tsx_code: str) -> str:
             pass
 
 
+def _normalize_default_export(code: str) -> tuple[str, str]:
+    """Нормализует export default и возвращает имя компонента."""
+    fallback_name = "App"
+
+    # export default function Component() {}
+    match = re.search(r'export\s+default\s+function\s+([A-Za-z_]\w*)', code)
+    if match:
+        component_name = match.group(1)
+        code = re.sub(
+            r'export\s+default\s+function\s+([A-Za-z_]\w*)',
+            r'function \1',
+            code,
+            count=1
+        )
+        return code, component_name
+
+    # export default class Component {}
+    match = re.search(r'export\s+default\s+class\s+([A-Za-z_]\w*)', code)
+    if match:
+        component_name = match.group(1)
+        code = re.sub(
+            r'export\s+default\s+class\s+([A-Za-z_]\w*)',
+            r'class \1',
+            code,
+            count=1
+        )
+        return code, component_name
+
+    # export default Component;
+    match = re.search(r'export\s+default\s+([A-Za-z_]\w*)\s*;?', code)
+    if match:
+        component_name = match.group(1)
+        code = re.sub(
+            r'export\s+default\s+([A-Za-z_]\w*)\s*;?',
+            '',
+            code,
+            count=1
+        )
+        return code, component_name
+
+    # export default function() {}
+    if re.search(r'export\s+default\s+function\s*\(', code):
+        code = re.sub(
+            r'export\s+default\s+function\s*\(',
+            f'function {fallback_name}(',
+            code,
+            count=1
+        )
+        return code, fallback_name
+
+    # export default class {}
+    if re.search(r'export\s+default\s+class\b', code):
+        code = re.sub(
+            r'export\s+default\s+class\b',
+            f'class {fallback_name}',
+            code,
+            count=1
+        )
+        return code, fallback_name
+
+    # export default <expression>
+    if re.search(r'export\s+default\s+', code):
+        code = re.sub(
+            r'export\s+default\s+',
+            f'const {fallback_name} = ',
+            code,
+            count=1
+        )
+        return code, fallback_name
+
+    return code, fallback_name
+
+
 def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str:
     """Преобразует TSX/JSX код в HTML плагин с использованием esbuild.
     
@@ -149,10 +243,6 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
     """
     # Автоисправление неправильного синтаксиса функций (AI иногда генерирует невалидный код)
     tsx_code = fix_invalid_function_syntax(tsx_code)
-    
-    # Извлекаем имя компонента
-    export_match = re.search(r'export\s+default\s+(\w+)', tsx_code)
-    component_name = export_match.group(1) if export_match else 'App'
     
     # Lucide icons wrapper - создает React компоненты из lucide UMD
     LUCIDE_WRAPPER = '''
@@ -211,9 +301,9 @@ def transform_tsx_to_html(tsx_code: str, plugin_name: str = "TSX Plugin") -> str
         lambda m: f'const {{{m.group(1)}}} = window.lucideReact;',
         code
     )
-    
-    # Удаляем export default
-    code = re.sub(r'export\s+default\s+\w+;?', '', code)
+
+    # Нормализуем export default и определяем имя компонента
+    code, component_name = _normalize_default_export(code)
     
     # Логируем код перед компиляцией для отладки
     logger.info(f"Code before esbuild (first 500 chars): {code[:500]}")
