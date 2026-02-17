@@ -41,6 +41,11 @@ Validate:
 sudo -l -U studypoint
 ```
 
+If you do not want passwordless sudo, the deploy user must at least be able to run:
+- `docker compose` without sudo (for example via `docker` group)
+
+Without sudo, workflow will skip `systemctl restart` for `studypoint-frontend` / `studypoint-backend`.
+
 ## 2. SSH key for GitHub Actions
 
 On your local machine:
