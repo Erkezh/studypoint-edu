@@ -95,6 +95,10 @@ Sudo rule:
 - if unavailable and `DEPLOY_SSH_PASSWORD` is set, it uses `sudo -S` with that password
 - if sudo still unavailable, workflow falls back to non-sudo mode (Docker/systemctl may fail depending on server permissions)
 
+Postgres password drift handling:
+- before migrations, workflow runs an in-container `ALTER USER` for `${POSTGRES_USER}` to `${POSTGRES_PASSWORD}`
+- this helps when `backend/.env` password changed but existing Docker volume still has old DB user password
+
 ## 4. First run
 
 Push to main:
