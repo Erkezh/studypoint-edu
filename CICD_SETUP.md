@@ -74,10 +74,10 @@ chown -R studypoint:studypoint /home/studypoint/.ssh
 In GitHub -> `Settings` -> `Secrets and variables` -> `Actions`, add:
 
 - `DEPLOY_SSH_HOST` = server IP/host
-- `DEPLOY_SSH_PORT` = `22`
+- `DEPLOY_SSH_PORT` = `22` (optional; defaults to `22` if empty)
 - `DEPLOY_SSH_USER` = `studypoint`
 - `DEPLOY_SSH_PRIVATE_KEY` = full content of `~/.ssh/studypoint_actions` (private key)
-- `DEPLOY_PATH` = `/opt/studypoint-edu` (optional; defaults to this path)
+- `DEPLOY_PATH` = `/opt/studypoint-edu` (optional; if empty workflow also tries `/studypoint-edu/studypoint-edu` and `$HOME/studypoint-edu`)
 - `DEPLOY_DOMAIN` = `edu.studypoint.kz` (optional; used for final HTTPS check)
 
 ## 4. First run
