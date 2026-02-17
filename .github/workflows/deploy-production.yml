@@ -162,6 +162,12 @@ jobs:
 
             cd "$REPO_DIR/backend"
             run_privileged docker compose up -d --build
+            echo "Checking esbuild in API container..."
+            if ! run_privileged docker compose exec -T api sh -lc 'test -x /app/node_modules/.bin/esbuild'; then
+              echo "esbuild not found in /app/node_modules. Installing backend npm dependencies..."
+              run_privileged docker compose exec -T api sh -lc 'npm ci --omit=dev'
+            fi
+            run_privileged docker compose exec -T api sh -lc '/app/node_modules/.bin/esbuild --version'
             echo "Ensuring Postgres role password matches compose environment..."
             run_privileged docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -c "ALTER USER \"${POSTGRES_USER:-postgres}\" WITH PASSWORD '\''${POSTGRES_PASSWORD:-postgres}'\'';"'
             run_privileged docker compose run --rm api python -m alembic upgrade head
