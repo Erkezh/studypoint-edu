@@ -7,10 +7,15 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    nodejs \
+    npm \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements-dev.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
+
+COPY package.json package-lock.json /app/
+RUN npm ci --omit=dev
 
 COPY . /app
 
