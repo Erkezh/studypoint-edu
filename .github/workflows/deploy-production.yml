@@ -192,13 +192,38 @@ jobs:
               run_privileged systemctl daemon-reload
             fi
 
+            restart_frontend_fallback() {
+              local pid_file="/tmp/studypoint-frontend.pid"
+              local old_pid
+              old_pid=""
+
+              if [ -f "$pid_file" ]; then
+                old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+                if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+                  kill "$old_pid" 2>/dev/null || true
+                  sleep 1
+                fi
+              fi
+
+              # Use [v] regex trick to avoid matching the current shell command line.
+              local expr='[v]ite[[:space:]]+preview[[:space:]]+--[[:space:]]+--host[[:space:]]+0\.0\.0\.0[[:space:]]+--port[[:space:]]+5174'
+              local pid
+              for pid in $(pgrep -f "$expr" || true); do
+                if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
+                  kill "$pid" 2>/dev/null || true
+                fi
+              done
+
+              nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoint-frontend.log 2>&1 &
+              echo $! > "$pid_file"
+            }
+
             if [ "$HAS_FRONTEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 1 ]; then
               run_privileged systemctl restart studypoint-frontend
             elif [ "$HAS_FRONTEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 0 ]; then
               echo "studypoint-frontend.service exists but no sudo. Skipping service restart."
             else
-              pkill -f "vite preview -- --host 0.0.0.0 --port 5174" || true
-              nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoint-frontend.log 2>&1 &
+              restart_frontend_fallback
             fi
 
             if [ "$HAS_BACKEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 1 ]; then
