@@ -5,6 +5,7 @@ Workflow file:
 
 It runs on every push to `main` and does:
 - frontend build check in GitHub Actions
+- if actor is not `Nur1sat`, waits for manual approval from `Nur1sat`
 - SSH deploy to server
 - backend `docker compose up -d --build` + migrations
 - frontend rebuild + restart
@@ -103,3 +104,6 @@ You can run deploy without a new commit:
 - Workflow expects branch name `main`.
 - If deploy fails at `sudo -n true`, fix sudoers first.
 - If `studypoint-frontend.service` is absent, workflow falls back to restarting `vite preview` via `nohup`.
+- Deploy policy:
+  - pushes/workflow runs started by `Nur1sat` deploy automatically
+  - runs started by any other user pause and create an approval issue; `Nur1sat` must comment `approve` to continue
