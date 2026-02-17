@@ -90,6 +90,11 @@ Auth mode rule:
 - if `DEPLOY_SSH_PASSWORD` is set, workflow uses password auth
 - if `DEPLOY_SSH_PASSWORD` is empty, workflow uses private key auth
 
+Sudo rule:
+- workflow first tries passwordless sudo (`sudo -n`)
+- if unavailable and `DEPLOY_SSH_PASSWORD` is set, it uses `sudo -S` with that password
+- if sudo still unavailable, workflow falls back to non-sudo mode (Docker/systemctl may fail depending on server permissions)
+
 ## 4. First run
 
 Push to main:
