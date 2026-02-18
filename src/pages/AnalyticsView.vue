@@ -45,13 +45,23 @@
           <button @click="applyGradeFilter" class="apply-btn">Дайын</button>
         </div>
       </div>
-      <div class="filter-group">
-        <label>УАҚЫТ АРАЛЫҒЫ:</label>
-        <select v-model="selectedDateRange" class="filter-select">
-          <option value="all">Барлық уақыт</option>
-          <option value="week">Осы апта</option>
-          <option value="month">Осы ай</option>
-        </select>
+      <div class="filter-group date-range-filter">
+        <label @click="toggleDateDropdown" class="filter-label clickable">
+          УАҚЫТ АРАЛЫҒЫ: {{ dateRangeLabel }}
+          <svg class="dropdown-arrow w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+        </label>
+        <div v-if="showDateDropdown" class="date-dropdown-popup">
+          <button
+            v-for="option in dateOptions"
+            :key="option.id"
+            @click="selectDateRange(option.id)"
+            :class="['date-option', { active: selectedDateOption === option.id }]"
+          >
+            {{ option.label }}
+          </button>
+          <!-- Placeholder for custom date picker if needed later -->
+          <!-- <button class="date-option custom">Custom...</button> -->
+        </div>
       </div>
     </div>
 
@@ -70,7 +80,7 @@
 
       <div v-else>
         <SummaryTab v-if="activeTab === 'summary'"
-          :grade-from="gradeFrom" :grade-to="gradeTo" :skill-names="skillNames" />
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :skill-names="skillNames" />
 
         <UsageTab v-else-if="activeTab === 'usage'"
           :grade-from="gradeFrom" :grade-to="gradeTo" />
@@ -120,7 +130,7 @@ const activeTab = ref<string>('summary')
 const gradeFrom = ref<number>(-1)
 const gradeTo = ref<number>(12)
 const showGradeDropdown = ref<boolean>(false)
-const selectedDateRange = ref<string>('all')
+// const selectedDateRange = ref<string>('all') // Replaced by new logic
 const skillNames = ref<Map<number, string>>(new Map())
 
 // Grade range label for display
@@ -146,6 +156,84 @@ const applyGradeFilter = () => {
     gradeTo.value = temp
   }
   showGradeDropdown.value = false
+}
+
+// Date Range Logic
+const dateRangeLabel = ref<string>('Барлық уақыт')
+const showDateDropdown = ref<boolean>(false)
+const selectedDateOption = ref<string>('all')
+
+const dateRange = ref<{ start: Date | null; end: Date | null }>({
+  start: null,
+  end: null
+})
+
+const dateOptions = [
+  { id: 'today', label: 'Бүгін' },
+  { id: 'yesterday', label: 'Кеше' },
+  { id: 'week', label: 'Осы апта' },
+  { id: 'last7', label: 'Соңғы 7 күн' },
+  { id: 'month', label: 'Осы ай' },
+  { id: 'last30', label: 'Соңғы 30 күн' },
+  { id: 'year', label: 'Осы жыл' },
+  { id: 'all', label: 'Барлық уақыт' },
+]
+
+const toggleDateDropdown = () => {
+  showDateDropdown.value = !showDateDropdown.value
+}
+
+const selectDateRange = (optionId: string) => {
+  selectedDateOption.value = optionId
+  const option = dateOptions.find(o => o.id === optionId)
+  dateRangeLabel.value = option ? option.label : 'Теңшелетін'
+  showDateDropdown.value = false
+
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+  switch (optionId) {
+    case 'today':
+      dateRange.value = { start: today, end: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59) }
+      break
+    case 'yesterday':
+      const yesterday = new Date(today)
+      yesterday.setDate(yesterday.getDate() - 1)
+      const yesterdayEnd = new Date(yesterday)
+      yesterdayEnd.setHours(23, 59, 59)
+      dateRange.value = { start: yesterday, end: yesterdayEnd }
+      break
+    case 'week':
+      // This week (starting Monday)
+      const day = today.getDay() || 7 // 1 (Mon) to 7 (Sun)
+      const monday = new Date(today)
+      monday.setHours(0, 0, 0, 0)
+      monday.setDate(monday.getDate() - day + 1)
+      dateRange.value = { start: monday, end: new Date() }
+      break
+    case 'last7':
+      const last7 = new Date(today)
+      last7.setDate(last7.getDate() - 6)
+      dateRange.value = { start: last7, end: new Date() }
+      break
+    case 'month':
+      const firstDayMonth = new Date(today.getFullYear(), today.getMonth(), 1)
+      dateRange.value = { start: firstDayMonth, end: new Date() }
+      break
+    case 'last30':
+      const last30 = new Date(today)
+      last30.setDate(last30.getDate() - 29)
+      dateRange.value = { start: last30, end: new Date() }
+      break
+    case 'year':
+      const firstDayYear = new Date(today.getFullYear(), 0, 1)
+      dateRange.value = { start: firstDayYear, end: new Date() }
+      break
+    case 'all':
+    default:
+      dateRange.value = { start: null, end: null }
+      break
+  }
 }
 
 // Load skill names from catalog
@@ -395,11 +483,64 @@ onMounted(async () => {
   margin-bottom: 8px;
 }
 
+/* Date Range Filter */
+.date-range-filter {
+  position: relative;
+}
+
+.date-dropdown-popup {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px 0;
+  z-index: 100;
+  min-width: 200px;
+  margin-top: 4px;
+}
+
+.date-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.date-option:hover {
+  background-color: #f5f5f5;
+}
+
+.date-option.active {
+  color: #00ACC1;
+  background-color: #e0f7fa;
+  font-weight: 500;
+}
+
+.date-option.custom {
+  border-top: 1px solid #eee;
+  margin-top: 4px;
+  padding-top: 12px;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .filters-bar {
     flex-direction: column;
     gap: 12px;
+  }
+
+  .date-dropdown-popup {
+    right: auto;
+    left: 0;
   }
 }
 </style>

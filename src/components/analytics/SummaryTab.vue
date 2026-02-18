@@ -127,6 +127,7 @@ const props = defineProps<{
   gradeFrom: number
   gradeTo: number
   skillNames: Map<number, string>
+  dateRange: { start: Date | null; end: Date | null }
 }>()
 
 const analyticsStore = useAnalyticsStore()
@@ -157,41 +158,123 @@ const formatLastPracticed = (dateString: string): string => {
   return date.toLocaleDateString('kk-KZ', { month: 'short', day: 'numeric' })
 }
 
-// Filtered totals based on grade range
+// Helper to check if a date is within selected range
+const isDateRunning = (dateStr: string | undefined) => {
+  if (!dateStr || !props.dateRange.start) return true
+  const date = new Date(dateStr)
+  const start = props.dateRange.start
+  const end = props.dateRange.end || new Date()
+  return date >= start && date <= end
+}
+
+// Filtered totals based on grade range AND date range
 const filteredTotalQuestions = computed(() => {
-  return analyticsStore.skills.reduce((sum, skill) => {
-    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-    if (gradeNumber !== undefined) {
-      if (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) {
-        return sum + (skill.total_questions || 0)
+  // If no date range is selected, use the aggregated stats from skills
+  if (!props.dateRange.start) {
+    return analyticsStore.skills.reduce((sum, skill) => {
+      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+      if (gradeNumber !== undefined) {
+        if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+          return sum + (skill.total_questions || 0)
+        }
+        return sum
       }
-      return sum
+      return sum + (skill.total_questions || 0)
+    }, 0)
+  }
+
+  // If date range IS selected, calculate from granular questions data
+  return analyticsStore.allQuestions.reduce((sum, question) => {
+    const gradeNumber = question.skill?.grade_id // Assuming grade_id maps to number or we need look up.
+                                               // Check if we have grade info in question.
+                                               // If not available directly, we might rely on overview stats or need to enrich question data.
+                                               // For now, let's assume we filter by date primarily.
+
+    // Since we don't have grade info in allQuestions easily without join,
+    // let's try to map skill_id to grade from store.skills
+    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
+    const gradeNum = (skill as any)?.grade_number
+
+    // Check grade filter
+    if (gradeNum !== undefined) {
+      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+        return sum
+      }
     }
-    return sum + (skill.total_questions || 0)
+
+    // Check date filter
+    // Try to find a timestamp field. API usually returns created_at or submitted_at
+    const timestamp = question.created_at || question.submitted_at
+    if (isDateRunning(timestamp)) {
+       return sum + 1
+    }
+    return sum
   }, 0)
 })
 
 const filteredTotalTime = computed(() => {
-  return analyticsStore.skills.reduce((sum, skill) => {
-    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-    const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
-    if (gradeNumber !== undefined) {
-      if (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) {
-        return sum + (totalTime || 0)
+   // If no date range, use aggregated
+  if (!props.dateRange.start) {
+    return analyticsStore.skills.reduce((sum, skill) => {
+      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+      const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
+      if (gradeNumber !== undefined) {
+         if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+          return sum + (totalTime || 0)
+        }
+        return sum
       }
-      return sum
+      return sum + (totalTime || 0)
+    }, 0)
+  }
+
+  // If date range active, sum up time spent on questions in that range
+  return analyticsStore.allQuestions.reduce((sum, question) => {
+    // Grade filter
+    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
+    const gradeNum = (skill as any)?.grade_number
+    if (gradeNum !== undefined) {
+      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+        return sum
+      }
     }
-    return sum + (totalTime || 0)
+
+    // Date filter
+    const timestamp = question.created_at || question.submitted_at
+    if (isDateRunning(timestamp)) {
+       return sum + (question.time_spent_sec || 0)
+    }
+    return sum
   }, 0)
 })
 
-// Skills with progress, filtered by grade range
+// Skills with progress, filtered by grade range AND date range
 const skillsWithProgress = computed(() => {
+  if (!props.dateRange.start) {
+    return analyticsStore.skills.filter(skill => {
+      if ((skill.total_questions || 0) === 0) return false
+      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+      if (gradeNumber !== undefined) {
+        return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
+      }
+      return true
+    })
+  }
+
+  // Identify unique skills played in date range
+  const skillIdsInRange = new Set<number>()
+  analyticsStore.allQuestions.forEach(q => {
+     const timestamp = q.created_at || q.submitted_at
+     if (isDateRunning(timestamp)) {
+       skillIdsInRange.add(q.skill_id)
+     }
+  })
+
   return analyticsStore.skills.filter(skill => {
-    if ((skill.total_questions || 0) === 0) return false
+    if (!skillIdsInRange.has(skill.skill_id)) return false
     const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
     if (gradeNumber !== undefined) {
-      return gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo
+      return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
     }
     return true
   })
