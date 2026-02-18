@@ -11,14 +11,16 @@ install-dev:
 run:
 	$(PYTHON) -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
 
+ALEMBIC ?= ./venv/bin/alembic
+
 migrate:
-	$(PYTHON) -m alembic upgrade head
+	$(ALEMBIC) upgrade head
 
 revision:
-	$(PYTHON) -m alembic revision --autogenerate -m "$(m)"
+	$(ALEMBIC) revision --autogenerate -m "$(m)"
 
 downgrade:
-	$(PYTHON) -m alembic downgrade -1
+	$(ALEMBIC) downgrade -1
 
 seed:
 	$(PYTHON) -m app.db.seed

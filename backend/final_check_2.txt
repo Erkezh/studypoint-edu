@@ -1,0 +1,78 @@
+Traceback (most recent call last):
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/base_events.py", line 721, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/debug_counts.py", line 11, in main
+    resp = await client.post(f"{base_url}/auth/login", json=auth_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_client.py", line 1859, in post
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<13 lines>...
+    )
+    ^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpcore/_async/connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpcore/_async/connection.py", line 101, in handle_async_request
+    raise exc
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpcore/_async/connection.py", line 76, in handle_async_request
+    async with self._request_lock:
+               ^^^^^^^^^^^^^^^^^^
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/httpcore/_synchronization.py", line 77, in __aenter__
+    await self._anyio_lock.acquire()
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 1814, in acquire
+    await AsyncIOBackend.cancel_shielded_checkpoint()
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/venv/lib/python3.13/site-packages/anyio/_backends/_asyncio.py", line 2382, in cancel_shielded_checkpoint
+    await sleep(0)
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/tasks.py", line 706, in sleep
+    await __sleep0()
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/tasks.py", line 700, in __sleep0
+    yield
+asyncio.exceptions.CancelledError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/erkenazzhanabay/Desktop/studypoint ixl/studypoint-edu/backend/debug_counts.py", line 66, in <module>
+    asyncio.run(main())
+    ~~~~~~~~~~~^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 194, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/asyncio/runners.py", line 123, in run
+    raise KeyboardInterrupt()
+KeyboardInterrupt

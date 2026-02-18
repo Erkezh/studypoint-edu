@@ -1,0 +1,28 @@
+Total Plugins: 14
+Total Questions: 12
+Sample Plugin Structure: {
+  "id": "be5895d2-280f-4bc7-a88d-0faf7c8ddabb",
+  "plugin_id": "elapsedtimegamejsx",
+  "name": "elapsedtimegamejsx",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "api_version": "1",
+  "capabilities": {
+    "submit": true,
+    "explanation": true
+  },
+  "height": 400,
+  "is_published": true,
+  "created_at": "2026-02-17T11:49:06.920191+00:00",
+  "updated_at": "2026-02-17T11:49:10.120452+00:00"
+}
+
+Identifiers used in Questions: {'fractioncomparisonapp2', 'app', 'linearequationapp555', 'tsx-baefd9e1', 'cube-addition-test', 'elapsedtimegamejsx', 'divisibility-gamejsx', 'kazakh-fractions-app', 'compare-decimals-numberline-jsx', 'rectangleareatest2', 'additiondragdrop'}
+
+Found 6 potentially unused plugins.
+Unused: ID=90627428-8ed3-436d-8031-4dcd9e6be8de, Name=Сандарды өсу ретімен орналастыру
+Unused: ID=4fb3653c-a03f-4688-b4fc-fd93ce95bc10, Name=divisibility-game 333
+Unused: ID=8eafe739-97a9-4281-8ddf-860b2aeeebd1, Name=linearequationapp 555
+Unused: ID=4511aff0-ec70-403e-a62e-00137ec258a6, Name=linearequationapp
+Unused: ID=4ec6abb5-8a36-47d2-ba8b-d35f77c335cc, Name=linearequationapp 2
+Unused: ID=9293cebb-4775-45f5-9ab3-c320d411d185, Name=fractioncomparisonapp 2

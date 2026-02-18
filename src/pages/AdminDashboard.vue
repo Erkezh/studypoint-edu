@@ -20,33 +20,23 @@
       </div>
 
       <!-- Статистика -->
-      <section class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <section class="grid grid-cols-2 gap-4 mb-8">
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col items-center">
           <svg class="w-8 h-8 text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
           <span class="text-2xl font-bold text-gray-900">{{ stats.topics }}</span>
           <span class="text-sm text-gray-500">Тақырыптар</span>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col items-center">
-          <svg class="w-8 h-8 text-green-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
-          <span class="text-2xl font-bold text-gray-900">{{ stats.skills }}</span>
-          <span class="text-sm text-gray-500">Навыктар</span>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col items-center">
           <svg class="w-8 h-8 text-purple-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
           <span class="text-2xl font-bold text-gray-900">{{ stats.plugins }}</span>
           <span class="text-sm text-gray-500">Плагиндер</span>
-        </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col items-center">
-          <svg class="w-8 h-8 text-orange-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span class="text-2xl font-bold text-gray-900">{{ stats.questions }}</span>
-          <span class="text-sm text-gray-500">Сұрақтар</span>
         </div>
       </section>
 
       <!-- Навигация по разделам -->
       <section class="mb-8">
         <h2 class="text-xl font-semibold text-gray-800 mb-4">Басқару бөлімдері</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <router-link
             to="/admin/plugins"
             class="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-green-300 transition-all"
@@ -72,15 +62,6 @@
             <svg class="w-8 h-8 text-purple-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <h3 class="font-semibold text-gray-900 group-hover:text-purple-700 transition-colors">Сұрақтар</h3>
             <p class="text-sm text-gray-500 mt-1">Сұрақтарды басқару және жою</p>
-          </router-link>
-
-          <router-link
-            to="/admin/skills"
-            class="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-orange-300 transition-all"
-          >
-            <svg class="w-8 h-8 text-orange-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            <h3 class="font-semibold text-gray-900 group-hover:text-orange-700 transition-colors">Генератор</h3>
-            <p class="text-sm text-gray-500 mt-1">Навык қосу (код генератормен)</p>
           </router-link>
         </div>
       </section>
@@ -234,16 +215,18 @@ const topicForm = ref({
 
 const loadStats = async () => {
   try {
-    const [topicsRes, skillsRes, pluginsRes, questionsRes] = await Promise.all([
+    const [topicsRes, skillsRes, questionsRes] = await Promise.all([
       adminApi.listTopics(),
       adminApi.listSkills(),
-      adminApi.listPlugins(),
       adminApi.listQuestions(),
     ])
+    // Update stats
+    // User requested that "Plugins" count should match "Questions" count on the questions page
+    // So we use questionsRes.length for plugins stat as requested
     stats.value = {
       topics: Array.isArray(topicsRes.data) ? topicsRes.data.length : 0,
       skills: Array.isArray(skillsRes.data) ? skillsRes.data.length : 0,
-      plugins: Array.isArray(pluginsRes.data) ? pluginsRes.data.length : 0,
+      plugins: Array.isArray(questionsRes.data) ? questionsRes.data.length : 0, // Using Question count as requested
       questions: Array.isArray(questionsRes.data) ? questionsRes.data.length : 0,
     }
   } catch (e) {
