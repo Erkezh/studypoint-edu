@@ -92,6 +92,7 @@ jobs:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
           DEPLOY_SSH_PASSWORD: ${{ secrets.DEPLOY_SSH_PASSWORD }}
+          DEPLOY_GITHUB_TOKEN: ${{ github.token }}
         with:
           host: ${{ secrets.DEPLOY_SSH_HOST }}
           port: ${{ secrets.DEPLOY_SSH_PORT != '' && secrets.DEPLOY_SSH_PORT || '22' }}
@@ -100,7 +101,7 @@ jobs:
           password: ${{ secrets.DEPLOY_SSH_PASSWORD != '' && secrets.DEPLOY_SSH_PASSWORD || '' }}
           debug: true
           command_timeout: 60m
-          envs: DEPLOY_PATH,DEPLOY_DOMAIN,DEPLOY_SSH_PASSWORD
+          envs: DEPLOY_PATH,DEPLOY_DOMAIN,DEPLOY_SSH_PASSWORD,DEPLOY_GITHUB_TOKEN
           script: |
             set -Eeuo pipefail
 
@@ -155,10 +156,58 @@ jobs:
               exit 1
             fi
 
+            # Runtime processes may leave root-owned files; ensure deploy user can update the repo.
+            current_user="$(id -un)"
+            current_group="$(id -gn)"
+            if [ "$USE_SUDO" -eq 1 ]; then
+              run_privileged chown -R "$current_user:$current_group" "$REPO_DIR" || true
+            fi
+
             cd "$REPO_DIR"
+            askpass_file=""
+            origin_url="$(git remote get-url origin)"
+            if printf '%s' "$origin_url" | grep -qE '^https://github\.com/'; then
+              if [ -z "${DEPLOY_GITHUB_TOKEN:-}" ]; then
+                echo "Missing DEPLOY_GITHUB_TOKEN for HTTPS git origin."
+                exit 1
+              fi
+              askpass_file="$(mktemp)"
+              cat > "$askpass_file" <<'ASKPASS'
+            #!/usr/bin/env sh
+            case "$1" in
+              *Username*) printf '%s\n' "x-access-token" ;;
+              *Password*) printf '%s\n' "$DEPLOY_GITHUB_TOKEN" ;;
+              *) printf '\n' ;;
+            esac
+            ASKPASS
+              chmod 700 "$askpass_file"
+              export GIT_TERMINAL_PROMPT=0
+              export GIT_ASKPASS="$askpass_file"
+            fi
             git fetch origin main --prune
             git checkout main
+            if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+              echo "Stashing local repository changes before pull..."
+              git stash push --all --message "auto-deploy-prepull-$(date -u +%Y%m%dT%H%M%SZ)"
+            fi
             git pull --ff-only origin main
+            if [ -n "$askpass_file" ]; then
+              rm -f "$askpass_file"
+              unset GIT_ASKPASS
+              unset GIT_TERMINAL_PROMPT
+            fi
+
+            if [ ! -f "$REPO_DIR/backend/.env" ]; then
+              if [ -f "$REPO_DIR/backend/.env.example" ]; then
+                cp "$REPO_DIR/backend/.env.example" "$REPO_DIR/backend/.env"
+              else
+                cat > "$REPO_DIR/backend/.env" <<'ENV'
+            POSTGRES_USER=postgres
+            POSTGRES_PASSWORD=postgres
+            POSTGRES_DB=ixl
+            ENV
+              fi
+            fi
 
             cd "$REPO_DIR/backend"
             run_privileged docker compose up -d --build
@@ -170,7 +219,11 @@ jobs:
             run_privileged docker compose exec -T api sh -lc '/app/node_modules/.bin/esbuild --version'
             echo "Ensuring Postgres role password matches compose environment..."
             run_privileged docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -c "ALTER USER \"${POSTGRES_USER:-postgres}\" WITH PASSWORD '\''${POSTGRES_PASSWORD:-postgres}'\'';"'
+            echo "Ensuring Postgres database exists..."
+            run_privileged docker compose exec -T postgres sh -lc 'db_name="${POSTGRES_DB:-ixl}"; psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '\''${db_name}'\'';" | grep -q 1 || psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -c "CREATE DATABASE \"${db_name}\";"'
             run_privileged docker compose run --rm api python -m alembic upgrade head
+            # Keep default demo/admin users available (seed is idempotent).
+            run_privileged docker compose run --rm api python -m app.db.seed
 
             cd "$REPO_DIR"
             npm ci
