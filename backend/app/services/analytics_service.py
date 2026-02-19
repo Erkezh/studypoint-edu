@@ -234,6 +234,7 @@ class AnalyticsService:
                 "skill_id": attempt.skill_id,
                 "question_prompt": question_payload.get("prompt", ""),
                 "question_type": question_payload.get("type", ""),
+                "question_data": question_data,
                 "user_answer": user_answer_raw,  # Для PLUGIN - объект с questionData, для остальных - строка
                 "correct_answer": correct_answer_text,
                 "is_correct": attempt.is_correct,

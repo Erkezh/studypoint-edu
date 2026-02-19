@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>tsxtransformer</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            export const LUCIDE_WRAPPER = `
+  window.lucideReact = new Proxy({}, {
+    get(_, name) {
+      const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+      return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+        const ref = React.useRef();
+        React.useEffect(() => {
+          if (ref.current && lucide[toKebab(name)]) {
+            ref.current.innerHTML = '';
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            const iconData = lucide[toKebab(name)];
+            svg.setAttribute('width', size);
+            svg.setAttribute('height', size);
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('fill', fill);
+            svg.setAttribute('stroke', color || 'currentColor');
+            svg.setAttribute('stroke-width', strokeWidth);
+            svg.setAttribute('stroke-linecap', 'round');
+            svg.setAttribute('stroke-linejoin', 'round');
+            if (className) svg.setAttribute('class', className);
+            iconData[2].forEach(el => {
+              const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+              Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+              svg.appendChild(node);
+            });
+            ref.current.appendChild(svg);
+          }
+        }, [size, color, strokeWidth, fill, className]);
+        return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+      };
+    }
+  });
+`;
+export function transformTsx(tsxCode) {
+  const exportMatch = tsxCode.match(/export\s+default\s+(\w+)/);
+  const componentName = exportMatch ? exportMatch[1] : "App";
+  let code = tsxCode;
+  code = code.replace(/import\s+React\s*,?\s*\{([^}]*)\}\s*from\s*['"]react['"];?/g, (_, h) => "const {" + h + "} = React;");
+  code = code.replace(/import\s+React\s+from\s*['"]react['"];?/g, "");
+  code = code.replace(/import\s*\{([^}]*)\}\s*from\s*['"]react['"];?/g, (_, h) => "const {" + h + "} = React;");
+  code = code.replace(/import\s*\{([^}]*)\}\s*from\s*['"]lucide-react['"];?/g, (_, i) => "const {" + i + "} = window.lucideReact;");
+  code = code.replace(/export\s+default\s+\w+;?/g, "");
+  code = code.replace(/interface\s+\w+[^{]*\{[^}]*\}/gs, "");
+  code = code.replace(/type\s+\w+\s*=\s*[^;]+;/g, "");
+  code = code.replace(/(Set|Map|Array|Record|Promise|React|HTMLElement|Element|useState|useRef|useEffect|useCallback|useMemo|useReducer)<[^<>()]+>/g, "$1");
+  code = code.replace(/new\s+(\w+)<[^<>()]+>\(/g, "new $1(");
+  code = code.replace(/(\w+)<([^<>()]+)>/g, (match, name, content) => {
+    const genericTypes = ["Set", "Map", "Array", "Record", "Promise", "React", "HTMLElement", "Element"];
+    if (genericTypes.includes(name)) {
+      return name;
+    }
+    if (["useState", "useRef", "useEffect", "useCallback", "useMemo", "useReducer"].includes(name)) {
+      return name;
+    }
+    if (/^[A-Z]/.test(name) && !/[,\|&]/.test(content) && content.length < 20 && /^[a-zA-Z0-9.]+$/.test(content)) {
+      return match;
+    }
+    return name;
+  });
+  code = code.replace(/(useState|useRef|useEffect|useCallback|useMemo|useReducer)<[^<>()]+>/g, "$1");
+  code = code.replace(/useCallback<[^<>()]+>/g, "useCallback");
+  code = code.replace(/React\.createElement<[^<>]+>/g, "React.createElement");
+  code = code.replace(/:\s*(string|number|boolean|any|void|null|undefined|object|Array|Set|Map|Record|Function|Promise|\w+)(<[^>]*>)?\s*(?==|,|;|\)|\||&|\?|$)/g, "");
+  code = code.replace(/\s+as\s+(string|number|boolean|any|void|null|undefined|object|Array|Set|Map|Record|Function|Promise|\w+)(<[^>]*>)?/g, "");
+  let maxIterations = 10;
+  let iteration = 0;
+  while (iteration < maxIterations) {
+    const before = code;
+    code = code.replace(/\((\w+):\s*\{[\s\S]*?\}\)/g, (match, paramName, offset) => {
+      const beforeMatch = code.substring(0, offset);
+      if (beforeMatch.match(/[=\(]\s*$/) || beforeMatch.endsWith("function ") || beforeMatch.endsWith("=>")) {
+        return `(${paramName})`;
+      }
+      return match;
+    });
+    code = code.replace(/(\w+):\s*\{[\s\S]*?\}/g, "$1");
+    if (before === code) break;
+    iteration++;
+  }
+  code = code.replace(/\(([^)]*):\s*\w+<[^>]+>([^)]*)\)/g, "($1$2)");
+  code = code.replace(/\(([^)]*):\s*\w+([^)]*)\)/g, "($1$2)");
+  code = code.replace(/(\w+)<([^<>]+)>/g, (match, name, content) => {
+    if (/^[A-Z][a-zA-Z0-9.]*$/.test(name) && !content.includes(",")) {
+      if (/[,\|&]/.test(content)) {
+        return name;
+      }
+      if (["Set", "Map", "Array", "Record", "Promise", "React"].includes(name)) {
+        return name;
+      }
+      return match;
+    }
+    return name;
+  });
+  code = code.replace(
+    /(const\s+handleSubmit\s*=\s*\([^)]*\)\s*=>\s*\{[\s\S]*?)(setShowResult\s*\(\s*true\s*\)\s*;?)/,
+    (m, before, setShow) => {
+      if (m.includes("problems[currentIndex].correctAnswer")) {
+        const questionField2 = m.includes(".equation") ? "equation" : m.includes(".question") ? "question" : m.includes(".problem") ? "problem" : "equation";
+        const injection2 = `
+    const __isCorrect = userAnswer === problems[currentIndex].correctAnswer;
+    const __question = problems[currentIndex].${questionField2} || problems[currentIndex].question || '';
+    
+    // Capture screenshot
+    if (window.html2canvas) {
+      window.html2canvas(document.body).then(canvas => {
+        window.parent.postMessage({ 
+          type: "exercise-result", 
+          id: null, 
+          correctAnswer: problems[currentIndex].correctAnswer, 
+          studentAnswer: userAnswer, 
+          userAnswer: userAnswer, 
+          isCorrect: __isCorrect, 
+          question: __question,
+          screenshot: canvas.toDataURL() 
+        }, "*");
+      }).catch(err => {
+        console.error("Screenshot failed", err);
+        window.parent.postMessage({ 
+          type: "exercise-result", 
+          id: null, 
+          correctAnswer: problems[currentIndex].correctAnswer, 
+          studentAnswer: userAnswer, 
+          userAnswer: userAnswer, 
+          isCorrect: __isCorrect, 
+          question: __question 
+        }, "*");
+      });
+    } else {
+      window.parent.postMessage({ 
+        type: "exercise-result", 
+        id: null, 
+        correctAnswer: problems[currentIndex].correctAnswer, 
+        studentAnswer: userAnswer, 
+        userAnswer: userAnswer, 
+        isCorrect: __isCorrect, 
+        question: __question 
+      }, "*");
+    }`;
+        return before + setShow + injection2;
+      }
+      const correctMatch = m.match(/(\w+)\[currentIndex\]\.correctAnswer/) || m.match(/(\w+)\.correctAnswer/);
+      let varName = "problems";
+      if (correctMatch) {
+        varName = correctMatch[1].replace("[currentIndex]", "");
+      }
+      const questionField = m.includes(".equation") ? "equation" : m.includes(".question") ? "question" : m.includes(".problem") ? "problem" : "equation";
+      const injection = `
+    // Try to determine variables dynamically if regex failed exact match
+    const __probs = typeof ${varName} !== 'undefined' ? ${varName} : [];
+    const __curr = typeof currentIndex !== 'undefined' ? currentIndex : 0;
+    const __item = __probs[__curr] || {};
+    
+    const __correct = __item.correctAnswer || (typeof correctAnswer !== 'undefined' ? correctAnswer : null);
+    const __isCorrect = userAnswer === __correct;
+    const __qText = __item.${questionField} || __item.question || '';
+
+    if (window.html2canvas) {
+      window.html2canvas(document.body).then(canvas => {
+        window.parent.postMessage({ 
+          type: "exercise-result", 
+          id: null, 
+          correctAnswer: __correct, 
+          studentAnswer: userAnswer, 
+          userAnswer: userAnswer, 
+          isCorrect: __isCorrect, 
+          question: __qText,
+          screenshot: canvas.toDataURL()
+        }, "*");
+      });
+    } else {
+        window.parent.postMessage({ 
+          type: "exercise-result", 
+          id: null, 
+          correctAnswer: __correct, 
+          studentAnswer: userAnswer, 
+          userAnswer: userAnswer, 
+          isCorrect: __isCorrect, 
+          question: __qText
+        }, "*");
+    }`;
+      return before + setShow + injection;
+    }
+  );
+  if (!code.includes("window.html2canvas")) {
+    code = code.replace(
+      /(if\s*\(userAnswer\s*===\s*([^)]+)\)\s*\{[\s\S]*?setScore[\s\S]*?\})/,
+      (m, fullMatch, correctAnswer) => {
+        if (m.includes("postMessage")) return m;
+        return fullMatch + `
+    if (window.html2canvas) {
+      window.html2canvas(document.body).then(canvas => {
+        window.parent.postMessage({ type: "exercise-result", id: null, correctAnswer: ${correctAnswer}, studentAnswer: userAnswer, userAnswer: userAnswer, isCorrect: userAnswer === ${correctAnswer}, question: "", screenshot: canvas.toDataURL() }, "*");
+      });
+    } else {
+      window.parent.postMessage({ type: "exercise-result", id: null, correctAnswer: ${correctAnswer}, studentAnswer: userAnswer, userAnswer: userAnswer, isCorrect: userAnswer === ${correctAnswer}, question: "" }, "*");
+    }`;
+      }
+    );
+  }
+  return { code, componentName };
+}
+export function createTsxIframeHtml(tsxCode) {
+  const { code, componentName } = transformTsx(tsxCode);
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"><\/script>
+  <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"><\/script>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+</head>
+<body>
+  <div id="root"></div>
+  <script>${LUCIDE_WRAPPER}<\/script>
+  <script type="text/babel">
+${code}
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(${componentName}));
+  <\/script>
+</body>
+</html>`;
+}
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

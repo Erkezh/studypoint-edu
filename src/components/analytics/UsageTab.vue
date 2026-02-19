@@ -143,15 +143,39 @@
                   <span class="session-stat-value">{{ skill.scoreBefore }} → {{ skill.scoreAfter }}</span>
                 </div>
               </div>
-              <!-- Questions Log Preview -->
+              <!-- Questions Log Preview (Carousel) -->
               <div class="session-questions-preview" v-if="skill.questions.length > 0">
-                <div class="preview-title">СҰРАҚТАР ЖУРНАЛЫ</div>
-                <div class="preview-questions">
-                  <div v-for="(q, qi) in skill.questions" :key="qi" class="preview-question">
-                    <div class="preview-question-row">
-                      <span :class="['preview-dot', q.isCorrect ? 'dot-correct' : 'dot-incorrect']"></span>
-                      <span class="preview-prompt">{{ q.prompt || 'Сұрақ' }}</span>
-                    </div>
+                <div class="preview-title mb-4">СҰРАҚТАР ЖУРНАЛЫ</div>
+
+                <div class="relative bg-white border border-gray-200 rounded-xl p-6">
+                  <!-- Navigation Buttons -->
+                  <div class="flex items-center justify-between mb-4">
+                    <button
+                      @click="prevQuestion(session.dateKey, skill.skillId)"
+                      :disabled="getCarouselIndex(session.dateKey, skill.skillId) === 0"
+                      class="p-2 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+
+                    <span class="text-sm font-medium text-gray-500">
+                      {{ getCarouselIndex(session.dateKey, skill.skillId) + 1 }} / {{ skill.questions.length }}
+                    </span>
+
+                    <button
+                      @click="nextQuestion(session.dateKey, skill.skillId, skill.questions.length)"
+                      :disabled="getCarouselIndex(session.dateKey, skill.skillId) === skill.questions.length - 1"
+                      class="p-2 rounded-full hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </div>
+
+                  <!-- Question Component -->
+                  <div class="min-h-[200px]">
+                    <SessionQuestionPreview
+                      :question="skill.questions[getCarouselIndex(session.dateKey, skill.skillId)]"
+                    />
                   </div>
                 </div>
               </div>
@@ -166,6 +190,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
+import SessionQuestionPreview from './SessionQuestionPreview.vue'
 
 const props = defineProps<{
   gradeFrom: number
@@ -577,6 +602,8 @@ const sessionsByDate = computed(() => {
         scoreAfter,
         questions: qs.map(q => ({
           prompt: (q.question_prompt as string) || '',
+          type: (q.question_type as string) || 'TEXT',
+          data: q.question_data || {},
           isCorrect: q.is_correct as boolean,
           userAnswer: q.user_answer,
           correctAnswer: q.correct_answer as string,
@@ -607,6 +634,31 @@ const toggleSession = (dateKey: string) => {
     expandedSessions.value.add(dateKey)
   }
 }
+
+// Carousel State
+const sessionCarouselState = ref<Record<string, number>>({})
+
+const getCarouselIndex = (dateKey: string, skillId: number) => {
+  const key = `${dateKey}-${skillId}`
+  return sessionCarouselState.value[key] || 0
+}
+
+const nextQuestion = (dateKey: string, skillId: number, total: number) => {
+  const key = `${dateKey}-${skillId}`
+  const current = sessionCarouselState.value[key] || 0
+  if (current < total - 1) {
+    sessionCarouselState.value[key] = current + 1
+  }
+}
+
+const prevQuestion = (dateKey: string, skillId: number) => {
+  const key = `${dateKey}-${skillId}`
+  const current = sessionCarouselState.value[key] || 0
+  if (current > 0) {
+    sessionCarouselState.value[key] = current - 1
+  }
+}
+
 </script>
 
 <style scoped>
