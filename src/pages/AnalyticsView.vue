@@ -83,7 +83,7 @@
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :skill-names="skillNames" />
 
         <UsageTab v-else-if="activeTab === 'usage'"
-          :grade-from="gradeFrom" :grade-to="gradeTo" />
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :period="selectedDateOption" />
 
         <TroubleTab v-else-if="activeTab === 'trouble'" />
 

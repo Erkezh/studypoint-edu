@@ -141,6 +141,7 @@ const printReport = () => {
 }
 
 const formatTimeMinutes = (seconds: number): string => {
+  if (seconds > 0 && seconds < 60) return '<1 мин'
   const mins = Math.floor(seconds / 60)
   return `${mins} мин`
 }
@@ -160,7 +161,8 @@ const formatLastPracticed = (dateString: string): string => {
 
 // Helper to check if a date is within selected range
 const isDateRunning = (dateStr: string | undefined) => {
-  if (!dateStr || !props.dateRange.start) return true
+  if (!props.dateRange.start) return true
+  if (!dateStr) return false
   const date = new Date(dateStr)
   const start = props.dateRange.start
   const end = props.dateRange.end || new Date()
@@ -185,17 +187,10 @@ const filteredTotalQuestions = computed(() => {
 
   // If date range IS selected, calculate from granular questions data
   return analyticsStore.allQuestions.reduce((sum, question) => {
-    const gradeNumber = question.skill?.grade_id // Assuming grade_id maps to number or we need look up.
-                                               // Check if we have grade info in question.
-                                               // If not available directly, we might rely on overview stats or need to enrich question data.
-                                               // For now, let's assume we filter by date primarily.
-
-    // Since we don't have grade info in allQuestions easily without join,
-    // let's try to map skill_id to grade from store.skills
+    // Grade filter
     const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
-    const gradeNum = (skill as any)?.grade_number
+    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
 
-    // Check grade filter
     if (gradeNum !== undefined) {
       if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
         return sum
@@ -203,9 +198,8 @@ const filteredTotalQuestions = computed(() => {
     }
 
     // Check date filter
-    // Try to find a timestamp field. API usually returns created_at or submitted_at
-    const timestamp = question.created_at || question.submitted_at
-    if (isDateRunning(timestamp)) {
+    const timestamp = question.converted_at || question.created_at || question.answered_at
+    if (isDateRunning(timestamp as string)) {
        return sum + 1
     }
     return sum
@@ -232,7 +226,7 @@ const filteredTotalTime = computed(() => {
   return analyticsStore.allQuestions.reduce((sum, question) => {
     // Grade filter
     const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
-    const gradeNum = (skill as any)?.grade_number
+    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
     if (gradeNum !== undefined) {
       if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
         return sum
@@ -240,9 +234,10 @@ const filteredTotalTime = computed(() => {
     }
 
     // Date filter
-    const timestamp = question.created_at || question.submitted_at
-    if (isDateRunning(timestamp)) {
-       return sum + (question.time_spent_sec || 0)
+    const timestamp = question.converted_at || question.created_at || question.answered_at
+    if (isDateRunning(timestamp as string)) {
+       const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
+       return sum + timeSeconds
     }
     return sum
   }, 0)

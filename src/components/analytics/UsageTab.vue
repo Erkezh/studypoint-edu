@@ -170,6 +170,8 @@ import { useAnalyticsStore } from '@/stores/analytics'
 const props = defineProps<{
   gradeFrom: number
   gradeTo: number
+  dateRange: { start: Date | null; end: Date | null }
+  period: string
 }>()
 
 const analyticsStore = useAnalyticsStore()
@@ -182,6 +184,7 @@ const printReport = () => {
 }
 
 const formatTimeMinutes = (seconds: number): string => {
+  if (seconds > 0 && seconds < 60) return '<1 мин'
   const mins = Math.floor(seconds / 60)
   return `${mins} мин`
 }
@@ -195,7 +198,7 @@ const formatTimeShort = (seconds: number): string => {
     const remainMins = mins % 60
     return remainMins > 0 ? `${hrs} сағ ${remainMins} мин` : `${hrs} сағ`
   }
-  return `${mins} мін`
+  return `${mins} мин`
 }
 
 const formatGradeLabel = (grade: number | undefined): string => {
@@ -205,10 +208,37 @@ const formatGradeLabel = (grade: number | undefined): string => {
   return `${grade} сынып`
 }
 
-// Skills with progress, filtered by grade range
+// Helper to check if a date is within selected range
+const isDateRunning = (dateStr: string | undefined) => {
+  if (!props.dateRange.start) return true
+  if (!dateStr) return false
+  const date = new Date(dateStr)
+  const start = props.dateRange.start
+  const end = props.dateRange.end || new Date()
+  return date >= start && date <= end
+}
+
+// Skills with progress, filtered by grade range AND date range
 const skillsWithProgress = computed(() => {
+  // Identify unique skills played in date range first if range exists
+  let skillIdsInRange: Set<number> | null = null
+
+  if (props.dateRange.start) {
+    skillIdsInRange = new Set<number>()
+    analyticsStore.allQuestions.forEach(q => {
+       const timestamp = q.converted_at || q.created_at || q.answered_at
+       if (isDateRunning(timestamp as string)) {
+         skillIdsInRange!.add(q.skill_id)
+       }
+    })
+  }
+
   return analyticsStore.skills.filter(skill => {
     if ((skill.total_questions || 0) === 0) return false
+
+    // Date filter
+    if (skillIdsInRange && !skillIdsInRange.has(skill.skill_id)) return false
+
     const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
     if (gradeNumber !== undefined) {
       return gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo
@@ -218,29 +248,74 @@ const skillsWithProgress = computed(() => {
 })
 
 const filteredTotalQuestions = computed(() => {
-  return analyticsStore.skills.reduce((sum, skill) => {
-    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-    if (gradeNumber !== undefined) {
-      if (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) {
-        return sum + (skill.total_questions || 0)
+   // If no date range, use aggregated (but filtered by grade)
+  if (!props.dateRange.start) {
+    return analyticsStore.skills.reduce((sum, skill) => {
+      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+      if (gradeNumber !== undefined) {
+        if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+          return sum + (skill.total_questions || 0)
+        }
+        return sum
       }
-      return sum
+      return sum + (skill.total_questions || 0)
+    }, 0)
+  }
+
+  // If date range IS selected, calculate from granular questions data
+  return analyticsStore.allQuestions.reduce((sum, question) => {
+    // Grade filter
+    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
+    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+    if (gradeNum !== undefined) {
+      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+        return sum
+      }
     }
-    return sum + (skill.total_questions || 0)
+
+    // Date filter
+    const timestamp = question.converted_at || question.created_at || question.answered_at
+    if (isDateRunning(timestamp as string)) {
+       return sum + 1
+    }
+    return sum
   }, 0)
 })
 
 const filteredTotalTime = computed(() => {
-  return analyticsStore.skills.reduce((sum, skill) => {
-    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-    const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
-    if (gradeNumber !== undefined) {
-      if (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) {
-        return sum + (totalTime || 0)
+  // If no date range, use aggregated
+  if (!props.dateRange.start) {
+    return analyticsStore.skills.reduce((sum, skill) => {
+      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+      const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
+      if (gradeNumber !== undefined) {
+         if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+          return sum + (totalTime || 0)
+        }
+        return sum
       }
-      return sum
+      return sum + (totalTime || 0)
+    }, 0)
+  }
+
+  // If date range active
+  return analyticsStore.allQuestions.reduce((sum, question) => {
+    // Grade filter
+    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
+    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+    if (gradeNum !== undefined) {
+      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+        return sum
+      }
     }
-    return sum + (totalTime || 0)
+
+    // Date filter
+    const timestamp = question.converted_at || question.created_at || question.answered_at
+    if (isDateRunning(timestamp as string)) {
+       const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
+       return sum + timeSeconds
+    }
+    return sum
   }, 0)
 })
 
@@ -255,9 +330,21 @@ const practiceByCategory = computed(() => {
     const gradeNumber = rec.grade_number as number | undefined
     const gradeLabel = formatGradeLabel(gradeNumber)
     const categoryName = gradeLabel ? `${topicTitle} (${gradeLabel})` : topicTitle
-    const questions = (rec.total_questions as number) || 0
-    topicMap.set(categoryName, (topicMap.get(categoryName) || 0) + questions)
-    totalQuestions += questions
+
+    let questions = 0
+    if (props.dateRange.start) {
+        questions = analyticsStore.allQuestions.filter(q => {
+             const ts = q.answered_at || q.created_at
+             return q.skill_id === rec.skill_id && isDateRunning(ts as string)
+        }).length
+    } else {
+        questions = (rec.total_questions as number) || 0
+    }
+
+    if (questions > 0) {
+        topicMap.set(categoryName, (topicMap.get(categoryName) || 0) + questions)
+        totalQuestions += questions
+    }
   }
 
   const items = Array.from(topicMap.entries())
@@ -297,44 +384,127 @@ const categoryChartSegments = computed(() => {
   })
 })
 
-// Practice by Day
+// Helper to get allowed skill IDs based on grade range
+const allowedSkillIds = computed(() => {
+  const ids = new Set<number>()
+  for (const skill of analyticsStore.skills) {
+    const rec = skill as Record<string, unknown>
+    const gradeNumber = rec.grade_number as number | undefined
+
+    // Check if grade matches
+    const isMatched = gradeNumber === undefined ||
+      (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) ||
+      (props.gradeFrom === -1 && props.gradeTo === 12)
+
+    if (isMatched) {
+      ids.add(rec.skill_id as number)
+    }
+  }
+  return ids
+})
+
+// Practice Chart Data (Dynamic Aggregation)
 const practiceByDay = computed(() => {
   const questions = analyticsStore.allQuestions
   if (!questions || questions.length === 0) return []
 
-  const dayMap = new Map<string, number>()
+  const validIds = allowedSkillIds.value
+  const period = props.period // 'today', 'yesterday', 'week', 'last7', 'month', 'last30', 'year', 'all'
 
+  const dataMap = new Map<string, number>()
+  const now = new Date()
+
+  // 1. Define grouping strategy
+  if (period === 'today' || period === 'yesterday') {
+      for(let i=0; i<24; i++) {
+          dataMap.set(i.toString().padStart(2, '0') + ':00', 0)
+      }
+  } else if (period === 'year') {
+      for(let i=0; i<12; i++) {
+          dataMap.set(i.toString(), 0)
+      }
+  } else if (period === 'week' || period === 'last7') {
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        dataMap.set(d.toISOString().slice(0, 10), 0)
+      }
+  } else if (period === 'month' || period === 'last30') {
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now)
+        d.setDate(d.getDate() - i)
+        dataMap.set(d.toISOString().slice(0, 10), 0)
+      }
+  }
+
+  // 2. Aggregate Data
   for (const q of questions) {
     if (!q.answered_at) continue
-    const date = new Date(q.answered_at)
-    const key = date.toISOString().slice(0, 10)
-    dayMap.set(key, (dayMap.get(key) || 0) + 1)
+    if (!validIds.has(q.skill_id)) continue
+
+    const ts = q.answered_at
+    if (!isDateRunning(ts)) continue
+
+    const date = new Date(ts)
+    let key = ''
+
+    if (period === 'today' || period === 'yesterday') {
+        key = date.getHours().toString().padStart(2, '0') + ':00'
+    } else if (period === 'year') {
+        key = date.getMonth().toString()
+    } else if (period === 'all') {
+        key = date.getFullYear().toString()
+    } else {
+        key = date.toISOString().slice(0, 10)
+    }
+
+    dataMap.set(key, (dataMap.get(key) || 0) + 1)
   }
 
-  const days: { date: string; count: number; label: string; heightPercent: number }[] = []
-  const now = new Date()
-  for (let i = 13; i >= 0; i--) {
-    const d = new Date(now)
-    d.setDate(d.getDate() - i)
-    const key = d.toISOString().slice(0, 10)
-    days.push({
-      date: key,
-      count: dayMap.get(key) || 0,
-      label: i === 0 ? 'Бүгін' : d.toLocaleDateString('kk-KZ', { month: 'short', day: 'numeric' }),
-      heightPercent: 0,
-    })
+  // 3. Format Output
+  const result: { date: string; count: number; label: string; heightPercent: number }[] = []
+
+  if (period === 'today' || period === 'yesterday') {
+      const sortedKeys = Array.from(dataMap.keys()).sort()
+      for (const key of sortedKeys) {
+          result.push({ date: key, count: dataMap.get(key) || 0, label: key, heightPercent: 0 })
+      }
+  } else if (period === 'year') {
+      const monthNames: string[] = ['Қаң', 'Ақп', 'Нау', 'Сәу', 'Мам', 'Мау', 'Шіл', 'Там', 'Қыр', 'Қаз', 'Қар', 'Жел']
+      for(let i=0; i<12; i++) {
+           const label = monthNames[i] || i.toString()
+           result.push({ date: i.toString(), count: dataMap.get(i.toString()) || 0, label, heightPercent: 0 })
+      }
+  } else if (period === 'all') {
+      const sortedKeys = Array.from(dataMap.keys()).sort()
+      for(const key of sortedKeys) {
+          result.push({ date: key, count: dataMap.get(key) || 0, label: key, heightPercent: 0 })
+      }
+  } else {
+      const sortedKeys = Array.from(dataMap.keys()).sort()
+      for(const key of sortedKeys) {
+          const d = new Date(key)
+          let label = d.getDate().toString()
+          if (period === 'week' || period === 'last7') {
+              const dayNames: string[] = ['Жс', 'Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб']
+              const dayName = dayNames[d.getDay()]
+              if (dayName) label = dayName
+          }
+          result.push({ date: key, count: dataMap.get(key) || 0, label, heightPercent: 0 })
+      }
   }
 
-  const maxCount = Math.max(...days.map(d => d.count), 1)
-  for (const day of days) {
-    day.heightPercent = Math.round((day.count / maxCount) * 100)
+  const maxCount = Math.max(...result.map(d => d.count), 1)
+  for (const item of result) {
+    item.heightPercent = Math.round((item.count / maxCount) * 100)
   }
 
-  return days
+  return result
 })
 
 const dayChartYTicks = computed(() => {
-  const maxCount = Math.max(...practiceByDay.value.map(d => d.count), 1)
+  const data = practiceByDay.value
+  const maxCount = Math.max(...data.map((d: { count: number }) => d.count), 1)
   const step = Math.max(1, Math.ceil(maxCount / 4))
   const ticks: number[] = []
   for (let i = Math.ceil(maxCount / step) * step; i >= 0; i -= step) {
@@ -348,6 +518,8 @@ const sessionsByDate = computed(() => {
   const questions = analyticsStore.allQuestions || []
   if (questions.length === 0) return []
 
+  const validIds = allowedSkillIds.value
+
   const skillNameMap = new Map<number, string>()
   for (const s of analyticsStore.skills) {
     const rec = s as Record<string, unknown>
@@ -356,6 +528,9 @@ const sessionsByDate = computed(() => {
 
   const dateMap = new Map<string, Array<Record<string, unknown>>>()
   for (const q of questions) {
+    // Filter by grade
+    if (!validIds.has(q.skill_id)) continue
+
     const rec = q as Record<string, unknown>
     const answeredAt = rec.answered_at as string
     if (!answeredAt) continue
