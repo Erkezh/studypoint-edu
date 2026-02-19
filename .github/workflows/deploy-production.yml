@@ -219,6 +219,8 @@ jobs:
             run_privileged docker compose exec -T api sh -lc '/app/node_modules/.bin/esbuild --version'
             echo "Ensuring Postgres role password matches compose environment..."
             run_privileged docker compose exec -T postgres sh -lc 'psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -c "ALTER USER \"${POSTGRES_USER:-postgres}\" WITH PASSWORD '\''${POSTGRES_PASSWORD:-postgres}'\'';"'
+            echo "Ensuring Postgres database exists..."
+            run_privileged docker compose exec -T postgres sh -lc 'db_name="${POSTGRES_DB:-ixl}"; psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '\''${db_name}'\'';" | grep -q 1 || psql -v ON_ERROR_STOP=1 -U "${POSTGRES_USER:-postgres}" -d postgres -c "CREATE DATABASE \"${db_name}\";"'
             run_privileged docker compose run --rm api python -m alembic upgrade head
 
             cd "$REPO_DIR"
