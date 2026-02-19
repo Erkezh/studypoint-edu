@@ -179,6 +179,10 @@ jobs:
             fi
             git fetch origin main --prune
             git checkout main
+            if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+              echo "Stashing local repository changes before pull..."
+              git stash push --include-untracked --message "auto-deploy-prepull-$(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
+            fi
             git pull --ff-only origin main
             if [ -n "$askpass_file" ]; then
               rm -f "$askpass_file"
