@@ -156,6 +156,13 @@ jobs:
               exit 1
             fi
 
+            # Runtime processes may leave root-owned files; ensure deploy user can update the repo.
+            current_user="$(id -un)"
+            current_group="$(id -gn)"
+            if [ "$USE_SUDO" -eq 1 ]; then
+              run_privileged chown -R "$current_user:$current_group" "$REPO_DIR" || true
+            fi
+
             cd "$REPO_DIR"
             askpass_file=""
             origin_url="$(git remote get-url origin)"
@@ -181,7 +188,7 @@ jobs:
             git checkout main
             if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
               echo "Stashing local repository changes before pull..."
-              git stash push --include-untracked --message "auto-deploy-prepull-$(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
+              git stash push --all --message "auto-deploy-prepull-$(date -u +%Y%m%dT%H%M%SZ)"
             fi
             git pull --ff-only origin main
             if [ -n "$askpass_file" ]; then
