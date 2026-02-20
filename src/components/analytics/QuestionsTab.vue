@@ -5,12 +5,12 @@
       Барлық сұрақтар
     </h2>
 
-    <div v-if="analyticsStore.allQuestions.length === 0" class="empty-state">
+    <div v-if="filteredQuestions.length === 0" class="empty-state">
       <p>Әзірге сұрақтар жоқ</p>
     </div>
 
     <div v-else class="questions-list">
-      <div v-for="question in analyticsStore.allQuestions" :key="question.attempt_id"
+      <div v-for="question in filteredQuestions" :key="question.attempt_id"
         :class="['question-card', question.is_correct ? 'correct' : 'incorrect']">
         <div class="question-header">
           <span :class="['status-badge flex items-center gap-1', question.is_correct ? 'success' : 'error']">
@@ -37,9 +37,45 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 
+const props = defineProps<{
+  gradeFrom: number
+  gradeTo: number
+  dateRange: { start: Date | null; end: Date | null }
+}>()
+
 const analyticsStore = useAnalyticsStore()
+
+// Build grade-allowed skill ids set
+const allowedSkillIds = computed(() => {
+  const ids = new Set<number>()
+  for (const skill of analyticsStore.skills) {
+    const rec = skill as Record<string, unknown>
+    const grade = (rec.grade_number as number) ?? 0
+    if (grade >= props.gradeFrom && grade <= props.gradeTo) {
+      ids.add(rec.skill_id as number)
+    }
+  }
+  return ids
+})
+
+const filteredQuestions = computed(() => {
+  return analyticsStore.allQuestions.filter(q => {
+    // Grade filter
+    if (!allowedSkillIds.value.has(q.skill_id as number)) return false
+    // Date filter
+    if (props.dateRange.start) {
+      const ts = (q.answered_at || q.created_at) as string
+      if (!ts) return false
+      const d = new Date(ts)
+      const end = props.dateRange.end || new Date()
+      if (d < props.dateRange.start || d > end) return false
+    }
+    return true
+  })
+})
 
 const formatDate = (dateString: string): string => {
   if (!dateString) return '-'

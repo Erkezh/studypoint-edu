@@ -9,7 +9,7 @@ install-dev:
 	$(PYTHON) -m pip install -r requirements-dev.txt
 
 run:
-	$(PYTHON) -m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+	$(PYTHON) -m uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 ALEMBIC ?= ./venv/bin/alembic
 

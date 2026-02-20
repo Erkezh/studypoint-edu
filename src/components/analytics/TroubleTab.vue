@@ -63,6 +63,12 @@
 import { computed, ref } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 
+const props = defineProps<{
+  gradeFrom: number
+  gradeTo: number
+  dateRange: { start: Date | null; end: Date | null }
+}>()
+
 const analyticsStore = useAnalyticsStore()
 
 const printReport = () => {
@@ -75,12 +81,22 @@ const troubleSpotSkills = computed(() => {
   const questions = analyticsStore.allQuestions || []
   if (questions.length === 0) return []
 
+  const isInDateRange = (dateStr: string | undefined) => {
+    if (!props.dateRange.start) return true
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const end = props.dateRange.end || new Date()
+    return d >= props.dateRange.start && d <= end
+  }
+
   const skillInfoMap = new Map<number, { name: string; grade: number; smartscore: number }>()
   for (const s of analyticsStore.skills) {
     const rec = s as Record<string, unknown>
+    const grade = (rec.grade_number as number) ?? 0
+    if (grade < props.gradeFrom || grade > props.gradeTo) continue
     skillInfoMap.set(rec.skill_id as number, {
       name: (rec.skill_name as string) || 'Белгісіз',
-      grade: (rec.grade_number as number) || 0,
+      grade,
       smartscore: (rec.best_smartscore as number) || 0,
     })
   }
@@ -90,6 +106,11 @@ const troubleSpotSkills = computed(() => {
     const rec = q as Record<string, unknown>
     if (rec.is_correct) continue
     const skillId = rec.skill_id as number
+    // Grade filter — only include skills that passed the grade filter
+    if (!skillInfoMap.has(skillId)) continue
+    // Date filter
+    const ts = (rec.answered_at || rec.created_at) as string
+    if (!isInDateRange(ts)) continue
     if (!skillMissed.has(skillId)) skillMissed.set(skillId, [])
     skillMissed.get(skillId)!.push(rec)
   }

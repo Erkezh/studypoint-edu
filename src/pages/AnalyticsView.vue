@@ -20,8 +20,8 @@
       </nav>
     </div>
 
-    <!-- Filters -->
-    <div class="filters-bar">
+    <!-- Filters (hidden on Scores tab) -->
+    <div v-if="activeTab !== 'scores'" class="filters-bar">
       <div class="filter-group grade-range-filter">
         <label @click="toggleGradeDropdown" class="filter-label clickable">
           СЫНЫП ДЕҢГЕЙІ: {{ gradeRangeLabel }}
@@ -85,14 +85,16 @@
         <UsageTab v-else-if="activeTab === 'usage'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :period="selectedDateOption" />
 
-        <TroubleTab v-else-if="activeTab === 'trouble'" />
+        <TroubleTab v-else-if="activeTab === 'trouble'"
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
 
         <ScoresTab v-else-if="activeTab === 'scores'" />
 
-        <QuestionsTab v-else-if="activeTab === 'questions'" />
+        <QuestionsTab v-else-if="activeTab === 'questions'"
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
 
         <ProgressTab v-else-if="activeTab === 'progress'"
-          :grade-from="gradeFrom" :grade-to="gradeTo" :skill-names="skillNames" />
+          :grade-from="gradeFrom" :grade-to="gradeTo" :skill-names="skillNames" :date-range="dateRange" />
       </div>
     </main>
 
