@@ -119,8 +119,11 @@
               </div>
 
               <div class="q-content">
-                <div class="q-section-label">Сұрақ</div>
-                <div class="q-text">{{ q.prompt || '—' }}</div>
+                <div class="q-section-label">
+                  Сұрақ
+                  <span v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="q-plugin-badge">Plugin</span>
+                </div>
+                <div class="q-text">{{ q.prompt || (q.questionType === 'PLUGIN' ? '[Плагин тапсырмасы]' : '—') }}</div>
 
                 <div class="q-answers">
                   <div class="q-answer-block">
@@ -148,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -171,6 +174,13 @@ const props = defineProps<{
 }>()
 
 const analyticsStore = useAnalyticsStore()
+
+// Fetch questions data if not loaded yet
+onMounted(() => {
+  if (analyticsStore.allQuestions.length === 0) {
+    analyticsStore.getAllQuestions()
+  }
+})
 
 const printReport = () => window.print()
 
@@ -386,16 +396,39 @@ const sessions = computed(() => {
       const totalTime = dayQs.reduce((s, q) => s + ((q.time_spent_seconds as number) || 0), 0)
       const questionsCount = dayQs.length
 
+      // Helper to extract question text for PLUGIN questions
+      const getPluginPrompt = (q: Record<string, unknown>): string => {
+        const ua = q.user_answer as Record<string, unknown> | null
+        if (!ua) return (q.question_prompt as string) || ''
+        return (ua.question ?? ua.prompt ?? ua.equation ?? ua.problem ?? ua.questionText ?? q.question_prompt ?? '') as string
+      }
+      const getPluginCorrectAnswer = (q: Record<string, unknown>): unknown => {
+        const ua = q.user_answer as Record<string, unknown> | null
+        if (!ua) return q.correct_answer
+        return ua.correctAnswer ?? ua.correct_answer ?? ua.expectedAnswer ?? q.correct_answer ?? ''
+      }
+      const getPluginUserAnswer = (q: Record<string, unknown>): unknown => {
+        const ua = q.user_answer as Record<string, unknown> | null
+        if (!ua) return ''
+        if (typeof ua.userAnswer === 'string' || typeof ua.userAnswer === 'number') return ua.userAnswer
+        if (typeof ua.answer === 'string' || typeof ua.answer === 'number') return ua.answer
+        return ua.userAnswer ?? ua.answer ?? ua.value ?? ''
+      }
+      const isPlugin = (q: Record<string, unknown>) =>
+        (q.question_type as string) === 'PLUGIN' || (q.question_type as string) === 'INTERACTIVE'
+
       const questions = dayQs.map(q => {
         globalIndex++
+        const pluginQ = isPlugin(q)
         return {
           index: globalIndex,
           isCorrect: q.is_correct as boolean,
-          prompt: (q.question_prompt as string) || '',
-          correctAnswer: q.correct_answer,
-          userAnswer: q.user_answer,
+          questionType: (q.question_type as string) || '',
+          prompt: pluginQ ? (getPluginPrompt(q) as string) : ((q.question_prompt as string) || ''),
+          correctAnswer: pluginQ ? getPluginCorrectAnswer(q) : q.correct_answer,
+          userAnswer: pluginQ ? getPluginUserAnswer(q) : q.user_answer,
         }
-      }).reverse() // Show newest first like IXL
+      }).reverse()
 
       return { dateKey, label, scoreStart, scoreEnd, totalTime, questionsCount, chartScores, questions }
     })
@@ -603,7 +636,8 @@ const formatAnswer = (answer: unknown): string => {
 .icon-incorrect { color: #e74c3c; }
 
 .q-content { flex: 1; min-width: 0; }
-.q-section-label { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 4px; letter-spacing: 0.04em; }
+.q-section-label { font-size: 11px; font-weight: 700; color: #888; margin-bottom: 4px; letter-spacing: 0.04em; display: flex; align-items: center; gap: 6px; }
+.q-plugin-badge { font-size: 9px; background: #00b0e8; color: white; padding: 1px 5px; border-radius: 3px; font-weight: 700; letter-spacing: 0.03em; }
 .q-text { font-size: 15px; color: #333; margin-bottom: 16px; line-height: 1.5; }
 
 .q-answers { display: flex; gap: 24px; flex-wrap: wrap; }
