@@ -34,7 +34,7 @@
             </button>
             <div class="trouble-question-content">
               <p class="trouble-question-text">
-                {{ skill.questions[troubleQuestionIndex[skill.skillId] || 0]?.prompt || 'Сұрақ' }}
+                {{ skill.questions[troubleQuestionIndex[skill.skillId] || 0]?.prompt || (skill.questions[troubleQuestionIndex[skill.skillId] || 0]?.questionType === 'PLUGIN' ? '[Плагин тапсырмасы]' : 'Сұрақ') }}
               </p>
             </div>
             <button class="trouble-nav-btn" @click="navigateTroubleQuestion(skill.skillId, 1)"
@@ -76,6 +76,18 @@ const printReport = () => {
 }
 
 const troubleQuestionIndex = ref<Record<number, number>>({})
+
+// Plugin-aware helpers (same as QuestionsTab)
+const isPlugin = (q: Record<string, unknown>) =>
+  (q.question_type as string) === 'PLUGIN' || (q.question_type as string) === 'INTERACTIVE'
+
+const getPluginPrompt = (q: Record<string, unknown>): string => {
+  const ua = q.user_answer as Record<string, unknown> | null
+  if (!ua) return (q.question_prompt as string) || ''
+  return (ua.question ?? ua.prompt ?? ua.equation ?? ua.problem ?? ua.questionText ?? q.question_prompt ?? '') as string
+}
+
+
 
 const troubleSpotSkills = computed(() => {
   const questions = analyticsStore.allQuestions || []
@@ -124,9 +136,8 @@ const troubleSpotSkills = computed(() => {
       smartscore: info.smartscore,
       missedCount: qs.length,
       questions: qs.map(q => ({
-        prompt: (q.question_prompt as string) || '',
-        userAnswer: q.user_answer,
-        correctAnswer: q.correct_answer as string,
+        questionType: (q.question_type as string) || '',
+        prompt: isPlugin(q) ? getPluginPrompt(q) : ((q.question_prompt as string) || ''),
       })),
     }
   })
@@ -262,11 +273,59 @@ const navigateTroubleQuestion = (skillId: number, direction: number) => {
   justify-content: center;
 }
 
+.trouble-question-inner {
+  width: 100%;
+}
+
 .trouble-question-text {
   font-size: 16px;
   font-weight: 500;
   color: #333;
   line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+.trouble-answers {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.trouble-answer-block {
+  text-align: left;
+  min-width: 100px;
+}
+
+.trouble-ans-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #999;
+  letter-spacing: 0.04em;
+  margin-bottom: 3px;
+}
+
+.trouble-ans {
+  font-size: 14px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid #ddd;
+  background: #f9f9f9;
+  color: #333;
+  display: inline-block;
+}
+
+.correct-ans {
+  border-color: #5cb85c;
+  background: #f0fff0;
+  color: #2e7d32;
+}
+
+.wrong-ans {
+  border-color: #e74c3c;
+  background: #fff5f5;
+  color: #c62828;
 }
 
 .trouble-skill-footer {

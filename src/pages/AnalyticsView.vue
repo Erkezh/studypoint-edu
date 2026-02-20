@@ -545,4 +545,52 @@ onMounted(async () => {
     left: 0;
   }
 }
+
+/* ===== PRINT STYLES ===== */
+@media print {
+  /* Hide navigation, filters and footer */
+  :deep(header),
+  :deep(nav),
+  :deep(footer),
+  .analytics-header,
+  .filters-bar,
+  .tab-icon {
+    display: none !important;
+  }
+
+  /* Reset page background */
+  .analytics-page {
+    background: white !important;
+    min-height: unset;
+  }
+
+  /* Full-width content, no padding trimming */
+  .analytics-content {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Notebook-style: clean white, no shadows, pages break nicely */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+
+  /* Avoid breaking inside cards/sections */
+  section,
+  .card,
+  table,
+  tr {
+    page-break-inside: avoid;
+  }
+}
 </style>

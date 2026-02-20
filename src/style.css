@@ -1,1 +1,39 @@
 @import "tailwindcss";
+
+/* ===== GLOBAL FONT ===== */
+*,
+*::before,
+*::after {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* ===== GLOBAL PRINT STYLES ===== */
+@media print {
+  /* Hide site header and footer */
+  header,
+  footer,
+  nav.container {
+    display: none !important;
+  }
+
+  /* No background, clean white page */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 11pt;
+    font-family: 'Inter', system-ui, sans-serif;
+    line-height: 1.6;
+  }
+
+  /* Remove color backgrounds from the page wrapper */
+  .analytics-page {
+    background: white !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4 portrait;
+    margin: 15mm;
+  }
+}
+
