@@ -12,7 +12,9 @@ class SubjectResponse(BaseModel):
 class GradeResponse(BaseModel):
     id: int
     number: int = Field(examples=[-1, 0, 1, 12])
+    label: str
     title: str
+    description: str = ""
 
 
 class TopicResponse(BaseModel):

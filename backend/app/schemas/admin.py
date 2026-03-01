@@ -18,13 +18,17 @@ class SubjectUpdate(BaseModel):
 
 
 class GradeCreate(BaseModel):
-    number: int = Field(ge=-1, le=12)
+    number: int
+    label: str = Field(min_length=1, max_length=8)
     title: str = Field(min_length=1, max_length=64)
+    description: str = Field(min_length=1)
 
 
 class GradeUpdate(BaseModel):
-    number: int | None = Field(default=None, ge=-1, le=12)
+    number: int | None = None
+    label: str | None = Field(default=None, max_length=8)
     title: str | None = Field(default=None, min_length=1, max_length=64)
+    description: str | None = None
 
 
 class TopicCreate(BaseModel):
@@ -34,6 +38,7 @@ class TopicCreate(BaseModel):
     icon: str | None = Field(default=None, max_length=64)
     order: int = Field(default=0, ge=0)
     is_published: bool = True
+    parent_id: int | None = None
 
 
 class TopicUpdate(BaseModel):
@@ -43,6 +48,7 @@ class TopicUpdate(BaseModel):
     icon: str | None = None
     order: int | None = Field(default=None, ge=0)
     is_published: bool | None = None
+    parent_id: int | None = None
 
 
 class SkillCreate(BaseModel):

@@ -63,6 +63,15 @@
             <h3 class="font-semibold text-gray-900 group-hover:text-purple-700 transition-colors">Сұрақтар</h3>
             <p class="text-sm text-gray-500 mt-1">Сұрақтарды басқару және жою</p>
           </router-link>
+
+          <router-link
+            to="/admin/grades"
+            class="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-indigo-300 transition-all"
+          >
+            <svg class="w-8 h-8 text-indigo-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+            <h3 class="font-semibold text-gray-900 group-hover:text-indigo-700 transition-colors">Сыныптар</h3>
+            <p class="text-sm text-gray-500 mt-1">Сыныптарды қосу, өңдеу және жою</p>
+          </router-link>
         </div>
       </section>
 
@@ -220,13 +229,10 @@ const loadStats = async () => {
       adminApi.listSkills(),
       adminApi.listQuestions(),
     ])
-    // Update stats
-    // User requested that "Plugins" count should match "Questions" count on the questions page
-    // So we use questionsRes.length for plugins stat as requested
     stats.value = {
       topics: Array.isArray(topicsRes.data) ? topicsRes.data.length : 0,
       skills: Array.isArray(skillsRes.data) ? skillsRes.data.length : 0,
-      plugins: Array.isArray(questionsRes.data) ? questionsRes.data.length : 0, // Using Question count as requested
+      plugins: Array.isArray(questionsRes.data) ? questionsRes.data.length : 0,
       questions: Array.isArray(questionsRes.data) ? questionsRes.data.length : 0,
     }
   } catch (e) {
@@ -280,7 +286,6 @@ const handleDeleteTopic = async (topic: TopicListItem) => {
   error.value = null
   try {
     await adminApi.deleteTopic(topic.id)
-    // Удаляем из локального списка сразу (не перезагружаем, чтобы избежать race condition)
     topicsList.value = topicsList.value.filter(t => t.id !== topic.id)
     stats.value.topics = topicsList.value.length
     successMessage.value = `"${topic.title}" тақырыбы жойылды`

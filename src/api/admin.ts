@@ -55,6 +55,21 @@ export interface TopicListItem {
   is_published: boolean
 }
 
+export interface GradeListItem {
+  id: number
+  number: number
+  label: string
+  title: string
+  description: string
+}
+
+export interface GradeCreate {
+  number: number
+  label: string
+  title: string
+  description: string
+}
+
 export interface SkillListItem {
   id: number
   subject_id: number
@@ -81,6 +96,28 @@ export interface QuestionListItem {
 }
 
 export const adminApi = {
+  // --- Grade CRUD ---
+
+  async listGrades(): Promise<ApiResponse<GradeListItem[]>> {
+    const response = await apiClient.get<ApiResponse<GradeListItem[]>>('/admin/grades')
+    return response.data
+  },
+
+  async createGrade(data: GradeCreate): Promise<ApiResponse<GradeListItem>> {
+    const response = await apiClient.post<ApiResponse<GradeListItem>>('/admin/grades', data)
+    return response.data
+  },
+
+  async deleteGrade(gradeId: number): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(`/admin/grades/${gradeId}`)
+    return response.data
+  },
+
+  async updateGrade(gradeId: number, data: { number?: number; label?: string | null; title?: string; description?: string }): Promise<ApiResponse<GradeListItem>> {
+    const response = await apiClient.patch<ApiResponse<GradeListItem>>(`/admin/grades/${gradeId}`, data)
+    return response.data
+  },
+
   async createInteractiveQuestion(
     data: InteractiveQuestionCreate
   ): Promise<ApiResponse<Record<string, unknown>>> {

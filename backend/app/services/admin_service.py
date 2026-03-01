@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+import logging
+
 from fastapi import Depends
-from sqlalchemy import select
+from redis.exceptions import RedisError
+from sqlalchemy import select, update as sa_update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.utils.redis import get_redis
+
+logger = logging.getLogger(__name__)
 from app.db.session import get_db_session
 from app.models.catalog import Grade, Skill, Subject
 from app.models.topic import Topic
@@ -33,6 +39,13 @@ from app.schemas.admin import (
 class AdminService:
     def __init__(self, session: AsyncSession = Depends(get_db_session)) -> None:
         self.session = session
+
+    async def _invalidate_grades_cache(self) -> None:
+        try:
+            redis = get_redis()
+            await redis.delete("cache:grades")
+        except RedisError as exc:
+            logger.warning("Failed to clear grades cache: %s", exc)
 
     async def list_subjects(self) -> list[Subject]:
         return list((await self.session.execute(select(Subject).order_by(Subject.id))).scalars().all())
@@ -70,26 +83,75 @@ class AdminService:
         return list((await self.session.execute(select(Grade).order_by(Grade.number))).scalars().all())
 
     async def create_grade(self, req: GradeCreate) -> Grade:
-        grade = Grade(number=req.number, title=req.title)
+        # Check for conflict and shift existing grades if needed
+        existing = await self.session.execute(select(Grade).where(Grade.number == req.number))
+        if existing.scalar_one_or_none():
+            # Shift conflicting and subsequent grades
+            # Step 1: Add a temporary offset to avoid unique constraint violations
+            stmt1 = (
+                sa_update(Grade)
+                .where(Grade.number >= req.number)
+                .values(number=Grade.number + 10000)
+            )
+            await self.session.execute(stmt1)
+            await self.session.flush()
+
+            # Step 2: Apply the final shifted value
+            stmt2 = (
+                sa_update(Grade)
+                .where(Grade.number >= req.number + 10000)
+                .values(number=Grade.number - 10000 + 1)
+            )
+            await self.session.execute(stmt2)
+            await self.session.flush()
+
+        grade = Grade(number=req.number, label=req.label, title=req.title, description=req.description)
         self.session.add(grade)
         try:
             await self.session.flush()
         except IntegrityError as e:
             raise AppError(status_code=409, code="conflict", message="Grade number already exists") from e
+        await self._invalidate_grades_cache()
         return grade
 
     async def update_grade(self, grade_id: int, req: GradeUpdate) -> Grade:
         grade = await self.session.get(Grade, grade_id)
         if grade is None:
             raise AppError(status_code=404, code="not_found", message="Grade not found")
-        if req.number is not None:
-            grade.number = req.number
-        if req.title is not None:
-            grade.title = req.title
+
+        if req.number is not None and req.number != grade.number:
+            # Check for conflict and shift existing grades if needed
+            existing = await self.session.execute(
+                select(Grade).where(Grade.number == req.number, Grade.id != grade_id)
+            )
+            if existing.scalar_one_or_none():
+                # Shift conflicting and subsequent grades
+                # Step 1: Add a temporary offset to avoid unique constraint violations
+                stmt1 = (
+                    sa_update(Grade)
+                    .where(Grade.number >= req.number, Grade.id != grade_id)
+                    .values(number=Grade.number + 10000)
+                )
+                await self.session.execute(stmt1)
+                await self.session.flush()
+
+                # Step 2: Apply the final shifted value
+                stmt2 = (
+                    sa_update(Grade)
+                    .where(Grade.number >= req.number + 10000)
+                    .values(number=Grade.number - 10000 + 1)
+                )
+                await self.session.execute(stmt2)
+                await self.session.flush()
+
+        update_data = req.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(grade, field, value)
         try:
             await self.session.flush()
         except IntegrityError as e:
             raise AppError(status_code=409, code="conflict", message="Grade number already exists") from e
+        await self._invalidate_grades_cache()
         return grade
 
     async def delete_grade(self, grade_id: int) -> None:
@@ -97,6 +159,7 @@ class AdminService:
         if grade is None:
             return
         await self.session.delete(grade)
+        await self._invalidate_grades_cache()
 
     # --- Topic CRUD ---
 

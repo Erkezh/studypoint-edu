@@ -28,12 +28,12 @@
 
                <!-- Grade Title (Visible ONLY on Hover) -->
                <span class="absolute left-14 font-medium whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100 delay-75 pointer-events-none">
-                 {{ getKazakhGradeTitle(grade.number) }}
+                 {{ grade.title }}
                </span>
 
-               <!-- Grade Number (Always visible circle part) -->
+               <!-- Grade Label/Number (Always visible circle part) -->
                <span class="absolute left-0 w-12 h-12 flex items-center justify-center font-bold text-xl shrink-0 z-10">
-                 {{ grade.number === -1 ? 'PK' : (grade.number === 0 ? 'K' : grade.number) }}
+                 {{ grade.label || grade.number }}
                </span>
             </button>
           </div>
@@ -45,10 +45,10 @@
         <div class="mb-8 flex items-end justify-between border-b pb-4">
           <div>
              <h1 class="text-3xl font-bold text-orange-600 mb-2">
-              {{ currentGradeTitle }}
+              {{ currentGrade?.title || currentGradeTitle }}
             </h1>
             <p class="text-gray-600 max-w-3xl">
-              Math Edu offers hundreds of {{ currentGradeTitle.toLowerCase() }} skills to explore and learn! Not sure where to start?
+              Math Edu offers hundreds of {{ (currentGrade?.title || currentGradeTitle).toLowerCase() }} skills to explore and learn! Not sure where to start?
             </p>
           </div>
 
@@ -239,8 +239,10 @@ const getKazakhGradeTitle = (gradeNumber: number) => {
   return `${mapping[gradeNumber] || gradeNumber} сынып`
 }
 
+const currentGrade = computed(() => grades.value.find(g => g.number === currentGradeId.value))
+
 const currentGradeTitle = computed(() => {
-  return getKazakhGradeTitle(currentGradeId.value)
+  return currentGrade.value?.title || getKazakhGradeTitle(currentGradeId.value)
 })
 const showTrialEndedModal = ref(false)
 const skillStats = ref<Map<number, { best_smartscore: number; last_smartscore: number; is_completed: boolean }>>(new Map())

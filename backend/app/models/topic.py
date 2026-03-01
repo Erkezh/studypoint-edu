@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, Integer, String, Text, ForeignKey
+from sqlalchemy.orm import Mapped, mapped_column, relationship, backref
 
 from app.db.base import Base
 from app.models.mixins import TimestampMixin
@@ -23,6 +23,8 @@ class Topic(Base, TimestampMixin):
     icon: Mapped[str | None] = mapped_column(String(64), nullable=True)  # emoji or icon name
     order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)  # for sorting
     is_published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    parent_id: Mapped[int | None] = mapped_column(ForeignKey("topics.id", ondelete="CASCADE"), index=True, nullable=True)
 
     skills: Mapped[list["Skill"]] = relationship(back_populates="topic")
+    subtopics: Mapped[list["Topic"]] = relationship("Topic", cascade="all, delete-orphan")
 

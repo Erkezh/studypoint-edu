@@ -94,7 +94,9 @@ export interface SubjectResponse {
 export interface GradeResponse {
   id: number
   number: number
+  label: string
   title: string
+  description: string
 }
 
 export interface TopicResponse {

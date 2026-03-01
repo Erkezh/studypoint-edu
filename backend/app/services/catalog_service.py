@@ -65,7 +65,7 @@ class CatalogService:
         if cached:
             return [GradeResponse.model_validate(x) for x in json.loads(cached)]
         rows = await self.grades.list()
-        data = [GradeResponse(id=g.id, number=g.number, title=g.title) for g in rows]
+        data = [GradeResponse(id=g.id, number=g.number, label=g.label, title=g.title, description=g.description) for g in rows]
         await self._cache_setex(key, json.dumps([d.model_dump(mode="json") for d in data]))
         return data
 

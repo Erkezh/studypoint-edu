@@ -24,7 +24,9 @@ class Grade(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     number: Mapped[int] = mapped_column(Integer, unique=True, index=True, nullable=False)
+    label: Mapped[str] = mapped_column(String(8), nullable=False)
     title: Mapped[str] = mapped_column(String(64), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="", server_default="")
 
     skills: Mapped[list["Skill"]] = relationship(back_populates="grade")
 

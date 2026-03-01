@@ -110,6 +110,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresRole: 'ADMIN' },
   },
   {
+    path: '/admin/grades',
+    name: 'admin-grades',
+    component: () => import('@/pages/AdminGrades.vue'),
+    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/pages/NotFound.vue'),

@@ -28,8 +28,14 @@
             class="hover:shadow-xl transition-shadow"
             @click="navigateToClass(grade.number)"
           >
-            <h3 class="text-xl font-semibold mb-2">{{ grade.title }}</h3>
-            <p class="text-gray-600">{{ grade.number === -1 ? 'Pre-K' : (grade.number === 0 ? 'K' : grade.number + ' сынып') }}</p>
+            <div class="flex items-center gap-3">
+              <span class="inline-flex items-center justify-center w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm shrink-0">
+                {{ grade.label }}
+              </span>
+              <div>
+                <h3 class="text-lg font-bold text-gray-900 leading-tight">{{ grade.title }}</h3>
+              </div>
+            </div>
           </Card>
         </div>
       </div>
@@ -58,7 +64,7 @@ const navigateToClass = (gradeNumber: number) => {
 
 onMounted(async () => {
   try {
-    const fetchedGrades = await catalogStore.getGrades()
+    const fetchedGrades = await catalogStore.getGrades(true)
     grades.value = fetchedGrades
   } catch (err: any) {
     error.value = err.message || 'Сыныптарды жүктеу мүмкін болмады'

@@ -262,9 +262,16 @@ export const useCatalogStore = defineStore('catalog', () => {
 
       if (cachedGrades && gradesTime) {
         const age = Date.now() - parseInt(gradesTime, 10)
-        if (age < CACHE_TTL) {
-          grades.value = JSON.parse(cachedGrades)
+        const parsed = JSON.parse(cachedGrades)
+        // Check if cached data has the label field (schema migration)
+        const hasLabel = parsed.length === 0 || (parsed[0] && 'label' in parsed[0])
+        if (age < CACHE_TTL && hasLabel) {
+          grades.value = parsed
           lastFetch.value.set('grades', parseInt(gradesTime, 10))
+        } else {
+          // Clear stale cache
+          localStorage.removeItem('catalog_grades')
+          localStorage.removeItem('catalog_grades_time')
         }
       }
     } catch (error) {
