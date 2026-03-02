@@ -74,48 +74,73 @@
           {{ error }}
         </div>
 
-          <!-- Skills List (Flat, IXL-style) -->
+          <!-- Skills List (Grouped by Subthemes only, IXL-style) -->
           <div v-else class="columns-1 md:columns-2 lg:columns-3 gap-8">
-            <div class="space-y-0.5">
-              <div v-for="(skill, index) in flatSkills" :key="skill.id"
-                @click.stop="navigateToSkill(skill.id)"
-                class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors break-inside-avoid">
+            <!-- Subthemes with alphabetical letters -->
+            <div v-for="(subGroup, index) in groupedSkills.subthemeGroups" :key="subGroup.subtheme.id" class="break-inside-avoid mb-8">
+              <!-- Subtheme Header with letter -->
+              <h2 class="text-xl font-bold text-gray-800 border-b-2 border-orange-200 pb-1 mb-3 flex items-center gap-2">
+                <span v-if="subGroup.subtheme.icon">{{ subGroup.subtheme.icon }}</span>
+                <span>{{ getThemeLetter(index) }}. {{ subGroup.subtheme.title }}</span>
+              </h2>
 
-                <!-- Skill Number -->
-                <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
-                  {{ index + 1 }}
-                </span>
+              <div class="space-y-0.5">
+                <div v-for="(skill, skillIdx) in subGroup.skills" :key="skill.id"
+                  @click.stop="navigateToSkill(skill.id)"
+                  class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors">
 
-                <!-- Skill Title -->
-                <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
-                  {{ skill.title }}
-                </span>
-
-                <!-- Status Icon -->
-                <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
-                   <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
-                   <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
-                     {{ skillStats.get(skill.id)!.best_smartscore }}
-                   </span>
+                  <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
+                    {{ skillIdx + 1 }}
+                  </span>
+                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
+                    {{ skill.title }}
+                  </span>
+                  <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
+                     <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
+                     <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
+                       {{ skillStats.get(skill.id)!.best_smartscore }}
+                     </span>
+                  </div>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1" title="Edit Skill">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  </button>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="confirmDeleteSkill(skill.id, skill.title)" class="text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0" title="Delete Skill">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
                 </div>
+              </div>
+            </div><!-- End Subtheme Group -->
 
-                <!-- Admin Edit Button -->
-                <button v-if="authStore.user?.role === 'ADMIN'"
-                  @click.stop="openEditModal(skill)"
-                  class="ml-auto text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1"
-                  title="Edit Skill">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                </button>
+            <!-- Orphaned Skills (if any) -->
+            <div v-if="groupedSkills.orphaned.length > 0" class="break-inside-avoid mb-8">
+              <h2 class="text-xl font-bold text-gray-800 border-b-2 border-orange-200 pb-1 mb-3">Other Skills</h2>
+              <div class="space-y-0.5">
+                <div v-for="(skill, index) in groupedSkills.orphaned" :key="skill.id"
+                  @click.stop="navigateToSkill(skill.id)"
+                  class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors">
 
-                <!-- Admin Delete Button -->
-                <button v-if="authStore.user?.role === 'ADMIN'"
-                  @click.stop="confirmDeleteSkill(skill.id, skill.title)"
-                  class="text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0"
-                  title="Delete Skill">
-                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                </button>
+                  <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
+                    {{ index + 1 }}
+                  </span>
+                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
+                    {{ skill.title }}
+                  </span>
+                  <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
+                     <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
+                     <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
+                       {{ skillStats.get(skill.id)!.best_smartscore }}
+                     </span>
+                  </div>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1" title="Edit Skill">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  </button>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="confirmDeleteSkill(skill.id, skill.title)" class="text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0" title="Delete Skill">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
               </div>
             </div>
+
           </div>
       </div>
     </main>
@@ -261,6 +286,41 @@ const flatSkills = computed(() => {
   return [...skills.value].sort((a, b) =>
     a.code.localeCompare(b.code, undefined, { numeric: true })
   )
+})
+
+const getThemeLetter = (index: number): string => {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  const letter = alphabet[index % 26]
+  const repeatCount = Math.floor(index / 26) + 1
+  return letter.repeat(repeatCount)
+}
+
+// Grouped Skills List — only subthemes are shown (no main themes), with alphabetical letters
+const groupedSkills = computed(() => {
+  const allTopics = catalogStore.topics
+  const topLevelThemes = allTopics.filter(t => !t.parent_id).sort((a,b) => a.order - b.order)
+
+  // Flatten all subthemes across all themes, preserving order: theme order → subtheme order
+  const subthemeGroups: { subtheme: typeof allTopics[0], skills: typeof flatSkills.value }[] = []
+  const accountedSkillIds = new Set<number>()
+
+  topLevelThemes.forEach(theme => {
+    const subthemes = allTopics.filter(t => t.parent_id === theme.id).sort((a,b) => a.order - b.order)
+    subthemes.forEach(sub => {
+      const subSkills = flatSkills.value.filter(s => s.topic_id === sub.id)
+      if (subSkills.length > 0) {
+        subthemeGroups.push({ subtheme: sub, skills: subSkills })
+        subSkills.forEach(s => accountedSkillIds.add(s.id))
+      }
+    })
+  })
+
+  const orphanedSkills = flatSkills.value.filter(s => !accountedSkillIds.has(s.id))
+
+  return {
+    subthemeGroups,
+    orphaned: orphanedSkills
+  }
 })
 
 // Название текущего класса (удалено дублирование)
@@ -513,10 +573,11 @@ const deleteSkill = async () => {
     // Но НЕ вызываем перезагрузку прямо сейчас, чтобы избежать race condition (когда база еще не обновилась)
     // catalogStore.clearSkillsCache() НЕ вызываем, так как removeSkillFromCache уже чистит конкретные записи
 
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to delete skill:', err)
-    const status = err.response?.status
-    const errorData = err.response?.data
+    const apiError = err as { response?: { status?: number; data?: Record<string, unknown> }, message?: string }
+    const status = apiError.response?.status
+    const errorData = apiError.response?.data
 
     // Если навык уже удален (404), это не критическая ошибка
     if (status === 404) {
@@ -528,8 +589,8 @@ const deleteSkill = async () => {
       return
     }
 
-    const errorMsg = errorData?.detail || errorData?.message || err.message || 'Тестті жою мүмкін болмады'
-    error.value = errorMsg
+    const errorMsg = (errorData?.detail as string) || (errorData?.message as string) || apiError.message || 'Тестті жою мүмкін болмады'
+    error.value = errorMsg as string
   } finally {
     deletingSkillId.value = null
   }

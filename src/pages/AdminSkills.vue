@@ -1,314 +1,194 @@
 <template>
   <div class="min-h-screen bg-gray-50">
     <Header />
-    <main class="container mx-auto px-4 py-8 max-w-5xl">
+    <main class="container mx-auto px-4 py-8 max-w-6xl">
       <div class="mb-6">
-        <h1 class="text-3xl font-bold mb-2">Навык қосу (Генератор)</h1>
+        <h1 class="text-3xl font-bold mb-2">Тесттер</h1>
         <p class="text-gray-600">
-          Мұнда сіз код-генераторды кірістіре аласыз. Генератор динамикалық түрде тапсырмалар жасайды.
+          Барлық тесттерді басқару: атауын, сыныпты, тақырыпты өзгерту, алдын ала қарау, жою.
+          Жаңа тест жүктеу үшін
+          <router-link :to="{ name: 'admin-plugins' }" class="text-blue-600 underline hover:text-blue-800">Плагиндер</router-link>
+          бетіне өтіңіз.
         </p>
       </div>
 
-      <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {{ error }}
-      </div>
+      <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{{ error }}</div>
+      <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{{ successMessage }}</div>
 
-      <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {{ successMessage }}
-      </div>
-
-      <!-- Инструкция -->
-      <div class="bg-blue-50 border-l-4 border-blue-400 p-6 mb-6 rounded">
-        <h2 class="text-xl font-semibold text-blue-800 mb-3 flex items-center gap-2">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-          Нұсқаулық
-        </h2>
-        <div class="space-y-3 text-gray-700">
-          <div class="bg-white p-4 rounded border border-blue-200">
-            <p class="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-              <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              Генератор қалай жұмыс істейді:
-            </p>
-            <ol class="list-decimal list-inside space-y-1 ml-2">
-              <li>Сіз код-генераторды кірістіресіз</li>
-              <li>Генератор әр сұрақ үшін жаңа тапсырмалар жасайды</li>
-              <li>Тапсырмалар базада сақталмайды - олар динамикалық түрде жасалады</li>
-              <li>Жауаптар генератор логикасы арқылы тексеріледі</li>
-            </ol>
-          </div>
-          <div class="bg-green-50 p-3 rounded border border-green-200">
-            <p class="text-sm text-green-800 flex items-center gap-1.5">
-              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <strong>Важно:</strong> Генератор должен быть написан на <strong>Python</strong>!
-              Функция <code>generate(metadata)</code> должна возвращать словарь (dict) с полями:
-              <code>prompt</code>, <code>type</code>, <code>data</code>, <code>correct_answer</code>,
-              <code>explanation</code> (опционально).
-            </p>
-          </div>
+      <!-- Filters -->
+      <div class="bg-white rounded-lg shadow-sm p-4 mb-4 flex flex-wrap gap-4 items-center">
+        <div class="flex-1 min-w-[200px]">
+          <input v-model="searchQuery" type="text" placeholder="Іздеу..."
+            class="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm" />
         </div>
+        <select v-model="filterGradeId" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
+          <option :value="null">Барлық сыныптар</option>
+          <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
+        </select>
+        <select v-model="filterTopicId" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
+          <option :value="null">Барлық тақырыптар</option>
+          <option v-for="t in themes" :key="t.id" :value="t.id">{{ t.icon ? t.icon + ' ' : '' }}{{ t.title }}</option>
+        </select>
+        <span class="text-sm text-gray-500">{{ filteredSkills.length }} тест</span>
       </div>
 
-      <!-- Форма создания навыка с генератором -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h2 class="text-xl font-semibold mb-6">Жаңа навык қосу</h2>
-
-        <form @submit.prevent="handleSubmit" class="space-y-6">
-          <!-- Название навыка -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Навык атауы <span class="text-red-500">*</span>
-            </label>
-            <input v-model="formData.title" type="text" required
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-              placeholder="Мысалы: Разрядтар" />
-          </div>
-
-          <!-- Предмет (только Математика) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Пән <span class="text-red-500">*</span>
-            </label>
-            <div class="w-full p-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-700">
-              Математика
-            </div>
-            <input v-model.number="formData.subject_id" type="hidden" />
-          </div>
-
-          <!-- Класс -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Сынып <span class="text-red-500">*</span>
-            </label>
-            <select v-model.number="formData.grade_id" required
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
-              <option value="">Сынып таңдаңыз</option>
-              <option v-for="grade in grades" :key="grade.id" :value="grade.id">
-                {{ grade.title }}
-              </option>
-            </select>
-          </div>
-
-          <!-- Тақырып (Topic) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Тақырып (категория)
-            </label>
-            <select v-model="formData.topic_id"
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
-              <option :value="null">Тақырып таңдаңыз (міндетті емес)</option>
-              <option v-for="topic in topicsList" :key="topic.id" :value="topic.id">
-                {{ topic.icon }} {{ topic.title }}
-              </option>
-            </select>
-            <p class="text-xs text-gray-500 mt-1">Навықты категорияға топтастыру үшін тақырып таңдаңыз</p>
-          </div>
-
-          <!-- Код генератора -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Код генератора <span class="text-red-500">*</span>
-            </label>
-            <div class="bg-green-50 border-2 border-green-300 rounded-lg p-4 mb-2">
-              <p class="text-sm text-green-800 font-medium mb-2 flex items-center gap-2">
-                <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                Формат (Python код):
-              </p>
-              <pre class="text-xs text-green-700 bg-white p-2 rounded overflow-x-auto"><code>def generate(metadata):
-    # Генерируем задачу
-    import random
-
-    # Пример: генерация простой задачи на сложение
-    a = random.randint(1, 10)
-    b = random.randint(1, 10)
-    answer = a + b
-
-    return {
-        "prompt": f"Сколько будет {a} + {b}?",
-        "type": "MCQ",  # или "NUMERIC", "TEXT", "MULTI_SELECT"
-        "data": {
-            "choices": [
-                {"id": "A", "text": str(answer)},
-                {"id": "B", "text": str(answer + 1)},
-                {"id": "C", "text": str(answer - 1)},
-                {"id": "D", "text": str(answer + 2)}
-            ]
-        },
-        "correct_answer": {"answer": "A"},
-        "explanation": f"{a} + {b} = {answer}"
-    }</code></pre>
-            </div>
-            <textarea v-model="formData.generator_code" required rows="20"
-              class="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-xs"
-              placeholder="Мұнда генератор кодты кірістіріңіз..."></textarea>
-            <p class="text-xs text-gray-500 mt-1 flex items-center gap-1.5">
-              <svg class="w-4 h-4 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-              <strong>Важно:</strong> Генератор должен быть написан на <strong>Python</strong>, а не на JavaScript!
-              Функция <code>generate(metadata)</code> должна возвращать словарь с полями:
-              <code>prompt</code>, <code>type</code>, <code>data</code>, <code>correct_answer</code>,
-              <code>explanation</code> (опционально).
-            </p>
-          </div>
-
-          <!-- Метаданные генератора (опционально) -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Метаданные генератора (JSON, опционально)
-            </label>
-            <textarea v-model="generatorMetadataJson" rows="4"
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-sm"
-              placeholder='{"min": 1, "max": 100, ...}'></textarea>
-            <p class="text-xs text-gray-500 mt-1">Параметры для генератора (если нужны)</p>
-          </div>
-
-          <!-- Описание -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
-              Сипаттама
-            </label>
-            <textarea v-model="formData.description" rows="3"
-              class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-              placeholder="Навык сипаттамасы"></textarea>
-          </div>
-
-          <!-- Кнопки -->
-          <div class="flex gap-4 pt-4">
-            <Button type="submit" variant="primary" :loading="submitting" class="px-8 flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-              Сақтау
-            </Button>
-            <Button type="button" variant="outline" @click="resetForm" class="flex items-center gap-2">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Тазалау
-            </Button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Список навыков с возможностью удаления -->
-      <div class="bg-white rounded-lg shadow-md p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold">Барлық тақырыптар</h2>
-          <Button @click="loadSkills" variant="outline" :loading="loadingSkills" class="flex items-center gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-            Жаңарту
-          </Button>
-        </div>
-
-        <div v-if="loadingSkills" class="text-center py-8">
+      <!-- Skills List -->
+      <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div v-if="loadingSkills" class="text-center py-12">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p class="mt-2 text-gray-600">Жүктелуде...</p>
+          <p class="text-gray-500 mt-2">Жүктелуде...</p>
         </div>
 
-        <div v-else-if="skillsList.length === 0" class="text-center py-8 text-gray-500">
-          Тақырыптар табылмады
+        <div v-else-if="filteredSkills.length === 0" class="text-center py-12 text-gray-500">
+          Тесттер табылмады
         </div>
 
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  ID
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Атауы
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Код
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Сынып
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Тақырып
-                </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Қиындық
-                </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Әрекеттер
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="skill in skillsList" :key="skill.id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ skill.id }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ skill.title }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ skill.code }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+        <div v-else>
+          <div
+            v-for="skill in filteredSkills"
+            :key="skill.id"
+            @click="openSkillModal(skill)"
+            class="flex items-center justify-between px-4 py-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors group last:border-b-0"
+          >
+            <div class="flex items-center gap-3 flex-1 min-w-0">
+              <!-- Icon -->
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                :class="skill.code.startsWith('PLG') ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'">
+                <svg v-if="skill.code.startsWith('PLG')" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              </div>
+              <!-- Info -->
+              <div class="min-w-0 flex-1">
+                <h3 class="text-sm font-semibold text-gray-800 truncate">{{ skill.title }}</h3>
+                <p class="text-xs text-gray-500">
                   {{ getGradeName(skill.grade_id) }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ skill.topic_title || '—' }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ skill.difficulty }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <div class="flex items-center justify-end gap-2">
-                    <Button @click="skillToEdit = skill" variant="outline"
-                      class="text-blue-600 hover:text-blue-800 hover:bg-blue-50 flex items-center gap-1">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                      Өзгерту
-                    </Button>
-                    <Button @click="confirmDelete(skill)" variant="outline"
-                      class="text-red-600 hover:text-red-800 hover:bg-red-50 flex items-center gap-1" :loading="deletingSkillId === skill.id">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                      Жою
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                  <span v-if="skill.topic_title"> · {{ skill.topic_title }}</span>
+                  <span class="text-gray-400 ml-1">· {{ skill.code }}</span>
+                </p>
+              </div>
+            </div>
+            <!-- Arrow -->
+            <svg class="w-4 h-4 text-gray-300 group-hover:text-gray-500 shrink-0 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </div>
         </div>
       </div>
     </main>
     <Footer />
 
-    <!-- Модальное окно подтверждения удаления -->
-    <Modal :isOpen="!!skillToDelete" @close="skillToDelete = null" title="Тақырыпты жою" :showClose="true">
-      <template #content>
-        <p class="text-gray-700 mb-4">
-          Сіз шынымен "<strong>{{ skillToDelete?.title }}</strong>" тақырыбын жойғыңыз келе ме?
-        </p>
-        <p class="text-sm text-red-600 mb-4 flex items-center gap-2">
-          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-          Бұл әрекетті қайтару мүмкін емес! Тақырыппен байланысты барлық деректер жойылады.
-        </p>
-      </template>
-      <template #actions>
-        <Button v-if="skillToDelete" @click="handleDelete" variant="primary"
-          :loading="deletingSkillId === skillToDelete.id" class="bg-red-600 hover:bg-red-700">
-          Иә, жою
-        </Button>
-        <Button @click="skillToDelete = null" variant="outline">
-          Болдырмау
-        </Button>
-      </template>
-    </Modal>
-
-    <!-- Модальное окно редактирования навыка -->
+    <!-- Edit Skill Modal (from EditSkillModal component) -->
     <EditSkillModal
       :isVisible="!!skillToEdit"
       :skill="skillToEdit"
       @close="skillToEdit = null"
       @save="handleEditSave"
     />
+
+    <!-- Expanded Skill Detail Modal -->
+    <div
+      v-if="selectedSkill"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click.self="selectedSkill = null"
+    >
+      <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-800">{{ selectedSkill.title }}</h3>
+          <button @click="selectedSkill = null" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
+        </div>
+
+        <div class="space-y-3 mb-6">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-0.5">Код</label>
+              <p class="text-sm font-mono text-gray-800 bg-gray-50 p-2 rounded">{{ selectedSkill.code }}</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-0.5">ID</label>
+              <p class="text-sm font-mono text-gray-800 bg-gray-50 p-2 rounded">{{ selectedSkill.id }}</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-0.5">Сынып</label>
+              <p class="text-sm text-gray-800">{{ getGradeName(selectedSkill.grade_id) }}</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-500 mb-0.5">Тақырып</label>
+              <p class="text-sm text-gray-800">{{ selectedSkill.topic_title || '—' }}</p>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-0.5">Қиындық</label>
+            <p class="text-sm text-gray-800">{{ selectedSkill.difficulty }}</p>
+          </div>
+          <div v-if="selectedSkill.tags && selectedSkill.tags.length > 0">
+            <label class="block text-xs font-medium text-gray-500 mb-0.5">Тегтер</label>
+            <div class="flex gap-1 flex-wrap">
+              <span v-for="tag in selectedSkill.tags" :key="tag"
+                class="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full">{{ tag }}</span>
+            </div>
+          </div>
+
+          <!-- Plugin preview for plugin-based skills -->
+          <div v-if="selectedSkill.code.startsWith('PLG')" class="border-t pt-3 mt-3">
+            <label class="block text-xs font-medium text-gray-500 mb-2">Плагин алдын ала қарау</label>
+            <div v-if="!showingPreview">
+              <Button variant="outline" size="sm" @click="loadPluginPreview(selectedSkill)">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                Алдын ала қарау
+              </Button>
+            </div>
+            <div v-else>
+              <iframe
+                :src="previewUrl"
+                style="width: 100%; height: 450px; border: 1px solid #e5e7eb;"
+                sandbox="allow-scripts allow-same-origin"
+                class="rounded"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2 border-t pt-4">
+          <Button variant="primary" @click="editFromModal(selectedSkill)">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            Өзгерту
+          </Button>
+          <Button variant="danger" @click="confirmDelete(selectedSkill)" :loading="deletingSkillId === selectedSkill.id">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Жою
+          </Button>
+          <Button variant="outline" @click="selectedSkill = null" class="ml-auto">Жабу</Button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <Modal :isOpen="!!skillToDelete" @close="skillToDelete = null" title="Тестті жою" :showClose="true">
+      <template #content>
+        <p class="text-gray-700 mb-4">
+          Сіз шынымен "<strong>{{ skillToDelete?.title }}</strong>" тестін жойғыңыз келе ме?
+        </p>
+        <p class="text-sm text-red-600 flex items-center gap-2">
+          <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+          Бұл әрекетті қайтару мүмкін емес!
+        </p>
+      </template>
+      <template #actions>
+        <Button v-if="skillToDelete" @click="handleDelete" variant="primary" :loading="deletingSkillId === skillToDelete.id" class="bg-red-600 hover:bg-red-700">
+          Иә, жою
+        </Button>
+        <Button @click="skillToDelete = null" variant="outline">Болдырмау</Button>
+      </template>
+    </Modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
-import { adminApi, type SkillListItem, type TopicListItem } from '@/api/admin'
+import { adminApi, type SkillListItem } from '@/api/admin'
+import { API_BASE_URL } from '@/config/api'
 import { useRouter } from 'vue-router'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
@@ -320,245 +200,139 @@ const authStore = useAuthStore()
 const catalogStore = useCatalogStore()
 const router = useRouter()
 
-const loading = ref(false)
-const submitting = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
-const generatorMetadataJson = ref('{}')
-
-const subjects = ref<any[]>([])
-const grades = ref<any[]>([])
-const mathSubjectId = ref<number>(0)
-
-const skillsList = ref<SkillListItem[]>([])
 const loadingSkills = ref(false)
+const skillsList = ref<SkillListItem[]>([])
 const skillToDelete = ref<SkillListItem | null>(null)
 const deletingSkillId = ref<number | null>(null)
 const skillToEdit = ref<SkillListItem | null>(null)
-const topicsList = ref<TopicListItem[]>([])
+const selectedSkill = ref<SkillListItem | null>(null)
 
-const formData = ref({
-  title: '',
-  subject_id: mathSubjectId.value, // Сохраняем выбранную математику
-  grade_id: 0,
-  topic_id: null as number | null,
-  code: '',
-  description: '',
-  generator_code: '',
-  generator_metadata: {},
-  difficulty: 1,
-  is_published: true,
+// Filters
+const searchQuery = ref('')
+const filterGradeId = ref<number | null>(null)
+const filterTopicId = ref<number | null>(null)
+
+// Plugin preview
+const showingPreview = ref(false)
+const previewUrl = ref('')
+
+const grades = computed(() => catalogStore.grades)
+const themes = computed(() => catalogStore.topics.filter(t => !t.parent_id))
+
+const filteredSkills = computed(() => {
+  let result = skillsList.value
+  if (searchQuery.value) {
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(s => s.title.toLowerCase().includes(q) || s.code.toLowerCase().includes(q))
+  }
+  if (filterGradeId.value) {
+    result = result.filter(s => s.grade_id === filterGradeId.value)
+  }
+  if (filterTopicId.value) {
+    // Include subthemes of the selected theme
+    const subthemeIds = catalogStore.topics
+      .filter(t => t.parent_id === filterTopicId.value)
+      .map(t => t.id)
+    const allIds = [filterTopicId.value, ...subthemeIds]
+    result = result.filter(s => s.topic_id && allIds.includes(s.topic_id))
+  }
+  return result
 })
-
-const resetForm = () => {
-  formData.value = {
-    title: '',
-    subject_id: mathSubjectId.value, // Сохраняем выбранную математику
-    grade_id: 0,
-    topic_id: null,
-    code: '',
-    description: '',
-    generator_code: '',
-    generator_metadata: {},
-    difficulty: 1,
-    is_published: true,
-  }
-  generatorMetadataJson.value = '{}'
-  error.value = null
-  successMessage.value = null
-}
-
-const handleSubmit = async () => {
-  submitting.value = true
-  error.value = null
-  successMessage.value = null
-
-  // Проверяем авторизацию
-  if (!authStore.isAuthenticated || authStore.user?.role !== 'ADMIN') {
-    error.value = 'Тек әкімшілер навык қоса алады!'
-    submitting.value = false
-    return
-  }
-
-  // Проверяем обязательные поля
-  if (!formData.value.title || !formData.value.generator_code) {
-    error.value = 'Навык атауы және код генератора міндетті!'
-    submitting.value = false
-    return
-  }
-
-  if (!formData.value.subject_id || !formData.value.grade_id) {
-    error.value = 'Пән және сынып таңдау міндетті!'
-    submitting.value = false
-    return
-  }
-
-  try {
-    // Парсим метаданные
-    let metadata = {}
-    if (generatorMetadataJson.value.trim() && generatorMetadataJson.value !== '{}') {
-      try {
-        metadata = JSON.parse(generatorMetadataJson.value)
-      } catch (e) {
-        error.value = 'Метаданные JSON форматында болуы керек'
-        submitting.value = false
-        return
-      }
-    }
-
-    // Генерируем уникальный код навыка (максимум 16 символов)
-    const timestamp = Date.now().toString().slice(-8) // Последние 8 цифр
-    const skillCode = `GEN${timestamp}` // Максимум 11 символов
-
-    console.log('Creating skill with data:', {
-      subject_id: formData.value.subject_id,
-      grade_id: formData.value.grade_id,
-      code: skillCode,
-      title: formData.value.title,
-      description: formData.value.description || '',
-      generator_code: formData.value.generator_code ? formData.value.generator_code.substring(0, 100) + '...' : '',
-      generator_metadata: metadata,
-      difficulty: formData.value.difficulty,
-      is_published: formData.value.is_published,
-    })
-
-    await adminApi.createSkill({
-      subject_id: formData.value.subject_id,
-      grade_id: formData.value.grade_id,
-      topic_id: formData.value.topic_id,
-      code: skillCode,
-      title: formData.value.title,
-      description: formData.value.description || '',
-      generator_code: formData.value.generator_code,
-      generator_metadata: metadata,
-      difficulty: formData.value.difficulty,
-      is_published: formData.value.is_published,
-    })
-
-    successMessage.value = 'Навык с генератором успешно создан!'
-    resetForm()
-    // Обновляем список навыков
-    await loadSkills()
-    setTimeout(() => {
-      successMessage.value = null
-    }, 5000)
-  } catch (err: any) {
-    console.error('Failed to create skill:', err)
-    console.error('Error details:', {
-      status: err.response?.status,
-      statusText: err.response?.statusText,
-      data: err.response?.data,
-      message: err.message,
-    })
-
-    if (err.response?.status === 401) {
-      error.value = 'Авторизация қатесі. Жүйеге қайта кіріңіз.'
-      // Редирект на логин
-      router.push({ name: 'login' })
-    } else if (err.response?.status === 422) {
-      const validationErrors = err.response?.data?.detail || err.response?.data?.error?.details
-      if (Array.isArray(validationErrors)) {
-        const errorMessages = validationErrors.map((e: any) =>
-          `${e.loc?.join('.')}: ${e.msg}`
-        ).join(', ')
-        error.value = `Валидация қатесі: ${errorMessages}`
-      } else {
-        error.value = err.response?.data?.error?.message || err.response?.data?.message || 'Деректерді валидациялау қатесі'
-      }
-    } else {
-      const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message
-      error.value = errorMsg || 'Навык қосу кезінде қате пайда болды.'
-    }
-  } finally {
-    submitting.value = false
-  }
-}
-
-const loadSkills = async () => {
-  loadingSkills.value = true
-  try {
-    const response = await adminApi.listSkills(1, 200)
-    if (response.data) {
-      skillsList.value = response.data
-    }
-  } catch (err: any) {
-    console.error('Failed to load skills:', err)
-    if (err.response?.status === 401) {
-      router.push({ name: 'login' })
-    } else {
-      error.value = 'Тақырыптарды жүктеу кезінде қате пайда болды.'
-    }
-  } finally {
-    loadingSkills.value = false
-  }
-}
 
 const getGradeName = (gradeId: number): string => {
   const grade = grades.value.find(g => g.id === gradeId)
-  return grade ? `${grade.number} ${grade.title}` : `ID: ${gradeId}`
+  return grade ? grade.title : `ID: ${gradeId}`
+}
+
+const openSkillModal = (skill: SkillListItem) => {
+  selectedSkill.value = skill
+  showingPreview.value = false
+  previewUrl.value = ''
+}
+
+const editFromModal = (skill: SkillListItem) => {
+  selectedSkill.value = null
+  skillToEdit.value = skill
+}
+
+const loadPluginPreview = async (skill: SkillListItem) => {
+  // The plugin code starts with PLG, the plugin_id is stored in tags or we can derive from skill
+  // Try to find plugin by listing plugins
+  try {
+    const resp = await adminApi.listPlugins()
+    const plugins = resp.data || []
+    // Match by skill title or code
+    const pluginName = skill.title
+    const plugin = plugins.find((p: any) => p.name === pluginName) || plugins.find((p: any) => skill.code.includes(p.plugin_id))
+    if (plugin) {
+      const base = `${API_BASE_URL}/static/plugins/${plugin.plugin_id}/${plugin.version}/${plugin.entry}`
+      previewUrl.value = base.includes('?') ? `${base}&embed=1` : `${base}?embed=1`
+      showingPreview.value = true
+    } else {
+      error.value = 'Плагин табылмады'
+      setTimeout(() => { error.value = null }, 3000)
+    }
+  } catch (e) {
+    console.error('Failed to load plugin for preview:', e)
+    error.value = 'Плагинді жүктеу қатесі'
+  }
+}
+
+const handleEditSave = async () => {
+  await loadSkills()
+  successMessage.value = 'Тест сәтті өзгертілді!'
+  setTimeout(() => { successMessage.value = null }, 3000)
 }
 
 const confirmDelete = (skill: SkillListItem) => {
+  selectedSkill.value = null
   skillToDelete.value = skill
 }
 
 const handleDelete = async () => {
   if (!skillToDelete.value) return
-
   deletingSkillId.value = skillToDelete.value.id
   try {
     await adminApi.deleteSkill(skillToDelete.value.id)
-    successMessage.value = `Тақырып "${skillToDelete.value.title}" сәтті жойылды!`
+    successMessage.value = `«${skillToDelete.value.title}» сәтті жойылды!`
     skillToDelete.value = null
     await loadSkills()
-    setTimeout(() => {
-      successMessage.value = null
-    }, 5000)
+    setTimeout(() => { successMessage.value = null }, 3000)
   } catch (err: any) {
-    console.error('Failed to delete skill:', err)
-    if (err.response?.status === 401) {
-      error.value = 'Авторизация қатесі. Жүйеге қайта кіріңіз.'
-      router.push({ name: 'login' })
-    } else if (err.response?.status === 404) {
-      error.value = 'Тақырып табылмады.'
-    } else {
-      error.value = err.response?.data?.error?.message || err.message || 'Тақырыпты жою кезінде қате пайда болды.'
-    }
+    error.value = err.response?.data?.error?.message || 'Жою қатесі'
     skillToDelete.value = null
   } finally {
     deletingSkillId.value = null
   }
 }
 
-onMounted(async () => {
+const loadSkills = async () => {
+  loadingSkills.value = true
   try {
-    subjects.value = await catalogStore.getSubjects()
-    grades.value = await catalogStore.getGrades()
-
-    // Загружаем список тем
-    try {
-      const topicsResponse = await adminApi.listTopics()
-      topicsList.value = topicsResponse.data || []
-    } catch (e) {
-      console.error('Failed to load topics:', e)
+    const response = await adminApi.listSkills(1, 500)
+    if (response.data) skillsList.value = response.data
+  } catch (err: any) {
+    if (err.response?.status === 401) {
+      router.push({ name: 'login' })
+    } else {
+      error.value = 'Тесттерді жүктеу қатесі'
     }
-
-    // Автоматически выбираем Математику (первый предмет или по названию)
-    const mathSubject = subjects.value.find(s =>
-      s.title?.toLowerCase().includes('math') ||
-      s.title?.toLowerCase().includes('математика') ||
-      s.slug?.toLowerCase().includes('math')
-    ) || subjects.value[0]
-
-    if (mathSubject) {
-      mathSubjectId.value = mathSubject.id
-      formData.value.subject_id = mathSubject.id
-    }
-
-    // Загружаем список навыков
-    await loadSkills()
-  } catch (err) {
-    console.error('Failed to load subjects/grades:', err)
+  } finally {
+    loadingSkills.value = false
   }
+}
+
+onMounted(async () => {
+  if (!authStore.isAuthenticated || authStore.user?.role !== 'ADMIN') {
+    router.push({ name: 'login', query: { redirect: '/admin/skills' } })
+    return
+  }
+  await Promise.all([
+    catalogStore.getGrades(),
+    catalogStore.getTopics(),
+    loadSkills()
+  ])
 })
 </script>

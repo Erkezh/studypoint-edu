@@ -34,6 +34,7 @@ export interface TopicCreate {
   icon?: string | null
   order?: number
   is_published?: boolean
+  parent_id?: number | null
 }
 
 export interface TopicUpdate {
@@ -43,6 +44,7 @@ export interface TopicUpdate {
   icon?: string | null
   order?: number
   is_published?: boolean
+  parent_id?: number | null
 }
 
 export interface TopicListItem {
@@ -53,6 +55,7 @@ export interface TopicListItem {
   icon: string | null
   order: number
   is_published: boolean
+  parent_id: number | null
 }
 
 export interface GradeListItem {
@@ -207,6 +210,13 @@ export const adminApi = {
 
   async deleteTopic(topicId: number): Promise<ApiResponse<Record<string, unknown>>> {
     const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
+      `/admin/topics/${topicId}`
+    )
+    return response.data
+  },
+
+  async getTopicDetail(topicId: number): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
       `/admin/topics/${topicId}`
     )
     return response.data

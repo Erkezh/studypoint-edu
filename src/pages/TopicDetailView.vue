@@ -104,6 +104,7 @@
 import { computed, onMounted, watch, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCatalogStore } from '@/stores/catalog'
+import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
@@ -114,13 +115,14 @@ import type { SkillListItem } from '@/types/api'
 const route = useRoute()
 const router = useRouter()
 const catalogStore = useCatalogStore()
+const practiceStore = usePracticeStore()
 const authStore = useAuthStore()
 
 const isEditModalOpen = ref(false)
 const editingSkill = ref<SkillListItem | null>(null)
 
 const currentTopicSlug = computed(() => route.params.topicSlug as string)
-const topics = computed(() => catalogStore.topics)
+const topics = computed(() => catalogStore.topics.filter(t => !t.parent_id))
 const loading = computed(() => catalogStore.loading)
 
 const currentTopic = computed(() => {
@@ -192,8 +194,18 @@ const gradeGroups = computed(() => {
     }).sort((a, b) => a.gradeNumber - b.gradeNumber)
 })
 
-const navigateToSkill = (skillId: number) => {
-    router.push({ name: 'skill', params: { skillId } })
+const navigateToSkill = async (skillId: number) => {
+    try {
+        const session = await practiceStore.createSession(skillId)
+        if (session && session.id) {
+            router.push({ name: 'practice', params: { sessionId: session.id } })
+        } else {
+            alert('Сессияны құру мүмкін болмады. Қайталап көріңіз.')
+        }
+    } catch (err) {
+        console.error('Failed to create session:', err)
+        alert('Кешіріңіз, тестті ашу кезінде қате пайда болды.')
+    }
 }
 
 const fetchTopicData = async () => {
@@ -202,12 +214,31 @@ const fetchTopicData = async () => {
         await catalogStore.getGrades()
     }
 
-    if (topics.value.length === 0) {
+    if (catalogStore.topics.length === 0) {
         await catalogStore.getTopics()
     }
 
     if (currentTopic.value) {
-        await catalogStore.getSkills({ topic_id: currentTopic.value.id }, true)
+        // Get all subtheme IDs for this theme
+        const subthemeIds = catalogStore.topics
+            .filter(t => t.parent_id === currentTopic.value!.id)
+            .map(t => t.id)
+        const allTopicIds = [currentTopic.value.id, ...subthemeIds]
+
+        // Load skills for theme + all subthemes
+        // Use page_size=500 to get all, and filter by each topic_id
+        const allSkills: SkillListItem[] = []
+        for (const tid of allTopicIds) {
+            await catalogStore.getSkills({ topic_id: tid, page_size: 500 }, true)
+            allSkills.push(...catalogStore.skills)
+        }
+        // Deduplicate and set
+        const seen = new Set<number>()
+        catalogStore.skills = allSkills.filter(s => {
+            if (seen.has(s.id)) return false
+            seen.add(s.id)
+            return true
+        })
     }
 }
 

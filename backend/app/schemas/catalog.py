@@ -25,6 +25,7 @@ class TopicResponse(BaseModel):
     icon: str | None = None
     order: int = 0
     is_published: bool = True
+    parent_id: int | None = None
 
 
 class SkillListItem(BaseModel):

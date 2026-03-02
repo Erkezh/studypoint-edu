@@ -83,6 +83,7 @@ class CatalogService:
             icon=t.icon,
             order=t.order,
             is_published=t.is_published,
+            parent_id=t.parent_id,
         ) for t in rows]
         await self._cache_setex(key, json.dumps([d.model_dump(mode="json") for d in data]))
         return data

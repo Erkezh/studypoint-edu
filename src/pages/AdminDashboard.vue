@@ -41,9 +41,9 @@
             to="/admin/plugins"
             class="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-green-300 transition-all"
           >
-            <svg class="w-8 h-8 text-green-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
-            <h3 class="font-semibold text-gray-900 group-hover:text-green-700 transition-colors">Плагиндер</h3>
-            <p class="text-sm text-gray-500 mt-1">TSX плагиндерді жүктеу, тестке қосу</p>
+            <svg class="w-8 h-8 text-green-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+            <h3 class="font-semibold text-gray-900 group-hover:text-green-700 transition-colors">Тест жүктеу</h3>
+            <p class="text-sm text-gray-500 mt-1">TSX файлдан жаңа тест жүктеу</p>
           </router-link>
 
           <router-link
@@ -61,7 +61,7 @@
           >
             <svg class="w-8 h-8 text-purple-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             <h3 class="font-semibold text-gray-900 group-hover:text-purple-700 transition-colors">Сұрақтар</h3>
-            <p class="text-sm text-gray-500 mt-1">Сұрақтарды басқару және жою</p>
+            <p class="text-sm text-gray-500 mt-1">Тесттер мен сұрақтарды басқару, өңдеу, жою</p>
           </router-link>
 
           <router-link

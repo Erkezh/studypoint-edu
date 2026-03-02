@@ -179,6 +179,7 @@ class AdminService:
             icon=req.icon,
             order=req.order,
             is_published=req.is_published,
+            parent_id=req.parent_id,
         )
         self.session.add(topic)
         try:
@@ -203,6 +204,8 @@ class AdminService:
             topic.order = req.order
         if req.is_published is not None:
             topic.is_published = req.is_published
+        if req.parent_id is not None:
+            topic.parent_id = req.parent_id
         try:
             await self.session.flush()
         except IntegrityError as e:
@@ -240,6 +243,7 @@ class AdminService:
         self.session.add(skill)
         try:
             await self.session.flush()
+            await self.session.refresh(skill, attribute_names=['topic'])
         except IntegrityError as e:
             raise AppError(status_code=409, code="conflict", message="Skill code already exists for this subject+grade") from e
         return skill
@@ -252,6 +256,7 @@ class AdminService:
             setattr(skill, field, value)
         try:
             await self.session.flush()
+            await self.session.refresh(skill, attribute_names=['topic'])
         except IntegrityError as e:
             raise AppError(status_code=409, code="conflict", message="Skill code already exists for this subject+grade") from e
         return skill

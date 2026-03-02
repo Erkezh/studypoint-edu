@@ -77,6 +77,8 @@
                         </div>
                     </div>
 
+
+
                     <!-- Описание -->
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">
@@ -141,15 +143,16 @@
                 </div>
 
                 <div v-else class="space-y-3">
-                    <div v-for="topic in topicsList" :key="topic.id"
-                        class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                    <div v-for="topic in topLevelThemes" :key="topic.id"
+                         class="flex items-center justify-between p-4 rounded-lg border bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
+                         @click="router.push({ name: 'admin-topic-detail', params: { topicId: topic.id } })">
                         <div class="flex items-center gap-3">
                             <span class="text-2xl" v-if="topic.icon">{{ topic.icon }}</span>
                             <svg v-else class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                             <div>
                                 <h3 class="font-semibold text-gray-900">{{ topic.title }}</h3>
                                 <p class="text-sm text-gray-500 flex items-center gap-2">
-                                    slug: {{ topic.slug }} | реттілік: {{ topic.order }}
+                                    slug: {{ topic.slug }} · реттілік: {{ topic.order }}
                                     <span v-if="!topic.is_published" class="text-yellow-600 ml-2 flex items-center gap-1">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                                         жарияланбаған
@@ -157,13 +160,16 @@
                                 </p>
                             </div>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2" @click.stop>
                             <Button @click="editTopic(topic)" variant="outline" class="text-blue-600 flex items-center gap-1">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </Button>
                             <Button @click="confirmDelete(topic)" variant="outline" class="text-red-600 hover:bg-red-50 flex items-center gap-1"
                                 :loading="deletingTopicId === topic.id">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </Button>
+                            <Button @click="router.push({ name: 'admin-topic-detail', params: { topicId: topic.id } })" variant="outline" class="text-green-600 flex items-center gap-1">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                             </Button>
                         </div>
                     </div>
@@ -218,13 +224,26 @@ const deletingTopicId = ref<number | null>(null)
 const isEditing = ref(false)
 const editingTopicId = ref<number | null>(null)
 
-const formData = ref({
+const formData = ref<{
+    slug: string,
+    title: string,
+    description: string,
+    icon: string,
+    order: number,
+    is_published: boolean,
+}>({
     slug: '',
     title: '',
     description: '',
     icon: '',
     order: 0,
     is_published: true,
+})
+
+import { computed } from 'vue'
+
+const topLevelThemes = computed(() => {
+    return topicsList.value.filter(t => !t.parent_id).sort((a,b) => a.order - b.order)
 })
 
 const resetForm = () => {

@@ -71,9 +71,11 @@ interface TopicViewModel {
   color: string
 }
 
-// Map real topic to view model
+// Map real topic to view model — only show top-level themes (not subthemes)
 const broadTopics = computed<TopicViewModel[]>(() => {
-  return (catalogStore.topics || []).map((topic, index) => {
+  return (catalogStore.topics || [])
+    .filter(topic => !topic.parent_id)
+    .map((topic, index) => {
     // Cyclic colors based on index
     const colors = ['orange', 'teal', 'purple', 'lime', 'red', 'blue', 'indigo']
     const color = colors[index % colors.length] || 'orange'
@@ -83,7 +85,6 @@ const broadTopics = computed<TopicViewModel[]>(() => {
       title: topic.title,
       description: topic.description || 'Practice essential skills in this topic.',
       color: color,
-      // count: 0 // We don't have count yet
     }
   })
 })

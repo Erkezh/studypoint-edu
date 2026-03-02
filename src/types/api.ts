@@ -107,6 +107,7 @@ export interface TopicResponse {
   icon: string | null
   order: number
   is_published: boolean
+  parent_id: number | null
 }
 
 export interface SkillListItem {
