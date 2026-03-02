@@ -396,8 +396,8 @@ apiClient.interceptors.response.use(
 )
 
 // Rate limiting: локальный счётчик для ограничения частоты отправки ответов
-let attemptQueue: Array<() => Promise<any>> = []
-let isProcessingAttempts = false
+const attemptQueue: Array<() => Promise<any>> = []
+const isProcessingAttempts = false
 const MAX_ATTEMPTS_PER_MINUTE = 30
 const attemptTimestamps: number[] = []
 

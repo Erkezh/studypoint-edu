@@ -282,7 +282,7 @@ const loadSkills = async () => {
     // Use catalog API (public) to list all skills
     const response = await catalogApi.getSkills({ page_size: 500 })
     if (response.data) skillsList.value = response.data as SkillListItem[]
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Failed to load skills:', err)
     error.value = 'Тесттерді жүктеу қатесі'
   } finally {
@@ -327,8 +327,9 @@ const handleDeleteSkill = async () => {
     skillToDelete.value = null
     await loadSkills()
     setTimeout(() => { successMessage.value = null }, 3000)
-  } catch (err: any) {
-    error.value = err.response?.data?.error?.message || 'Жою қатесі'
+  } catch (err: unknown) {
+    const errorResponse = err as { response?: { data?: { error?: { message?: string } } } }
+    error.value = errorResponse.response?.data?.error?.message || 'Жою қатесі'
     skillToDelete.value = null
   } finally {
     deletingSkillId.value = null
@@ -357,7 +358,7 @@ const loadQuestions = async () => {
   loadingQ.value = true
   error.value = null
   try {
-    const params: any = { page: currentPage.value, page_size: pageSize.value, sort_order: filters.value.sort_order }
+    const params: Record<string, string | number> = { page: currentPage.value, page_size: pageSize.value, sort_order: filters.value.sort_order }
     if (filters.value.skill_id) params.skill_id = filters.value.skill_id
     if (filters.value.search?.trim()) params.search = filters.value.search.trim()
     const response = await adminApi.listQuestions(params)
@@ -365,9 +366,10 @@ const loadQuestions = async () => {
       questionsList.value = response.data
       totalQuestions.value = (response.meta && 'total' in response.meta) ? response.meta.total as number : response.data.length
     }
-  } catch (err: any) {
-    if (err.response?.status === 401) { router.push({ name: 'login' }) }
-    else { error.value = err.response?.data?.error?.message || 'Сұрақтарды жүктеу қатесі' }
+  } catch (err: unknown) {
+    const apiError = err as { response?: { status?: number, data?: { error?: { message?: string } } } }
+    if (apiError.response?.status === 401) { router.push({ name: 'login' }) }
+    else { error.value = apiError.response?.data?.error?.message || 'Сұрақтарды жүктеу қатесі' }
   } finally { loadingQ.value = false }
 }
 
@@ -388,8 +390,9 @@ const handleDeleteQ = async () => {
     questionToDelete.value = null
     await loadQuestions()
     setTimeout(() => { successMessage.value = null }, 5000)
-  } catch (err: any) {
-    error.value = err.response?.data?.error?.message || 'Сұрақты жою қатесі'
+  } catch (err: unknown) {
+    const apiError = err as { response?: { data?: { error?: { message?: string } } } }
+    error.value = apiError.response?.data?.error?.message || 'Сұрақты жою қатесі'
     questionToDelete.value = null
   } finally { deletingQId.value = null }
 }
