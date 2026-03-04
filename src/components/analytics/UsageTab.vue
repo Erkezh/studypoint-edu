@@ -52,14 +52,22 @@
       <div class="usage-chart-card">
         <h3 class="section-title">КАТЕГОРИЯ БОЙЫНША ПРАКТИКА</h3>
         <div class="chart-section">
-          <div class="donut-chart">
+          <div class="donut-chart" @mousemove="updateTooltipPosition" @mouseleave="hideTooltip">
             <svg viewBox="0 0 100 100" class="chart-svg">
               <circle v-if="practiceByCategory.length === 0" cx="50" cy="50" r="40"
                 fill="transparent" stroke="#e0e0e0" stroke-width="12" />
               <circle v-for="(segment, index) in categoryChartSegments" :key="index" cx="50" cy="50" r="40"
                 fill="transparent" :stroke="segment.color" stroke-width="12" :stroke-dasharray="segment.dashArray"
-                :stroke-dashoffset="segment.offset" transform="rotate(-90 50 50)" />
+                :stroke-dashoffset="segment.offset" transform="rotate(-90 50 50)"
+                class="chart-segment"
+                @mouseenter="showTooltip(segment.cat, index)" />
             </svg>
+
+            <!-- Tooltip -->
+            <div v-if="hoveredSegment" class="chart-tooltip" :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }">
+              <span class="tooltip-dot" :style="{ backgroundColor: hoveredSegment.color }"></span>
+              <span class="tooltip-text">{{ hoveredSegment.cat.name }}: {{ hoveredSegment.cat.count }} сұрақ</span>
+            </div>
           </div>
           <div class="chart-legend">
             <div v-for="(cat, index) in practiceByCategory" :key="cat.name" class="legend-item">
@@ -190,6 +198,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
+import { useCatalogStore } from '@/stores/catalog'
 import SessionQuestionPreview from './SessionQuestionPreview.vue'
 
 const props = defineProps<{
@@ -200,9 +209,36 @@ const props = defineProps<{
 }>()
 
 const analyticsStore = useAnalyticsStore()
+const catalogStore = useCatalogStore()
+catalogStore.getTopics() // Ensure topics are loaded to map topic titles
+
 const expandedSessions = ref<Set<string>>(new Set())
 
 const chartColors = ['#00BCD4', '#FF9800', '#4CAF50', '#9C27B0', '#F44336', '#2196F3']
+
+// Tooltip state
+const hoveredSegment = ref<{ cat: { name: string, count: number }, color: string } | null>(null)
+const tooltipX = ref(0)
+const tooltipY = ref(0)
+
+const showTooltip = (cat: { name: string, count: number }, index: number) => {
+  hoveredSegment.value = {
+    cat,
+    color: chartColors[index % chartColors.length]
+  }
+}
+
+const hideTooltip = () => {
+  hoveredSegment.value = null
+}
+
+const updateTooltipPosition = (event: MouseEvent) => {
+  if (hoveredSegment.value) {
+    const chartRect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltipX.value = event.clientX - chartRect.left
+    tooltipY.value = event.clientY - chartRect.top - 10
+  }
+}
 
 const printReport = () => {
   window.print()
@@ -351,7 +387,23 @@ const practiceByCategory = computed(() => {
 
   for (const skill of skillsWithProgress.value) {
     const rec = skill as Record<string, unknown>
-    const topicTitle = (rec.topic_title as string) || 'Басқа'
+
+    // Resolve Sub-theme Title
+    let topicTitle = rec.topic_title as string | undefined
+    if (!topicTitle) {
+      let topicId = rec.topic_id as number | undefined
+      if (!topicId) {
+        const catalogSkill = catalogStore.skills.find(s => s.id === (skill as Record<string, unknown>).skill_id || s.id === (skill as Record<string, unknown>).id)
+        if (catalogSkill) topicId = catalogSkill.topic_id ?? undefined
+      }
+      if (topicId) {
+        const topic = catalogStore.topics.find(t => t.id === topicId)
+        if (topic) topicTitle = topic.title
+      }
+    }
+
+    topicTitle = topicTitle || 'Басқа'
+
     const gradeNumber = rec.grade_number as number | undefined
     const gradeLabel = formatGradeLabel(gradeNumber)
     const categoryName = gradeLabel ? `${topicTitle} (${gradeLabel})` : topicTitle
@@ -400,6 +452,7 @@ const categoryChartSegments = computed(() => {
   return practiceByCategory.value.map((cat, index) => {
     const segmentSize = (cat.count / total) * circumference
     const segment = {
+      cat,
       color: chartColors[index % chartColors.length],
       dashArray: `${segmentSize} ${circumference - segmentSize}`,
       offset: -offset,
@@ -813,6 +866,41 @@ const prevQuestion = (dateKey: string, skillId: number) => {
 .chart-svg {
   width: 100%;
   height: 100%;
+}
+
+.chart-segment {
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+  cursor: pointer;
+}
+
+.chart-segment:hover {
+  opacity: 0.8;
+  stroke-width: 14;
+}
+
+.chart-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.tooltip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .chart-legend {

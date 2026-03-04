@@ -56,17 +56,25 @@
     <div class="skills-practiced-card">
       <h3 class="section-title">МЕҢГЕРІЛГЕН МАТЕМАТИКА ДАҒДЫЛАРЫ</h3>
       <div class="chart-section">
-        <div class="donut-chart">
+        <div class="donut-chart" @mousemove="updateTooltipPosition" @mouseleave="hideTooltip">
           <svg viewBox="0 0 100 100" class="chart-svg">
             <circle v-if="skillsByTopic.length === 0" cx="50" cy="50" r="40"
               fill="transparent" stroke="#e0e0e0" stroke-width="12" />
             <circle v-for="(segment, index) in topicChartSegments" :key="index" cx="50" cy="50" r="40"
               fill="transparent" :stroke="segment.color" stroke-width="12" :stroke-dasharray="segment.dashArray"
-              :stroke-dashoffset="segment.offset" transform="rotate(-90 50 50)" />
+              :stroke-dashoffset="segment.offset" transform="rotate(-90 50 50)"
+              class="chart-segment"
+              @mouseenter="showTooltip(segment.topic, index)" />
           </svg>
           <div class="chart-center">
             <span class="chart-value">{{ skillsWithProgress.length }}</span>
             <span class="chart-label">дағды</span>
+          </div>
+
+          <!-- Tooltip -->
+          <div v-if="hoveredSegment" class="chart-tooltip" :style="{ left: tooltipX + 'px', top: tooltipY + 'px' }">
+            <span class="tooltip-dot" :style="{ backgroundColor: hoveredSegment.color }"></span>
+            <span class="tooltip-text">{{ hoveredSegment.topic.name }}: {{ hoveredSegment.topic.count }} дағды</span>
           </div>
         </div>
         <div class="chart-legend">
@@ -122,6 +130,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
+import { useCatalogStore } from '@/stores/catalog'
 
 const props = defineProps<{
   gradeFrom: number
@@ -131,10 +140,37 @@ const props = defineProps<{
 }>()
 
 const analyticsStore = useAnalyticsStore()
+const catalogStore = useCatalogStore()
+catalogStore.getTopics() // Ensure topics are loaded for resolving parents
 
 const chartColors = ['#00BCD4', '#FF9800', '#4CAF50', '#9C27B0', '#F44336', '#2196F3']
 const sortField = ref<string>('lastPracticed')
 const sortDirection = ref<'asc' | 'desc'>('desc')
+
+// Tooltip state
+const hoveredSegment = ref<{ topic: { name: string, count: number }, color: string } | null>(null)
+const tooltipX = ref(0)
+const tooltipY = ref(0)
+
+const showTooltip = (topic: { name: string, count: number }, index: number) => {
+  hoveredSegment.value = {
+    topic,
+    color: chartColors[index % chartColors.length]
+  }
+}
+
+const hideTooltip = () => {
+  hoveredSegment.value = null
+}
+
+const updateTooltipPosition = (event: MouseEvent) => {
+  if (hoveredSegment.value) {
+    // Получаем координаты относительно родительского элемента (.donut-chart)
+    const chartRect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    tooltipX.value = event.clientX - chartRect.left
+    tooltipY.value = event.clientY - chartRect.top - 10 // Немного выше курсора
+  }
+}
 
 const printReport = () => {
   window.print()
@@ -299,13 +335,45 @@ const completedTopics = computed(() => {
     })
 })
 
-// Skills grouped by topic
+// Helper to find the top-level primary topic for a given topic ID
+const getPrimaryTopicTitle = (topicId: number | undefined): string => {
+  if (!topicId) return 'Басқа'
+
+  const topics = catalogStore.topics
+  let currentTopic = topics.find(t => t.id === topicId)
+
+  // Traverse up to the parent
+  while (currentTopic && currentTopic.parent_id) {
+    const parent = topics.find(t => t.id === currentTopic!.parent_id)
+    if (parent) {
+      currentTopic = parent
+    } else {
+      break
+    }
+  }
+
+  return currentTopic ? currentTopic.title : 'Басқа'
+}
+
+// Skills grouped by primary top-level topic
 const skillsByTopic = computed(() => {
   const topicMap = new Map<string, { name: string; count: number }>()
 
   for (const skill of skillsWithProgress.value) {
     const rec = skill as Record<string, unknown>
-    const topicTitle = (rec.topic_title as string) || 'Басқа'
+    // Get the base topic ID from the skill. If the analytics payload doesn't provide topic_id directly
+    // we can try looking it up in the catalogStore's skills list if needed, but assuming rec has it:
+    let topicId = rec.topic_id as number | undefined
+
+    // Fallback: look up in catalogStore if missing in analytics payload
+    if (!topicId) {
+      const catalogSkill = catalogStore.skills.find(s => s.id === (skill as Record<string, unknown>).skill_id || s.id === (skill as Record<string, unknown>).id)
+      if (catalogSkill) {
+        topicId = catalogSkill.topic_id ?? undefined
+      }
+    }
+
+    const topicTitle = topicId ? getPrimaryTopicTitle(topicId) : ((rec.topic_title as string) || 'Басқа')
 
     if (topicMap.has(topicTitle)) {
       topicMap.get(topicTitle)!.count++
@@ -326,6 +394,7 @@ const topicChartSegments = computed(() => {
   return skillsByTopic.value.map((topic, index) => {
     const segmentSize = (topic.count / total) * circumference
     const segment = {
+      topic,
       color: chartColors[index % chartColors.length],
       dashArray: `${segmentSize} ${circumference - segmentSize}`,
       offset: -offset,
@@ -525,6 +594,41 @@ const sortBy = (field: string) => {
   font-size: 32px;
   font-weight: 300;
   color: #333;
+}
+
+.chart-segment {
+  transition: opacity 0.2s ease, stroke-width 0.2s ease;
+  cursor: pointer;
+}
+
+.chart-segment:hover {
+  opacity: 0.8;
+  stroke-width: 14;
+}
+
+.chart-tooltip {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  white-space: nowrap;
+}
+
+.tooltip-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .chart-label {
