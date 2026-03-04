@@ -16,6 +16,7 @@ from app.db.session import get_db_session
 from app.models.catalog import Grade, Skill, Subject
 from app.models.topic import Topic
 from app.models.question import Question
+from app.models.user import User
 from app.models.enums import QuestionType
 from app.repositories.plugin_repo import PluginRepository
 from app.schemas.admin import (
@@ -39,6 +40,22 @@ from app.schemas.admin import (
 class AdminService:
     def __init__(self, session: AsyncSession = Depends(get_db_session)) -> None:
         self.session = session
+
+    async def get_users(self) -> list[User]:
+        return list((await self.session.execute(select(User).order_by(User.created_at.desc()))).scalars().all())
+
+    async def update_user(self, user_id: str, req: dict) -> User:
+        user = await self.session.get(User, user_id)
+        if not user:
+            raise AppError(status_code=404, code="not_found", message="User not found")
+        
+        if "role" in req and req["role"] is not None:
+            user.role = req["role"]
+        if "is_active" in req and req["is_active"] is not None:
+            user.is_active = req["is_active"]
+            
+        await self.session.flush()
+        return user
 
     async def _invalidate_grades_cache(self) -> None:
         try:

@@ -72,6 +72,15 @@
             <h3 class="font-semibold text-gray-900 group-hover:text-indigo-700 transition-colors">Сыныптар</h3>
             <p class="text-sm text-gray-500 mt-1">Сыныптарды қосу, өңдеу және жою</p>
           </router-link>
+
+          <router-link
+            to="/admin/users"
+            class="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-teal-300 transition-all"
+          >
+            <svg class="w-8 h-8 text-teal-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354v.001A4.355 4.355 0 0012 13h.001A4.355 4.355 0 0012 4.355zM6 21.646C6 17.481 9.387 15 12 15s6 2.481 6 6.646v.354H6v-.354z" /></svg>
+            <h3 class="font-semibold text-gray-900 group-hover:text-teal-700 transition-colors">Пайдаланушылар</h3>
+            <p class="text-sm text-gray-500 mt-1">Рөлдерді тағайындау және тіркелгілерді басқару</p>
+          </router-link>
         </div>
       </section>
 

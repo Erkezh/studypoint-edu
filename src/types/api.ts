@@ -74,6 +74,19 @@ export interface UserMeResponse {
   subscription?: SubscriptionResponse | null
 }
 
+export interface AdminUser {
+  id: string
+  email: string
+  full_name: string
+  role: UserRole
+  is_active: boolean
+}
+
+export interface AdminUserUpdate {
+  role?: UserRole
+  is_active?: boolean
+}
+
 export interface StudentProfileResponse {
   grade_level: number
   school?: string | null

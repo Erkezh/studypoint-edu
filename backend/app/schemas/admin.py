@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
-from app.models.enums import QuestionType
+from app.models.enums import QuestionType, UserRole
 
 
 class SubjectCreate(BaseModel):
@@ -135,4 +135,17 @@ class BulkImportRequest(BaseModel):
 class BulkImportResponse(BaseModel):
     skills_created: int
     questions_created: int
+
+
+class AdminUserResponse(BaseModel):
+    id: str
+    email: EmailStr
+    full_name: str
+    role: UserRole
+    is_active: bool
+
+
+class AdminUserUpdate(BaseModel):
+    role: UserRole | None = None
+    is_active: bool | None = None
 

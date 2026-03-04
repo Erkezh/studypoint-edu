@@ -1,5 +1,5 @@
 import apiClient from './client'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, AdminUser, AdminUserUpdate } from '@/types/api'
 
 export interface InteractiveQuestionCreate {
   skill_id: number
