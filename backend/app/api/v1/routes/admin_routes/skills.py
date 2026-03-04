@@ -57,6 +57,27 @@ async def create_skill(body: SkillCreate, svc: AdminService = Depends()):
     )
 
 
+@router.post("/{skill_id}/duplicate", response_model=ApiResponse[SkillDetailResponse])
+async def duplicate_skill(skill_id: int, body: SkillCreate, svc: AdminService = Depends()):
+    s = await svc.duplicate_skill(skill_id, body)
+    return ApiResponse(
+        data=SkillDetailResponse(
+            id=s.id,
+            subject_id=s.subject_id,
+            grade_id=s.grade_id,
+            topic_id=s.topic_id,
+            topic_title=s.topic.title if s.topic else None,
+            code=s.code,
+            title=s.title,
+            difficulty=s.difficulty,
+            tags=s.tags,
+            description=s.description,
+            example_url=s.example_url,
+            video_url=s.video_url,
+            is_published=s.is_published,
+        )
+    )
+
 @router.patch("/{skill_id}", response_model=ApiResponse[SkillDetailResponse])
 async def update_skill(skill_id: int, body: SkillUpdate, svc: AdminService = Depends()):
     s = await svc.update_skill(skill_id, body)

@@ -1,5 +1,5 @@
 <template>
-  <Modal :is-open="isVisible" title="Тестті өңдеу" @close="close">
+  <Modal :is-open="isVisible" :title="isDuplicate ? 'Тестті көшіру' : 'Тестті өңдеу'" @close="close">
     <template #content>
       <div class="space-y-4">
         <!-- Title -->
@@ -105,6 +105,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import Modal from '@/components/ui/Modal.vue'
 import Button from '@/components/ui/Button.vue'
 import { useCatalogStore } from '@/stores/catalog'
+import { adminApi } from '@/api/admin'
 import type { SkillListItem } from '@/types/api'
 
 interface TopicItem {
@@ -118,6 +119,7 @@ interface TopicItem {
 const props = defineProps<{
   isVisible: boolean
   skill: SkillListItem | null
+  isDuplicate?: boolean
 }>()
 
 const emit = defineEmits(['close', 'save'])
@@ -154,7 +156,7 @@ watch(() => props.skill, (newSkill) => {
       grade_id: newSkill.grade_id,
       topic_id: newSkill.topic_id || null,
       code: newSkill.code,
-      title: newSkill.title
+      title: props.isDuplicate ? `${newSkill.title} (Көшірме)` : newSkill.title
     }
     // Resolve which theme/subtheme is selected
     if (newSkill.topic_id) {
@@ -234,7 +236,18 @@ const save = async () => {
   if (!props.skill) return
   isLoading.value = true
   try {
-    await catalogStore.updateSkill(props.skill.id, form.value)
+    if (props.isDuplicate) {
+      await adminApi.duplicateSkill(props.skill.id, {
+        subject_id: props.skill.subject_id,
+        grade_id: form.value.grade_id,
+        topic_id: form.value.topic_id,
+        code: form.value.code,
+        title: form.value.title,
+        is_published: true
+      })
+    } else {
+      await catalogStore.updateSkill(props.skill.id, form.value)
+    }
     emit('save')
     close()
   } catch (e) {

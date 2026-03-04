@@ -141,6 +141,17 @@ export const adminApi = {
     return response.data
   },
 
+  async duplicateSkill(
+    skillId: number,
+    data: SkillCreate
+  ): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
+      `/admin/skills/${skillId}/duplicate`,
+      data
+    )
+    return response.data
+  },
+
   async listSkills(
     page: number = 1,
     pageSize: number = 50

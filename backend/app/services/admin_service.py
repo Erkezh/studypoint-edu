@@ -248,6 +248,56 @@ class AdminService:
             raise AppError(status_code=409, code="conflict", message="Skill code already exists for this subject+grade") from e
         return skill
 
+    async def duplicate_skill(self, original_skill_id: int, overrides: SkillCreate) -> Skill:
+        from sqlalchemy.orm import selectinload
+        
+        # 1. Загружаем оригинальный навык
+        orig_skill = await self.session.get(Skill, original_skill_id)
+        if not orig_skill:
+            raise AppError(status_code=404, code="not_found", message="Original skill not found")
+
+        # 2. Создаем новый навык, объединяя данные (overrides имеют приоритет + переносим генераторы)
+        new_skill = Skill(
+            subject_id=overrides.subject_id,
+            grade_id=overrides.grade_id,
+            topic_id=overrides.topic_id,
+            code=overrides.code,
+            title=overrides.title,
+            description=overrides.description or orig_skill.description,
+            tags=overrides.tags if overrides.tags else orig_skill.tags,
+            difficulty=overrides.difficulty or orig_skill.difficulty,
+            example_url=overrides.example_url or orig_skill.example_url,
+            video_url=overrides.video_url or orig_skill.video_url,
+            is_published=overrides.is_published,
+            generator_code=orig_skill.generator_code,
+            generator_metadata=orig_skill.generator_metadata
+        )
+        self.session.add(new_skill)
+        try:
+            await self.session.flush()
+        except IntegrityError as e:
+            raise AppError(status_code=409, code="conflict", message="Skill code already exists") from e
+
+        # 3. Дублируем все вопросы
+        stmt = select(Question).where(Question.skill_id == original_skill_id)
+        orig_questions = list((await self.session.execute(stmt)).scalars().all())
+        
+        for oq in orig_questions:
+            new_q = Question(
+                skill_id=new_skill.id,
+                type=oq.type,
+                prompt=oq.prompt,
+                data=oq.data,
+                correct_answer=oq.correct_answer,
+                explanation=oq.explanation,
+                level=oq.level,
+            )
+            self.session.add(new_q)
+            
+        await self.session.flush()
+        await self.session.refresh(new_skill, attribute_names=['topic'])
+        return new_skill
+
     async def update_skill(self, skill_id: int, req: SkillUpdate) -> Skill:
         skill = await self.session.get(Skill, skill_id)
         if skill is None:
