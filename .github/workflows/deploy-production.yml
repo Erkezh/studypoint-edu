@@ -360,6 +360,16 @@ jobs:
 
             wait_for_http_get http://127.0.0.1:8001/docs 30 2
             wait_for_http_head http://127.0.0.1:5174/ 30 2
+
+            if ! wait_for_frontend_api http://127.0.0.1:5174/api/v1/grades 5 2; then
+              echo "Primary frontend runtime is not proxying /api. Switching to repo-managed fallback server."
+              if [ "$HAS_FRONTEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 1 ]; then
+                run_privileged systemctl stop studypoint-frontend || true
+              fi
+              restart_frontend_fallback
+              wait_for_http_head http://127.0.0.1:5174/ 30 2
+            fi
+
             wait_for_frontend_api http://127.0.0.1:5174/api/v1/grades 30 2
 
             if [ -n "$DOMAIN" ]; then
