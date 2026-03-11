@@ -263,7 +263,13 @@ jobs:
                 fi
               done
 
-              nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoint-frontend.log 2>&1 &
+              if [ "$USE_SUDO" -eq 1 ]; then
+                run_privileged sh -lc 'command -v fuser >/dev/null 2>&1 && fuser -k 5174/tcp || true'
+              else
+                command -v fuser >/dev/null 2>&1 && fuser -k 5174/tcp || true
+              fi
+
+              nohup node scripts/serve-dist.mjs --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.log 2>&1 &
               echo $! > "$pid_file"
             }
 
@@ -332,6 +338,13 @@ jobs:
               done
               echo "Frontend API proxy healthcheck failed: $url"
               printf '%s\n' "$body"
+              echo "Direct backend API response sample:"
+              curl -sS http://127.0.0.1:8001/api/v1/grades || true
+              echo
+              echo "Frontend process candidates:"
+              pgrep -af 'serve-dist|vite preview|5174' || true
+              echo "Frontend log tail:"
+              tail -n 120 /tmp/studypoint-frontend.log || true
               return 1
             }
 
