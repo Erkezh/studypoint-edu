@@ -34,6 +34,9 @@ npm run dev
 # Сборка для production
 npm run build
 
+# Локальный production-сервер для готовой сборки
+npm run preview -- --host 127.0.0.1 --port 5174
+
 # Запуск тестов
 npm test
 
@@ -44,6 +47,7 @@ npm run type-check
 npm run lint
 ```
 Dev server listens on `http://localhost:5174`.
+`npm run preview` serves `dist` and proxies `/api` requests to `http://127.0.0.1:8001` by default.
 
 ## Конфигурация
 

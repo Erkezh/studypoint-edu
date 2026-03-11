@@ -247,10 +247,17 @@ jobs:
                 fi
               fi
 
-              # Use [v] regex trick to avoid matching the current shell command line.
-              local expr='[v]ite[[:space:]]+preview[[:space:]]+--[[:space:]]+--host[[:space:]]+0\.0\.0\.0[[:space:]]+--port[[:space:]]+5174'
+              # Use bracket regex tricks to avoid matching the current shell command line.
+              local vite_expr='[v]ite[[:space:]]+preview[[:space:]]+--[[:space:]]+--host[[:space:]]+0\.0\.0\.0[[:space:]]+--port[[:space:]]+5174'
+              local server_expr='[n]ode[[:space:]]+scripts/serve-dist\.mjs[[:space:]]+--host[[:space:]]+0\.0\.0\.0[[:space:]]+--port[[:space:]]+5174'
               local pid
-              for pid in $(pgrep -f "$expr" || true); do
+              for pid in $(pgrep -f "$vite_expr" || true); do
+                if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
+                  kill "$pid" 2>/dev/null || true
+                fi
+              done
+
+              for pid in $(pgrep -f "$server_expr" || true); do
                 if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
                   kill "$pid" 2>/dev/null || true
                 fi
@@ -308,6 +315,26 @@ jobs:
               return 1
             }
 
+            wait_for_frontend_api() {
+              local url="$1"
+              local retries="${2:-30}"
+              local delay="${3:-2}"
+              local i=1
+              local body=""
+              while [ "$i" -le "$retries" ]; do
+                body="$(curl -fsS "$url" || true)"
+                if [ -n "$body" ] && ! printf '%s' "$body" | grep -q '<!DOCTYPE html>' && printf '%s' "$body" | grep -q '"data"'; then
+                  return 0
+                fi
+                echo "Waiting for frontend API proxy $url ($i/$retries)..."
+                sleep "$delay"
+                i=$((i + 1))
+              done
+              echo "Frontend API proxy healthcheck failed: $url"
+              printf '%s\n' "$body"
+              return 1
+            }
+
             check_external_domain() {
               local url="$1"
               local retries="${2:-30}"
@@ -333,9 +360,11 @@ jobs:
 
             wait_for_http_get http://127.0.0.1:8001/docs 30 2
             wait_for_http_head http://127.0.0.1:5174/ 30 2
+            wait_for_frontend_api http://127.0.0.1:5174/api/v1/grades 30 2
 
             if [ -n "$DOMAIN" ]; then
               check_external_domain "https://${DOMAIN}/" 30 2 || true
+              check_external_domain "https://${DOMAIN}/api/v1/grades" 30 2 || true
             fi
 
             echo "Deployment finished successfully."

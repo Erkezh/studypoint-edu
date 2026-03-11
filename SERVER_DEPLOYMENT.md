@@ -112,6 +112,7 @@ nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoin
 Rebuild/restart preview whenever `.env` changes.
 This guide uses `npm run build-only` (without `vue-tsc`) to avoid blocking deploy on current TS typing issues.
 Do not set `VITE_API_URL` to `127.0.0.1` or `localhost` in production browser builds.
+`npm run preview` serves the built frontend and proxies `/api`, `/docs`, `/redoc`, and `/static/plugins` to `127.0.0.1:8001`.
 
 If install/build fails due Node version:
 ```bash
@@ -124,7 +125,7 @@ Optional (recommended) process manager with `systemd`:
 ```bash
 sudo tee /etc/systemd/system/studypoint-frontend.service >/dev/null <<'UNIT'
 [Unit]
-Description=StudyPoint Frontend (Vite Preview)
+Description=StudyPoint Frontend
 After=network.target
 
 [Service]
@@ -184,6 +185,7 @@ In NPM UI, create a new Proxy Host for your new domain:
 This will not affect existing proxy hosts/domains.
 If frontend gives `403` while backend works, your old gateway config is still mounted.
 Update `studypoint-gateway.conf` to set `proxy_set_header Host 127.0.0.1;` in `location /`, then recreate `studypoint-gateway`.
+If your public proxy forwards all paths directly to `127.0.0.1:5174`, the repo's frontend server now proxies `/api` itself, so the app can still reach the backend without an extra internal gateway.
 
 1) Shared Nginx with a new domain (recommended)
 
@@ -239,7 +241,7 @@ npm run build-only
 if sudo systemctl list-unit-files | grep -q '^studypoint-frontend.service'; then
   sudo systemctl restart studypoint-frontend
 else
-  pkill -f "vite preview -- --host 0.0.0.0 --port 5174" || true
+  pkill -f "node scripts/serve-dist.mjs --host 0.0.0.0 --port 5174" || true
   nohup npm run preview -- --host 0.0.0.0 --port 5174 --strictPort >/tmp/studypoint-frontend.log 2>&1 &
 fi
 

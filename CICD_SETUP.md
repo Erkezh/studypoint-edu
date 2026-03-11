@@ -21,6 +21,8 @@ If you use `studypoint-frontend.service`, keep strict port:
 ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5174 --strictPort
 ```
 
+`npm run preview` now starts the repository's production frontend server. It serves `dist` and proxies `/api` traffic to `127.0.0.1:8001`.
+
 ### 1.2 Allow passwordless sudo for deploy user
 
 Edit sudoers safely:
@@ -122,7 +124,7 @@ You can run deploy without a new commit:
 
 - Workflow expects branch name `main`.
 - If deploy fails at `sudo -n true`, fix sudoers first.
-- If `studypoint-frontend.service` is absent, workflow falls back to restarting `vite preview` via `nohup`.
+- If `studypoint-frontend.service` is absent, workflow falls back to restarting the repo's production frontend server via `nohup`.
 - Deploy policy:
   - pushes/workflow runs started by `Nur1sat` deploy automatically
   - runs started by any other user pause and create an approval issue; `Nur1sat` must comment `approve` to continue
