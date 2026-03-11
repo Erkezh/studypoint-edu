@@ -3,6 +3,8 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+const allowedHosts = ['edu.studypoint.kz']
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -18,6 +20,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5174,
+    allowedHosts,
     fs: {
       // Разрешаем доступ к файлам вне корня проекта
       allow: ['..']
@@ -26,5 +29,6 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 5174,
+    allowedHosts,
   },
 })
