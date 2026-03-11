@@ -41,8 +41,8 @@ class GradeRepository:
     async def get(self, grade_id: int) -> Grade | None:
         return await self.session.get(Grade, grade_id)
 
-    async def create(self, *, number: int, title: str) -> Grade:
-        grade = Grade(number=number, title=title)
+    async def create(self, *, number: int, label: str, title: str, description: str = "") -> Grade:
+        grade = Grade(number=number, label=label, title=title, description=description)
         self.session.add(grade)
         await self.session.flush()
         return grade
@@ -117,5 +117,4 @@ class TopicRepository:
 
     async def get_by_slug(self, slug: str) -> Topic | None:
         return (await self.session.execute(select(Topic).where(Topic.slug == slug))).scalar_one_or_none()
-
 

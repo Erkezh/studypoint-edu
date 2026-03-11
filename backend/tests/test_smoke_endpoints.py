@@ -19,7 +19,11 @@ async def test_smoke_catalog_endpoints(client, student_token):
 
     r2 = await client.get("/api/v1/grades")
     assert r2.status_code == 200, r2.text
-    assert isinstance(r2.json()["data"], list)
+    grades = r2.json()["data"]
+    assert isinstance(grades, list)
+    assert all(grade["label"] for grade in grades)
+    assert any(grade["number"] == -1 and grade["label"] == "Pre-K" for grade in grades)
+    assert any(grade["number"] == 0 and grade["label"] == "K" for grade in grades)
 
     r3 = await client.get("/api/v1/skills", params={"subject_slug": "math", "grade_number": 5, "page": 1, "page_size": 10})
     assert r3.status_code == 200, r3.text
@@ -301,4 +305,3 @@ async def test_smoke_teacher_and_reports_and_awards(client, cleanup_practice_tab
     assert cert.status_code == 200
     assert cert.headers["content-type"].startswith("application/pdf")
     assert len(cert.content) > 1000
-

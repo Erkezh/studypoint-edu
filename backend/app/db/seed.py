@@ -23,6 +23,43 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 
+def _default_grade_specs() -> list[dict[str, int | str]]:
+    specs: list[dict[str, int | str]] = [
+        {"id": 1, "number": -1, "label": "Pre-K", "title": "Pre-K", "description": ""},
+        {"id": 2, "number": 0, "label": "K", "title": "K", "description": ""},
+    ]
+    for number in range(1, 13):
+        specs.append(
+            {
+                "id": number + 2,
+                "number": number,
+                "label": str(number),
+                "title": str(number),
+                "description": "",
+            }
+        )
+    return specs
+
+
+def _should_apply_default_label(grade: Grade) -> bool:
+    label = (grade.label or "").strip()
+    return not label or (grade.number == -1 and label == "-1") or (grade.number == 0 and label == "0")
+
+
+async def _get_subject_id(session: AsyncSession, slug: str) -> int:
+    subject_id = (await session.execute(select(Subject.id).where(Subject.slug == slug))).scalar_one_or_none()
+    if subject_id is None:
+        raise RuntimeError(f"Default subject {slug!r} is missing")
+    return subject_id
+
+
+async def _get_grade_id(session: AsyncSession, number: int) -> int:
+    grade_id = (await session.execute(select(Grade.id).where(Grade.number == number))).scalar_one_or_none()
+    if grade_id is None:
+        raise RuntimeError(f"Default grade {number!r} is missing")
+    return grade_id
+
+
 async def _ensure_subjects(session: AsyncSession) -> None:
     existing = (await session.execute(select(Subject.id).limit(1))).scalar_one_or_none()
     if existing is not None:
@@ -39,19 +76,55 @@ async def _ensure_subjects(session: AsyncSession) -> None:
 
 
 async def _ensure_grades(session: AsyncSession) -> None:
-    existing = (await session.execute(select(Grade.id).limit(1))).scalar_one_or_none()
-    if existing is not None:
+    specs = _default_grade_specs()
+    existing_grades = list((await session.execute(select(Grade).order_by(Grade.number))).scalars().all())
+    if not existing_grades:
+        session.add_all(
+            [
+                Grade(
+                    id=int(spec["id"]),
+                    number=int(spec["number"]),
+                    label=str(spec["label"]),
+                    title=str(spec["title"]),
+                    description=str(spec["description"]),
+                )
+                for spec in specs
+            ]
+        )
         return
 
-    grades: list[Grade] = [
-        Grade(id=1, number=-1, title="Pre-K"),
-        Grade(id=2, number=0, title="K"),
-    ]
-    next_id = 3
-    for n in range(1, 13):
-        grades.append(Grade(id=next_id, number=n, title=str(n)))
-        next_id += 1
-    session.add_all(grades)
+    grades_by_number = {grade.number: grade for grade in existing_grades}
+    used_ids = {grade.id for grade in existing_grades}
+    next_id = max(used_ids, default=0) + 1
+
+    for spec in specs:
+        number = int(spec["number"])
+        grade = grades_by_number.get(number)
+        if grade is None:
+            grade_id = int(spec["id"])
+            if grade_id in used_ids:
+                while next_id in used_ids:
+                    next_id += 1
+                grade_id = next_id
+                next_id += 1
+            used_ids.add(grade_id)
+            session.add(
+                Grade(
+                    id=grade_id,
+                    number=number,
+                    label=str(spec["label"]),
+                    title=str(spec["title"]),
+                    description=str(spec["description"]),
+                )
+            )
+            continue
+
+        if _should_apply_default_label(grade):
+            grade.label = str(spec["label"])
+        if not (grade.title or "").strip():
+            grade.title = str(spec["title"])
+        if grade.description is None:
+            grade.description = str(spec["description"])
 
 
 async def _ensure_demo_content(session: AsyncSession) -> None:
@@ -59,9 +132,8 @@ async def _ensure_demo_content(session: AsyncSession) -> None:
     if existing is not None:
         return
 
-    # Grade 5 Math: id=7 because Pre-K(-1)=1, K(0)=2, 1..5 => ids 3..7.
-    grade5_id = 7
-    math_id = 1
+    grade5_id = await _get_grade_id(session, 5)
+    math_id = await _get_subject_id(session, "math")
 
     skill1 = Skill(
         id=1,
@@ -152,7 +224,7 @@ async def _ensure_demo_users(session: AsyncSession) -> None:
     session.add(StudentProfile(user_id=student.id, grade_level=5, school="Demo School"))
     session.add(Subscription(user_id=student.id, plan=SubscriptionPlan.FREE, is_active=True))
 
-    classroom = Classroom(teacher_id=teacher.id, title="Demo Grade 5", grade_id=7)
+    classroom = Classroom(teacher_id=teacher.id, title="Demo Grade 5", grade_id=await _get_grade_id(session, 5))
     session.add(classroom)
     await session.flush()
     session.add(Enrollment(classroom_id=classroom.id, student_id=student.id, enrolled_at=datetime.now(timezone.utc)))
