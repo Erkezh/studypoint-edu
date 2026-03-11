@@ -98,6 +98,22 @@ export interface QuestionListItem {
   created_at?: string
 }
 
+export interface AdminSubscriptionItem {
+  user_id: string
+  user_email: string
+  user_name: string
+  plan: string
+  is_active: boolean
+  active_until: string | null
+}
+
+export interface AdminSubscriptionUpdate {
+  plan?: string
+  is_active?: boolean
+  active_until?: string | null
+}
+
+
 export const adminApi = {
   // --- Grade CRUD ---
 
@@ -361,6 +377,33 @@ export const adminApi = {
     const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
       `/admin/questions/${questionId}`
     )
+    return response.data
+  },
+
+  async getUsers(): Promise<ApiResponse<AdminUser[]>> {
+    const response = await apiClient.get<ApiResponse<AdminUser[]>>('/admin/users')
+    return response.data
+  },
+
+  async updateUser(userId: string, data: AdminUserUpdate): Promise<ApiResponse<AdminUser>> {
+    const response = await apiClient.patch<ApiResponse<AdminUser>>(`/admin/users/${userId}`, data)
+    return response.data
+  },
+
+  // --- Subscription Management ---
+
+  async listSubscriptions(): Promise<ApiResponse<AdminSubscriptionItem[]>> {
+    const response = await apiClient.get<ApiResponse<AdminSubscriptionItem[]>>('/admin/subscriptions')
+    return response.data
+  },
+
+  async updateSubscription(userId: string, data: AdminSubscriptionUpdate): Promise<ApiResponse<AdminSubscriptionItem>> {
+    const response = await apiClient.patch<ApiResponse<AdminSubscriptionItem>>(`/admin/subscriptions/${userId}`, data)
+    return response.data
+  },
+
+  async createSubscription(userId: string, data: AdminSubscriptionUpdate): Promise<ApiResponse<AdminSubscriptionItem>> {
+    const response = await apiClient.post<ApiResponse<AdminSubscriptionItem>>(`/admin/subscriptions/${userId}`, data)
     return response.data
   },
 }

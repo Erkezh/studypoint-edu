@@ -68,6 +68,24 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: false },
   },
   {
+    path: '/pricing',
+    name: 'pricing',
+    component: () => import('@/pages/Pricing.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/payment',
+    name: 'payment',
+    component: () => import('@/pages/Payment.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/welcome',
+    name: 'welcome',
+    component: () => import('@/pages/Welcome.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: () => import('@/pages/Profile.vue'),
@@ -107,6 +125,12 @@ const routes: RouteRecordRaw[] = [
     path: '/admin/questions/list',
     name: 'admin-questions-list',
     component: () => import('@/pages/AdminQuestionsList.vue'),
+    meta: { requiresAuth: true, requiresRole: 'ADMIN' },
+  },
+  {
+    path: '/admin/subscriptions',
+    name: 'admin-subscriptions',
+    component: () => import('@/pages/AdminSubscriptions.vue'),
     meta: { requiresAuth: true, requiresRole: 'ADMIN' },
   },
   {

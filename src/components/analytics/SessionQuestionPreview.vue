@@ -59,20 +59,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { createTsxIframeHtml } from '@/utils/tsxTransformer'
-// We might need to import API_BASE_URL if we support non-tsx plugins later,
-// but for now let's focus on TSX as they seem to be the primary target for "interactive"
-// import { API_BASE_URL } from '@/config/api'
 
 const props = defineProps<{
   question: {
     prompt: string
     type: string
-    data: any
-    userAnswer: any
+    data: {
+      choices?: unknown[]
+      options?: unknown[]
+      unit?: string
+      tsx_file?: string
+      miniapp_file?: string
+      entry?: string
+      plugin_id?: string
+      [key: string]: unknown
+    } | null
+    userAnswer: unknown
     isCorrect: boolean
-    correctAnswer: any
+    correctAnswer: unknown
   }
 }>()
 
@@ -87,30 +93,25 @@ const formatContent = (text: string) => {
   )
 }
 
-const formatMCQOption = (option: any) => {
-  if (typeof option === 'object') return option.label || option.value
+const formatMCQOption = (option: unknown) => {
+  if (typeof option === 'object' && option !== null) {
+    const optObj = option as Record<string, unknown>
+    return optObj.label || optObj.value || ''
+  }
   return formatContent(String(option))
 }
 
-const isSelected = (option: any, index: number) => {
-  // Simple comparison, might need refinement based on exact data structure
-  const val = typeof option === 'object' ? option.value : option
-  // Check against userAnswer index or value
+const isSelected = (option: unknown, index: number | string) => {
+  const optObj = typeof option === 'object' && option !== null ? (option as Record<string, unknown>) : null
+  const val = optObj ? optObj.value : option
   return props.question.userAnswer === index || props.question.userAnswer == val
 }
 
-const getMCQClass = (option: any, index: number) => {
+const getMCQClass = (option: unknown, index: number | string) => {
   if (isSelected(option, index)) {
     return 'bg-blue-50 border-blue-300'
   }
   return 'bg-white border-gray-200 opacity-60' // Dim non-selected options
-}
-
-const formatUserAnswer = (answer: any) => {
-  if (typeof answer === 'object' && answer !== null) {
-    return JSON.stringify(answer)
-  }
-  return String(answer)
 }
 
 // Plugin Logic (simplified from PracticeSession)
@@ -118,6 +119,8 @@ const loadPlugin = async () => {
   if (props.question.type !== 'PLUGIN') return
 
   const qData = props.question.data
+  if (!qData) return
+
   // Determine TSX path
   let tsxPath = ''
 

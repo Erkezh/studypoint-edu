@@ -20,6 +20,9 @@ export enum QuestionType {
 export enum SubscriptionPlan {
   FREE = 'FREE',
   PREMIUM = 'PREMIUM',
+  FAMILY = 'FAMILY',
+  CLASSROOM = 'CLASSROOM',
+  SCHOOL = 'SCHOOL',
 }
 
 // API Response wrapper

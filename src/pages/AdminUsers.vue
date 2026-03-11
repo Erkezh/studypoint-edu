@@ -1,10 +1,18 @@
 <template>
-  <div class="px-4 py-8 max-w-7xl mx-auto">
+  <div class="min-h-screen bg-gray-50">
+    <Header />
+    <main class="container mx-auto px-4 py-8 max-w-7xl">
     <!-- Header -->
     <div class="mb-8 flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 mb-2">Пайдаланушылар</h1>
-        <p class="text-gray-500">Платформаны пайдаланушыларды басқару және рөлдерді тағайындау</p>
+      <div class="flex items-center gap-3">
+        <router-link to="/admin" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+        </router-link>
+        <svg class="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+        <div>
+          <h1 class="text-2xl font-bold text-gray-900">Пайдаланушылар</h1>
+          <p class="text-sm text-gray-500">Платформаны пайдаланушыларды басқару және рөлдерді тағайындау</p>
+        </div>
       </div>
       <div>
         <button
@@ -136,14 +144,21 @@
         </table>
       </div>
     </div>
+    </main>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import Header from '@/components/layout/Header.vue'
 import { adminApi } from '@/api/admin'
 import { UserRole } from '@/types/api'
 import type { AdminUser, AdminUserUpdate } from '@/types/api'
+
+const authStore = useAuthStore()
+const router = useRouter()
 
 const users = ref<AdminUser[]>([])
 const loading = ref(false)
@@ -172,9 +187,9 @@ const fetchUsers = async () => {
     if (response.data) {
       users.value = response.data
     }
-  } catch (e) {
+  } catch (e: unknown) {
     console.error('Failed to fetch users:', e)
-    const err = e as any
+    const err = e as { response?: { data?: { detail?: string } } }
     error.value = err.response?.data?.detail || 'Пайдаланушыларды жүктеу сәтсіз аяқталды'
   } finally {
     loading.value = false
@@ -221,6 +236,10 @@ const updateUser = async (user: AdminUser, updates: AdminUserUpdate) => {
 }
 
 onMounted(() => {
+  if (!authStore.isAuthenticated || authStore.user?.role !== 'ADMIN') {
+    router.push({ name: 'home' })
+    return
+  }
   fetchUsers()
 })
 </script>

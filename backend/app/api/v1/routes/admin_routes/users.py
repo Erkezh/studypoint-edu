@@ -9,8 +9,7 @@ from app.services.admin_service import AdminService
 
 router = APIRouter()
 
-
-@router.get("/", response_model=ApiResponse[list[AdminUserResponse]], dependencies=[Depends(require_roles("ADMIN"))])
+@router.get("", response_model=ApiResponse[list[AdminUserResponse]], dependencies=[Depends(require_roles("ADMIN"))])
 async def list_users(svc: AdminService = Depends()):
     users = await svc.get_users()
     return ApiResponse(data=[

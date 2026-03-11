@@ -22,6 +22,9 @@ class QuestionType(str, enum.Enum):
 class SubscriptionPlan(str, enum.Enum):
     FREE = "FREE"
     PREMIUM = "PREMIUM"
+    FAMILY = "FAMILY"
+    CLASSROOM = "CLASSROOM"
+    SCHOOL = "SCHOOL"
 
 
 class AssignmentStatus(str, enum.Enum):

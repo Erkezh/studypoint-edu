@@ -139,7 +139,7 @@ class BulkImportResponse(BaseModel):
 
 class AdminUserResponse(BaseModel):
     id: str
-    email: EmailStr
+    email: str
     full_name: str
     role: UserRole
     is_active: bool
@@ -148,4 +148,19 @@ class AdminUserResponse(BaseModel):
 class AdminUserUpdate(BaseModel):
     role: UserRole | None = None
     is_active: bool | None = None
+
+
+class AdminSubscriptionResponse(BaseModel):
+    user_id: str
+    user_email: str
+    user_name: str
+    plan: str
+    is_active: bool
+    active_until: str | None = None
+
+
+class AdminSubscriptionUpdate(BaseModel):
+    plan: str | None = None
+    is_active: bool | None = None
+    active_until: str | None = None
 

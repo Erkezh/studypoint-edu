@@ -7,7 +7,7 @@ from app.schemas.admin import BulkImportRequest
 from app.schemas.base import ApiResponse
 from app.services.admin_service import AdminService
 
-from app.api.v1.routes.admin_routes import grades, questions, skills, subjects, topics, users
+from app.api.v1.routes.admin_routes import grades, questions, skills, subjects, topics, users, subscriptions
 from app.plugins.router import router as plugins_router
 
 router = APIRouter()
@@ -18,6 +18,7 @@ router.include_router(topics.router, prefix="/topics", tags=["Admin"])
 router.include_router(skills.router, prefix="/skills", tags=["Admin"])
 router.include_router(questions.router, prefix="/questions", tags=["Admin"])
 router.include_router(plugins_router, prefix="/plugins", tags=["Admin"])
+router.include_router(subscriptions.router, prefix="/subscriptions", tags=["Admin"])
 
 
 @router.post("/bulk_import", response_model=ApiResponse[dict], dependencies=[Depends(require_roles("ADMIN"))], tags=["Admin"])

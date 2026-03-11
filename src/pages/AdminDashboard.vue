@@ -81,6 +81,15 @@
             <h3 class="font-semibold text-gray-900 group-hover:text-teal-700 transition-colors">Пайдаланушылар</h3>
             <p class="text-sm text-gray-500 mt-1">Рөлдерді тағайындау және тіркелгілерді басқару</p>
           </router-link>
+
+          <router-link
+            to="/admin/subscriptions"
+            class="group bg-white rounded-xl shadow-sm border border-gray-100 p-6 hover:shadow-md hover:border-amber-300 transition-all"
+          >
+            <svg class="w-8 h-8 text-amber-500 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+            <h3 class="font-semibold text-gray-900 group-hover:text-amber-700 transition-colors">Жазылымдар</h3>
+            <p class="text-sm text-gray-500 mt-1">Пайдаланушы жазылымдарын басқару</p>
+          </router-link>
         </div>
       </section>
 

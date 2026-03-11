@@ -640,3 +640,77 @@ class AdminService:
             await self.session.flush()
             questions_created += 1
         return BulkImportResponse(skills_created=skills_created, questions_created=questions_created)
+
+    # --- Subscription Management ---
+
+    async def list_subscriptions(self):
+        from sqlalchemy.orm import selectinload
+        from app.models.subscription import Subscription
+
+        stmt = select(Subscription).options(selectinload(Subscription.user)).order_by(Subscription.created_at.desc())
+        return list((await self.session.execute(stmt)).scalars().all())
+
+    async def update_subscription(self, user_id: str, req: dict):
+        from datetime import datetime
+        from app.models.subscription import Subscription
+        from app.models.enums import SubscriptionPlan
+
+        stmt = select(Subscription).where(Subscription.user_id == user_id)
+        sub = (await self.session.execute(stmt)).scalar_one_or_none()
+        if sub is None:
+            raise AppError(status_code=404, code="not_found", message="Subscription not found for this user")
+
+        if "plan" in req and req["plan"] is not None:
+            sub.plan = SubscriptionPlan(req["plan"])
+        if "is_active" in req and req["is_active"] is not None:
+            sub.is_active = req["is_active"]
+        if "active_until" in req and req["active_until"] is not None:
+            sub.active_until = datetime.fromisoformat(req["active_until"])
+
+        await self.session.flush()
+        from sqlalchemy.orm import selectinload
+        await self.session.refresh(sub, attribute_names=["user"])
+        return sub
+
+    async def create_subscription(self, user_id: str, req: dict):
+        from datetime import datetime
+        from app.models.subscription import Subscription
+        from app.models.enums import SubscriptionPlan
+
+        # Check if user exists
+        user = await self.session.get(User, user_id)
+        if not user:
+            raise AppError(status_code=404, code="not_found", message="User not found")
+
+        # Check if subscription already exists
+        stmt = select(Subscription).where(Subscription.user_id == user_id)
+        existing = (await self.session.execute(stmt)).scalar_one_or_none()
+        if existing:
+            # Update existing
+            if "plan" in req and req["plan"] is not None:
+                existing.plan = SubscriptionPlan(req["plan"])
+            if "is_active" in req and req["is_active"] is not None:
+                existing.is_active = req["is_active"]
+            if "active_until" in req and req["active_until"] is not None:
+                existing.active_until = datetime.fromisoformat(req["active_until"])
+            await self.session.flush()
+            from sqlalchemy.orm import selectinload
+            await self.session.refresh(existing, attribute_names=["user"])
+            return existing
+
+        plan = SubscriptionPlan(req.get("plan", "FREE"))
+        active_until = None
+        if req.get("active_until"):
+            active_until = datetime.fromisoformat(req["active_until"])
+
+        sub = Subscription(
+            user_id=user_id,
+            plan=plan,
+            is_active=req.get("is_active", True),
+            active_until=active_until,
+        )
+        self.session.add(sub)
+        await self.session.flush()
+        from sqlalchemy.orm import selectinload
+        await self.session.refresh(sub, attribute_names=["user"])
+        return sub
