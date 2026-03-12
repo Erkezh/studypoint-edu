@@ -158,6 +158,65 @@
     </main>
 
     <Footer />
+
+    <!-- "Who are you?" Profile Selection Modal -->
+    <Teleport to="body">
+      <div v-if="showProfileModal" class="fixed inset-0 z-[9999] flex items-center justify-center">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="cancelProfileSelection"></div>
+        
+        <!-- Modal -->
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-modal-in">
+          <!-- Close button -->
+          <button @click="cancelProfileSelection" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors z-10">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+
+          <!-- Header -->
+          <div class="bg-gradient-to-br from-[#00a6c0] to-[#0089a0] px-8 py-6 text-center">
+            <h2 class="text-2xl font-bold text-white">Қош келдіңіз!</h2>
+            <p class="text-white/80 text-sm mt-1">Сіз кімсіз?</p>
+          </div>
+
+          <!-- Profiles -->
+          <div class="px-8 py-6">
+            <div v-if="loadingChildren" class="flex justify-center py-8">
+              <div class="animate-spin rounded-full h-8 w-8 border-4 border-gray-200 border-t-[#00a6c0]"></div>
+            </div>
+            <div v-else class="flex flex-wrap justify-center gap-6">
+              <!-- Children -->
+              <button 
+                v-for="child in childrenList" :key="child.id"
+                @click="selectChild(child.id)"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-[#e6f8fb] transition-colors group cursor-pointer min-w-[100px]"
+              >
+                <div class="w-16 h-16 rounded-full bg-[#e6f8fb] border-2 border-[#00a6c0] flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg class="w-8 h-8 text-[#00a6c0]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <span class="text-sm font-medium text-[#00a6c0]">{{ child.full_name }}</span>
+                <span class="text-[10px] text-gray-400">{{ child.grade_level }}-сынып</span>
+              </button>
+
+              <!-- Parent option -->
+              <button 
+                @click="selectParent()"
+                class="flex flex-col items-center gap-2 p-4 rounded-xl hover:bg-orange-50 transition-colors group cursor-pointer min-w-[100px]"
+              >
+                <div class="w-16 h-16 rounded-full bg-orange-50 border-2 border-orange-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                  </svg>
+                </div>
+                <span class="text-sm font-medium text-orange-500">Ата-ана</span>
+                <span class="text-[10px] text-gray-400">Бақылау режимі</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -165,9 +224,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { authApi } from '@/api/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
+import type { ChildProfileResponse } from '@/types/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -179,22 +240,83 @@ const showPassword = ref(false)
 const error = ref<string | null>(null)
 const requireSubscription = computed(() => route.query.requireSubscription === 'true')
 
+// Profile selection modal state
+const showProfileModal = ref(false)
+const loadingChildren = ref(false)
+const childrenList = ref<ChildProfileResponse[]>([])
+const switchingProfile = ref(false)
+
 const handleLogin = async () => {
   error.value = null
 
   try {
-    await authStore.login({
+    const result = await authStore.login({
       email: email.value,
       password: password.value,
     })
 
-    // Redirect to the page user came from, or home
+    // If user is a PARENT, show profile selection modal
+    if (result?.user?.role === 'PARENT') {
+      showProfileModal.value = true
+      loadingChildren.value = true
+      try {
+        const childrenResp = await authApi.getChildren()
+        childrenList.value = childrenResp.data?.children || []
+      } catch (err) {
+        console.error('Failed to fetch children:', err)
+        childrenList.value = []
+      } finally {
+        loadingChildren.value = false
+      }
+      return // Don't redirect yet
+    }
+
+    // Normal redirect for non-parent users
     const redirect = route.query.redirect as string | undefined
     router.push(redirect || { name: 'home' })
   } catch (err: any) {
     error.value = err.response?.data?.detail || err.message || 'Кіру қатесі. Қайта көріңіз.'
     console.error('Login error:', err)
   }
+}
+
+const selectChild = async (childId: string) => {
+  if (switchingProfile.value) return
+  switchingProfile.value = true
+  try {
+    const resp = await authApi.switchProfile({ child_id: childId })
+    if (resp.data) {
+      // Update auth store with child tokens
+      authStore.setAccessToken(resp.data.access_token)
+      authStore.setRefreshToken(resp.data.refresh_token)
+      // Update user in store and localStorage
+      authStore.user = resp.data.user as any
+      localStorage.setItem('user', JSON.stringify(resp.data.user))
+
+      showProfileModal.value = false
+      const redirect = route.query.redirect as string | undefined
+      router.push(redirect || { name: 'home' })
+    }
+  } catch (err) {
+    console.error('Failed to switch profile:', err)
+    error.value = 'Профильді ауыстыру мүмкін болмады'
+    showProfileModal.value = false
+  } finally {
+    switchingProfile.value = false
+  }
+}
+
+const selectParent = () => {
+  // Stay as parent, redirect to home
+  showProfileModal.value = false
+  const redirect = route.query.redirect as string | undefined
+  router.push(redirect || { name: 'home' })
+}
+
+const cancelProfileSelection = async () => {
+  // Cancel = logout and go back to login form
+  showProfileModal.value = false
+  await authStore.logout()
 }
 
 const handleForgotPassword = () => {
@@ -212,3 +334,14 @@ onMounted(() => {
   }
 })
 </script>
+
+<style scoped>
+.animate-modal-in {
+  animation: modalIn 0.3s ease-out;
+}
+
+@keyframes modalIn {
+  from { opacity: 0; transform: scale(0.9) translateY(20px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+</style>

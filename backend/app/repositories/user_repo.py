@@ -34,3 +34,8 @@ class UserRepository:
 
     async def get_subscription(self, user_id: uuid.UUID) -> Subscription | None:
         return (await self.session.execute(select(Subscription).where(Subscription.user_id == user_id))).scalar_one_or_none()
+
+    async def get_children_by_parent_id(self, parent_id: uuid.UUID) -> list[User]:
+        stmt = select(User).where(User.parent_id == parent_id).options(selectinload(User.profile), selectinload(User.subscription))
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

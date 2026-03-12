@@ -66,6 +66,34 @@ export interface LogoutRequest {
   refresh_token: string
 }
 
+// Family Registration types
+export interface ChildRegistrationData {
+  name: string
+  grade_level: number
+}
+
+export interface AuthRegisterFamilyRequest {
+  parent_email: string
+  parent_password: string
+  parent_name: string
+  children: ChildRegistrationData[]
+}
+
+export interface SwitchProfileRequest {
+  child_id: string
+}
+
+export interface ChildProfileResponse {
+  id: string
+  full_name: string
+  grade_level: number
+  school: string | null
+}
+
+export interface AuthChildrenResponse {
+  children: ChildProfileResponse[]
+}
+
 // User types
 export interface UserMeResponse {
   id: string

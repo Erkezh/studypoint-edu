@@ -23,7 +23,7 @@ from app.models.enums import SubscriptionPlan, UserRole
 from app.models.profile import StudentProfile
 from app.models.subscription import Subscription
 from app.repositories.user_repo import UserRepository
-from app.schemas.auth import AuthLoginRequest, AuthRegisterRequest, AuthTokensResponse
+from app.schemas.auth import AuthLoginRequest, AuthRegisterRequest, AuthRegisterFamilyRequest, AuthTokensResponse
 from app.schemas.user import StudentProfileResponse, SubscriptionResponse, UserMeResponse
 from app.utils.redis import get_redis
 
@@ -75,6 +75,61 @@ class AuthService:
                 is_active=user.is_active,
                 profile=StudentProfileResponse(grade_level=req.grade_level, school=req.school),
                 subscription=SubscriptionResponse(plan=SubscriptionPlan.FREE, is_active=True),
+            ),
+        )
+
+    async def register_family(self, req: AuthRegisterFamilyRequest) -> AuthTokensResponse:
+        try:
+            # 1. Create Parent
+            parent_user = await self.users.create(
+                email=req.parent_email,
+                password_hash=hash_password(req.parent_password),
+                full_name=req.parent_name,
+                role=UserRole.PARENT,
+            )
+            # Add free subscription to Parent (so it has something active)
+            self.session.add(Subscription(user_id=parent_user.id, plan=SubscriptionPlan.FAMILY, is_active=True))
+
+            # 2. Create Children
+            for child in req.children:
+                # generate artificial sibling email since email is unique and required
+                import uuid
+                child_email = f"child_{uuid.uuid4().hex[:8]}@{req.parent_email.split('@')[-1]}"
+                
+                child_user = await self.users.create(
+                    email=child_email,
+                    password_hash=parent_user.password_hash,  # Parent password access for now, but usually accessed via switch
+                    full_name=child.name,
+                    role=UserRole.STUDENT
+                )
+                child_user.parent_id = parent_user.id
+                
+                self.session.add(StudentProfile(user_id=child_user.id, grade_level=child.grade_level))
+                self.session.add(Subscription(user_id=child_user.id, plan=SubscriptionPlan.FAMILY, is_active=True))
+
+            await self.session.commit()
+        except IntegrityError as e:
+            await self.session.rollback()
+            raise AppError(status_code=409, code="conflict", message="Email already registered or error during family creation") from e
+            
+        # Refetch Parent to ensure relationship is solid
+        parent_user = await self.users.get_by_id(parent_user.id)
+
+        # Login as Parent initially
+        tokens = await self._issue_tokens(user_id=str(parent_user.id), role=parent_user.role.value)
+        sub = await self.users.get_subscription(parent_user.id)
+        
+        return AuthTokensResponse(
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            user=UserMeResponse(
+                id=str(parent_user.id),
+                email=parent_user.email,
+                full_name=parent_user.full_name,
+                role=parent_user.role,
+                is_active=parent_user.is_active,
+                profile=None,
+                subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
             ),
         )
 
@@ -143,6 +198,34 @@ class AuthService:
                 full_name=user.full_name,
                 role=user.role,
                 is_active=user.is_active,
+                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
+                subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
+            ),
+        )
+
+    async def switch_profile(self, parent_id: str, child_id: str) -> AuthTokensResponse:
+        parent = await self.users.get_by_id(parent_id)
+        if parent is None or parent.role != UserRole.PARENT:
+            raise AppError(status_code=403, code="forbidden", message="Only parents can switch profiles")
+
+        child = await self.users.get_by_id(child_id)
+        if child is None or child.parent_id != parent.id:
+            raise AppError(status_code=403, code="forbidden", message="Cannot access this child profile")
+
+        # issue tokens for child
+        tokens = await self._issue_tokens(user_id=str(child.id), role=child.role.value)
+        sub = await self.users.get_subscription(child.id)
+        profile = child.profile
+        
+        return AuthTokensResponse(
+            access_token=tokens.access_token,
+            refresh_token=tokens.refresh_token,
+            user=UserMeResponse(
+                id=str(child.id),
+                email=child.email,
+                full_name=child.full_name,
+                role=child.role,
+                is_active=child.is_active,
                 profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
             ),

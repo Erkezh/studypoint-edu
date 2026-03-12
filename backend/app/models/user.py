@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, Enum, String
+from sqlalchemy import Boolean, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -21,6 +21,11 @@ class User(Base, TimestampMixin):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="user_role"), index=True, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+
     profile: Mapped["StudentProfile"] = relationship(back_populates="user", uselist=False)
     subscription: Mapped["Subscription"] = relationship(back_populates="user", uselist=False)
+
+    parent: Mapped["User"] = relationship(remote_side=[id], back_populates="children")
+    children: Mapped[list["User"]] = relationship(back_populates="parent", cascade="all, delete-orphan")
 

@@ -93,11 +93,11 @@
               <Button variant="outline" class="bg-white border-white hover:bg-gray-100"
                 style="color: #38B000;">Кіру</Button>
             </router-link>
-            <router-link to="/auth/register">
+            <router-link to="/pricing">
               <Button variant="primary" class="text-white border"
                 style="background-color: #2d8a00; border-color: #2d8a00;"
                 onmouseover="this.style.backgroundColor='#338000'; this.style.borderColor='#338000'"
-                onmouseout="this.style.backgroundColor='#2d8a00'; this.style.borderColor='#2d8a00'">Тіркелу</Button>
+                onmouseout="this.style.backgroundColor='#2d8a00'; this.style.borderColor='#2d8a00'">Жазылым</Button>
             </router-link>
           </div>
 
@@ -134,9 +134,9 @@
               <Button variant="outline" class="w-full bg-white border-white hover:bg-gray-100"
                 style="color: #38B000;">Кіру</Button>
             </router-link>
-            <router-link to="/auth/register" @click="showMobileMenu = false" class="flex-1">
+            <router-link to="/pricing" @click="showMobileMenu = false" class="flex-1">
               <Button variant="primary" class="w-full text-white border"
-                style="background-color: #2d8a00; border-color: #2d8a00;">Тіркелу</Button>
+                style="background-color: #2d8a00; border-color: #2d8a00;">Жазылым</Button>
             </router-link>
           </div>
         </template>
