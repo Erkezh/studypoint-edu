@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.profile import StudentProfile
+    from app.models.subscription import Subscription
 
 from sqlalchemy import Boolean, Enum, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -22,10 +27,14 @@ class User(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
 
     profile: Mapped["StudentProfile"] = relationship(back_populates="user", uselist=False)
     subscription: Mapped["Subscription"] = relationship(back_populates="user", uselist=False)
 
-    parent: Mapped["User"] = relationship(remote_side=[id], back_populates="children")
-    children: Mapped[list["User"]] = relationship(back_populates="parent", cascade="all, delete-orphan")
+    parent: Mapped["User"] = relationship(remote_side=[id], back_populates="children", foreign_keys=[parent_id])
+    children: Mapped[list["User"]] = relationship(back_populates="parent", cascade="all, delete-orphan", foreign_keys=[parent_id])
+
+    teacher: Mapped["User"] = relationship(remote_side=[id], back_populates="students", foreign_keys=[teacher_id])
+    students: Mapped[list["User"]] = relationship(back_populates="teacher", cascade="all, delete-orphan", foreign_keys=[teacher_id])
 

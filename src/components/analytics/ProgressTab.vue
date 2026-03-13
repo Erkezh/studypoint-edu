@@ -209,16 +209,16 @@ const scoreMap = computed(() => {
 
 // Group skills by grade → topic
 const skillsByGrade = computed(() => {
-  const skillType = {
-    skillId: 0,
-    name: '',
-    code: '',
-    timeSpent: 0,
-    questions: 0,
-    scoreFrom: 0,
-    scoreAfter: 0,
+  type SkillData = {
+    skillId: number
+    name: string
+    code: string
+    timeSpent: number
+    questions: number
+    scoreFrom: number
+    scoreAfter: number
   }
-  const gradeMap = new Map<number, Map<string, Array<typeof skillType>>>()
+  const gradeMap = new Map<number, Map<string, SkillData[]>>()
 
   for (const skill of analyticsStore.skills) {
     const rec = skill as Record<string, unknown>

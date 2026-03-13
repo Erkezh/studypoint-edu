@@ -9,7 +9,7 @@
           <span class="font-bold">StudyPoint</span> — бұл жекелендірілген оқыту
         </h1>
         <p class="text-white/90 text-base sm:text-lg max-w-4xl mx-auto font-light">
-          Математика • Ағылшын тілі • Жаратылыстану • Қоғамтану • Испан тілі • Мектепке дейінгі-12 сынып
+          Математика
         </p>
       </div>
 
