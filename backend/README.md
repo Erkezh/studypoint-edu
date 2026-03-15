@@ -18,18 +18,23 @@ cp .env.example .env
 
 2) Start services:
 ```bash
-docker compose up --build
+docker compose up -d --build postgres redis
+./scripts/sync_postgres_password.sh
+docker compose up -d --build api
 ```
 `docker-compose.yml` forces container-safe connection URLs (`postgres`, `redis`) for the API service,
 so Docker startup will not fail from `localhost` Redis/Postgres values in `.env`.
 It also runs `alembic upgrade head` automatically before starting Uvicorn.
+For Docker deployments, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` are the source of truth.
+If you change them on an existing Postgres volume, run `./scripts/sync_postgres_password.sh` before restarting `api`.
 
 3) Run migrations + seed:
 ```bash
-docker compose exec api python -m app.db.seed
+docker compose run --rm api python -m app.db.seed
 ```
 
 OpenAPI: `http://localhost:8001/docs`
+Readiness: `http://localhost:8001/api/v1/health/ready`
 
 ## Run without Docker (local Postgres + Redis)
 Set `.env` to local services (e.g. `DATABASE_URL=...@localhost:5432/ixl`, `REDIS_URL=redis://localhost:6379/0`), then:
@@ -47,6 +52,11 @@ If you see `asyncpg.exceptions.InvalidAuthorizationSpecificationError: role "<na
 your `DATABASE_URL` username does not exist in your local Postgres instance.
 Fix `backend/.env` `DATABASE_URL` to a valid local role (for Docker setup use `postgres:postgres`),
 or create that role in Postgres.
+
+### Common Docker DB auth error
+If you see `asyncpg.exceptions.InvalidPasswordError: password authentication failed for user "postgres"`,
+your persisted Postgres volume still has the old password for `${POSTGRES_USER}`.
+Run `./scripts/sync_postgres_password.sh`, then restart the API container with `docker compose up -d api`.
 
 ## IXL-like practice mapping (MVP)
 - SmartScore zones: `LEARNING` (0–69), `REFINING` (70–89), `CHALLENGE` (90–100)

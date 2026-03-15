@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import random
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,15 +16,29 @@ class QuestionRepository:
         return await self.session.get(Question, question_id)
 
     async def list_for_skill_levels(self, *, skill_id: int, levels: list[int], exclude_ids: list[int], limit: int) -> list[Question]:
-        stmt = (
-            select(Question)
-            .where(Question.skill_id == skill_id, Question.level.in_(levels))
-            .order_by(func.random())
-            .limit(limit)
-        )
+        if limit <= 0:
+            return []
+
+        conditions = [Question.skill_id == skill_id, Question.level.in_(levels)]
         if exclude_ids:
-            stmt = stmt.where(~Question.id.in_(exclude_ids))
-        return list((await self.session.execute(stmt)).scalars().all())
+            conditions.append(~Question.id.in_(exclude_ids))
+
+        count_stmt = select(func.count()).select_from(Question).where(*conditions)
+        total = int((await self.session.execute(count_stmt)).scalar_one())
+        if total == 0:
+            return []
+
+        offset = random.randrange(total) if total > limit else 0
+        stmt = select(Question).where(*conditions).order_by(Question.id).offset(offset).limit(limit)
+        items = list((await self.session.execute(stmt)).scalars().all())
+
+        if len(items) < limit and offset > 0:
+            remainder_stmt = select(Question).where(*conditions).order_by(Question.id).limit(limit - len(items))
+            remainder = list((await self.session.execute(remainder_stmt)).scalars().all())
+            seen_ids = {item.id for item in items}
+            items.extend(item for item in remainder if item.id not in seen_ids)
+
+        return items
 
     async def list_admin(self, *, skill_id: int | None, page: int, page_size: int) -> tuple[list[Question], int]:
         stmt = select(Question)

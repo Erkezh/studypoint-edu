@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -20,10 +21,11 @@ def init_engine(database_url: str) -> None:
 
 
 async def close_engine() -> None:
-    global _engine
+    global _engine, _sessionmaker
     if _engine is not None:
         await _engine.dispose()
         _engine = None
+    _sessionmaker = None
 
 
 def get_engine() -> AsyncEngine:
@@ -36,6 +38,12 @@ def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
     if _sessionmaker is None:
         raise RuntimeError("Sessionmaker not initialized")
     return _sessionmaker
+
+
+async def ping_database() -> None:
+    engine = get_engine()
+    async with engine.connect() as connection:
+        await connection.execute(text("SELECT 1"))
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

@@ -7,9 +7,9 @@ It runs on every push to `main` and does:
 - frontend build check in GitHub Actions
 - if actor is not `Nur1sat`, waits for manual approval from `Nur1sat`
 - SSH deploy to server
-- backend `docker compose up -d --build` + migrations
+- backend `docker compose up -d --build`, Postgres password sync, and migrations
 - frontend rebuild + restart
-- health checks
+- readiness checks
 
 ## 1. One-time server preparation
 
@@ -98,8 +98,12 @@ Sudo rule:
 - if sudo still unavailable, workflow falls back to non-sudo mode (Docker/systemctl may fail depending on server permissions)
 
 Postgres password drift handling:
-- before migrations, workflow runs an in-container `ALTER USER` for `${POSTGRES_USER}` to `${POSTGRES_PASSWORD}`
+- before migrations, workflow runs `backend/scripts/sync_postgres_password.sh`
 - this helps when `backend/.env` password changed but existing Docker volume still has old DB user password
+
+Backend health checks:
+- workflow waits for `http://127.0.0.1:8001/api/v1/health/live`
+- workflow waits for `http://127.0.0.1:8001/api/v1/health/ready`
 
 ## 4. First run
 
