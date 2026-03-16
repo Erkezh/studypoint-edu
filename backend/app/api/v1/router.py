@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import admin, analytics, assignments, auth, awards, catalog, classrooms, family, me, practice, reports, teacher, users
+from app.api.v1.routes import admin, analytics, assignments, auth, awards, catalog, classrooms, family, health, me, practice, reports, teacher, users
 
 api_router_v1 = APIRouter()
 
+api_router_v1.include_router(health.router, tags=["Health"])
 api_router_v1.include_router(auth.router, prefix="/auth", tags=["Auth"])
 api_router_v1.include_router(users.router, prefix="/users", tags=["Users"])
 api_router_v1.include_router(me.router, prefix="/me", tags=["Me"])

@@ -53,14 +53,19 @@ Edit `backend/.env` and set production values at minimum:
 - any other secret values you use
 
 Note: Docker Compose now forces internal Docker DNS for DB/Redis (`postgres`, `redis`), so backend startup is safe even if local `localhost` URLs exist in your `.env`.
+For Docker deployments, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` are the source of truth.
+If you change those values on an existing Postgres volume, run `backend/scripts/sync_postgres_password.sh` before restarting the API.
 
 ## 4. Start backend (Docker)
 
 ```bash
 cd /opt/studypoint-edu/backend
-docker compose up -d --build
-docker compose exec api alembic upgrade head
-docker compose exec api python -m app.db.seed
+docker compose up -d --build postgres redis
+./scripts/sync_postgres_password.sh
+docker compose up -d --build api
+docker compose run --rm api python -m alembic upgrade head
+docker compose run --rm api python -m app.db.seed
+docker compose up -d api
 ```
 
 Check logs:
@@ -70,6 +75,7 @@ docker compose logs -f api
 ```
 
 API docs should be available at: `http://127.0.0.1:8001/docs`
+Readiness should return success at: `http://127.0.0.1:8001/api/v1/health/ready`
 
 Optional (recommended) boot-time startup for backend stack:
 
@@ -247,8 +253,11 @@ fi
 
 # backend
 cd /opt/studypoint-edu/backend
-sudo docker compose up -d --build
+sudo docker compose up -d --build postgres redis
+sudo ./scripts/sync_postgres_password.sh
+sudo docker compose up -d --build api
 sudo docker compose run --rm api python -m alembic upgrade head
+sudo docker compose up -d api
 ```
 
 ## 9. Optional CI/CD (GitHub Actions)

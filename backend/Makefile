@@ -1,4 +1,4 @@
-.PHONY: install install-dev run fmt lint test migrate revision downgrade seed
+.PHONY: install install-dev run fmt lint test migrate revision downgrade seed sync-db-password
 
 PYTHON ?= ./venv/bin/python
 
@@ -27,3 +27,6 @@ seed:
 
 test:
 	$(PYTHON) -m pytest -q
+
+sync-db-password:
+	./scripts/sync_postgres_password.sh

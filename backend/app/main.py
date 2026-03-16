@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.core.errors import install_exception_handlers
 from app.core.logging import configure_logging
 from app.db.session import close_engine, init_engine
+from app.services.health_service import get_readiness_checks
 from app.utils.redis import close_redis, init_redis
 
 
@@ -19,10 +20,13 @@ from app.utils.redis import close_redis, init_redis
 async def lifespan(app: FastAPI):
     configure_logging(environment=settings.environment)
     init_engine(settings.database_url)
-    await init_redis(settings.redis_url)
-    yield
-    await close_redis()
-    await close_engine()
+    try:
+        await init_redis(settings.redis_url)
+        await get_readiness_checks()
+        yield
+    finally:
+        await close_redis()
+        await close_engine()
 
 
 app = FastAPI(
@@ -66,4 +70,3 @@ app.include_router(api_router_v1, prefix=settings.api_v1_prefix)
 plugins_dir = Path(settings.plugins_dir)
 plugins_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/plugins", StaticFiles(directory=str(plugins_dir)), name="plugins")
-
