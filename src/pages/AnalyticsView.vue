@@ -20,8 +20,20 @@
       </nav>
     </div>
 
-    <!-- Filters (hidden on Scores tab) -->
     <div v-if="activeTab !== 'scores'" class="filters-bar">
+      <!-- Teacher: Student Picker -->
+      <div v-if="isTeacher" class="filter-group" style="border-right: 1px solid #eee; padding-right: 16px; margin-right: 8px;">
+        <label class="filter-label" style="color:#00838F; font-weight:700; font-size:12px;">ОҚУШЫ:</label>
+        <select
+          v-model="selectedStudentId"
+          @change="onStudentChange"
+          class="filter-select"
+          style="min-width:160px; color: #00838F; font-weight:600;"
+        >
+          <option value="">Өзімнің аналитика</option>
+          <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
+        </select>
+      </div>
       <div class="filter-group grade-range-filter">
         <label @click="toggleGradeDropdown" class="filter-label clickable">
           СЫНЫП ДЕҢГЕЙІ: {{ gradeRangeLabel }}
@@ -59,10 +71,15 @@
           >
             {{ option.label }}
           </button>
-          <!-- Placeholder for custom date picker if needed later -->
-          <!-- <button class="date-option custom">Custom...</button> -->
         </div>
       </div>
+    </div>
+
+    <!-- Viewing student banner -->
+    <div v-if="selectedStudentId && viewingStudentName" class="viewing-banner">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span>Аналитика: <strong>{{ viewingStudentName }}</strong></span>
+      <button @click="clearStudentSelection" class="clear-btn">× Өзімнің аналитикаға оралу</button>
     </div>
 
     <main class="analytics-content">
@@ -106,6 +123,10 @@
 import { onMounted, computed, ref } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useCatalogStore } from '@/stores/catalog'
+import { useAuthStore } from '@/stores/auth'
+import { useTeacherStore } from '@/stores/teacher'
+import { storeToRefs } from 'pinia'
+import { teacherApi } from '@/api/teacher'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import SummaryTab from '@/components/analytics/SummaryTab.vue'
@@ -117,6 +138,53 @@ import ProgressTab from '@/components/analytics/ProgressTab.vue'
 
 const analyticsStore = useAnalyticsStore()
 const catalogStore = useCatalogStore()
+const authStore = useAuthStore()
+const teacherStore = useTeacherStore()
+const { students: teacherStudents } = storeToRefs(teacherStore)
+
+const isTeacher = computed(() => authStore.user?.role === 'TEACHER')
+
+// Teacher student selection
+const selectedStudentId = ref('')
+const viewingStudentName = computed(() =>
+  teacherStudents.value.find(s => s.id === selectedStudentId.value)?.full_name || ''
+)
+const studentAnalyticsLoading = ref(false)
+
+const onStudentChange = async () => {
+  if (!selectedStudentId.value) {
+    // Restore own analytics
+    await Promise.all([
+      analyticsStore.getOverview(true),
+      analyticsStore.getSkills(true),
+    ])
+    return
+  }
+  studentAnalyticsLoading.value = true
+  analyticsStore.loading = true
+  try {
+    const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value)
+    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>> }
+    // Inject student data into the shared store so all tabs use it
+    analyticsStore.overview = data.overview as typeof analyticsStore.overview
+    analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
+    analyticsStore.error = null
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    analyticsStore.error = e.response?.data?.message || 'Оқушы аналитикасын жүктеу мүмкін болмады'
+  } finally {
+    analyticsStore.loading = false
+    studentAnalyticsLoading.value = false
+  }
+}
+
+const clearStudentSelection = async () => {
+  selectedStudentId.value = ''
+  await Promise.all([
+    analyticsStore.getOverview(true),
+    analyticsStore.getSkills(true),
+  ])
+}
 
 // Tab configuration
 const tabs = [
@@ -254,6 +322,10 @@ const loadSkillNames = async () => {
 }
 
 onMounted(async () => {
+  // If teacher, load student list for the picker
+  if (isTeacher.value && teacherStudents.value.length === 0) {
+    await teacherStore.fetchStudents()
+  }
   try {
     await Promise.all([
       analyticsStore.getOverview(true),

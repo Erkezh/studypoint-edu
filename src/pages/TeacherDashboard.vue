@@ -58,10 +58,25 @@
                 <td class="px-4 py-3 text-sm font-medium text-gray-900">{{ student.full_name }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600">{{ student.grade_level ? `${student.grade_level} сынып` : '—' }}</td>
                 <td class="px-4 py-3">
-                  <span class="font-mono text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded select-all">{{ student.username }}</span>
+                  <span
+                    @click="copyToClipboard(student.username, student.id + '_u')"
+                    class="font-mono text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded cursor-pointer hover:bg-blue-100 select-all relative transition"
+                    :title="'Кошіру үшін басыңыз'"
+                  >
+                    {{ student.username }}
+                    <span v-if="copiedId === student.id + '_u'" class="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap z-10">Көшірілді ✓</span>
+                  </span>
                 </td>
                 <td class="px-4 py-3">
-                  <span v-if="student.password && student.password !== '—'" class="font-mono text-sm text-green-700 bg-green-50 px-2 py-0.5 rounded select-all">{{ student.password }}</span>
+                  <span
+                    v-if="student.password && student.password !== '—'"
+                    @click="copyToClipboard(student.password!, student.id + '_p')"
+                    class="font-mono text-sm text-green-700 bg-green-50 px-2 py-0.5 rounded cursor-pointer hover:bg-green-100 select-all relative transition"
+                    :title="'Құпиясөзді кошіру'"
+                  >
+                    {{ student.password }}
+                    <span v-if="copiedId === student.id + '_p'" class="absolute -top-7 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-0.5 rounded whitespace-nowrap z-10">Көшірілді ✓</span>
+                  </span>
                   <span v-else class="text-xs text-gray-400 italic">Тек жасағанда көрінеді</span>
                 </td>
                 <td class="px-4 py-3">
@@ -182,6 +197,14 @@ const createError = ref('')
 const resettingId = ref<string | null>(null)
 const resetError = ref('')
 const deletingId = ref<string | null>(null)
+const copiedId = ref<string | null>(null)
+
+const copyToClipboard = (text: string, id: string) => {
+  navigator.clipboard.writeText(text).then(() => {
+    copiedId.value = id
+    setTimeout(() => { if (copiedId.value === id) copiedId.value = null }, 1500)
+  })
+}
 
 const form = ref({ firstName: '', lastName: '', gradeId: '' as string | number })
 const createdStudentData = ref<{ full_name: string, username: string, password: string } | null>(null)
