@@ -15,6 +15,7 @@ class StudentProfile(Base):
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
     grade_level: Mapped[int] = mapped_column(Integer, nullable=False)
     school: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    plain_password: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="profile")
 

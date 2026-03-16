@@ -17,7 +17,7 @@ class SubscriptionResponse(BaseModel):
 
 class UserMeResponse(BaseModel):
     id: str
-    email: EmailStr
+    email: str  # Can be a real email or a username (e.g. for teacher-created student accounts)
     full_name: str
     role: UserRole
     is_active: bool

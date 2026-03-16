@@ -41,21 +41,20 @@
             </div>
 
             <form @submit.prevent="handleLogin" class="space-y-5">
-              <!-- Email -->
               <div>
-                <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <label for="login-email" class="block text-sm font-medium text-gray-700 mb-1.5">Email / Логин</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                     <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
                   <input
                     id="login-email"
                     v-model="email"
-                    type="email"
+                    type="text"
                     required
-                    placeholder="user@example.com"
+                    placeholder="user@example.com немесе user1234"
                     class="w-full pl-11 pr-4 py-3 border rounded-xl text-sm transition-all focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                     :class="error ? 'border-red-300 bg-red-50/30' : 'border-gray-300'"
                   />

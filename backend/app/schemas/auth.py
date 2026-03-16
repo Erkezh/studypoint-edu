@@ -47,7 +47,8 @@ class AuthRegisterFamilyRequest(BaseModel):
 
 
 class AuthLoginRequest(BaseModel):
-    email: EmailStr
+    # Accept both email addresses and plain usernames (e.g. user4823)
+    email: str = Field(min_length=1, max_length=320)
     password: str
 
 

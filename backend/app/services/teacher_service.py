@@ -44,10 +44,24 @@ def _transliterate_cyrillic(text: str) -> str:
     return ''.join(res)
 
 
-def _generate_password(length: int = 6) -> str:
-    # Use clearly distinguishable characters
-    chars = "abcdefghjkmnpqrstuvwxyz23456789"
-    return ''.join(random.choice(chars) for _ in range(length))
+def _generate_password(length: int = 10) -> str:
+    """Generate a strong password with uppercase, lowercase, digits and symbols."""
+    import string
+    lowercase = "abcdefghjkmnpqrstuvwxyz"
+    uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ"
+    digits = "23456789"
+    symbols = "!@#$%"
+    # Ensure at least one of each category
+    password = [
+        random.choice(lowercase),
+        random.choice(uppercase),
+        random.choice(digits),
+        random.choice(symbols),
+    ]
+    all_chars = lowercase + uppercase + digits + symbols
+    password += [random.choice(all_chars) for _ in range(length - 4)]
+    random.shuffle(password)
+    return ''.join(password)
 
 
 class TeacherService:
@@ -73,7 +87,7 @@ class TeacherService:
         return ""
 
     async def create_student(self, teacher_id: str, req: TeacherCreateStudentRequest) -> TeacherCreateStudentResponse:
-        teacher_uuid = uuid.UUID(teacher_id)
+        teacher_uuid = teacher_id if isinstance(teacher_id, uuid.UUID) else uuid.UUID(str(teacher_id))
         
         # Verify teacher exists
         teacher = await self.users.get_by_id(teacher_id)
@@ -81,16 +95,9 @@ class TeacherService:
             raise AppError(status_code=403, code="forbidden", message="Only teachers can generate students")
             
         full_name = f"{req.first_name} {req.last_name}".strip()
-        
-        # Build base username
-        first_trans = _transliterate_cyrillic(req.first_name)
-        last_trans = _transliterate_cyrillic(req.last_name)
-        
-        if not first_trans and not last_trans:
-            base_username = f"student{random.randint(1000, 9999)}"
-        else:
-            base_username = f"{first_trans}.{last_trans}"
-            
+
+        # Generate username in format user + 4 random digits
+        base_username = f"user{random.randint(1000, 9999)}"
         username = await self._generate_unique_username(base_username)
         password = _generate_password()
         password_hash = hash_password(password)
@@ -109,7 +116,8 @@ class TeacherService:
         # Create profile
         profile = StudentProfile(
             user_id=student.id,
-            grade_level=req.grade_id
+            grade_level=req.grade_id,
+            plain_password=password
         )
         self.session.add(profile)
         

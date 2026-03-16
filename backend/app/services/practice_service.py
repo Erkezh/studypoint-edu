@@ -267,7 +267,7 @@ class PracticeService:
             q_public = _to_question_public(q)
         return {"finished": False, "question": q_public.model_dump(mode="json")}
 
-    async def submit(self, *, user_id, session_id: str, req: PracticeSubmitRequest) -> PracticeSubmitResponse:
+    async def submit(self, *, user_id, session_id: str, req: PracticeSubmitRequest, user_role: str | None = None) -> PracticeSubmitResponse:
         import logging
         logger = logging.getLogger(__name__)
         
@@ -699,8 +699,10 @@ class PracticeService:
             )
         
         logger.info(f"Adding PracticeAttempt to database: session_id={attempt.session_id}, question_id={attempt.question_id}, is_correct={attempt.is_correct}")
-        await self.practice.add_attempt(attempt)
-        logger.info(f"PracticeAttempt added successfully")
+        is_parent_preview = user_role == "PARENT"
+        if not is_parent_preview:
+            await self.practice.add_attempt(attempt)
+            logger.info(f"PracticeAttempt added successfully")
 
         ps.total_questions_answered += 1
         ps.total_correct += 1 if is_correct else 0
@@ -739,34 +741,35 @@ class PracticeService:
         ps.smartscore = ps.current_smartscore
         ps.time_elapsed_sec = ps.active_time_seconds
 
-        snap = await self.practice.get_snapshot(user_id=user_uuid, skill_id=ps.skill_id)
-        if snap is None:
-            snap = ProgressSnapshot(
-                user_id=user_uuid,
-                skill_id=ps.skill_id,
-                best_smartscore=0,
-                last_smartscore=0,
-                total_questions=0,
-                accuracy_percent=0,
-                best_smartscore_all_time=0,
-                total_questions_answered_all_time=0,
-                total_time_seconds_all_time=0,
-            )
-        snap.last_practiced_at = now
-        snap.last_smartscore = ps.current_smartscore
-        snap.best_smartscore = max(int(snap.best_smartscore or 0), ps.current_smartscore)
-        snap.best_smartscore_all_time = max(int(snap.best_smartscore_all_time or 0), ps.current_smartscore)
-        snap.total_questions_answered_all_time = int(snap.total_questions_answered_all_time or 0) + 1
-        snap.total_time_seconds_all_time = int(snap.total_time_seconds_all_time or 0) + int(req.time_spent_sec)
+        if not is_parent_preview:
+            snap = await self.practice.get_snapshot(user_id=user_uuid, skill_id=ps.skill_id)
+            if snap is None:
+                snap = ProgressSnapshot(
+                    user_id=user_uuid,
+                    skill_id=ps.skill_id,
+                    best_smartscore=0,
+                    last_smartscore=0,
+                    total_questions=0,
+                    accuracy_percent=0,
+                    best_smartscore_all_time=0,
+                    total_questions_answered_all_time=0,
+                    total_time_seconds_all_time=0,
+                )
+            snap.last_practiced_at = now
+            snap.last_smartscore = ps.current_smartscore
+            snap.best_smartscore = max(int(snap.best_smartscore or 0), ps.current_smartscore)
+            snap.best_smartscore_all_time = max(int(snap.best_smartscore_all_time or 0), ps.current_smartscore)
+            snap.total_questions_answered_all_time = int(snap.total_questions_answered_all_time or 0) + 1
+            snap.total_time_seconds_all_time = int(snap.total_time_seconds_all_time or 0) + int(req.time_spent_sec)
 
-        prev_total = int(snap.total_questions or 0)
-        snap.total_questions = prev_total + 1
-        prev_correct_est = int(round(prev_total * (int(snap.accuracy_percent or 0) / 100.0)))
-        new_correct_est = prev_correct_est + (1 if is_correct else 0)
-        snap.accuracy_percent = int(round((new_correct_est / max(1, snap.total_questions)) * 100))
-        await self.practice.upsert_snapshot(snap)
+            prev_total = int(snap.total_questions or 0)
+            snap.total_questions = prev_total + 1
+            prev_correct_est = int(round(prev_total * (int(snap.accuracy_percent or 0) / 100.0)))
+            new_correct_est = prev_correct_est + (1 if is_correct else 0)
+            snap.accuracy_percent = int(round((new_correct_est / max(1, snap.total_questions)) * 100))
+            await self.practice.upsert_snapshot(snap)
 
-        await self._update_assignment_status(student_id=user_uuid, skill_id=ps.skill_id, now=now, session_obj=ps, attempt=attempt)
+            await self._update_assignment_status(student_id=user_uuid, skill_id=ps.skill_id, now=now, session_obj=ps, attempt=attempt)
 
         finished = ps.finished_at is not None
         if finished:

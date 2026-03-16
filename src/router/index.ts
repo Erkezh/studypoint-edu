@@ -98,6 +98,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresRole: 'TEACHER' },
   },
   {
+    path: '/parent',
+    name: 'parent-dashboard',
+    component: () => import('@/pages/ParentDashboard.vue'),
+    meta: { requiresAuth: true, requiresRole: 'PARENT' },
+  },
+  {
     path: '/admin',
     name: 'admin-dashboard',
     component: () => import('@/pages/AdminDashboard.vue'),

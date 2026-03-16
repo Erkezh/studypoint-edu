@@ -47,7 +47,7 @@ class AuthService:
         return TokenPair(access_token=access, refresh_token=refresh)
 
     async def register(self, req: AuthRegisterRequest) -> AuthTokensResponse:
-        if req.role not in {UserRole.STUDENT, UserRole.PARENT}:
+        if req.role not in {UserRole.STUDENT, UserRole.PARENT, UserRole.TEACHER}:
             raise AppError(status_code=403, code="forbidden", message="Cannot self-register for this role")
 
         try:

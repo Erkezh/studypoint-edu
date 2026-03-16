@@ -20,6 +20,7 @@ export interface StudentInfo {
   username: string
   classrooms: string[]
   grade_level: number | null
+  password?: string
 }
 
 export const teacherApi = {
@@ -29,5 +30,17 @@ export const teacherApi = {
 
   getStudents() {
     return apiClient.get<{ data: StudentInfo[] }>('/teacher/students')
-  }
+  },
+
+  getStudentAnalytics(studentId: string) {
+    return apiClient.get<{ data: Record<string, unknown> }>(`/teacher/students/${studentId}/analytics`)
+  },
+
+  resetStudentPassword(studentId: string) {
+    return apiClient.post<{ data: { username: string; password: string } }>(`/teacher/students/${studentId}/reset-password`, {})
+  },
+
+  deleteStudent(studentId: string) {
+    return apiClient.delete<{ data: { deleted: string } }>(`/teacher/students/${studentId}`)
+  },
 }

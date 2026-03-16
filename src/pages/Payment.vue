@@ -87,8 +87,8 @@
               </div>
             </div>
 
-            <!-- Choose Children -->
-            <div>
+            <!-- Choose Children (Family Only) -->
+            <div v-if="planType === 'family'">
               <h2 class="text-2xl font-semibold text-[#1a365d] mb-6">Балалар санын таңдаңыз</h2>
               <div class="flex items-center gap-4">
                 <div class="flex bg-white border border-gray-300 rounded overflow-hidden">
@@ -129,7 +129,8 @@
             </div>
             <p class="text-gray-500 mb-8 border-b border-gray-100 pb-8">
               {{ billingCycle === 'monthly' ? 'ай сайын төленеді' : 'жылына бір рет төленеді' }}
-              ({{ childrenCount }} бала үшін)
+              <span v-if="planType === 'family'">({{ childrenCount }} бала үшін)</span>
+              <span v-else>(1 мұғалім және оқушылар үшін)</span>
             </p>
 
             <div v-if="processing" class="py-4 flex flex-col items-center justify-center space-y-3">
@@ -161,9 +162,11 @@
           </div>
 
           <form @submit.prevent="submitRegistration" class="space-y-8">
-            <!-- Parent Info -->
+            <!-- Account Info -->
             <div class="bg-[#f8fafc] p-6 rounded border border-gray-200">
-              <h3 class="text-lg font-medium text-[#1a365d] mb-4">Ата-ана туралы ақпарат</h3>
+              <h3 class="text-lg font-medium text-[#1a365d] mb-4">
+                {{ planType === 'family' ? 'Ата-ана туралы ақпарат' : 'Мұғалім туралы ақпарат' }}
+              </h3>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">Толық аты-жөніңіз</label>
@@ -180,8 +183,8 @@
               </div>
             </div>
 
-            <!-- Children Info -->
-            <div class="space-y-4">
+            <!-- Children Info (Family Only) -->
+            <div v-if="planType === 'family'" class="space-y-4">
               <h3 class="text-lg font-medium text-[#1a365d]">Балалар туралы ақпарат</h3>
               
               <div v-for="index in childrenCount" :key="index" class="p-6 rounded border border-gray-200 relative">
@@ -215,7 +218,9 @@
             <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" /></svg>
           </div>
           <h2 class="text-3xl font-semibold text-[#1a365d] mb-4">Қош келдіңіз!</h2>
-          <p class="text-gray-600 mb-8 text-lg">Сіздің отбасылық аккаунтыңыз сәтті құрылды. Енді сіз платформаның барлық мүмкіндіктерін пайдалана аласыз.</p>
+          <p class="text-gray-600 mb-8 text-lg">
+            Сіздің {{ planType === 'family' ? 'отбасылық' : 'мұғалімдік' }} аккаунтыңыз сәтті құрылды. Енді сіз платформаның барлық мүмкіндіктерін пайдалана аласыз.
+          </p>
           <button @click="router.push('/auth/login')" class="py-3 px-8 rounded font-medium text-white transition-colors bg-[#00a6c0] hover:bg-[#008f9c]">
             Жүйеге кіру
           </button>
@@ -230,16 +235,21 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import type { ApiResponse, AuthTokensResponse } from '@/types/api'
+import { UserRole } from '@/types/api'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 
 defineOptions({ name: 'PaymentPage' })
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
+
+const planType = computed(() => route.query.plan === 'classroom' ? 'classroom' : 'family')
 
 // Current Step
 const currentStep = ref(1)
@@ -252,11 +262,14 @@ const processing = ref(false)
 const baseMonthlyPrice = 1990
 const baseYearlyPrice = 1590
 
+const classroomMonthlyPrice = 14990
+const classroomYearlyPrice = 12990
+
 const calculatedPrice = computed(() => {
-  if (billingCycle.value === 'monthly') {
-    return baseMonthlyPrice * childrenCount.value
+  if (planType.value === 'classroom') {
+    return billingCycle.value === 'monthly' ? classroomMonthlyPrice : classroomYearlyPrice * 12
   } else {
-    return baseYearlyPrice * 12 * childrenCount.value
+    return billingCycle.value === 'monthly' ? baseMonthlyPrice * childrenCount.value : baseYearlyPrice * 12 * childrenCount.value
   }
 })
 
@@ -302,29 +315,41 @@ const submitRegistration = async () => {
   submittingRegistration.value = true
 
   try {
-    const resp = await authApi.registerFamily({
-      parent_email: regData.value.parentEmail,
-      parent_password: regData.value.parentPassword,
-      parent_name: regData.value.parentName,
-      children: regData.value.children.map(c => ({
-        name: c.name,
-        grade_level: typeof c.grade === 'number' ? c.grade : parseInt(String(c.grade)) || 1,
-      })),
-    })
+    let resp: ApiResponse<AuthTokensResponse>;
+    if (planType.value === 'classroom') {
+      resp = await authApi.register({
+        email: regData.value.parentEmail,
+        password: regData.value.parentPassword,
+        full_name: regData.value.parentName,
+        role: UserRole.TEACHER,
+        grade_level: 1, // default
+      })
+    } else {
+      resp = await authApi.registerFamily({
+        parent_email: regData.value.parentEmail,
+        parent_password: regData.value.parentPassword,
+        parent_name: regData.value.parentName,
+        children: regData.value.children.map(c => ({
+          name: c.name,
+          grade_level: typeof c.grade === 'number' ? c.grade : parseInt(String(c.grade)) || 1,
+        })),
+      })
+    }
 
     if (resp.data) {
       // Log in as parent
       authStore.setAccessToken(resp.data.access_token)
       authStore.setRefreshToken(resp.data.refresh_token)
-      authStore.user = resp.data.user as any
+      authStore.user = resp.data.user
       localStorage.setItem('user', JSON.stringify(resp.data.user))
 
       currentStep.value = 3
       window.scrollTo({ top: 0, behavior: 'smooth' })
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Family registration error:', err)
-    registrationError.value = err.response?.data?.detail || err.response?.data?.message || 'Тіркелу қатесі. Қайта көріңіз.'
+    const errorResponse = (err as { response?: { data?: { detail?: string; message?: string } } }).response
+    registrationError.value = errorResponse?.data?.detail || errorResponse?.data?.message || 'Тіркелу қатесі. Қайта көріңіз.'
   } finally {
     submittingRegistration.value = false
   }

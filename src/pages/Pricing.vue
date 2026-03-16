@@ -103,12 +103,13 @@
 
             <div class="w-full space-y-3 mt-auto">
               <button
+                @click="selectPlan('classroom')"
                 class="w-full py-3 px-6 rounded-lg text-lg font-medium text-white transition-colors"
                 style="background-color: #00b2b2;"
                 onmouseover="this.style.backgroundColor='#009999'"
                 onmouseout="this.style.backgroundColor='#00b2b2'"
               >
-                Сынақ нұсқасын бастау
+                Жазылуды бастау
               </button>
               <button
                 class="w-full py-3 px-6 rounded-lg text-lg font-medium text-white transition-colors"
