@@ -100,8 +100,9 @@ async def student_analytics(
 
     overview = await svc.overview(user_id=student_id)
     skills = await svc.skills(user_id=student_id)
+    all_questions = await svc.all_questions(user_id=student_id)
 
-    return ApiResponse(data={"overview": overview, "skills": skills})
+    return ApiResponse(data={"overview": overview, "skills": skills, "all_questions": all_questions})
 
 
 @router.post("/students/{student_id}/reset-password", response_model=ApiResponse[dict])

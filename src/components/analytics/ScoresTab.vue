@@ -2,12 +2,26 @@
   <div>
     <!-- Date filter -->
     <div class="scores-date-filter">
-      <label class="scores-filter-label">УАҚЫТ АРАЛЫҒЫ:</label>
-      <select v-model="scoreDateRange" class="scores-filter-select">
-        <option value="all">Барлық уақыт</option>
-        <option value="week">Осы апта</option>
-        <option value="month">Осы ай</option>
-      </select>
+      <!-- Teacher: Student Picker -->
+      <div v-if="isTeacher" class="filter-group" style="border-right: 1px solid #eee; padding-right: 16px; margin-right: 8px;">
+        <label class="filter-label" style="color:#00838F; font-weight:700; font-size:12px;">ОҚУШЫ:</label>
+        <select
+          v-model="selectedStudentId"
+          class="filter-select"
+          style="min-width:160px; color: #00838F; font-weight:600;"
+        >
+          <option value="">Өзімнің аналитика</option>
+          <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
+        </select>
+      </div>
+      <div class="filter-group date-range-filter">
+        <label class="scores-filter-label">УАҚЫТ АРАЛЫҒЫ:</label>
+        <select v-model="scoreDateRange" class="scores-filter-select">
+          <option value="all">Барлық уақыт</option>
+          <option value="week">Осы апта</option>
+          <option value="month">Осы ай</option>
+        </select>
+      </div>
     </div>
 
     <div class="scores-main-card">
@@ -137,13 +151,42 @@
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useAuthStore } from '@/stores/auth'
+import { useTeacherStore } from '@/stores/teacher'
+import { teacherApi } from '@/api/teacher'
+import { storeToRefs } from 'pinia'
 import { catalogApi } from '@/api/catalog'
 import type { SkillListItem } from '@/types/api'
 
 const analyticsStore = useAnalyticsStore()
 const authStore = useAuthStore()
+const teacherStore = useTeacherStore()
+const { students: teacherStudents } = storeToRefs(teacherStore)
 
-const userName = computed(() => authStore.user?.full_name || 'Сіздің')
+const isTeacher = computed(() => authStore.isTeacher)
+
+// Local Storage Initial State loader
+const SAVED_STATE_KEY = 'analytics_view_state'
+const loadState = () => {
+  try {
+    const saved = localStorage.getItem(SAVED_STATE_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
+const initialState = loadState()
+const selectedStudentId = ref(initialState.selectedStudentId || '')
+
+// If teacher is viewing a specific student, use that student's name
+const getStudentName = () => {
+  if (isTeacher.value && selectedStudentId.value && teacherStore.students) {
+    const student = teacherStore.students.find((s: Record<string, unknown>) => s.id === selectedStudentId.value)
+    if (student) return student.full_name as string
+  }
+  return authStore.user?.full_name || 'Сіздің'
+}
+
+const userName = computed(() => getStudentName())
 
 const scoreGrade = ref<number>(authStore.user?.profile?.grade_level ?? 6)
 const scoreDateRange = ref<string>('all')
@@ -199,6 +242,50 @@ const loadGradeSkills = async () => {
 
 watch(scoreGrade, () => {
   loadGradeSkills()
+})
+
+const onStudentChange = async () => {
+  if (!isTeacher.value) return
+
+  // Sync state to local storage to match AnalyticsView
+  const state = loadState()
+  localStorage.setItem(SAVED_STATE_KEY, JSON.stringify({
+    ...state,
+    selectedStudentId: selectedStudentId.value
+  }))
+
+  if (!selectedStudentId.value) {
+    // Restore own analytics
+    analyticsStore.loading = true
+    try {
+      await Promise.all([
+        analyticsStore.getOverview(true),
+        analyticsStore.getSkills(true),
+        analyticsStore.getAllQuestions(true),
+      ])
+    } finally {
+      analyticsStore.loading = false
+    }
+    return
+  }
+  analyticsStore.loading = true
+  try {
+    const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value)
+    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
+    analyticsStore.overview = data.overview as typeof analyticsStore.overview
+    analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
+    analyticsStore.allQuestions = (data.all_questions || []) as typeof analyticsStore.allQuestions
+    analyticsStore.error = null
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    analyticsStore.error = e.response?.data?.message || 'Оқушы аналитикасын жүктеу мүмкін болмады'
+  } finally {
+    analyticsStore.loading = false
+  }
+}
+
+watch(selectedStudentId, () => {
+  onStudentChange()
 })
 
 const printReport = () => {

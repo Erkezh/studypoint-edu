@@ -75,12 +75,7 @@
       </div>
     </div>
 
-    <!-- Viewing student banner -->
-    <div v-if="selectedStudentId && viewingStudentName" class="viewing-banner">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
-      <span>Аналитика: <strong>{{ viewingStudentName }}</strong></span>
-      <button @click="clearStudentSelection" class="clear-btn">× Өзімнің аналитикаға оралу</button>
-    </div>
+
 
     <main class="analytics-content">
       <!-- Loading State -->
@@ -120,7 +115,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, ref } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useCatalogStore } from '@/stores/catalog'
 import { useAuthStore } from '@/stores/auth'
@@ -142,32 +137,54 @@ const authStore = useAuthStore()
 const teacherStore = useTeacherStore()
 const { students: teacherStudents } = storeToRefs(teacherStore)
 
-const isTeacher = computed(() => authStore.user?.role === 'TEACHER')
+const isTeacher = computed(() => authStore.isTeacher)
 
-// Teacher student selection
-const selectedStudentId = ref('')
-const viewingStudentName = computed(() =>
-  teacherStudents.value.find(s => s.id === selectedStudentId.value)?.full_name || ''
-)
+/* === Local Storage Persistence === */
+const SAVED_STATE_KEY = 'analytics_view_state'
+const loadState = () => {
+  try {
+    const saved = localStorage.getItem(SAVED_STATE_KEY)
+    return saved ? JSON.parse(saved) : {}
+  } catch {
+    return {}
+  }
+}
+const initialState = loadState()
+
+// Restore student ID from localStorage. If the user is not a teacher, onMounted will overwrite this to '' and call loadOwnAnalytics.
+const selectedStudentId = ref(initialState.selectedStudentId || '')
 const studentAnalyticsLoading = ref(false)
 
-const onStudentChange = async () => {
-  if (!selectedStudentId.value) {
-    // Restore own analytics
+// Load own analytics (for any user)
+const loadOwnAnalytics = async () => {
+  analyticsStore.loading = true
+  try {
     await Promise.all([
       analyticsStore.getOverview(true),
       analyticsStore.getSkills(true),
+      analyticsStore.getAllQuestions(true),
     ])
+  } finally {
+    analyticsStore.loading = false
+  }
+}
+
+const onStudentChange = async () => {
+  if (!selectedStudentId.value || !isTeacher.value) {
+    // Load own analytics
+    selectedStudentId.value = ''
+    await loadOwnAnalytics()
     return
   }
   studentAnalyticsLoading.value = true
   analyticsStore.loading = true
   try {
     const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value)
-    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>> }
+    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
     // Inject student data into the shared store so all tabs use it
     analyticsStore.overview = data.overview as typeof analyticsStore.overview
     analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
+    analyticsStore.allQuestions = (data.all_questions || []) as typeof analyticsStore.allQuestions
     analyticsStore.error = null
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } } }
@@ -176,14 +193,6 @@ const onStudentChange = async () => {
     analyticsStore.loading = false
     studentAnalyticsLoading.value = false
   }
-}
-
-const clearStudentSelection = async () => {
-  selectedStudentId.value = ''
-  await Promise.all([
-    analyticsStore.getOverview(true),
-    analyticsStore.getSkills(true),
-  ])
 }
 
 // Tab configuration
@@ -196,9 +205,9 @@ const tabs = [
   { id: 'progress', label: 'Прогресс' },
 ]
 
-const activeTab = ref<string>('summary')
-const gradeFrom = ref<number>(-1)
-const gradeTo = ref<number>(12)
+const activeTab = ref<string>(initialState.activeTab || 'summary')
+const gradeFrom = ref<number>(initialState.gradeFrom !== undefined ? initialState.gradeFrom : -1)
+const gradeTo = ref<number>(initialState.gradeTo !== undefined ? initialState.gradeTo : 12)
 const showGradeDropdown = ref<boolean>(false)
 // const selectedDateRange = ref<string>('all') // Replaced by new logic
 const skillNames = ref<Map<number, string>>(new Map())
@@ -231,7 +240,7 @@ const applyGradeFilter = () => {
 // Date Range Logic
 const dateRangeLabel = ref<string>('Барлық уақыт')
 const showDateDropdown = ref<boolean>(false)
-const selectedDateOption = ref<string>('all')
+const selectedDateOption = ref<string>(initialState.selectedDateOption || 'all')
 
 const dateRange = ref<{ start: Date | null; end: Date | null }>({
   start: null,
@@ -306,6 +315,21 @@ const selectDateRange = (optionId: string) => {
   }
 }
 
+// Watch state changes and save to local storage
+watch(
+  [activeTab, gradeFrom, gradeTo, selectedDateOption, selectedStudentId],
+  () => {
+    localStorage.setItem(SAVED_STATE_KEY, JSON.stringify({
+      activeTab: activeTab.value,
+      gradeFrom: gradeFrom.value,
+      gradeTo: gradeTo.value,
+      selectedDateOption: selectedDateOption.value,
+      selectedStudentId: selectedStudentId.value
+    }))
+  },
+  { deep: true }
+)
+
 // Load skill names from catalog
 const loadSkillNames = async () => {
   const skillIds = analyticsStore.skills.map(s => s.skill_id)
@@ -322,24 +346,25 @@ const loadSkillNames = async () => {
 }
 
 onMounted(async () => {
+  // Initialize date range from saved state
+  selectDateRange(selectedDateOption.value)
+
   // If teacher, load student list for the picker
   if (isTeacher.value && teacherStudents.value.length === 0) {
     await teacherStore.fetchStudents()
   }
+  
   try {
-    await Promise.all([
-      analyticsStore.getOverview(true),
-      analyticsStore.getSkills(true),
-    ])
+    if (isTeacher.value && selectedStudentId.value) {
+      // Teacher has a student selected — load that student's data
+      await onStudentChange()
+    } else {
+      // Student or teacher with no selection — load own data
+      await loadOwnAnalytics()
+    }
 
     if (analyticsStore.skills.length > 0) {
       await loadSkillNames()
-    }
-
-    try {
-      await analyticsStore.getAllQuestions()
-    } catch (err) {
-      console.warn('Failed to load questions:', err)
     }
   } catch (err) {
     console.error('Failed to load analytics:', err)

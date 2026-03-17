@@ -49,7 +49,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       return overview.value
     }
 
-    loading.value = true
     error.value = null
     try {
       console.log('AnalyticsStore: Fetching overview...')
@@ -58,10 +57,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       if (response.data) {
         overview.value = response.data
         lastFetch.value = Date.now()
-
-        // Сохраняем в localStorage для кэша
-        localStorage.setItem('analytics_overview', JSON.stringify(response.data))
-        localStorage.setItem('analytics_overview_time', lastFetch.value.toString())
       } else {
         console.warn('AnalyticsStore: No data in overview response')
         overview.value = null
@@ -76,21 +71,7 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         response: err.response?.data,
         status: err.response?.status,
       })
-
-      // Пробуем загрузить из localStorage
-      const cached = localStorage.getItem('analytics_overview')
-      if (cached) {
-        try {
-          overview.value = JSON.parse(cached)
-          return overview.value
-        } catch (e) {
-          console.error('Failed to parse cached overview', e)
-        }
-      }
-
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
@@ -99,7 +80,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       return skills.value
     }
 
-    loading.value = true
     error.value = null
     try {
       console.log('AnalyticsStore: Fetching skills...')
@@ -108,9 +88,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       if (response.data) {
         skills.value = response.data
         lastFetch.value = Date.now()
-
-        localStorage.setItem('analytics_skills', JSON.stringify(response.data))
-        localStorage.setItem('analytics_skills_time', lastFetch.value.toString())
       } else {
         console.warn('AnalyticsStore: No data in skills response')
         skills.value = []
@@ -125,51 +102,11 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         response: err.response?.data,
         status: err.response?.status,
       })
-
-      const cached = localStorage.getItem('analytics_skills')
-      if (cached) {
-        try {
-          skills.value = JSON.parse(cached)
-          return skills.value
-        } catch (e) {
-          console.error('Failed to parse cached skills', e)
-        }
-      }
-
       throw err
-    } finally {
-      loading.value = false
     }
   }
 
-  // Инициализация из localStorage
-  const init = () => {
-    try {
-      const cachedOverview = localStorage.getItem('analytics_overview')
-      const cachedSkills = localStorage.getItem('analytics_skills')
-      const overviewTime = localStorage.getItem('analytics_overview_time')
-      const skillsTime = localStorage.getItem('analytics_skills_time')
-
-      if (cachedOverview && overviewTime) {
-        const age = Date.now() - parseInt(overviewTime, 10)
-        if (age < CACHE_TTL) {
-          overview.value = JSON.parse(cachedOverview)
-          lastFetch.value = parseInt(overviewTime, 10)
-        }
-      }
-
-      if (cachedSkills && skillsTime) {
-        const age = Date.now() - parseInt(skillsTime, 10)
-        if (age < CACHE_TTL) {
-          skills.value = JSON.parse(cachedSkills)
-        }
-      }
-    } catch (error) {
-      console.error('Failed to init analytics from cache', error)
-    }
-  }
-
-  init()
+  // No localStorage caching to avoid cross-user data pollution
 
   const allQuestions = ref<Array<Record<string, any>>>([])
 
@@ -178,7 +115,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
       return allQuestions.value
     }
 
-    loading.value = true
     error.value = null
     try {
       console.log('AnalyticsStore: Fetching all questions...')
@@ -202,8 +138,6 @@ export const useAnalyticsStore = defineStore('analytics', () => {
         status: err.response?.status,
       })
       throw err
-    } finally {
-      loading.value = false
     }
   }
 

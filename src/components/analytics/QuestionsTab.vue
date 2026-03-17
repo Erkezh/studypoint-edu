@@ -151,7 +151,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -175,12 +175,7 @@ const props = defineProps<{
 
 const analyticsStore = useAnalyticsStore()
 
-// Fetch questions data if not loaded yet
-onMounted(() => {
-  if (analyticsStore.allQuestions.length === 0) {
-    analyticsStore.getAllQuestions()
-  }
-})
+// allQuestions is loaded by the parent AnalyticsView (either user's own or student's)
 
 const printReport = () => window.print()
 

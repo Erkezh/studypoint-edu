@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="summary-header">
-      <h1 class="summary-title">ҚИЫНДЫҚТАР</h1>
+      <h1 class="summary-title">ҚИЫНДЫҚТАР: {{ userName }}</h1>
       <button class="print-btn" @click="printReport">
         <svg class="print-icon" viewBox="0 0 24 24" fill="currentColor">
           <path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" />
@@ -62,6 +62,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
+import { useAuthStore } from '@/stores/auth'
+import { useTeacherStore } from '@/stores/teacher'
 
 const props = defineProps<{
   gradeFrom: number
@@ -70,6 +72,26 @@ const props = defineProps<{
 }>()
 
 const analyticsStore = useAnalyticsStore()
+const authStore = useAuthStore()
+const teacherStore = useTeacherStore()
+
+// If teacher is viewing a specific student, use that student's name
+const isTeacher = computed(() => authStore.isTeacher)
+
+const getStudentName = () => {
+  if (isTeacher.value) {
+    try {
+      const state = JSON.parse(localStorage.getItem('analytics_view_state') || '{}')
+      if (state.selectedStudentId && teacherStore.students) {
+        const student = teacherStore.students.find((s: Record<string, unknown>) => s.id === state.selectedStudentId)
+        if (student) return student.full_name as string
+      }
+    } catch { }
+  }
+  return authStore.user?.full_name || 'Сіздің'
+}
+
+const userName = computed(() => getStudentName())
 
 const printReport = () => {
   window.print()
