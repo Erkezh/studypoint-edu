@@ -5,35 +5,37 @@
     <!-- IXL-style Header with Tabs -->
     <div class="analytics-header">
       <nav class="analytics-tabs">
-        <button v-for="tab in tabs" :key="tab.id" @click="activeTab = tab.id"
-          :class="['tab-item', { active: activeTab === tab.id }]">
-          <span class="tab-icon">
-            <svg v-if="tab.id === 'summary'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            <svg v-else-if="tab.id === 'usage'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <svg v-else-if="tab.id === 'trouble'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-            <svg v-else-if="tab.id === 'scores'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-            <svg v-else-if="tab.id === 'questions'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-            <svg v-else-if="tab.id === 'progress'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-          </span>
-          {{ tab.label }}
-        </button>
+        <div v-for="tab in tabs" :key="tab.id" class="tab-item-group"
+             @mouseenter="hoverTab = tab.id" @mouseleave="hoverTab = null">
+          <button @click="tab.dropdown ? (activeTab = tab.dropdown[0].id) : (activeTab = tab.id)"
+            :class="['tab-item', { active: activeTab === tab.id || (tab.dropdown && tab.dropdown.some(d => d.id === activeTab)) }]">
+            <span class="tab-icon">
+              <svg v-if="tab.id === 'summary' && !isTeacher" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              <svg v-else-if="tab.id === 'students_dropdown' && isTeacher" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+              <svg v-else-if="tab.id === 'usage'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <svg v-else-if="tab.id === 'trouble'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+              <svg v-else-if="tab.id === 'scores'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+              <svg v-else-if="tab.id === 'questions'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+              <svg v-else-if="tab.id === 'progress'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+            </span>
+            {{ tab.label }}
+            <svg v-if="tab.dropdown" class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </button>
+          
+          <div v-if="tab.dropdown && hoverTab === tab.id" class="tab-dropdown">
+            <button v-for="sub in tab.dropdown" :key="sub.id" 
+              @click.stop="activeTab = sub.id; hoverTab = null"
+              :class="['dropdown-item', { active: activeTab === sub.id }]">
+              {{ sub.label }}
+            </button>
+          </div>
+        </div>
       </nav>
     </div>
 
     <div v-if="activeTab !== 'scores'" class="filters-bar">
       <!-- Teacher: Student Picker -->
-      <div v-if="isTeacher" class="filter-group" style="border-right: 1px solid #eee; padding-right: 16px; margin-right: 8px;">
-        <label class="filter-label" style="color:#00838F; font-weight:700; font-size:12px;">ОҚУШЫ:</label>
-        <select
-          v-model="selectedStudentId"
-          @change="onStudentChange"
-          class="filter-select"
-          style="min-width:160px; color: #00838F; font-weight:600;"
-        >
-          <option value="">Өзімнің аналитика</option>
-          <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
-        </select>
-      </div>
+      <!-- Teacher: Student Picker moved to content -->
       <div class="filter-group grade-range-filter">
         <label @click="toggleGradeDropdown" class="filter-label clickable">
           СЫНЫП ДЕҢГЕЙІ: {{ gradeRangeLabel }}
@@ -90,8 +92,70 @@
         <p>{{ analyticsStore.error }}</p>
       </div>
 
+      <!-- Teacher Needs Selection State -->
+      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview'" class="empty-state teacher-select-prompt">
+        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+        <h3 class="text-xl font-medium text-gray-700 mb-2">Оқушыны таңдаңыз</h3>
+        
+        <div class="student-carousel-container mt-6">
+          <button @click="prevStudent" class="carousel-arrow" :disabled="teacherStudents.length === 0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <div class="carousel-select-wrapper">
+            <span class="carousel-label">ОҚУШЫ:</span>
+            <select v-model="selectedStudentId" @change="onStudentChange" class="carousel-select">
+              <option value="" disabled>Оқушыны таңдаңыз...</option>
+              <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
+            </select>
+          </div>
+          <button @click="nextStudent" class="carousel-arrow" :disabled="teacherStudents.length === 0">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+      </div>
+
       <div v-else>
-        <SummaryTab v-if="activeTab === 'summary'"
+        <!-- Teacher Student Carousel for active views (Usage, Summary) - HIDDEN on Quickview -->
+        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview'" class="student-carousel-container active-view-carousel">
+          <button @click="prevStudent" class="carousel-arrow">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <div class="carousel-select-wrapper">
+            <span class="carousel-label">ОҚУШЫ:</span>
+            <select v-model="selectedStudentId" @change="onStudentChange" class="carousel-select">
+              <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
+            </select>
+          </div>
+          <button @click="nextStudent" class="carousel-arrow">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+        <div v-if="activeTab === 'students_quickview'" class="quickview-container">
+          <div class="quickview-header">
+            <h2 class="quickview-title">ОҚУШЫЛАРДЫҢ ҚЫСҚАША КӨРІНІСІ
+              <button class="print-btn" title="Print">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+              </button>
+            </h2>
+            <div class="quickview-student-select">
+              <select :value="''" @change="onQuickviewStudentChange($event)" class="quickview-select">
+                <option value="" disabled>Белгілі бір оқушыны іздеп жүрсіз бе?</option>
+                <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="mt-8">
+            <UsageTab 
+              :grade-from="gradeFrom" 
+              :grade-to="gradeTo" 
+              :date-range="dateRange" 
+              :period="selectedDateOption" 
+            />
+          </div>
+        </div>
+
+        <SummaryTab v-else-if="activeTab === 'summary'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :skill-names="skillNames" />
 
         <UsageTab v-else-if="activeTab === 'usage'"
@@ -151,9 +215,35 @@ const loadState = () => {
 }
 const initialState = loadState()
 
-// Restore student ID from localStorage. If the user is not a teacher, onMounted will overwrite this to '' and call loadOwnAnalytics.
+// Teacher student selection — only restore from localStorage if user is a teacher
 const selectedStudentId = ref(initialState.selectedStudentId || '')
 const studentAnalyticsLoading = ref(false)
+const hoverTab = ref<string | null>(null)
+
+// Carousel Logic
+const prevStudent = () => {
+  if (teacherStudents.value.length === 0) return
+  const currentIndex = teacherStudents.value.findIndex((s: { id: string }) => s.id === selectedStudentId.value)
+  if (currentIndex <= 0) {
+    // Wrap to end or stay at 0
+    selectedStudentId.value = teacherStudents.value[teacherStudents.value.length - 1].id
+  } else {
+    selectedStudentId.value = teacherStudents.value[currentIndex - 1].id
+  }
+  onStudentChange()
+}
+
+const nextStudent = () => {
+  if (teacherStudents.value.length === 0) return
+  const currentIndex = teacherStudents.value.findIndex((s: { id: string }) => s.id === selectedStudentId.value)
+  if (currentIndex === -1 || currentIndex === teacherStudents.value.length - 1) {
+    // Wrap to start
+    selectedStudentId.value = teacherStudents.value[0].id
+  } else {
+    selectedStudentId.value = teacherStudents.value[currentIndex + 1].id
+  }
+  onStudentChange()
+}
 
 // Load own analytics (for any user)
 const loadOwnAnalytics = async () => {
@@ -169,13 +259,38 @@ const loadOwnAnalytics = async () => {
   }
 }
 
+// Load teacher aggregate analytics
+const loadTeacherQuickviewAnalytics = async () => {
+  analyticsStore.loading = true
+  studentAnalyticsLoading.value = true
+  try {
+    const resp = await teacherApi.getTeacherQuickviewAnalytics()
+    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
+    analyticsStore.overview = data.overview as typeof analyticsStore.overview
+    analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
+    analyticsStore.allQuestions = (data.all_questions || []) as typeof analyticsStore.allQuestions
+    analyticsStore.error = null
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    analyticsStore.error = e.response?.data?.message || 'Оқушылардың жалпы аналитикасын жүктеу мүмкін болмады'
+  } finally {
+    analyticsStore.loading = false
+    studentAnalyticsLoading.value = false
+  }
+}
+
 const onStudentChange = async () => {
   if (!selectedStudentId.value || !isTeacher.value) {
-    // Load own analytics
     selectedStudentId.value = ''
-    await loadOwnAnalytics()
+    if (isTeacher.value && activeTab.value === 'students_quickview') {
+      await loadTeacherQuickviewAnalytics()
+    } else {
+      await loadOwnAnalytics()
+    }
     return
   }
+
+  // Teacher selected a specific student
   studentAnalyticsLoading.value = true
   analyticsStore.loading = true
   try {
@@ -195,17 +310,53 @@ const onStudentChange = async () => {
   }
 }
 
-// Tab configuration
-const tabs = [
-  { id: 'summary', label: 'Қорытынды' },
-  { id: 'usage', label: 'Қолдану' },
-  { id: 'trouble', label: 'Қиындықтар' },
-  { id: 'scores', label: 'Ұпайлар' },
-  { id: 'questions', label: 'Сұрақтар' },
-  { id: 'progress', label: 'Прогресс' },
-]
+const onQuickviewStudentChange = async (event: Event) => {
+  const target = event.target as HTMLSelectElement
+  if (target.value) {
+    selectedStudentId.value = target.value
+    activeTab.value = 'usage'
+    await onStudentChange()
+  }
+}
 
-const activeTab = ref<string>(initialState.activeTab || 'summary')
+interface TabItem {
+  id: string
+  label: string
+  dropdown?: { id: string; label: string }[]
+}
+
+// Tab configuration
+const tabs = computed<TabItem[]>(() => {
+  if (isTeacher.value) {
+    return [
+      {
+        id: 'students_dropdown',
+        label: 'Оқушылар',
+        dropdown: [
+          { id: 'students_quickview', label: 'Оқушылардың қысқаша көрінісі' },
+          { id: 'usage', label: 'Оқушының қолдануы' },
+          { id: 'summary', label: 'Оқушының қорытындысы' },
+        ]
+      },
+      { id: 'trouble', label: 'Қиындықтар' },
+      { id: 'scores', label: 'Ұпайлар' },
+      { id: 'questions', label: 'Сұрақтар' },
+      { id: 'progress', label: 'Прогресс' },
+    ]
+  }
+  return [
+    { id: 'summary', label: 'Қорытынды' },
+    { id: 'usage', label: 'Қолдану' },
+    { id: 'trouble', label: 'Қиындықтар' },
+    { id: 'scores', label: 'Ұпайлар' },
+    { id: 'questions', label: 'Сұрақтар' },
+    { id: 'progress', label: 'Прогресс' },
+  ]
+})
+
+// Initialize active tab based on role and stored state
+const defaultTeacherTab = 'students_quickview'
+const activeTab = ref<string>(initialState.activeTab || (isTeacher.value ? defaultTeacherTab : 'summary'))
 const gradeFrom = ref<number>(initialState.gradeFrom !== undefined ? initialState.gradeFrom : -1)
 const gradeTo = ref<number>(initialState.gradeTo !== undefined ? initialState.gradeTo : 12)
 const showGradeDropdown = ref<boolean>(false)
@@ -330,6 +481,14 @@ watch(
   { deep: true }
 )
 
+// Automatically load quickview data when returning to the quickview tab
+watch(activeTab, async (newVal) => {
+  if (isTeacher.value && newVal === 'students_quickview') {
+    selectedStudentId.value = ''
+    await loadTeacherQuickviewAnalytics()
+  }
+})
+
 // Load skill names from catalog
 const loadSkillNames = async () => {
   const skillIds = analyticsStore.skills.map(s => s.skill_id)
@@ -355,9 +514,12 @@ onMounted(async () => {
   }
   
   try {
-    if (isTeacher.value && selectedStudentId.value) {
-      // Teacher has a student selected — load that student's data
+    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview') {
+      // Teacher has a student selected and specific tab — load that student's data
       await onStudentChange()
+    } else if (isTeacher.value && activeTab.value === 'students_quickview') {
+      // Teacher is on quickview page - load aggregate data
+      await loadTeacherQuickviewAnalytics()
     } else {
       // Student or teacher with no selection — load own data
       await loadOwnAnalytics()
@@ -390,7 +552,7 @@ onMounted(async () => {
   gap: 0;
   max-width: 1200px;
   margin: 0 auto;
-  overflow-x: auto;
+  overflow: visible;
 }
 
 .tab-item {
@@ -422,6 +584,144 @@ onMounted(async () => {
 
 .tab-icon {
   font-size: 16px;
+}
+
+/* Student Options Carousel */
+.student-carousel-container {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: fit-content;
+}
+
+.student-carousel-container.mt-6 {
+  margin-top: 24px;
+  justify-content: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.active-view-carousel {
+  margin-bottom: 24px;
+}
+
+.carousel-arrow {
+  background: transparent;
+  border: none;
+  color: #00BCD4;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.carousel-arrow:hover:not(:disabled) {
+  background-color: #e0f7fa;
+}
+
+.carousel-arrow:disabled {
+  color: #ccc;
+  cursor: not-allowed;
+}
+
+.carousel-select-wrapper {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 16px;
+  gap: 8px;
+}
+
+.carousel-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #888;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.carousel-select {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: #555;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  min-width: 250px;
+  appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%22%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23999%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 12px auto;
+}
+
+.carousel-select:hover {
+  text-decoration: underline;
+}
+
+/* Quickview Styles */
+.quickview-container {
+  padding: 24px 0;
+}
+
+.quickview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.quickview-title {
+  font-size: 28px;
+  font-weight: 300;
+  color: #555;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.quickview-student-select {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 8px 16px;
+  border-radius: 4px;
+  gap: 12px;
+}
+
+.quickview-select-label {
+  font-size: 14px;
+  color: #888;
+  font-style: italic;
+}
+
+.quickview-select {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  color: #333;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  min-width: 200px;
+  appearance: none;
+  padding-right: 24px;
+  background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%22%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23999%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: 12px auto;
 }
 
 /* Filters */
@@ -628,6 +928,54 @@ onMounted(async () => {
   border-top: 1px solid #eee;
   margin-top: 4px;
   padding-top: 12px;
+}
+
+/* Dropdown Menu */
+.tab-item-group {
+  position: relative;
+  display: flex;
+}
+
+.tab-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: white;
+  min-width: 240px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 0 0 8px 8px;
+  overflow: hidden;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #eee;
+  border-top: none;
+}
+
+.dropdown-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 14px 20px;
+  border: none;
+  background: white;
+  color: #555;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dropdown-item:hover {
+  background: #f8f9fa;
+  color: #333;
+}
+
+.dropdown-item.active {
+  background: #e0f7fa;
+  color: #00838F;
+  border-left: 3px solid #00ACC1;
+  padding-left: 17px;
 }
 
 /* Responsive */

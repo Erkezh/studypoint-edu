@@ -84,6 +84,14 @@ async def get_students(
         })
     return ApiResponse(data=data)
 
+@router.get("/analytics/quickview", response_model=ApiResponse[dict])
+async def teacher_quickview_analytics(
+    user=Depends(get_current_user),
+    svc: AnalyticsService = Depends(),
+):
+    data = await svc.teacher_quickview(teacher_id=user.id)
+    return ApiResponse(data=data)
+
 @router.get("/students/{student_id}/analytics", response_model=ApiResponse[dict])
 async def student_analytics(
     student_id: str,

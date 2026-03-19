@@ -36,6 +36,10 @@ export const teacherApi = {
     return apiClient.get<{ data: Record<string, unknown> }>(`/teacher/students/${studentId}/analytics`)
   },
 
+  getTeacherQuickviewAnalytics() {
+    return apiClient.get<{ data: Record<string, unknown> }>('/teacher/analytics/quickview')
+  },
+
   resetStudentPassword(studentId: string) {
     return apiClient.post<{ data: { username: string; password: string } }>(`/teacher/students/${studentId}/reset-password`, {})
   },

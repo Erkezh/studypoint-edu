@@ -389,6 +389,244 @@ class AnalyticsService:
             "sessions": list(sessions.values()),
         }
 
+    async def teacher_quickview(self, *, teacher_id: str) -> dict[str, Any]:
+        tid = _parse_uuid(teacher_id)
+        
+        # Get all students for teacher
+        enroll_stmt = select(Enrollment.student_id).join(Classroom, Classroom.id == Enrollment.classroom_id).where(Classroom.teacher_id == tid)
+        student_ids = [row.student_id for row in (await self.session.execute(enroll_stmt)).all()]
+        
+        if not student_ids:
+            return {
+                "overview": {
+                    "total_time_sec": 0,
+                    "skills_practiced": 0,
+                    "avg_accuracy_percent": 0,
+                    "total_questions_answered": 0,
+                    "total_skills_by_grade": {},
+                },
+                "skills": [],
+                "all_questions": []
+            }
+
+        # 1. Overview stats
+        time_stmt = select(func.coalesce(func.sum(PracticeSession.time_elapsed_sec), 0)).where(PracticeSession.user_id.in_(student_ids))
+        total_time = int((await self.session.execute(time_stmt)).scalar_one())
+
+        skills_stmt = select(func.count(func.distinct(PracticeSession.skill_id))).where(PracticeSession.user_id.in_(student_ids))
+        skills_practiced = int((await self.session.execute(skills_stmt)).scalar_one())
+
+        attempts_stmt = (
+            select(
+                func.count(PracticeAttempt.id),
+                func.coalesce(func.sum(case((PracticeAttempt.is_correct.is_(True), 1), else_=0)), 0),
+            )
+            .select_from(PracticeAttempt)
+            .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
+            .where(PracticeSession.user_id.in_(student_ids))
+        )
+        total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
+        total_attempts = int(total_attempts)
+        correct_attempts = int(correct_attempts)
+        avg_accuracy = int(round((correct_attempts / max(1, total_attempts)) * 100))
+
+        from app.models.catalog import Skill, Grade
+        skills_by_grade_stmt = (
+            select(Grade.number, func.count(func.distinct(PracticeSession.skill_id)))
+            .select_from(PracticeSession)
+            .join(Skill, Skill.id == PracticeSession.skill_id)
+            .join(Grade, Grade.id == Skill.grade_id)
+            .where(PracticeSession.user_id.in_(student_ids))
+            .group_by(Grade.number)
+        )
+        skills_by_grade_rows = (await self.session.execute(skills_by_grade_stmt)).all()
+        total_skills_by_grade = {row[0]: row[1] for row in skills_by_grade_rows}
+
+        overview = {
+            "total_time_sec": total_time,
+            "skills_practiced": skills_practiced,
+            "avg_accuracy_percent": avg_accuracy,
+            "total_questions_answered": total_attempts,
+            "total_skills_by_grade": total_skills_by_grade,
+        }
+
+        # 2. Skills
+        from app.models.topic import Topic
+        
+        stmt = (
+            select(
+                ProgressSnapshot.skill_id,
+                func.max(ProgressSnapshot.best_smartscore).label("best_smartscore"),
+                func.max(ProgressSnapshot.last_smartscore).label("last_smartscore"),
+                func.max(ProgressSnapshot.last_practiced_at).label("last_practiced_at"),
+                func.sum(ProgressSnapshot.total_questions).label("total_questions"),
+                func.avg(ProgressSnapshot.accuracy_percent).label("accuracy_percent"),
+                Skill.title.label('skill_name'),
+                Skill.grade_id,
+                Skill.topic_id,
+                Grade.number.label('grade_number'),
+                Topic.title.label('topic_title'),
+            )
+            .select_from(ProgressSnapshot)
+            .join(Skill, Skill.id == ProgressSnapshot.skill_id)
+            .join(Grade, Grade.id == Skill.grade_id)
+            .outerjoin(Topic, Topic.id == Skill.topic_id)
+            .where(ProgressSnapshot.user_id.in_(student_ids))
+            .group_by(
+                ProgressSnapshot.skill_id,
+                Skill.title,
+                Skill.grade_id,
+                Skill.topic_id,
+                Grade.number,
+                Topic.title
+            )
+            .order_by(func.max(ProgressSnapshot.last_practiced_at).desc().nullslast())
+        )
+        rows = (await self.session.execute(stmt)).all()
+        
+        skills_result = []
+        for r in rows:
+            skill_time_stmt = (
+                select(func.coalesce(func.sum(PracticeSession.active_time_seconds), 0))
+                .where(PracticeSession.user_id.in_(student_ids), PracticeSession.skill_id == r.skill_id)
+            )
+            skill_total_time = int((await self.session.execute(skill_time_stmt)).scalar_one())
+            
+            skills_result.append({
+                "skill_id": r.skill_id,
+                "skill_name": r.skill_name,
+                "grade_id": r.grade_id,
+                "grade_number": r.grade_number,
+                "topic_id": r.topic_id,
+                "topic_title": r.topic_title,
+                "best_smartscore": int(r.best_smartscore or 0),
+                "last_smartscore": int(r.last_smartscore or 0),
+                "last_practiced_at": r.last_practiced_at,
+                "total_questions": int(r.total_questions or 0),
+                "accuracy_percent": float(r.accuracy_percent or 0),
+                "total_time_seconds": skill_total_time,
+            })
+            
+        # 3. All questions
+        # To avoid making this huge and blocking, just reuse the all_questions logic but for `in_(student_ids)` limit 200
+        attempts_stmt = (
+            select(PracticeAttempt, PracticeSession)
+            .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
+            .where(PracticeAttempt.user_id.in_(student_ids))
+            .order_by(PracticeAttempt.answered_at.desc())
+            .limit(200)
+        )
+        q_rows = (await self.session.execute(attempts_stmt)).all()
+        
+        questions = []
+        for attempt, sess in q_rows:
+            question_payload = attempt.question_payload or {}
+            question_data = question_payload.get("data") or {}
+            question_type = question_payload.get("type", "")
+            
+            user_answer_text = ""
+            if attempt.submitted_answer:
+                if "choice" in attempt.submitted_answer:
+                    choice_id = attempt.submitted_answer["choice"]
+                    if question_type == "MCQ" and "choices" in question_data:
+                        choices = question_data["choices"]
+                        for choice in choices:
+                            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
+                                user_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
+                                break
+                        if not user_answer_text:
+                            user_answer_text = str(choice_id)
+                    else:
+                        user_answer_text = str(choice_id)
+                elif "value" in attempt.submitted_answer:
+                    user_answer_text = str(attempt.submitted_answer["value"])
+                elif "answer" in attempt.submitted_answer:
+                    user_answer_text = str(attempt.submitted_answer["answer"])
+                else:
+                    user_answer_text = json.dumps(attempt.submitted_answer)
+            
+            correct_answer_text = ""
+            correct_answer = question_payload.get("correct_answer") or {}
+            if correct_answer:
+                if "choice" in correct_answer:
+                    choice_id = correct_answer["choice"]
+                    if question_type == "MCQ" and "choices" in question_data:
+                        choices = question_data["choices"]
+                        for choice in choices:
+                            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
+                                correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
+                                break
+                        if not correct_answer_text:
+                            correct_answer_text = str(choice_id)
+                    else:
+                        correct_answer_text = str(choice_id)
+                elif "value" in correct_answer:
+                    correct_answer_text = str(correct_answer["value"])
+                elif "answer" in correct_answer:
+                    correct_answer_text = str(correct_answer["answer"])
+                else:
+                    correct_answer_text = json.dumps(correct_answer)
+            elif question_data:
+                if "correct_answer" in question_data:
+                    correct_answer_text = str(question_data["correct_answer"])
+                elif "answer" in question_data:
+                    answer = question_data["answer"]
+                    if isinstance(answer, (int, float)):
+                        correct_answer_text = str(answer)
+                    elif isinstance(answer, dict):
+                        if "choice" in answer:
+                            choice_id = answer["choice"]
+                            if question_type == "MCQ" and "choices" in question_data:
+                                choices = question_data["choices"]
+                                for choice in choices:
+                                    if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
+                                        correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
+                                        break
+                                if not correct_answer_text:
+                                    correct_answer_text = str(choice_id)
+                            else:
+                                correct_answer_text = str(choice_id)
+                        else:
+                            correct_answer_text = json.dumps(answer)
+                    else:
+                        correct_answer_text = str(answer)
+                elif "correct_index" in question_data and "choices" in question_data:
+                    idx = question_data["correct_index"]
+                    choices = question_data["choices"]
+                    if isinstance(idx, int) and 0 <= idx < len(choices):
+                        choice = choices[idx]
+                        if isinstance(choice, dict):
+                            correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice)
+                        else:
+                            correct_answer_text = str(choice)
+            
+            if question_type in ("PLUGIN", "INTERACTIVE"):
+                user_answer_raw = attempt.submitted_answer
+            else:
+                user_answer_raw = user_answer_text
+
+            questions.append({
+                "attempt_id": str(attempt.id),
+                "question_id": attempt.question_id,
+                "skill_id": attempt.skill_id,
+                "question_prompt": question_payload.get("prompt", ""),
+                "question_type": question_payload.get("type", ""),
+                "question_data": question_data,
+                "user_answer": user_answer_raw,
+                "correct_answer": correct_answer_text,
+                "is_correct": attempt.is_correct,
+                "answered_at": attempt.answered_at,
+                "time_spent_seconds": attempt.time_spent_sec,
+                "smartscore_before": attempt.smartscore_before,
+                "smartscore_after": attempt.smartscore_after,
+            })
+            
+        return {
+            "overview": overview,
+            "skills": skills_result,
+            "all_questions": questions
+        }
+
 
 def _parse_uuid(value) -> uuid.UUID:
     try:
