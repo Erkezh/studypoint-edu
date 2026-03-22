@@ -58,6 +58,13 @@ async def get_skill(skill_id: int, svc: CatalogService = Depends()):
     return ApiResponse(data=await svc.get_skill(skill_id))
 
 
+@router.get("/skills/{skill_id}/stats", response_model=ApiResponse[dict])
+async def get_skill_stats(
+    skill_id: int,
+    svc: CatalogService = Depends(),
+    user=Depends(get_current_user_optional),
+    guest_user=Depends(get_or_create_guest_user),
+):
     effective_user = user if user is not None else guest_user
     return ApiResponse(data=await svc.get_skill_stats(user_id=effective_user.id, skill_id=skill_id))
 
