@@ -107,6 +107,7 @@ import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
+import { prefetchPracticePage, waitForNextPaint } from '@/utils/ui'
 
 interface Props {
   skillId: string
@@ -130,6 +131,9 @@ const startPractice = async () => {
   startingPractice.value = true
   error.value = null
   try {
+    void prefetchPracticePage()
+    await waitForNextPaint()
+
     const skillId = parseInt(String(skill.value.id), 10)
     if (isNaN(skillId)) {
       throw new Error('Неверный ID навыка')
@@ -176,6 +180,8 @@ const openExample = () => {
 
 onMounted(async () => {
   try {
+    void prefetchPracticePage()
+
     const skillId = parseInt(props.skillId, 10)
     const fetchedSkill = await catalogStore.getSkill(skillId)
     skill.value = fetchedSkill

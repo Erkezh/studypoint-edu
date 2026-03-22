@@ -57,15 +57,27 @@
 
                     <div class="space-y-0.5 pl-1">
                         <div v-for="(skill, idx) in gradeGroup.skills" :key="skill.id"
-                          class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors"
+                          :class="[
+                            'group/skill flex items-start gap-2 py-0.5 px-1 rounded cursor-pointer transition-colors',
+                            startingSkillId === skill.id
+                              ? 'bg-green-50 ring-1 ring-green-200 pointer-events-none'
+                              : 'hover:bg-green-50',
+                          ]"
                           @click="navigateToSkill(skill.id)">
                             <span class="text-sm font-medium text-gray-400 w-5 text-right shrink-0 pt-px">{{ idx + 1 }}</span>
                             <div class="flex-1 flex items-center justify-between min-w-0 gap-2">
                                 <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug truncate">
                                     {{ skill.title }}
                                 </span>
+                                <div v-if="startingSkillId === skill.id" class="flex items-center gap-1 text-xs font-semibold text-green-700 shrink-0">
+                                  <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                                  </svg>
+                                  <span>Ашылуда...</span>
+                                </div>
                                 <!-- Admin Edit Button -->
-                                <button v-if="authStore.user?.role === 'ADMIN'"
+                                <button v-else-if="authStore.user?.role === 'ADMIN'"
                                   @click.stop="openEditModal(skill)"
                                   class="text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0"
                                   title="Edit Skill">
@@ -111,6 +123,7 @@ import Footer from '@/components/layout/Footer.vue'
 import ViewByToggle from '@/components/ui/ViewByToggle.vue'
 import EditSkillModal from '@/components/catalog/EditSkillModal.vue'
 import type { SkillListItem } from '@/types/api'
+import { prefetchPracticePage, waitForNextPaint } from '@/utils/ui'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,6 +133,7 @@ const authStore = useAuthStore()
 
 const isEditModalOpen = ref(false)
 const editingSkill = ref<SkillListItem | null>(null)
+const startingSkillId = ref<number | null>(null)
 
 const currentTopicSlug = computed(() => route.params.topicSlug as string)
 const topics = computed(() => catalogStore.topics.filter(t => !t.parent_id))
@@ -195,7 +209,12 @@ const gradeGroups = computed(() => {
 })
 
 const navigateToSkill = async (skillId: number) => {
+    if (startingSkillId.value !== null) return
+
+    startingSkillId.value = skillId
     try {
+        void prefetchPracticePage()
+        await waitForNextPaint()
         const session = await practiceStore.createSession(skillId)
         if (session && session.id) {
             router.push({ name: 'practice', params: { sessionId: session.id } })
@@ -205,6 +224,8 @@ const navigateToSkill = async (skillId: number) => {
     } catch (err) {
         console.error('Failed to create session:', err)
         alert('Кешіріңіз, тестті ашу кезінде қате пайда болды.')
+    } finally {
+        startingSkillId.value = null
     }
 }
 
@@ -243,6 +264,7 @@ const fetchTopicData = async () => {
 }
 
 onMounted(() => {
+    void prefetchPracticePage()
     fetchTopicData()
 })
 

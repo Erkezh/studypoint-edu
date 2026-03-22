@@ -87,7 +87,12 @@
               <div class="space-y-0.5">
                 <div v-for="(skill, skillIdx) in subGroup.skills" :key="skill.id"
                   @click.stop="navigateToSkill(skill.id)"
-                  class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors">
+                  :class="[
+                    'group/skill flex items-start gap-2 py-0.5 px-1 rounded cursor-pointer transition-colors',
+                    loadingSkillId === skill.id
+                      ? 'bg-green-50 ring-1 ring-green-200 pointer-events-none'
+                      : 'hover:bg-green-50',
+                  ]">
 
                   <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
                     {{ skillIdx + 1 }}
@@ -95,7 +100,14 @@
                   <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
                     {{ skill.title }}
                   </span>
-                  <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
+                  <div v-if="loadingSkillId === skill.id" class="ml-auto shrink-0 pl-1 flex items-center gap-1 text-green-700">
+                     <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                     </svg>
+                     <span class="text-xs font-semibold">Ашылуда...</span>
+                  </div>
+                  <div v-else-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
                      <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
                      <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
                        {{ skillStats.get(skill.id)!.best_smartscore }}
@@ -117,7 +129,12 @@
               <div class="space-y-0.5">
                 <div v-for="(skill, index) in groupedSkills.orphaned" :key="skill.id"
                   @click.stop="navigateToSkill(skill.id)"
-                  class="group/skill flex items-start gap-2 py-0.5 px-1 rounded hover:bg-green-50 cursor-pointer transition-colors">
+                  :class="[
+                    'group/skill flex items-start gap-2 py-0.5 px-1 rounded cursor-pointer transition-colors',
+                    loadingSkillId === skill.id
+                      ? 'bg-green-50 ring-1 ring-green-200 pointer-events-none'
+                      : 'hover:bg-green-50',
+                  ]">
 
                   <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
                     {{ index + 1 }}
@@ -125,7 +142,14 @@
                   <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
                     {{ skill.title }}
                   </span>
-                  <div v-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
+                  <div v-if="loadingSkillId === skill.id" class="ml-auto shrink-0 pl-1 flex items-center gap-1 text-green-700">
+                     <svg class="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                     </svg>
+                     <span class="text-xs font-semibold">Ашылуда...</span>
+                  </div>
+                  <div v-else-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
                      <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
                      <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
                        {{ skillStats.get(skill.id)!.best_smartscore }}
@@ -225,6 +249,7 @@ import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
 import EditSkillModal from '@/components/catalog/EditSkillModal.vue'
 import type { SkillListItem } from '@/types/api'
+import { prefetchPracticePage, waitForNextPaint } from '@/utils/ui'
 
 interface Props {
   gradeId: string
@@ -369,10 +394,15 @@ const goToHome = () => {
 }
 
 const navigateToSkill = async (skillId: number) => {
+  if (loadingSkillId.value !== null) return
+
   loadingSkillId.value = skillId
   error.value = null
 
   try {
+    void prefetchPracticePage()
+    await waitForNextPaint()
+
     const numericSkillId = typeof skillId === 'string' ? parseInt(skillId, 10) : skillId
     if (isNaN(numericSkillId)) {
       throw new Error('Дағды ID-і дұрыс емес')
@@ -532,6 +562,8 @@ const loadSkillsForGrade = async (gradeNumber: number, force = false) => {
 
 onMounted(async () => {
   try {
+    void prefetchPracticePage()
+
     const gradeNumber = parseInt(props.gradeId, 10)
     if (isNaN(gradeNumber)) {
       error.value = 'Сынып ID-і дұрыс емес'
