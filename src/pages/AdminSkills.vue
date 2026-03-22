@@ -311,7 +311,7 @@ const handleDelete = async () => {
 const loadSkills = async () => {
   loadingSkills.value = true
   try {
-    const response = await adminApi.listSkills(1, 500)
+    const response = await adminApi.listSkills(1, 200)
     if (response.data) skillsList.value = response.data
   } catch (err: any) {
     if (err.response?.status === 401) {

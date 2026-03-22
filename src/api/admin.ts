@@ -172,10 +172,11 @@ export const adminApi = {
     page: number = 1,
     pageSize: number = 50
   ): Promise<ApiResponse<SkillListItem[]>> {
+    const normalizedPageSize = Math.min(pageSize, 200)
     const response = await apiClient.get<ApiResponse<SkillListItem[]>>(
       '/admin/skills',
       {
-        params: { page, page_size: pageSize },
+        params: { page, page_size: normalizedPageSize },
       }
     )
     return response.data
