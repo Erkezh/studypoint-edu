@@ -87,7 +87,7 @@
               </div>
 
               <!-- Question display - always visible when there's a question -->
-              <div v-if="currentQuestion">
+              <div v-if="currentQuestion && !showingResult">
                 <!-- Question prompt (hide for plugins) -->
                 <p v-if="currentQuestion.type !== 'PLUGIN'" class="text-xl text-gray-800 mb-8 leading-relaxed"
                   v-html="containsFraction(currentQuestion.prompt) ? formatFraction(currentQuestion.prompt) : currentQuestion.prompt">
@@ -1213,9 +1213,6 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       // Сохраняем результат и показываем его
       lastResult.value = response
       showingResult.value = true
-      if (currentQuestion.value) {
-        lastQuestion.value = { ...currentQuestion.value }
-      }
       userAnswer.value = answer
 
       // Отправляем результат в iframe для PLUGIN
