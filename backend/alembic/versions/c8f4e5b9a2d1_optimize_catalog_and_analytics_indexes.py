@@ -1,7 +1,7 @@
 """optimize catalog and analytics indexes
 
 Revision ID: c8f4e5b9a2d1
-Revises: f0b8f6e2c1aa
+Revises: 1c6f4f0d8d2b
 Create Date: 2026-03-22
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "c8f4e5b9a2d1"
-down_revision = "f0b8f6e2c1aa"
+down_revision = "1c6f4f0d8d2b"
 branch_labels = None
 depends_on = None
 
