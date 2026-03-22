@@ -590,8 +590,6 @@ const userAnswer = ref<unknown>(null) // Сохраненный ответ по�
 const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
 const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
 const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
-const lastSubmittedQuestionId = ref<string | number | null>(null)
-const lastSubmittedAt = ref<number>(0)
 const loadingNext = ref(false) // Загрузка следующего вопроса
 const currentTime = ref(0) // Текущее время сессии в секундах
 let timeInterval: number | null = null // Интервал для обновления времени
@@ -1059,17 +1057,6 @@ const handleInteractiveAnswer = async (answer: any) => {
 const submitAnswer = async (answer: any, questionType?: string) => {
   if (!currentQuestion.value || !practiceStore.currentSession || submitting.value || showingResult.value) return
 
-  const now = Date.now()
-  const currentQuestionId = currentQuestion.value.data?._generator_id ?? currentQuestion.value.id
-  if (
-    lastSubmittedQuestionId.value !== null &&
-    currentQuestionId !== null &&
-    String(lastSubmittedQuestionId.value) === String(currentQuestionId) &&
-    now - lastSubmittedAt.value < 2000
-  ) {
-    return
-  }
-
   submitting.value = true
 
   // Обновление сессии перед отправкой теперь происходит ниже, после создания requestData
@@ -1208,8 +1195,6 @@ const submitAnswer = async (answer: any, questionType?: string) => {
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
 
     if (response) {
-      lastSubmittedQuestionId.value = questionId
-      lastSubmittedAt.value = Date.now()
       // Сохраняем результат и показываем его
       lastResult.value = response
       showingResult.value = true

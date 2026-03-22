@@ -402,10 +402,8 @@ class PracticeService:
             if question is None or question.skill_id != ps.skill_id:
                 raise AppError(status_code=404, code="not_found", message="Question not found")
 
-            if question.type not in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
-                if await self.practice.has_attempt(session_id=ps.id, question_id=question.id):
-                    raise AppError(status_code=409, code="conflict", message="Question already answered in this session")
-
+            # Skills with a tiny question pool can intentionally surface the same DB question
+            # again after a wrong answer, so we only validate against the current session state.
             _validate_submitted_answer(question.type, question.data, req.submitted_answer)
             question_type = question.type
             question_data = question.data
