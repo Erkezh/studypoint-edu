@@ -33,6 +33,22 @@ async def test_health_ready_returns_503_when_database_check_fails(client, monkey
 
 
 @pytest.mark.asyncio
+async def test_health_ready_returns_503_when_redis_check_fails(client, monkeypatch):
+    from app.api.v1.routes import health as health_routes
+    from app.services.health_service import DependencyNotReadyError
+
+    async def fail_redis() -> dict[str, str]:
+        raise DependencyNotReadyError("redis", "Redis not ready")
+
+    monkeypatch.setattr(health_routes, "get_readiness_checks", fail_redis)
+
+    response = await client.get("/api/v1/health/ready")
+    assert response.status_code == 503, response.text
+    assert response.json()["error"]["message"] == "Redis not ready"
+    assert response.json()["error"]["details"] == {"service": "redis"}
+
+
+@pytest.mark.asyncio
 async def test_lifespan_aborts_when_database_preflight_fails(monkeypatch):
     from app import main as main_module
 

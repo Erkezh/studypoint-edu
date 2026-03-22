@@ -68,6 +68,9 @@ docker compose run --rm api python -m app.db.seed
 docker compose up -d api
 ```
 
+Postgres and Redis are intentionally kept on the internal Docker network only. Do not publish
+`5432` or `6379` to the host in production.
+
 Check logs:
 
 ```bash

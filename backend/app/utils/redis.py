@@ -19,6 +19,9 @@ def get_redis() -> Redis:
 async def ping_redis() -> None:
     redis = get_redis()
     await redis.ping()
+    replication_info = await redis.info(section="replication")
+    if replication_info.get("role") != "master":
+        raise RuntimeError(f"Redis replication role is {replication_info.get('role')!r}")
 
 
 async def close_redis() -> None:

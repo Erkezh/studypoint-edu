@@ -24,6 +24,7 @@ docker compose up -d --build api
 ```
 `docker-compose.yml` forces container-safe connection URLs (`postgres`, `redis`) for the API service,
 so Docker startup will not fail from `localhost` Redis/Postgres values in `.env`.
+Postgres and Redis stay on the internal Docker network only; do not publish them to the public host.
 It also runs `alembic upgrade head` automatically before starting Uvicorn.
 For Docker deployments, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` are the source of truth.
 If you change them on an existing Postgres volume, run `./scripts/sync_postgres_password.sh` before restarting `api`.
