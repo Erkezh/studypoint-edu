@@ -58,6 +58,7 @@ class SkillRepository:
         subject_id: int | None,
         grade_id: int | None,
         topic_id: int | None = None,
+        topic_ids: list[int] | None = None,
         query: str | None,
         page: int,
         page_size: int,
@@ -74,6 +75,9 @@ class SkillRepository:
         if topic_id is not None:
             stmt = stmt.where(Skill.topic_id == topic_id)
             count_stmt = count_stmt.where(Skill.topic_id == topic_id)
+        elif topic_ids:
+            stmt = stmt.where(Skill.topic_id.in_(topic_ids))
+            count_stmt = count_stmt.where(Skill.topic_id.in_(topic_ids))
         if query:
             q = f"%{query.strip()}%"
             stmt = stmt.where((Skill.title.ilike(q)) | (Skill.code.ilike(q)))
@@ -91,6 +95,9 @@ class SkillRepository:
         skill = Skill(**kwargs)
         self.session.add(skill)
         await self.session.flush()
+
+        return skill
+
     async def update(self, skill: Skill, **kwargs) -> Skill:
         for key, value in kwargs.items():
             setattr(skill, key, value)
@@ -117,4 +124,3 @@ class TopicRepository:
 
     async def get_by_slug(self, slug: str) -> Topic | None:
         return (await self.session.execute(select(Topic).where(Topic.slug == slug))).scalar_one_or_none()
-

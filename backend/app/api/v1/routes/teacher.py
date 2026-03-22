@@ -95,6 +95,7 @@ async def teacher_quickview_analytics(
 @router.get("/students/{student_id}/analytics", response_model=ApiResponse[dict])
 async def student_analytics(
     student_id: str,
+    include_questions: bool = True,
     user=Depends(get_current_user),
     svc: AnalyticsService = Depends(),
     teacher_svc: TeacherService = Depends(),
@@ -108,7 +109,7 @@ async def student_analytics(
 
     overview = await svc.overview(user_id=student_id)
     skills = await svc.skills(user_id=student_id)
-    all_questions = await svc.all_questions(user_id=student_id)
+    all_questions = await svc.all_questions(user_id=student_id) if include_questions else []
 
     return ApiResponse(data={"overview": overview, "skills": skills, "all_questions": all_questions})
 

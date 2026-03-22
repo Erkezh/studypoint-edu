@@ -2,15 +2,48 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { catalogApi } from '@/api/catalog'
 import type {
-  SubjectResponse,
   GradeResponse,
-  TopicResponse,
-  SkillListItem,
   SkillDetailResponse,
+  SkillListItem,
+  SkillStatsResponse,
+  SubjectResponse,
+  TopicResponse,
 } from '@/types/api'
 
-const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+const CACHE_TTL = 5 * 60 * 1000
 const isDev = import.meta.env.DEV
+const STORAGE_KEYS = {
+  subjects: 'catalog_subjects',
+  grades: 'catalog_grades',
+  topics: 'catalog_topics',
+}
+const STORAGE_TIME_KEYS = {
+  subjects: 'catalog_subjects_time',
+  grades: 'catalog_grades_time',
+  topics: 'catalog_topics_time',
+}
+
+type SkillsQueryParams = {
+  subject_slug?: string | null
+  grade_number?: number | null
+  topic_id?: number | null
+  topic_ids?: number[] | null
+  q?: string | null
+  page?: number
+  page_size?: number
+}
+
+const parseStorage = <T>(key: string): T | null => {
+  if (typeof window === 'undefined') return null
+  const rawValue = localStorage.getItem(key)
+  if (!rawValue) return null
+  try {
+    return JSON.parse(rawValue) as T
+  } catch {
+    localStorage.removeItem(key)
+    return null
+  }
+}
 
 export const useCatalogStore = defineStore('catalog', () => {
   const subjects = ref<SubjectResponse[]>([])
@@ -18,54 +51,105 @@ export const useCatalogStore = defineStore('catalog', () => {
   const topics = ref<TopicResponse[]>([])
   const skills = ref<SkillListItem[]>([])
   const skillDetails = ref<Map<number, SkillDetailResponse>>(new Map())
-  // Кэш навыков по параметрам (ключ - строка параметров)
   const skillsCache = ref<Map<string, SkillListItem[]>>(new Map())
 
   const loading = ref(false)
   const lastFetch = ref<Map<string, number>>(new Map())
 
+  let pendingRequests = 0
+  const inFlightRequests = new Map<string, Promise<unknown>>()
+
   const isStale = (key: string) => {
     const lastTime = lastFetch.value.get(key)
-    if (!lastTime) return true
-    return Date.now() - lastTime > CACHE_TTL
+    return !lastTime || Date.now() - lastTime > CACHE_TTL
   }
 
-  // Создает ключ кэша из параметров
+  const withLoading = async <T>(factory: () => Promise<T>) => {
+    pendingRequests += 1
+    loading.value = true
+    try {
+      return await factory()
+    } finally {
+      pendingRequests = Math.max(0, pendingRequests - 1)
+      loading.value = pendingRequests > 0
+    }
+  }
 
+  const runRequest = async <T>(key: string, factory: () => Promise<T>) => {
+    const existing = inFlightRequests.get(key) as Promise<T> | undefined
+    if (existing) {
+      return existing
+    }
+
+    const request = withLoading(factory).finally(() => {
+      inFlightRequests.delete(key)
+    }) as Promise<T>
+
+    inFlightRequests.set(key, request as Promise<unknown>)
+    return request
+  }
+
+  const saveListCache = <T>(key: keyof typeof STORAGE_KEYS, data: T) => {
+    if (typeof window === 'undefined') return
+    const timestamp = Date.now()
+    localStorage.setItem(STORAGE_KEYS[key], JSON.stringify(data))
+    localStorage.setItem(STORAGE_TIME_KEYS[key], timestamp.toString())
+    lastFetch.value.set(key, timestamp)
+  }
+
+  const loadListCache = <T>(key: keyof typeof STORAGE_KEYS): T | null => {
+    if (typeof window === 'undefined') return null
+    const cachedAt = localStorage.getItem(STORAGE_TIME_KEYS[key])
+    if (!cachedAt) return null
+
+    const timestamp = Number.parseInt(cachedAt, 10)
+    if (Number.isNaN(timestamp) || Date.now() - timestamp > CACHE_TTL) {
+      localStorage.removeItem(STORAGE_KEYS[key])
+      localStorage.removeItem(STORAGE_TIME_KEYS[key])
+      return null
+    }
+
+    const parsed = parseStorage<T>(STORAGE_KEYS[key])
+    if (parsed) {
+      lastFetch.value.set(key, timestamp)
+    }
+    return parsed
+  }
+
+  const normalizeSkillsParams = (params?: SkillsQueryParams) => ({
+    subject_slug: params?.subject_slug ?? null,
+    grade_number: params?.grade_number ?? null,
+    topic_id: params?.topic_id ?? null,
+    topic_ids: params?.topic_ids?.length ? [...params.topic_ids].sort((a, b) => a - b) : null,
+    q: params?.q?.trim() || null,
+    page: params?.page ?? 1,
+    page_size: params?.page_size ?? 20,
+  })
+
+  const getSkillsCacheKey = (params?: SkillsQueryParams) => {
+    return JSON.stringify(normalizeSkillsParams(params))
+  }
+
+  const clearSkillQueryCache = () => {
+    skillsCache.value.clear()
+    for (const key of Array.from(lastFetch.value.keys())) {
+      if (key.startsWith('skills:')) {
+        lastFetch.value.delete(key)
+      }
+    }
+  }
 
   const getSubjects = async (force = false) => {
     if (!force && !isStale('subjects') && subjects.value.length > 0) {
       return subjects.value
     }
 
-    loading.value = true
-    try {
+    return runRequest('catalog:subjects', async () => {
       const response = await catalogApi.getSubjects()
-      if (response.data) {
-        subjects.value = response.data
-        lastFetch.value.set('subjects', Date.now())
-
-        // Сохраняем в localStorage для кэша
-        localStorage.setItem('catalog_subjects', JSON.stringify(response.data))
-        localStorage.setItem('catalog_subjects_time', Date.now().toString())
-      }
+      subjects.value = response.data || []
+      saveListCache('subjects', subjects.value)
       return subjects.value
-    } catch (error) {
-      console.error('Failed to fetch subjects:', error)
-      // Пробуем загрузить из localStorage при ошибке
-      const cached = localStorage.getItem('catalog_subjects')
-      if (cached) {
-        try {
-          subjects.value = JSON.parse(cached)
-          return subjects.value
-        } catch (e) {
-          console.error('Failed to parse cached subjects', e)
-        }
-      }
-      throw error
-    } finally {
-      loading.value = false
-    }
+    })
   }
 
   const getGrades = async (force = false) => {
@@ -73,32 +157,12 @@ export const useCatalogStore = defineStore('catalog', () => {
       return grades.value
     }
 
-    loading.value = true
-    try {
+    return runRequest('catalog:grades', async () => {
       const response = await catalogApi.getGrades()
-      if (response.data) {
-        grades.value = response.data
-        lastFetch.value.set('grades', Date.now())
-
-        localStorage.setItem('catalog_grades', JSON.stringify(response.data))
-        localStorage.setItem('catalog_grades_time', Date.now().toString())
-      }
+      grades.value = response.data || []
+      saveListCache('grades', grades.value)
       return grades.value
-    } catch (error) {
-      console.error('Failed to fetch grades:', error)
-      const cached = localStorage.getItem('catalog_grades')
-      if (cached) {
-        try {
-          grades.value = JSON.parse(cached)
-          return grades.value
-        } catch (e) {
-          console.error('Failed to parse cached grades', e)
-        }
-      }
-      throw error
-    } finally {
-      loading.value = false
-    }
+    })
   }
 
   const getTopics = async (force = false) => {
@@ -106,64 +170,39 @@ export const useCatalogStore = defineStore('catalog', () => {
       return topics.value
     }
 
-    loading.value = true
-    try {
+    return runRequest('catalog:topics', async () => {
       const response = await catalogApi.getTopics()
-      if (response.data) {
-        topics.value = response.data
-        lastFetch.value.set('topics', Date.now())
-      }
+      topics.value = response.data || []
+      saveListCache('topics', topics.value)
       return topics.value
-    } catch (error) {
-      console.error('Failed to fetch topics:', error)
-      throw error
-    } finally {
-      loading.value = false
-    }
+    })
   }
 
-  const getSkills = async (params?: {
-    subject_slug?: string | null
-    grade_number?: number | null
-    topic_id?: number | null
-    q?: string | null
-    page?: number
-    page_size?: number
-  }, force = false) => {
-    // Если force=true, игнорируем кэш и всегда загружаем с сервера
-    if (!force && !isStale('skills') && skills.value.length > 0) {
-      return skills.value
+  const getSkills = async (params?: SkillsQueryParams, force = false) => {
+    const normalizedParams = normalizeSkillsParams(params)
+    const cacheKey = getSkillsCacheKey(normalizedParams)
+    const fetchKey = `skills:${cacheKey}`
+
+    if (!force && !isStale(fetchKey)) {
+      const cachedSkills = skillsCache.value.get(cacheKey)
+      if (cachedSkills) {
+        skills.value = [...cachedSkills]
+        return skills.value
+      }
     }
 
-    loading.value = true
-    try {
+    return runRequest(`catalog:${fetchKey}`, async () => {
       if (isDev) {
-        console.log('CatalogStore: Fetching skills with params:', params)
+        console.log('CatalogStore: Fetching skills with params:', normalizedParams)
       }
-      const response = await catalogApi.getSkills(params)
-      if (isDev) {
-        console.log('CatalogStore: Skills response:', response)
-      }
-      if (response.data) {
-        skills.value = response.data
-        lastFetch.value.set('skills', Date.now())
-      }
+
+      const response = await catalogApi.getSkills(normalizedParams)
+      const nextSkills = response.data || []
+      skills.value = nextSkills
+      skillsCache.value.set(cacheKey, nextSkills)
+      lastFetch.value.set(fetchKey, Date.now())
       return skills.value
-    } catch (error: any) {
-      if (isDev) {
-        console.error('CatalogStore: Failed to fetch skills:', {
-          error,
-          params,
-          response: error.response?.data,
-          status: error.response?.status,
-          code: error.code,
-          message: error.message,
-        })
-      }
-      throw error
-    } finally {
-      loading.value = false
-    }
+    })
   }
 
   const getSkill = async (skillId: number, force = false) => {
@@ -171,118 +210,111 @@ export const useCatalogStore = defineStore('catalog', () => {
       return skillDetails.value.get(skillId)!
     }
 
-    loading.value = true
-    try {
+    return runRequest(`catalog:skill:${skillId}`, async () => {
       const response = await catalogApi.getSkill(skillId)
-      if (response.data) {
-        skillDetails.value.set(skillId, response.data)
-        return response.data
+      if (!response.data) {
+        throw new Error('Skill not found')
       }
-      throw new Error('Skill not found')
-    } catch (error) {
-      console.error('Failed to fetch skill:', error)
-      throw error
-    } finally {
-      loading.value = false
-    }
+
+      skillDetails.value.set(skillId, response.data)
+      return response.data
+    })
   }
 
   const getSkillStats = async (skillId: number) => {
-    try {
-      const response = await catalogApi.getSkillStats(skillId)
-      return response.data || {}
-    } catch (error) {
-      console.error('Failed to fetch skill stats:', error)
-      throw error
+    const response = await catalogApi.getSkillStats(skillId)
+    return response.data || ({
+      best_smartscore: 0,
+      last_smartscore: 0,
+      last_practiced_at: null,
+      total_questions: 0,
+      accuracy_percent: 0,
+    } satisfies SkillStatsResponse)
+  }
+
+  const getSkillStatsBatch = async (skillIds: number[]) => {
+    const uniqueSkillIds = Array.from(new Set(skillIds.filter(skillId => Number.isFinite(skillId))))
+    if (uniqueSkillIds.length === 0) {
+      return {} as Record<number, SkillStatsResponse>
     }
+
+    const response = await catalogApi.getSkillStatsBatch(uniqueSkillIds)
+    const payload = response.data || {}
+    return Object.fromEntries(
+      Object.entries(payload).map(([skillId, stats]) => [Number.parseInt(skillId, 10), stats])
+    ) as Record<number, SkillStatsResponse>
   }
 
   const clearSkillsCache = () => {
     skills.value = []
-    skillsCache.value.clear()
-    lastFetch.value.delete('skills')
+    clearSkillQueryCache()
   }
 
-  // Удаляет навык из кэша по ID (для оптимистичного обновления UI)
   const removeSkillFromCache = (skillId: number) => {
-    skills.value = skills.value.filter(s => s.id !== skillId)
-    // Также очищаем из skillsCache если есть
-    skillsCache.value.forEach((cachedSkills, key) => {
-      const filtered = cachedSkills.filter(s => s.id !== skillId)
-      if (filtered.length !== cachedSkills.length) {
-        skillsCache.value.set(key, filtered)
+    skills.value = skills.value.filter(skill => skill.id !== skillId)
+    for (const [cacheKey, cachedSkills] of skillsCache.value.entries()) {
+      const filteredSkills = cachedSkills.filter(skill => skill.id !== skillId)
+      if (filteredSkills.length !== cachedSkills.length) {
+        skillsCache.value.set(cacheKey, filteredSkills)
       }
-    })
-    // Удаляем детали навыка если есть
+    }
     skillDetails.value.delete(skillId)
   }
 
-  const updateSkill = async (skillId: number, data: { grade_id?: number; topic_id?: number | null; code?: string; title?: string }) => {
-    try {
-      const response = await catalogApi.updateSkill(skillId, data)
-      if (response.data) {
-        // Update skill details cache
-        skillDetails.value.set(skillId, response.data)
-
-        // Update skills list if present
-        const index = skills.value.findIndex(s => s.id === skillId)
-        if (index !== -1) {
-          const updated = response.data
-          skills.value[index] = {
-            ...skills.value[index],
-            grade_id: updated.grade_id,
-            topic_id: updated.topic_id,
-            topic_title: updated.topic_title,
-            code: updated.code,
-            title: updated.title
-          } as SkillListItem
-        }
-
-        // Clear list cache to be safe
-        skillsCache.value.clear()
-        lastFetch.value.delete('skills')
-
-        return response.data
-      }
+  const updateSkill = async (
+    skillId: number,
+    data: { grade_id?: number; topic_id?: number | null; code?: string; title?: string }
+  ) => {
+    const response = await catalogApi.updateSkill(skillId, data)
+    if (!response.data) {
       throw new Error('Failed to update skill')
-    } catch (error) {
-      console.error('Failed to update skill:', error)
-      throw error
     }
+
+    const updatedSkill = response.data
+    skillDetails.value.set(skillId, updatedSkill)
+
+    const skillIndex = skills.value.findIndex(skill => skill.id === skillId)
+    if (skillIndex !== -1) {
+      skills.value[skillIndex] = {
+        ...skills.value[skillIndex],
+        grade_id: updatedSkill.grade_id,
+        topic_id: updatedSkill.topic_id,
+        topic_title: updatedSkill.topic_title,
+        code: updatedSkill.code,
+        title: updatedSkill.title,
+      } as SkillListItem
+    }
+
+    clearSkillQueryCache()
+    return updatedSkill
   }
 
-  // Инициализация из localStorage при создании store
   const init = () => {
     try {
-      const cachedSubjects = localStorage.getItem('catalog_subjects')
-      const cachedGrades = localStorage.getItem('catalog_grades')
-      const subjectsTime = localStorage.getItem('catalog_subjects_time')
-      const gradesTime = localStorage.getItem('catalog_grades_time')
+      const cachedSubjects = loadListCache<SubjectResponse[]>('subjects')
+      if (cachedSubjects) {
+        subjects.value = cachedSubjects
+      }
 
-      if (cachedSubjects && subjectsTime) {
-        const age = Date.now() - parseInt(subjectsTime, 10)
-        if (age < CACHE_TTL) {
-          subjects.value = JSON.parse(cachedSubjects)
-          lastFetch.value.set('subjects', parseInt(subjectsTime, 10))
+      const cachedGrades = loadListCache<GradeResponse[]>('grades')
+      if (cachedGrades) {
+        const hasLabel = cachedGrades.length === 0 || 'label' in cachedGrades[0]
+        if (hasLabel) {
+          grades.value = cachedGrades
+        } else if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEYS.grades)
+          localStorage.removeItem(STORAGE_TIME_KEYS.grades)
         }
       }
 
-      if (cachedGrades && gradesTime) {
-        const age = Date.now() - parseInt(gradesTime, 10)
-        const parsed = JSON.parse(cachedGrades)
-        // Check if cached data has the label field (schema migration)
-        const hasLabel = parsed.length === 0 || (parsed[0] && 'label' in parsed[0])
-        if (age < CACHE_TTL && hasLabel) {
-          grades.value = parsed
-          lastFetch.value.set('grades', parseInt(gradesTime, 10))
-        } else {
-          // Clear stale cache
-          localStorage.removeItem('catalog_grades')
-          localStorage.removeItem('catalog_grades_time')
-        }
+      const cachedTopics = loadListCache<TopicResponse[]>('topics')
+      if (cachedTopics) {
+        topics.value = cachedTopics
       }
     } catch (error) {
-      console.error('Failed to init catalog from cache', error)
+      if (isDev) {
+        console.error('Failed to init catalog from cache', error)
+      }
     }
   }
 
@@ -301,6 +333,7 @@ export const useCatalogStore = defineStore('catalog', () => {
     getSkills,
     getSkill,
     getSkillStats,
+    getSkillStatsBatch,
     clearSkillsCache,
     removeSkillFromCache,
     updateSkill,

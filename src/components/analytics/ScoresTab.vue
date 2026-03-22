@@ -261,8 +261,8 @@ const onStudentChange = async () => {
       await Promise.all([
         analyticsStore.getOverview(true),
         analyticsStore.getSkills(true),
-        analyticsStore.getAllQuestions(true),
       ])
+      analyticsStore.allQuestions = []
     } finally {
       analyticsStore.loading = false
     }
@@ -270,11 +270,11 @@ const onStudentChange = async () => {
   }
   analyticsStore.loading = true
   try {
-    const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value)
+    const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value, false)
     const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
     analyticsStore.overview = data.overview as typeof analyticsStore.overview
     analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
-    analyticsStore.allQuestions = (data.all_questions || []) as typeof analyticsStore.allQuestions
+    analyticsStore.allQuestions = []
     analyticsStore.error = null
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } } }

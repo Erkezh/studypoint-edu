@@ -36,8 +36,7 @@ class AnalyticsService:
                 func.coalesce(func.sum(case((PracticeAttempt.is_correct.is_(True), 1), else_=0)), 0),
             )
             .select_from(PracticeAttempt)
-            .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
-            .where(PracticeSession.user_id == uid)
+            .where(PracticeAttempt.user_id == uid)
         )
         total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
         total_attempts = int(total_attempts)
@@ -74,6 +73,16 @@ class AnalyticsService:
         from app.models.catalog import Skill, Grade
         from app.models.topic import Topic
         
+        time_by_skill = (
+            select(
+                PracticeSession.skill_id.label("skill_id"),
+                func.coalesce(func.sum(PracticeSession.active_time_seconds), 0).label("total_time_seconds"),
+            )
+            .where(PracticeSession.user_id == uid)
+            .group_by(PracticeSession.skill_id)
+            .subquery()
+        )
+
         stmt = (
             select(
                 ProgressSnapshot.skill_id,
@@ -87,25 +96,19 @@ class AnalyticsService:
                 Skill.topic_id,
                 Grade.number.label('grade_number'),
                 Topic.title.label('topic_title'),
+                func.coalesce(time_by_skill.c.total_time_seconds, 0).label("total_time_seconds"),
             )
             .join(Skill, Skill.id == ProgressSnapshot.skill_id)
             .join(Grade, Grade.id == Skill.grade_id)
             .outerjoin(Topic, Topic.id == Skill.topic_id)
+            .outerjoin(time_by_skill, time_by_skill.c.skill_id == ProgressSnapshot.skill_id)
             .where(ProgressSnapshot.user_id == uid)
             .order_by(ProgressSnapshot.last_practiced_at.desc().nullslast())
         )
         rows = (await self.session.execute(stmt)).all()
-        
-        # Получаем общее время для каждого навыка из сессий
+
         result = []
         for r in rows:
-            # Суммируем время из всех сессий для этого навыка
-            time_stmt = (
-                select(func.coalesce(func.sum(PracticeSession.active_time_seconds), 0))
-                .where(PracticeSession.user_id == uid, PracticeSession.skill_id == r.skill_id)
-            )
-            total_time = int((await self.session.execute(time_stmt)).scalar_one())
-            
             result.append({
                 "skill_id": r.skill_id,
                 "skill_name": r.skill_name,
@@ -118,7 +121,7 @@ class AnalyticsService:
                 "last_practiced_at": r.last_practiced_at,
                 "total_questions": r.total_questions,
                 "accuracy_percent": r.accuracy_percent,
-                "total_time_seconds": total_time,
+                "total_time_seconds": int(r.total_time_seconds or 0),
             })
         
         return result
@@ -126,16 +129,11 @@ class AnalyticsService:
     async def all_questions(self, *, user_id: str) -> list[dict[str, Any]]:
         """Получить все вопросы с ответами пользователя, отсортированные по правильности"""
         uid = _parse_uuid(user_id)
-        attempts_stmt = (
-            select(PracticeAttempt, PracticeSession)
-            .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
-            .where(PracticeAttempt.user_id == uid)
-            .order_by(PracticeAttempt.answered_at.desc())
-        )
+        attempts_stmt = select(PracticeAttempt).where(PracticeAttempt.user_id == uid).order_by(PracticeAttempt.answered_at.desc())
         rows = (await self.session.execute(attempts_stmt)).all()
-        
+
         questions = []
-        for attempt, sess in rows:
+        for (attempt,) in rows:
             question_payload = attempt.question_payload or {}
             question_data = question_payload.get("data") or {}
             question_type = question_payload.get("type", "")
@@ -422,8 +420,7 @@ class AnalyticsService:
                 func.coalesce(func.sum(case((PracticeAttempt.is_correct.is_(True), 1), else_=0)), 0),
             )
             .select_from(PracticeAttempt)
-            .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
-            .where(PracticeSession.user_id.in_(student_ids))
+            .where(PracticeAttempt.user_id.in_(student_ids))
         )
         total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
         total_attempts = int(total_attempts)
@@ -453,6 +450,16 @@ class AnalyticsService:
         # 2. Skills
         from app.models.topic import Topic
         
+        time_by_skill = (
+            select(
+                PracticeSession.skill_id.label("skill_id"),
+                func.coalesce(func.sum(PracticeSession.active_time_seconds), 0).label("total_time_seconds"),
+            )
+            .where(PracticeSession.user_id.in_(student_ids))
+            .group_by(PracticeSession.skill_id)
+            .subquery()
+        )
+
         stmt = (
             select(
                 ProgressSnapshot.skill_id,
@@ -466,11 +473,13 @@ class AnalyticsService:
                 Skill.topic_id,
                 Grade.number.label('grade_number'),
                 Topic.title.label('topic_title'),
+                func.coalesce(time_by_skill.c.total_time_seconds, 0).label("total_time_seconds"),
             )
             .select_from(ProgressSnapshot)
             .join(Skill, Skill.id == ProgressSnapshot.skill_id)
             .join(Grade, Grade.id == Skill.grade_id)
             .outerjoin(Topic, Topic.id == Skill.topic_id)
+            .outerjoin(time_by_skill, time_by_skill.c.skill_id == ProgressSnapshot.skill_id)
             .where(ProgressSnapshot.user_id.in_(student_ids))
             .group_by(
                 ProgressSnapshot.skill_id,
@@ -478,20 +487,15 @@ class AnalyticsService:
                 Skill.grade_id,
                 Skill.topic_id,
                 Grade.number,
-                Topic.title
+                Topic.title,
+                time_by_skill.c.total_time_seconds,
             )
             .order_by(func.max(ProgressSnapshot.last_practiced_at).desc().nullslast())
         )
         rows = (await self.session.execute(stmt)).all()
-        
+
         skills_result = []
         for r in rows:
-            skill_time_stmt = (
-                select(func.coalesce(func.sum(PracticeSession.active_time_seconds), 0))
-                .where(PracticeSession.user_id.in_(student_ids), PracticeSession.skill_id == r.skill_id)
-            )
-            skill_total_time = int((await self.session.execute(skill_time_stmt)).scalar_one())
-            
             skills_result.append({
                 "skill_id": r.skill_id,
                 "skill_name": r.skill_name,
@@ -504,22 +508,21 @@ class AnalyticsService:
                 "last_practiced_at": r.last_practiced_at,
                 "total_questions": int(r.total_questions or 0),
                 "accuracy_percent": float(r.accuracy_percent or 0),
-                "total_time_seconds": skill_total_time,
+                "total_time_seconds": int(r.total_time_seconds or 0),
             })
             
         # 3. All questions
         # To avoid making this huge and blocking, just reuse the all_questions logic but for `in_(student_ids)` limit 200
         attempts_stmt = (
-            select(PracticeAttempt, PracticeSession)
-            .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
+            select(PracticeAttempt)
             .where(PracticeAttempt.user_id.in_(student_ids))
             .order_by(PracticeAttempt.answered_at.desc())
             .limit(200)
         )
         q_rows = (await self.session.execute(attempts_stmt)).all()
-        
+
         questions = []
-        for attempt, sess in q_rows:
+        for (attempt,) in q_rows:
             question_payload = attempt.question_payload or {}
             question_data = question_payload.get("data") or {}
             question_type = question_payload.get("type", "")

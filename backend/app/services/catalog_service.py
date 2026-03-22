@@ -12,7 +12,7 @@ from app.core.errors import AppError
 from app.db.session import get_db_session
 from app.repositories.catalog_repo import GradeRepository, SkillRepository, SubjectRepository, TopicRepository
 from app.repositories.practice_repo import PracticeRepository
-from app.schemas.catalog import GradeResponse, SkillDetailResponse, SkillListItem, SkillUpdate, SubjectResponse, TopicResponse
+from app.schemas.catalog import GradeResponse, SkillDetailResponse, SkillListItem, SkillStatsResponse, SkillUpdate, SubjectResponse, TopicResponse
 from app.utils.redis import get_redis
 
 logger = logging.getLogger(__name__)
@@ -94,11 +94,13 @@ class CatalogService:
         subject_slug: str | None,
         grade_number: int | None,
         topic_id: int | None = None,
+        topic_ids: list[int] | None = None,
         query: str | None,
         page: int,
         page_size: int,
     ) -> tuple[list[SkillListItem], int]:
-        key = f"cache:skills:{subject_slug}:{grade_number}:{topic_id}:{query}:{page}:{page_size}"
+        normalized_topic_ids = ",".join(str(topic) for topic in sorted(set(topic_ids or []))) or "none"
+        key = f"cache:skills:{subject_slug}:{grade_number}:{topic_id}:{normalized_topic_ids}:{query}:{page}:{page_size}"
         cached = await self._cache_get(key)
         if cached:
             payload = json.loads(cached)
@@ -121,6 +123,7 @@ class CatalogService:
             subject_id=subject_id,
             grade_id=grade_id,
             topic_id=topic_id,
+            topic_ids=topic_ids,
             query=query,
             page=page,
             page_size=page_size,
@@ -227,7 +230,19 @@ class CatalogService:
         )
         return resp
 
-    async def get_skill_stats(self, *, user_id: str, skill_id: int) -> dict:
+    @staticmethod
+    def _serialize_skill_stats(snapshot) -> SkillStatsResponse:
+        if snapshot is None:
+            return SkillStatsResponse()
+        return SkillStatsResponse(
+            best_smartscore=int(snapshot.best_smartscore or 0),
+            last_smartscore=int(snapshot.last_smartscore or 0),
+            last_practiced_at=snapshot.last_practiced_at,
+            total_questions=int(snapshot.total_questions or 0),
+            accuracy_percent=int(snapshot.accuracy_percent or 0),
+        )
+
+    async def get_skill_stats(self, *, user_id: str, skill_id: int) -> SkillStatsResponse:
         # Snapshot is the cheap source of truth for per-skill stats.
         import uuid
 
@@ -237,12 +252,20 @@ class CatalogService:
             raise AppError(status_code=400, code="validation_error", message="Invalid user id") from e
 
         snap = await self.practice.get_snapshot(user_id=uid, skill_id=skill_id)
-        if snap is None:
-            return {"best_smartscore": 0, "last_smartscore": 0, "last_practiced_at": None, "total_questions": 0, "accuracy_percent": 0}
+        return self._serialize_skill_stats(snap)
+
+    async def get_skill_stats_bulk(self, *, user_id: str, skill_ids: list[int]) -> dict[str, SkillStatsResponse]:
+        import uuid
+
+        try:
+            uid = user_id if isinstance(user_id, uuid.UUID) else uuid.UUID(str(user_id))
+        except ValueError as e:
+            raise AppError(status_code=400, code="validation_error", message="Invalid user id") from e
+
+        unique_skill_ids = list(dict.fromkeys(skill_ids))
+        snapshots = await self.practice.list_snapshots(user_id=uid, skill_ids=unique_skill_ids)
+        snapshot_map = {snapshot.skill_id: snapshot for snapshot in snapshots}
         return {
-            "best_smartscore": snap.best_smartscore,
-            "last_smartscore": snap.last_smartscore,
-            "last_practiced_at": snap.last_practiced_at,
-            "total_questions": snap.total_questions,
-            "accuracy_percent": snap.accuracy_percent,
+            str(skill_id): self._serialize_skill_stats(snapshot_map.get(skill_id))
+            for skill_id in unique_skill_ids
         }

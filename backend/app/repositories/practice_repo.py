@@ -47,6 +47,15 @@ class PracticeRepository:
     async def get_snapshot(self, *, user_id: uuid.UUID, skill_id: int) -> ProgressSnapshot | None:
         return await self.session.get(ProgressSnapshot, {"user_id": user_id, "skill_id": skill_id})
 
+    async def list_snapshots(self, *, user_id: uuid.UUID, skill_ids: list[int]) -> list[ProgressSnapshot]:
+        if not skill_ids:
+            return []
+        stmt = select(ProgressSnapshot).where(
+            ProgressSnapshot.user_id == user_id,
+            ProgressSnapshot.skill_id.in_(skill_ids),
+        )
+        return list((await self.session.execute(stmt)).scalars().all())
+
     async def upsert_snapshot(self, snap: ProgressSnapshot) -> ProgressSnapshot:
         self.session.add(snap)
         await self.session.flush()

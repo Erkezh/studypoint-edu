@@ -32,8 +32,12 @@ export const teacherApi = {
     return apiClient.get<{ data: StudentInfo[] }>('/teacher/students')
   },
 
-  getStudentAnalytics(studentId: string) {
-    return apiClient.get<{ data: Record<string, unknown> }>(`/teacher/students/${studentId}/analytics`)
+  getStudentAnalytics(studentId: string, includeQuestions = true) {
+    return apiClient.get<{ data: Record<string, unknown> }>(`/teacher/students/${studentId}/analytics`, {
+      params: {
+        include_questions: includeQuestions,
+      },
+    })
   },
 
   getTeacherQuickviewAnalytics() {

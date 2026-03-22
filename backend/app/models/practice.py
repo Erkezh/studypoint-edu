@@ -3,11 +3,10 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Index, Integer
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import UniqueConstraint
 
 from app.db.base import Base
 from app.models.enums import MistakeType, PracticeZone
@@ -16,6 +15,9 @@ from app.models.mixins import TimestampMixin
 
 class PracticeSession(Base):
     __tablename__ = "practice_sessions"
+    __table_args__ = (
+        Index("ix_practice_sessions_user_skill", "user_id", "skill_id"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
@@ -59,6 +61,9 @@ class PracticeAttempt(Base):
     # Убираем UniqueConstraint для question_id, так как для генераторов он может быть None
     # Можно добавить частичный индекс для уникальности только когда question_id не NULL
     # __table_args__ = (UniqueConstraint("session_id", "question_id", name="uq_attempt_session_question"),)
+    __table_args__ = (
+        Index("ix_practice_attempts_user_answered_at", "user_id", "answered_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("practice_sessions.id", ondelete="CASCADE"), index=True, nullable=False)

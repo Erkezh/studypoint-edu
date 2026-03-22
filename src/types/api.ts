@@ -182,6 +182,14 @@ export interface SkillDetailResponse {
   is_published: boolean
 }
 
+export interface SkillStatsResponse {
+  best_smartscore: number
+  last_smartscore: number
+  last_practiced_at?: string | null
+  total_questions: number
+  accuracy_percent: number
+}
+
 // Practice types
 export interface PracticeSessionCreateRequest {
   skill_id: number

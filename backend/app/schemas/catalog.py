@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -46,6 +48,13 @@ class SkillDetailResponse(SkillListItem):
     video_url: str | None = None
     is_published: bool
 
+
+class SkillStatsResponse(BaseModel):
+    best_smartscore: int = 0
+    last_smartscore: int = 0
+    last_practiced_at: datetime | None = None
+    total_questions: int = 0
+    accuracy_percent: int = 0
 
 
 class SkillUpdate(BaseModel):

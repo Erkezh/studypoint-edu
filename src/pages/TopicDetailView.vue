@@ -246,20 +246,13 @@ const fetchTopicData = async () => {
             .map(t => t.id)
         const allTopicIds = [currentTopic.value.id, ...subthemeIds]
 
-        // Load skills for theme + all subthemes
-        // Use page_size=500 to get all, and filter by each topic_id
-        const allSkills: SkillListItem[] = []
-        for (const tid of allTopicIds) {
-            await catalogStore.getSkills({ topic_id: tid, page_size: 500 }, true)
-            allSkills.push(...catalogStore.skills)
-        }
-        // Deduplicate and set
-        const seen = new Set<number>()
-        catalogStore.skills = allSkills.filter(s => {
-            if (seen.has(s.id)) return false
-            seen.add(s.id)
-            return true
-        })
+        catalogStore.skills = await catalogStore.getSkills(
+            {
+                topic_ids: allTopicIds,
+                page_size: 500,
+            },
+            true
+        )
     }
 }
 

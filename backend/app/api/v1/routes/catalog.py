@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.deps import get_current_user, get_current_user_optional, get_or_create_guest_user
 from app.schemas.base import ApiResponse, PaginatedMeta
@@ -8,6 +8,7 @@ from app.schemas.catalog import (
     GradeResponse,
     SkillDetailResponse,
     SkillListItem,
+    SkillStatsResponse,
     SkillUpdate,
     SubjectResponse,
     TopicResponse,
@@ -37,6 +38,7 @@ async def list_skills(
     subject_slug: str | None = Query(default=None),
     grade_number: int | None = Query(default=None),
     topic_id: int | None = Query(default=None),
+    topic_ids: str | None = Query(default=None),
     q: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=500),
@@ -46,6 +48,7 @@ async def list_skills(
         subject_slug=subject_slug,
         grade_number=grade_number,
         topic_id=topic_id,
+        topic_ids=_parse_int_list_query(topic_ids),
         query=q,
         page=page,
         page_size=page_size,
@@ -53,12 +56,28 @@ async def list_skills(
     return ApiResponse(data=items, meta=PaginatedMeta(page=page, page_size=page_size, total=total))
 
 
+@router.get("/skills/stats", response_model=ApiResponse[dict[str, SkillStatsResponse]])
+async def get_skill_stats_bulk(
+    skill_ids: str = Query(...),
+    svc: CatalogService = Depends(),
+    user=Depends(get_current_user_optional),
+    guest_user=Depends(get_or_create_guest_user),
+):
+    effective_user = user if user is not None else guest_user
+    return ApiResponse(
+        data=await svc.get_skill_stats_bulk(
+            user_id=effective_user.id,
+            skill_ids=_parse_int_list_query(skill_ids),
+        )
+    )
+
+
 @router.get("/skills/{skill_id}", response_model=ApiResponse[SkillDetailResponse])
 async def get_skill(skill_id: int, svc: CatalogService = Depends()):
     return ApiResponse(data=await svc.get_skill(skill_id))
 
 
-@router.get("/skills/{skill_id}/stats", response_model=ApiResponse[dict])
+@router.get("/skills/{skill_id}/stats", response_model=ApiResponse[SkillStatsResponse])
 async def get_skill_stats(
     skill_id: int,
     svc: CatalogService = Depends(),
@@ -83,3 +102,19 @@ async def update_skill(
          pass 
 
     return ApiResponse(data=await svc.update_skill(skill_id, data))
+
+
+def _parse_int_list_query(raw_value: str | None) -> list[int]:
+    if not raw_value:
+        return []
+
+    values: list[int] = []
+    for chunk in raw_value.split(","):
+        item = chunk.strip()
+        if not item:
+            continue
+        try:
+            values.append(int(item))
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=f"Invalid integer list value: {item}") from exc
+    return values

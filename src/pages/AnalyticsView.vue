@@ -181,7 +181,6 @@
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
-import { useCatalogStore } from '@/stores/catalog'
 import { useAuthStore } from '@/stores/auth'
 import { useTeacherStore } from '@/stores/teacher'
 import { storeToRefs } from 'pinia'
@@ -196,7 +195,6 @@ import QuestionsTab from '@/components/analytics/QuestionsTab.vue'
 import ProgressTab from '@/components/analytics/ProgressTab.vue'
 
 const analyticsStore = useAnalyticsStore()
-const catalogStore = useCatalogStore()
 const authStore = useAuthStore()
 const teacherStore = useTeacherStore()
 const { students: teacherStudents } = storeToRefs(teacherStore)
@@ -245,15 +243,30 @@ const nextStudent = () => {
   onStudentChange()
 }
 
+const tabsThatNeedQuestionData = new Set(['usage', 'trouble', 'questions', 'progress', 'students_quickview'])
+const ownQuestionsLoaded = ref(false)
+
+const shouldLoadQuestionData = () => {
+  return tabsThatNeedQuestionData.has(activeTab.value) || selectedDateOption.value !== 'all'
+}
+
 // Load own analytics (for any user)
-const loadOwnAnalytics = async () => {
+const loadOwnAnalytics = async (includeQuestions = shouldLoadQuestionData()) => {
   analyticsStore.loading = true
   try {
-    await Promise.all([
+    const requests: Promise<unknown>[] = [
       analyticsStore.getOverview(true),
       analyticsStore.getSkills(true),
-      analyticsStore.getAllQuestions(true),
-    ])
+    ]
+
+    if (includeQuestions) {
+      requests.push(analyticsStore.getAllQuestions(true))
+    } else {
+      analyticsStore.allQuestions = []
+    }
+
+    await Promise.all(requests)
+    ownQuestionsLoaded.value = includeQuestions
   } finally {
     analyticsStore.loading = false
   }
@@ -294,12 +307,13 @@ const onStudentChange = async () => {
   studentAnalyticsLoading.value = true
   analyticsStore.loading = true
   try {
-    const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value)
+    const includeQuestions = shouldLoadQuestionData()
+    const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value, includeQuestions)
     const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
     // Inject student data into the shared store so all tabs use it
     analyticsStore.overview = data.overview as typeof analyticsStore.overview
     analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
-    analyticsStore.allQuestions = (data.all_questions || []) as typeof analyticsStore.allQuestions
+    analyticsStore.allQuestions = (includeQuestions ? (data.all_questions || []) : []) as typeof analyticsStore.allQuestions
     analyticsStore.error = null
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } } }
@@ -360,8 +374,14 @@ const activeTab = ref<string>(initialState.activeTab || (isTeacher.value ? defau
 const gradeFrom = ref<number>(initialState.gradeFrom !== undefined ? initialState.gradeFrom : -1)
 const gradeTo = ref<number>(initialState.gradeTo !== undefined ? initialState.gradeTo : 12)
 const showGradeDropdown = ref<boolean>(false)
-// const selectedDateRange = ref<string>('all') // Replaced by new logic
-const skillNames = ref<Map<number, string>>(new Map())
+const skillNames = computed(() => {
+  return new Map(
+    analyticsStore.skills.map(skill => [
+      Number(skill.skill_id),
+      (skill as Record<string, unknown>).skill_name as string || `Дағды ${skill.skill_id}`,
+    ])
+  )
+})
 
 // Grade range label for display
 const gradeRangeLabel = computed(() => {
@@ -486,23 +506,41 @@ watch(activeTab, async (newVal) => {
   if (isTeacher.value && newVal === 'students_quickview') {
     selectedStudentId.value = ''
     await loadTeacherQuickviewAnalytics()
+    return
+  }
+
+  if (isTeacher.value && selectedStudentId.value && shouldLoadQuestionData() && analyticsStore.allQuestions.length === 0) {
+    await onStudentChange()
+    return
+  }
+
+  if (!isTeacher.value && shouldLoadQuestionData() && !ownQuestionsLoaded.value) {
+    analyticsStore.loading = true
+    try {
+      await analyticsStore.getAllQuestions(true)
+      ownQuestionsLoaded.value = true
+    } finally {
+      analyticsStore.loading = false
+    }
   }
 })
 
-// Load skill names from catalog
-const loadSkillNames = async () => {
-  const skillIds = analyticsStore.skills.map(s => s.skill_id)
-  for (const skillId of skillIds) {
+watch(selectedDateOption, async () => {
+  if (isTeacher.value && selectedStudentId.value && shouldLoadQuestionData() && analyticsStore.allQuestions.length === 0) {
+    await onStudentChange()
+    return
+  }
+
+  if (!isTeacher.value && shouldLoadQuestionData() && !ownQuestionsLoaded.value) {
+    analyticsStore.loading = true
     try {
-      const skill = await catalogStore.getSkill(skillId)
-      if (skill) {
-        skillNames.value.set(skillId, skill.title)
-      }
-    } catch (err) {
-      console.warn(`Failed to load skill ${skillId}:`, err)
+      await analyticsStore.getAllQuestions(true)
+      ownQuestionsLoaded.value = true
+    } finally {
+      analyticsStore.loading = false
     }
   }
-}
+})
 
 onMounted(async () => {
   // Initialize date range from saved state
@@ -523,10 +561,6 @@ onMounted(async () => {
     } else {
       // Student or teacher with no selection — load own data
       await loadOwnAnalytics()
-    }
-
-    if (analyticsStore.skills.length > 0) {
-      await loadSkillNames()
     }
   } catch (err) {
     console.error('Failed to load analytics:', err)

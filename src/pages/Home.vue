@@ -64,7 +64,7 @@ const navigateToClass = (gradeNumber: number) => {
 
 onMounted(async () => {
   try {
-    const fetchedGrades = await catalogStore.getGrades(true)
+    const fetchedGrades = await catalogStore.getGrades()
     grades.value = fetchedGrades
   } catch (err: any) {
     error.value = err.message || 'Сыныптарды жүктеу мүмкін болмады'

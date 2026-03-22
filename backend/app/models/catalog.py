@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,6 +35,7 @@ class Skill(Base, TimestampMixin):
     __tablename__ = "skills"
     __table_args__ = (
         UniqueConstraint("subject_id", "grade_id", "code", name="uq_skill_code_grade_subject"),
+        Index("ix_skills_published_grade_topic_code", "is_published", "grade_id", "topic_id", "code"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -59,4 +60,3 @@ class Skill(Base, TimestampMixin):
     grade: Mapped[Grade] = relationship(back_populates="skills")
     topic: Mapped["Topic"] = relationship(back_populates="skills")
     questions: Mapped[list["Question"]] = relationship(back_populates="skill")
-

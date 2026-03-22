@@ -6,6 +6,7 @@ import type {
   TopicResponse,
   SkillListItem,
   SkillDetailResponse,
+  SkillStatsResponse,
 } from '@/types/api'
 
 export const catalogApi = {
@@ -28,12 +29,19 @@ export const catalogApi = {
     subject_slug?: string | null
     grade_number?: number | null
     topic_id?: number | null
+    topic_ids?: number[] | null
     q?: string | null
     page?: number
     page_size?: number
   }): Promise<ApiResponse<SkillListItem[]>> {
+    const queryParams = params
+      ? {
+          ...params,
+          topic_ids: params.topic_ids?.length ? params.topic_ids.join(',') : undefined,
+        }
+      : undefined
     const response = await apiClient.get<ApiResponse<SkillListItem[]>>('/skills', {
-      params,
+      params: queryParams,
     })
     return response.data
   },
@@ -45,9 +53,21 @@ export const catalogApi = {
     return response.data
   },
 
-  async getSkillStats(skillId: number): Promise<ApiResponse<Record<string, unknown>>> {
-    const response = await apiClient.get<ApiResponse<Record<string, unknown>>>(
+  async getSkillStats(skillId: number): Promise<ApiResponse<SkillStatsResponse>> {
+    const response = await apiClient.get<ApiResponse<SkillStatsResponse>>(
       `/skills/${skillId}/stats`
+    )
+    return response.data
+  },
+
+  async getSkillStatsBatch(skillIds: number[]): Promise<ApiResponse<Record<string, SkillStatsResponse>>> {
+    const response = await apiClient.get<ApiResponse<Record<string, SkillStatsResponse>>>(
+      '/skills/stats',
+      {
+        params: {
+          skill_ids: skillIds.join(','),
+        },
+      }
     )
     return response.data
   },

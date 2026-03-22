@@ -393,6 +393,15 @@ const goToHome = () => {
   router.push({ name: 'home' })
 }
 
+const applySkillStats = (skillId: number, stats: { best_smartscore?: number; last_smartscore?: number } | null | undefined) => {
+  const bestSmartscore = Number(stats?.best_smartscore || 0)
+  skillStats.value.set(skillId, {
+    best_smartscore: bestSmartscore,
+    last_smartscore: Number(stats?.last_smartscore || 0),
+    is_completed: bestSmartscore >= 90,
+  })
+}
+
 const navigateToSkill = async (skillId: number) => {
   if (loadingSkillId.value !== null) return
 
@@ -417,7 +426,7 @@ const navigateToSkill = async (skillId: number) => {
     if (session && session.id) {
       // Если сессия была восстановлена (не новая), обновляем статистику
       if (session.questions_answered > 0) {
-        await loadSkillStats(numericSkillId)
+        applySkillStats(numericSkillId, await catalogStore.getSkillStats(numericSkillId))
       }
       router.push({ name: 'practice', params: { sessionId: session.id } })
     } else {
@@ -496,32 +505,29 @@ const navigateToSkill = async (skillId: number) => {
   }
 }
 
-// Загрузка статистики для навыка
-const loadSkillStats = async (skillId: number) => {
-  try {
-    const stats = await catalogStore.getSkillStats(skillId)
-    skillStats.value.set(skillId, {
-      best_smartscore: Number(stats.best_smartscore || 0),
-      last_smartscore: Number(stats.last_smartscore || 0),
-      is_completed: Number(stats.best_smartscore || 0) >= 90,
-    })
-  } catch (err) {
-    // Игнорируем ошибки загрузки статистики (может быть неавторизованный пользователь)
-    console.warn('Failed to load stats for skill', skillId, err)
-  }
-}
-
 // Загрузка статистики для всех навыков
-const loadAllSkillStats = async () => {
+const loadAllSkillStats = async (currentSkills: SkillListItem[]) => {
   loadingStats.value = true
   try {
-    // Загружаем статистику параллельно для всех навыков
-    const currentSkills = catalogStore.skills
     if (isDev) {
       console.log('ClassView: Loading stats for skills:', currentSkills.length)
     }
-    const promises = currentSkills.map(skill => loadSkillStats(skill.id))
-    await Promise.allSettled(promises)
+
+    const statsBySkillId = await catalogStore.getSkillStatsBatch(currentSkills.map(skill => skill.id))
+    skillStats.value = new Map(
+      currentSkills.map(skill => {
+        const stats = statsBySkillId[skill.id]
+        const bestSmartscore = Number(stats?.best_smartscore || 0)
+        return [skill.id, {
+          best_smartscore: bestSmartscore,
+          last_smartscore: Number(stats?.last_smartscore || 0),
+          is_completed: bestSmartscore >= 90,
+        }]
+      })
+    )
+  } catch (err) {
+    skillStats.value.clear()
+    console.warn('Failed to load skill stats batch', err)
   } finally {
     loadingStats.value = false
   }
@@ -533,11 +539,14 @@ const loadSkillsForGrade = async (gradeNumber: number, force = false) => {
     error.value = null
     const fetchedSkills = await catalogStore.getSkills({
       grade_number: gradeNumber,
+      page_size: 500,
     }, force)
 
     // Загружаем статистику для всех навыков
     if (fetchedSkills && fetchedSkills.length > 0) {
-      await loadAllSkillStats()
+      await loadAllSkillStats(fetchedSkills)
+    } else {
+      skillStats.value.clear()
     }
   } catch (err: unknown) {
     const apiError = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> }; status?: number }; message?: string; code?: string }

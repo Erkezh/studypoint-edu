@@ -19,7 +19,15 @@ from app.utils.redis import close_redis, init_redis
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging(environment=settings.environment)
-    init_engine(settings.database_url)
+    init_engine(
+        settings.database_url,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout_sec=settings.db_pool_timeout_sec,
+        pool_recycle_sec=settings.db_pool_recycle_sec,
+        connect_timeout_sec=settings.db_connect_timeout_sec,
+        command_timeout_sec=settings.db_command_timeout_sec,
+    )
     try:
         await init_redis(settings.redis_url)
         await get_readiness_checks()

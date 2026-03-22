@@ -13,6 +13,12 @@ class Settings(BaseSettings):
 
     database_url: str
     redis_url: str
+    db_pool_size: int = 20
+    db_max_overflow: int = 20
+    db_pool_timeout_sec: int = 30
+    db_pool_recycle_sec: int = 1800
+    db_connect_timeout_sec: int = 10
+    db_command_timeout_sec: int = 30
 
     jwt_issuer: str = "ixl-clone"
     jwt_audience: str = "ixl-clone-users"
