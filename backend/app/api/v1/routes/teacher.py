@@ -86,11 +86,20 @@ async def get_students(
 
 @router.get("/analytics/quickview", response_model=ApiResponse[dict])
 async def teacher_quickview_analytics(
+    include_questions: bool = False,
     user=Depends(get_current_user),
     svc: AnalyticsService = Depends(),
 ):
-    data = await svc.teacher_quickview(teacher_id=user.id)
+    data = await svc.teacher_quickview(teacher_id=user.id, include_questions=include_questions)
     return ApiResponse(data=data)
+
+
+@router.get("/analytics/quickview/questions", response_model=ApiResponse[list[dict]])
+async def teacher_quickview_questions(
+    user=Depends(get_current_user),
+    svc: AnalyticsService = Depends(),
+):
+    return ApiResponse(data=await svc.teacher_quickview_questions(teacher_id=user.id))
 
 @router.get("/students/{student_id}/analytics", response_model=ApiResponse[dict])
 async def student_analytics(

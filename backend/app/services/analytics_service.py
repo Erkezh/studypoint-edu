@@ -12,9 +12,99 @@ from app.core.errors import AppError
 from app.db.session import get_db_session
 from app.models.assignment import Assignment, AssignmentStatusRow
 from app.models.classroom import Classroom, Enrollment
-from app.models.enums import AssignmentStatus
+from app.models.enums import AssignmentStatus, UserRole
 from app.models.practice import PracticeAttempt, PracticeSession, ProgressSnapshot
 from app.models.user import User
+
+
+def _as_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
+
+
+def _safe_json_dumps(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
+def _choice_label(choice_id: Any, *, question_type: str, question_data: dict[str, Any]) -> str:
+    if question_type == "MCQ":
+        for choice in _as_list(question_data.get("choices")):
+            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
+                return str(choice.get("label") or choice.get("text") or choice.get("value") or choice_id)
+    return str(choice_id)
+
+
+def _stringify_answer_value(answer: Any, *, question_type: str, question_data: dict[str, Any]) -> str:
+    if isinstance(answer, dict):
+        if "choice" in answer:
+            return _choice_label(answer.get("choice"), question_type=question_type, question_data=question_data)
+        if "value" in answer:
+            return str(answer.get("value"))
+        if "answer" in answer:
+            nested = answer.get("answer")
+            return str(nested) if isinstance(nested, (str, int, float, bool)) else _safe_json_dumps(nested)
+        return _safe_json_dumps(answer)
+    if answer in (None, ""):
+        return ""
+    if isinstance(answer, (str, int, float, bool)):
+        return str(answer)
+    return _safe_json_dumps(answer)
+
+
+def _extract_correct_answer_text(question_payload: dict[str, Any], question_data: dict[str, Any], question_type: str) -> str:
+    correct_answer = question_payload.get("correct_answer")
+    if correct_answer:
+        return _stringify_answer_value(correct_answer, question_type=question_type, question_data=question_data)
+
+    fallback_answer = question_data.get("correct_answer")
+    if fallback_answer is not None:
+        return _stringify_answer_value(fallback_answer, question_type=question_type, question_data=question_data)
+
+    answer = question_data.get("answer")
+    if answer is not None:
+        return _stringify_answer_value(answer, question_type=question_type, question_data=question_data)
+
+    correct_index = question_data.get("correct_index")
+    choices = _as_list(question_data.get("choices"))
+    if isinstance(correct_index, int) and 0 <= correct_index < len(choices):
+        choice = choices[correct_index]
+        if isinstance(choice, dict):
+            return str(choice.get("label") or choice.get("text") or choice.get("value") or choice)
+        return str(choice)
+
+    return ""
+
+
+def _serialize_attempt_question(attempt: PracticeAttempt) -> dict[str, Any]:
+    question_payload = _as_dict(attempt.question_payload)
+    question_data = _as_dict(question_payload.get("data"))
+    question_type = str(question_payload.get("type", "") or "")
+    user_answer_text = _stringify_answer_value(
+        attempt.submitted_answer,
+        question_type=question_type,
+        question_data=question_data,
+    )
+    correct_answer_text = _extract_correct_answer_text(question_payload, question_data, question_type)
+    prompt = question_payload.get("prompt", "")
+
+    return {
+        "attempt_id": str(attempt.id),
+        "question_id": attempt.question_id,
+        "skill_id": attempt.skill_id,
+        "question_prompt": prompt if isinstance(prompt, str) else str(prompt),
+        "question_type": question_type,
+        "question_data": question_data,
+        "user_answer": attempt.submitted_answer if question_type in ("PLUGIN", "INTERACTIVE") else user_answer_text,
+        "correct_answer": correct_answer_text,
+        "is_correct": attempt.is_correct,
+        "answered_at": attempt.answered_at,
+        "time_spent_seconds": attempt.time_spent_sec,
+        "smartscore_before": attempt.smartscore_before,
+        "smartscore_after": attempt.smartscore_after,
+    }
 
 
 class AnalyticsService:
@@ -132,117 +222,7 @@ class AnalyticsService:
         attempts_stmt = select(PracticeAttempt).where(PracticeAttempt.user_id == uid).order_by(PracticeAttempt.answered_at.desc())
         rows = (await self.session.execute(attempts_stmt)).all()
 
-        questions = []
-        for (attempt,) in rows:
-            question_payload = attempt.question_payload or {}
-            question_data = question_payload.get("data") or {}
-            question_type = question_payload.get("type", "")
-            
-            # Форматируем ответ пользователя
-            user_answer_text = ""
-            if attempt.submitted_answer:
-                if "choice" in attempt.submitted_answer:
-                    choice_id = attempt.submitted_answer["choice"]
-                    # Для MCQ пытаемся найти текст варианта
-                    if question_type == "MCQ" and "choices" in question_data:
-                        choices = question_data["choices"]
-                        for choice in choices:
-                            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
-                                user_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
-                                break
-                        if not user_answer_text:
-                            user_answer_text = str(choice_id)
-                    else:
-                        user_answer_text = str(choice_id)
-                elif "value" in attempt.submitted_answer:
-                    user_answer_text = str(attempt.submitted_answer["value"])
-                elif "answer" in attempt.submitted_answer:
-                    user_answer_text = str(attempt.submitted_answer["answer"])
-                else:
-                    user_answer_text = json.dumps(attempt.submitted_answer)
-            
-            # Форматируем правильный ответ
-            correct_answer_text = ""
-            # Сначала проверяем correct_answer в question_payload
-            correct_answer = question_payload.get("correct_answer") or {}
-            if correct_answer:
-                if "choice" in correct_answer:
-                    choice_id = correct_answer["choice"]
-                    if question_type == "MCQ" and "choices" in question_data:
-                        choices = question_data["choices"]
-                        for choice in choices:
-                            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
-                                correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
-                                break
-                        if not correct_answer_text:
-                            correct_answer_text = str(choice_id)
-                    else:
-                        correct_answer_text = str(choice_id)
-                elif "value" in correct_answer:
-                    correct_answer_text = str(correct_answer["value"])
-                elif "answer" in correct_answer:
-                    correct_answer_text = str(correct_answer["answer"])
-                else:
-                    correct_answer_text = json.dumps(correct_answer)
-            # Если не нашли в correct_answer, проверяем question_data
-            elif question_data:
-                if "correct_answer" in question_data:
-                    correct_answer_text = str(question_data["correct_answer"])
-                elif "answer" in question_data:
-                    answer = question_data["answer"]
-                    if isinstance(answer, (int, float)):
-                        correct_answer_text = str(answer)
-                    elif isinstance(answer, dict):
-                        if "choice" in answer:
-                            choice_id = answer["choice"]
-                            if question_type == "MCQ" and "choices" in question_data:
-                                choices = question_data["choices"]
-                                for choice in choices:
-                                    if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
-                                        correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
-                                        break
-                                if not correct_answer_text:
-                                    correct_answer_text = str(choice_id)
-                            else:
-                                correct_answer_text = str(choice_id)
-                        else:
-                            correct_answer_text = json.dumps(answer)
-                    else:
-                        correct_answer_text = str(answer)
-                elif "correct_index" in question_data and "choices" in question_data:
-                    # Для MCQ с correct_index
-                    idx = question_data["correct_index"]
-                    choices = question_data["choices"]
-                    if isinstance(idx, int) and 0 <= idx < len(choices):
-                        choice = choices[idx]
-                        if isinstance(choice, dict):
-                            correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice)
-                        else:
-                            correct_answer_text = str(choice)
-            
-            # Для PLUGIN вопросов передаём полный submitted_answer (содержит questionData, answerData)
-            if question_type in ("PLUGIN", "INTERACTIVE"):
-                user_answer_raw = attempt.submitted_answer
-            else:
-                user_answer_raw = user_answer_text
-            
-            questions.append({
-                "attempt_id": str(attempt.id),
-                "question_id": attempt.question_id,
-                "skill_id": attempt.skill_id,
-                "question_prompt": question_payload.get("prompt", ""),
-                "question_type": question_payload.get("type", ""),
-                "question_data": question_data,
-                "user_answer": user_answer_raw,  # Для PLUGIN - объект с questionData, для остальных - строка
-                "correct_answer": correct_answer_text,
-                "is_correct": attempt.is_correct,
-                "answered_at": attempt.answered_at,
-                "time_spent_seconds": attempt.time_spent_sec,
-                "smartscore_before": attempt.smartscore_before,
-                "smartscore_after": attempt.smartscore_after,
-            })
-        
-        return questions
+        return [_serialize_attempt_question(attempt) for (attempt,) in rows]
 
     async def classroom_analytics(self, *, teacher_id: str, classroom_id: str) -> dict[str, Any]:
         tid = _parse_uuid(teacher_id)
@@ -387,12 +367,39 @@ class AnalyticsService:
             "sessions": list(sessions.values()),
         }
 
-    async def teacher_quickview(self, *, teacher_id: str) -> dict[str, Any]:
+    async def _teacher_student_ids(self, *, teacher_id: str) -> list[uuid.UUID]:
         tid = _parse_uuid(teacher_id)
-        
-        # Get all students for teacher
-        enroll_stmt = select(Enrollment.student_id).join(Classroom, Classroom.id == Enrollment.classroom_id).where(Classroom.teacher_id == tid)
-        student_ids = [row.student_id for row in (await self.session.execute(enroll_stmt)).all()]
+
+        direct_ids = (
+            await self.session.execute(
+                select(User.id).where(User.teacher_id == tid, User.role == UserRole.STUDENT)
+            )
+        ).scalars().all()
+        enrolled_ids = (
+            await self.session.execute(
+                select(Enrollment.student_id)
+                .join(Classroom, Classroom.id == Enrollment.classroom_id)
+                .where(Classroom.teacher_id == tid)
+            )
+        ).scalars().all()
+        return list(dict.fromkeys([*direct_ids, *enrolled_ids]))
+
+    async def teacher_quickview_questions(self, *, teacher_id: str, limit: int = 200) -> list[dict[str, Any]]:
+        student_ids = await self._teacher_student_ids(teacher_id=teacher_id)
+        if not student_ids:
+            return []
+
+        attempts_stmt = (
+            select(PracticeAttempt)
+            .where(PracticeAttempt.user_id.in_(student_ids))
+            .order_by(PracticeAttempt.answered_at.desc())
+            .limit(limit)
+        )
+        q_rows = (await self.session.execute(attempts_stmt)).all()
+        return [_serialize_attempt_question(attempt) for (attempt,) in q_rows]
+
+    async def teacher_quickview(self, *, teacher_id: str, include_questions: bool = True) -> dict[str, Any]:
+        student_ids = await self._teacher_student_ids(teacher_id=teacher_id)
         
         if not student_ids:
             return {
@@ -511,123 +518,10 @@ class AnalyticsService:
                 "total_time_seconds": int(r.total_time_seconds or 0),
             })
             
-        # 3. All questions
-        # To avoid making this huge and blocking, just reuse the all_questions logic but for `in_(student_ids)` limit 200
-        attempts_stmt = (
-            select(PracticeAttempt)
-            .where(PracticeAttempt.user_id.in_(student_ids))
-            .order_by(PracticeAttempt.answered_at.desc())
-            .limit(200)
-        )
-        q_rows = (await self.session.execute(attempts_stmt)).all()
-
-        questions = []
-        for (attempt,) in q_rows:
-            question_payload = attempt.question_payload or {}
-            question_data = question_payload.get("data") or {}
-            question_type = question_payload.get("type", "")
-            
-            user_answer_text = ""
-            if attempt.submitted_answer:
-                if "choice" in attempt.submitted_answer:
-                    choice_id = attempt.submitted_answer["choice"]
-                    if question_type == "MCQ" and "choices" in question_data:
-                        choices = question_data["choices"]
-                        for choice in choices:
-                            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
-                                user_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
-                                break
-                        if not user_answer_text:
-                            user_answer_text = str(choice_id)
-                    else:
-                        user_answer_text = str(choice_id)
-                elif "value" in attempt.submitted_answer:
-                    user_answer_text = str(attempt.submitted_answer["value"])
-                elif "answer" in attempt.submitted_answer:
-                    user_answer_text = str(attempt.submitted_answer["answer"])
-                else:
-                    user_answer_text = json.dumps(attempt.submitted_answer)
-            
-            correct_answer_text = ""
-            correct_answer = question_payload.get("correct_answer") or {}
-            if correct_answer:
-                if "choice" in correct_answer:
-                    choice_id = correct_answer["choice"]
-                    if question_type == "MCQ" and "choices" in question_data:
-                        choices = question_data["choices"]
-                        for choice in choices:
-                            if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
-                                correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
-                                break
-                        if not correct_answer_text:
-                            correct_answer_text = str(choice_id)
-                    else:
-                        correct_answer_text = str(choice_id)
-                elif "value" in correct_answer:
-                    correct_answer_text = str(correct_answer["value"])
-                elif "answer" in correct_answer:
-                    correct_answer_text = str(correct_answer["answer"])
-                else:
-                    correct_answer_text = json.dumps(correct_answer)
-            elif question_data:
-                if "correct_answer" in question_data:
-                    correct_answer_text = str(question_data["correct_answer"])
-                elif "answer" in question_data:
-                    answer = question_data["answer"]
-                    if isinstance(answer, (int, float)):
-                        correct_answer_text = str(answer)
-                    elif isinstance(answer, dict):
-                        if "choice" in answer:
-                            choice_id = answer["choice"]
-                            if question_type == "MCQ" and "choices" in question_data:
-                                choices = question_data["choices"]
-                                for choice in choices:
-                                    if isinstance(choice, dict) and str(choice.get("id")) == str(choice_id):
-                                        correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice_id)
-                                        break
-                                if not correct_answer_text:
-                                    correct_answer_text = str(choice_id)
-                            else:
-                                correct_answer_text = str(choice_id)
-                        else:
-                            correct_answer_text = json.dumps(answer)
-                    else:
-                        correct_answer_text = str(answer)
-                elif "correct_index" in question_data and "choices" in question_data:
-                    idx = question_data["correct_index"]
-                    choices = question_data["choices"]
-                    if isinstance(idx, int) and 0 <= idx < len(choices):
-                        choice = choices[idx]
-                        if isinstance(choice, dict):
-                            correct_answer_text = choice.get("label") or choice.get("text") or choice.get("value") or str(choice)
-                        else:
-                            correct_answer_text = str(choice)
-            
-            if question_type in ("PLUGIN", "INTERACTIVE"):
-                user_answer_raw = attempt.submitted_answer
-            else:
-                user_answer_raw = user_answer_text
-
-            questions.append({
-                "attempt_id": str(attempt.id),
-                "question_id": attempt.question_id,
-                "skill_id": attempt.skill_id,
-                "question_prompt": question_payload.get("prompt", ""),
-                "question_type": question_payload.get("type", ""),
-                "question_data": question_data,
-                "user_answer": user_answer_raw,
-                "correct_answer": correct_answer_text,
-                "is_correct": attempt.is_correct,
-                "answered_at": attempt.answered_at,
-                "time_spent_seconds": attempt.time_spent_sec,
-                "smartscore_before": attempt.smartscore_before,
-                "smartscore_after": attempt.smartscore_after,
-            })
-            
         return {
             "overview": overview,
             "skills": skills_result,
-            "all_questions": questions
+            "all_questions": await self.teacher_quickview_questions(teacher_id=teacher_id) if include_questions else []
         }
 
 

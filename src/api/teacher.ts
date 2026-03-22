@@ -40,8 +40,16 @@ export const teacherApi = {
     })
   },
 
-  getTeacherQuickviewAnalytics() {
-    return apiClient.get<{ data: Record<string, unknown> }>('/teacher/analytics/quickview')
+  getTeacherQuickviewAnalytics(includeQuestions = false) {
+    return apiClient.get<{ data: Record<string, unknown> }>('/teacher/analytics/quickview', {
+      params: {
+        include_questions: includeQuestions,
+      },
+    })
+  },
+
+  getTeacherQuickviewQuestions() {
+    return apiClient.get<{ data: Array<Record<string, unknown>> }>('/teacher/analytics/quickview/questions')
   },
 
   resetStudentPassword(studentId: string) {

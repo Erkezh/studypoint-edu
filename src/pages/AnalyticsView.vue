@@ -245,6 +245,9 @@ const nextStudent = () => {
 
 const tabsThatNeedQuestionData = new Set(['usage', 'trouble', 'questions', 'progress', 'students_quickview'])
 const ownQuestionsLoaded = ref(false)
+const quickviewQuestionsLoaded = ref(false)
+const quickviewQuestionsLoading = ref(false)
+let teacherQuickviewRequestVersion = 0
 
 const shouldLoadQuestionData = () => {
   return tabsThatNeedQuestionData.has(activeTab.value) || selectedDateOption.value !== 'all'
@@ -272,23 +275,64 @@ const loadOwnAnalytics = async (includeQuestions = shouldLoadQuestionData()) => 
   }
 }
 
+const loadTeacherQuickviewQuestions = async (requestVersion = teacherQuickviewRequestVersion) => {
+  quickviewQuestionsLoading.value = true
+  try {
+    const resp = await teacherApi.getTeacherQuickviewQuestions()
+    if (requestVersion !== teacherQuickviewRequestVersion || activeTab.value !== 'students_quickview') {
+      return
+    }
+    analyticsStore.allQuestions = (resp.data.data || []) as typeof analyticsStore.allQuestions
+    quickviewQuestionsLoaded.value = true
+  } catch (err) {
+    if (requestVersion !== teacherQuickviewRequestVersion) {
+      return
+    }
+    analyticsStore.allQuestions = []
+    quickviewQuestionsLoaded.value = false
+    if (import.meta.env.DEV) {
+      console.error('Failed to load teacher quickview question log:', err)
+    }
+  } finally {
+    if (requestVersion === teacherQuickviewRequestVersion) {
+      quickviewQuestionsLoading.value = false
+    }
+  }
+}
+
 // Load teacher aggregate analytics
 const loadTeacherQuickviewAnalytics = async () => {
+  const requestVersion = ++teacherQuickviewRequestVersion
   analyticsStore.loading = true
   studentAnalyticsLoading.value = true
+  quickviewQuestionsLoaded.value = false
+  quickviewQuestionsLoading.value = false
   try {
-    const resp = await teacherApi.getTeacherQuickviewAnalytics()
+    const resp = await teacherApi.getTeacherQuickviewAnalytics(false)
+    if (requestVersion !== teacherQuickviewRequestVersion) {
+      return
+    }
     const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
     analyticsStore.overview = data.overview as typeof analyticsStore.overview
     analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
-    analyticsStore.allQuestions = (data.all_questions || []) as typeof analyticsStore.allQuestions
+    analyticsStore.allQuestions = []
     analyticsStore.error = null
   } catch (err: unknown) {
+    if (requestVersion !== teacherQuickviewRequestVersion) {
+      return
+    }
     const e = err as { response?: { data?: { message?: string } } }
     analyticsStore.error = e.response?.data?.message || 'Оқушылардың жалпы аналитикасын жүктеу мүмкін болмады'
+    return
   } finally {
-    analyticsStore.loading = false
-    studentAnalyticsLoading.value = false
+    if (requestVersion === teacherQuickviewRequestVersion) {
+      analyticsStore.loading = false
+      studentAnalyticsLoading.value = false
+    }
+  }
+
+  if (requestVersion === teacherQuickviewRequestVersion && shouldLoadQuestionData()) {
+    void loadTeacherQuickviewQuestions(requestVersion)
   }
 }
 
@@ -526,6 +570,11 @@ watch(activeTab, async (newVal) => {
 })
 
 watch(selectedDateOption, async () => {
+  if (isTeacher.value && activeTab.value === 'students_quickview' && !quickviewQuestionsLoaded.value && !quickviewQuestionsLoading.value) {
+    void loadTeacherQuickviewQuestions(teacherQuickviewRequestVersion)
+    return
+  }
+
   if (isTeacher.value && selectedStudentId.value && shouldLoadQuestionData() && analyticsStore.allQuestions.length === 0) {
     await onStudentChange()
     return
