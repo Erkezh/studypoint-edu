@@ -258,7 +258,6 @@ const handleCreate = async () => {
       number: addForm.value.number as number,
       label: addForm.value.label,
       title: addForm.value.title,
-      description: '',
     })
     addForm.value = { number: '', label: '', title: '' }
     showSuccess('Сынып сәтті қосылды!')

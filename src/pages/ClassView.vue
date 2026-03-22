@@ -238,6 +238,7 @@ const catalogStore = useCatalogStore()
 const practiceStore = usePracticeStore()
 const authStore = useAuthStore()
 const trialQuestions = useTrialQuestions()
+const isDev = import.meta.env.DEV
 
 const skills = computed(() => catalogStore.skills)
 const grades = ref(catalogStore.grades)
@@ -394,17 +395,21 @@ const navigateToSkill = async (skillId: number) => {
     }
   } catch (err: unknown) {
     const apiError = err as { response?: { data?: { detail?: string | Array<{ loc?: string[]; msg?: string }>; message?: string }; status?: number }; message?: string }
-    console.error('ClassView: Failed to create session:', err)
-    console.error('ClassView: Error response:', apiError.response?.data)
-    console.error('ClassView: Error status:', apiError.response?.status)
-    console.error('ClassView: isAuthenticated:', authStore.isAuthenticated)
-    console.error('ClassView: user role:', authStore.user?.role)
+    if (isDev) {
+      console.error('ClassView: Failed to create session:', err)
+      console.error('ClassView: Error response:', apiError.response?.data)
+      console.error('ClassView: Error status:', apiError.response?.status)
+      console.error('ClassView: isAuthenticated:', authStore.isAuthenticated)
+      console.error('ClassView: user role:', authStore.user?.role)
+    }
 
     // Обработка ошибки 401 (Unauthorized) - не должна происходить, так как бэкенд поддерживает неавторизованных пользователей
     // Но если произошла, обрабатываем как ошибку
     if (apiError.response?.status === 401) {
-      console.log('ClassView: Handling 401 error (unexpected)')
-      console.log('ClassView: isAuthenticated:', authStore.isAuthenticated)
+      if (isDev) {
+        console.log('ClassView: Handling 401 error (unexpected)')
+        console.log('ClassView: isAuthenticated:', authStore.isAuthenticated)
+      }
 
       // Для авторизованных пользователей ошибка 401 не должна блокировать
       if (authStore.isAuthenticated) {
@@ -453,7 +458,9 @@ const navigateToSkill = async (skillId: number) => {
     }
 
     error.value = errorMessage
-    console.error('Failed to start practice:', apiError.response?.data || err)
+    if (isDev) {
+      console.error('Failed to start practice:', apiError.response?.data || err)
+    }
   } finally {
     loadingSkillId.value = null
   }
@@ -480,7 +487,9 @@ const loadAllSkillStats = async () => {
   try {
     // Загружаем статистику параллельно для всех навыков
     const currentSkills = catalogStore.skills
-    console.log('ClassView: Loading stats for skills:', currentSkills.length)
+    if (isDev) {
+      console.log('ClassView: Loading stats for skills:', currentSkills.length)
+    }
     const promises = currentSkills.map(skill => loadSkillStats(skill.id))
     await Promise.allSettled(promises)
   } finally {
@@ -509,13 +518,15 @@ const loadSkillsForGrade = async (gradeNumber: number, force = false) => {
       : apiError.message || 'Дағдыларды жүктеу мүмкін болмады'
 
     error.value = errorMsg
-    console.error('ClassView: Failed to load skills:', {
-      error: err,
-      response: apiError.response?.data,
-      status: apiError.response?.status,
-      code: apiError.code,
-      message: apiError.message,
-    })
+    if (isDev) {
+      console.error('ClassView: Failed to load skills:', {
+        error: err,
+        response: apiError.response?.data,
+        status: apiError.response?.status,
+        code: apiError.code,
+        message: apiError.message,
+      })
+    }
   }
 }
 
@@ -539,7 +550,9 @@ onMounted(async () => {
   } catch (err: unknown) {
     const apiError = err as { response?: { data?: { detail?: string | Array<{ msg?: string }> }; status?: number }; message?: string; code?: string }
     error.value = apiError.message || 'Жүктеу қатесі'
-    console.error('ClassView: Failed to initialize:', err)
+    if (isDev) {
+      console.error('ClassView: Failed to initialize:', err)
+    }
   }
 })
 

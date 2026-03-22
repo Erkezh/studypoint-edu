@@ -13,6 +13,7 @@ import { useAuthStore } from '@/stores/auth'
 
 const HEARTBEAT_INTERVAL = 30000 // 30 секунд
 const INACTIVITY_THRESHOLD = 300000 // 5 минут
+const isDev = import.meta.env.DEV
 
 export const usePracticeStore = defineStore('practice', () => {
   const currentSession = ref<PracticeSessionResponse | null>(null)
@@ -44,9 +45,11 @@ export const usePracticeStore = defineStore('practice', () => {
     // Позволяем создать сессию без авторизации, проверка будет после каждого ответа
     // Если пробные вопросы исчерпаны, модальное окно покажется после ответа
     const authStore = useAuthStore()
-    
-    console.log('PracticeStore.createSession: isAuthenticated:', authStore.isAuthenticated)
-    console.log('PracticeStore.createSession: user role:', authStore.user?.role)
+
+    if (isDev) {
+      console.log('PracticeStore.createSession: isAuthenticated:', authStore.isAuthenticated)
+      console.log('PracticeStore.createSession: user role:', authStore.user?.role)
+    }
     
     try {
       // Убеждаемся, что skillId - число
@@ -78,11 +81,13 @@ export const usePracticeStore = defineStore('practice', () => {
       }
       throw new Error('Failed to create session')
     } catch (err: any) {
-      console.error('PracticeStore: Failed to create session:', err)
-      console.error('PracticeStore: Error response:', err.response?.data)
-      console.error('PracticeStore: Error status:', err.response?.status)
-      console.error('PracticeStore: isAuthenticated:', authStore.isAuthenticated)
-      console.error('PracticeStore: user role:', authStore.user?.role)
+      if (isDev) {
+        console.error('PracticeStore: Failed to create session:', err)
+        console.error('PracticeStore: Error response:', err.response?.data)
+        console.error('PracticeStore: Error status:', err.response?.status)
+        console.error('PracticeStore: isAuthenticated:', authStore.isAuthenticated)
+        console.error('PracticeStore: user role:', authStore.user?.role)
+      }
       
       // Инициализируем trialQuestions для проверки
       const trialQuestions = useTrialQuestions()
@@ -123,7 +128,9 @@ export const usePracticeStore = defineStore('practice', () => {
           : err.message || 'Failed to create session'
         error.value = errorMsg
       }
-      console.error('Failed to create session:', err.response?.data || err)
+      if (isDev) {
+        console.error('Failed to create session:', err.response?.data || err)
+      }
       throw err
     } finally {
       loading.value = false
@@ -198,11 +205,13 @@ export const usePracticeStore = defineStore('practice', () => {
     rateLimitMessage.value = null
 
     try {
-      console.log('PracticeStore: Submitting answer', {
-        sessionId,
-        data,
-        submitted_answer_type: typeof data.submitted_answer,
-      })
+      if (isDev) {
+        console.log('PracticeStore: Submitting answer', {
+          sessionId,
+          data,
+          submitted_answer_type: typeof data.submitted_answer,
+        })
+      }
 
       const response = await practiceApi.submitAnswer(
         sessionId,
@@ -222,11 +231,15 @@ export const usePracticeStore = defineStore('practice', () => {
         if (!authStore.isAuthenticated) {
           // Увеличиваем счетчик пробных вопросов
           const newCount = trialQuestions.incrementTrialQuestions()
-          console.log('Trial questions count:', newCount)
+          if (isDev) {
+            console.log('Trial questions count:', newCount)
+          }
           
           // Если пробные вопросы исчерпаны, отмечаем это
           if (newCount >= trialQuestions.TRIAL_QUESTIONS_LIMIT) {
-            console.log('Trial questions exhausted')
+            if (isDev) {
+              console.log('Trial questions exhausted')
+            }
           }
         }
 
@@ -253,11 +266,13 @@ export const usePracticeStore = defineStore('practice', () => {
         const authStore = useAuthStore()
         const trialQuestions = useTrialQuestions()
         
-        console.error('PracticeStore: 402 Payment Required error:', {
-          isAuthenticated: authStore.isAuthenticated,
-          userRole: authStore.user?.role,
-          errorData: err.response?.data,
-        })
+        if (isDev) {
+          console.error('PracticeStore: 402 Payment Required error:', {
+            isAuthenticated: authStore.isAuthenticated,
+            userRole: authStore.user?.role,
+            errorData: err.response?.data,
+          })
+        }
         
         // Для авторизованных пользователей ошибка 402 не должна возникать
         // Если она возникла, это проблема с бэкендом или подпиской
@@ -265,7 +280,9 @@ export const usePracticeStore = defineStore('practice', () => {
           // Пробуем повторить запрос или показываем более информативное сообщение
           const errorDetail = err.response?.data?.detail || err.response?.data?.message || 'Қол жеткізу құқығы жеткіліксіз'
           error.value = `Қол жеткізу қатесі: ${errorDetail}. Профильде жазылымды тексеріңіз немесе қайталап көріңіз.`
-          console.error('PracticeStore: 402 error for authenticated user - this should not happen')
+          if (isDev) {
+            console.error('PracticeStore: 402 error for authenticated user - this should not happen')
+          }
           throw err // Пробрасываем ошибку дальше, чтобы компонент мог её обработать
         }
         
@@ -292,10 +309,12 @@ export const usePracticeStore = defineStore('practice', () => {
         error.value = errorMsg
       }
       
-      console.error('PracticeStore: Submit answer error', {
-        error: err.response?.data || err,
-        requestData: data,
-      })
+      if (isDev) {
+        console.error('PracticeStore: Submit answer error', {
+          error: err.response?.data || err,
+          requestData: data,
+        })
+      }
       
       if (err.message?.includes('Rate limit')) {
         rateLimitMessage.value = err.message
@@ -322,7 +341,9 @@ export const usePracticeStore = defineStore('practice', () => {
     } catch (err: any) {
       // Если ошибка 409 (Conflict) - сессия уже завершена, это нормально
       if (err.response?.status === 409) {
-        console.log('Session already finished (409), cleaning up...')
+        if (isDev) {
+          console.log('Session already finished (409), cleaning up...')
+        }
         // Продолжаем очистку, так как сессия уже завершена
       } else {
         console.error('Failed to finish session:', err)

@@ -10,6 +10,7 @@ import type {
 } from '@/types/api'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+const isDev = import.meta.env.DEV
 
 export const useCatalogStore = defineStore('catalog', () => {
   const subjects = ref<SubjectResponse[]>([])
@@ -136,23 +137,29 @@ export const useCatalogStore = defineStore('catalog', () => {
 
     loading.value = true
     try {
-      console.log('CatalogStore: Fetching skills with params:', params)
+      if (isDev) {
+        console.log('CatalogStore: Fetching skills with params:', params)
+      }
       const response = await catalogApi.getSkills(params)
-      console.log('CatalogStore: Skills response:', response)
+      if (isDev) {
+        console.log('CatalogStore: Skills response:', response)
+      }
       if (response.data) {
         skills.value = response.data
         lastFetch.value.set('skills', Date.now())
       }
       return skills.value
     } catch (error: any) {
-      console.error('CatalogStore: Failed to fetch skills:', {
-        error,
-        params,
-        response: error.response?.data,
-        status: error.response?.status,
-        code: error.code,
-        message: error.message,
-      })
+      if (isDev) {
+        console.error('CatalogStore: Failed to fetch skills:', {
+          error,
+          params,
+          response: error.response?.data,
+          status: error.response?.status,
+          code: error.code,
+          message: error.message,
+        })
+      }
       throw error
     } finally {
       loading.value = false

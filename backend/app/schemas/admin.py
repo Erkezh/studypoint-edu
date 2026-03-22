@@ -21,7 +21,7 @@ class GradeCreate(BaseModel):
     number: int
     label: str = Field(min_length=1, max_length=8)
     title: str = Field(min_length=1, max_length=64)
-    description: str = Field(min_length=1)
+    description: str = ""
 
 
 class GradeUpdate(BaseModel):
@@ -163,4 +163,3 @@ class AdminSubscriptionUpdate(BaseModel):
     plan: str | None = None
     is_active: bool | None = None
     active_until: str | None = None
-

@@ -4,6 +4,7 @@ import { analyticsApi } from '@/api/analytics'
 import type { AnalyticsOverview, AnalyticsSkills } from '@/types/api'
 
 const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+const isDev = import.meta.env.DEV
 
 export const useAnalyticsStore = defineStore('analytics', () => {
   const overview = ref<AnalyticsOverview | null>(null)
@@ -51,26 +52,34 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
     error.value = null
     try {
-      console.log('AnalyticsStore: Fetching overview...')
+      if (isDev) {
+        console.log('AnalyticsStore: Fetching overview...')
+      }
       const response = await analyticsApi.getOverview()
-      console.log('AnalyticsStore: Overview response:', response)
+      if (isDev) {
+        console.log('AnalyticsStore: Overview response:', response)
+      }
       if (response.data) {
         overview.value = response.data
         lastFetch.value = Date.now()
       } else {
-        console.warn('AnalyticsStore: No data in overview response')
+        if (isDev) {
+          console.warn('AnalyticsStore: No data in overview response')
+        }
         overview.value = null
       }
       return overview.value
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to fetch overview'
       error.value = errorMsg
-      console.error('AnalyticsStore: Failed to fetch analytics overview:', {
-        error: err,
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      })
+      if (isDev) {
+        console.error('AnalyticsStore: Failed to fetch analytics overview:', {
+          error: err,
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        })
+      }
       throw err
     }
   }
@@ -82,26 +91,34 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
     error.value = null
     try {
-      console.log('AnalyticsStore: Fetching skills...')
+      if (isDev) {
+        console.log('AnalyticsStore: Fetching skills...')
+      }
       const response = await analyticsApi.getSkills()
-      console.log('AnalyticsStore: Skills response:', response)
+      if (isDev) {
+        console.log('AnalyticsStore: Skills response:', response)
+      }
       if (response.data) {
         skills.value = response.data
         lastFetch.value = Date.now()
       } else {
-        console.warn('AnalyticsStore: No data in skills response')
+        if (isDev) {
+          console.warn('AnalyticsStore: No data in skills response')
+        }
         skills.value = []
       }
       return skills.value
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to fetch skills'
       error.value = errorMsg
-      console.error('AnalyticsStore: Failed to fetch analytics skills:', {
-        error: err,
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      })
+      if (isDev) {
+        console.error('AnalyticsStore: Failed to fetch analytics skills:', {
+          error: err,
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        })
+      }
       throw err
     }
   }
@@ -117,26 +134,34 @@ export const useAnalyticsStore = defineStore('analytics', () => {
 
     error.value = null
     try {
-      console.log('AnalyticsStore: Fetching all questions...')
+      if (isDev) {
+        console.log('AnalyticsStore: Fetching all questions...')
+      }
       const response = await analyticsApi.getAllQuestions()
-      console.log('AnalyticsStore: All questions response:', response)
+      if (isDev) {
+        console.log('AnalyticsStore: All questions response:', response)
+      }
       if (response.data) {
         allQuestions.value = response.data
         lastFetch.value = Date.now()
       } else {
-        console.warn('AnalyticsStore: No data in all questions response')
+        if (isDev) {
+          console.warn('AnalyticsStore: No data in all questions response')
+        }
         allQuestions.value = []
       }
       return allQuestions.value
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || err.response?.data?.message || err.message || 'Failed to fetch all questions'
       error.value = errorMsg
-      console.error('AnalyticsStore: Failed to fetch all questions:', {
-        error: err,
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      })
+      if (isDev) {
+        console.error('AnalyticsStore: Failed to fetch all questions:', {
+          error: err,
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        })
+      }
       throw err
     }
   }

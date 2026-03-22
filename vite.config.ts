@@ -16,6 +16,18 @@ export default defineConfig({
   plugins: [
     vue(),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('chart.js') || id.includes('vue-chartjs')) return 'charts'
+          if (id.includes('axios') || id.includes('uuid')) return 'network'
+          if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'framework'
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

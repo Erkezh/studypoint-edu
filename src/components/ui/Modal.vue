@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { watch } from 'vue'
+import { onBeforeUnmount, watch } from 'vue'
 import Button from './Button.vue'
 
 interface Props {
@@ -59,8 +59,19 @@ const close = () => {
   emit('close')
 }
 
+let removeKeydownListener: (() => void) | null = null
+
+const cleanupKeydownListener = () => {
+  if (removeKeydownListener) {
+    removeKeydownListener()
+    removeKeydownListener = null
+  }
+}
+
 // Закрытие по Escape
 watch(() => props.isOpen, (isOpen) => {
+  cleanupKeydownListener()
+
   if (isOpen) {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && props.showClose) {
@@ -68,10 +79,14 @@ watch(() => props.isOpen, (isOpen) => {
       }
     }
     document.addEventListener('keydown', handleEscape)
-    return () => {
+    removeKeydownListener = () => {
       document.removeEventListener('keydown', handleEscape)
     }
   }
+})
+
+onBeforeUnmount(() => {
+  cleanupKeydownListener()
 })
 </script>
 

@@ -70,7 +70,7 @@ export interface GradeCreate {
   number: number
   label: string
   title: string
-  description: string
+  description?: string
 }
 
 export interface SkillListItem {

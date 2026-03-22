@@ -10,10 +10,11 @@ const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
-app.use(router)
 
-// Инициализируем auth store для установки interceptors
+// Инициализируем auth store до router, чтобы guards видели состояние из localStorage.
 const authStore = useAuthStore()
-authStore.init() // Инициализируем store из localStorage
+authStore.init()
+
+app.use(router)
 
 app.mount('#app')

@@ -6,21 +6,27 @@ import { API_BASE_URL } from '@/config/api'
 // Генерация UUID для idempotency
 let idempotencyKey: string | null = null
 
-// Проверка доступности сервера при инициализации
-if (typeof window !== 'undefined') {
-  console.log('API Client initialized:', {
+const isDev = import.meta.env.DEV
+
+const debugLog = (...args: unknown[]) => {
+  if (isDev) {
+    console.log(...args)
+  }
+}
+
+const debugError = (...args: unknown[]) => {
+  if (isDev) {
+    console.error(...args)
+  }
+}
+
+if (typeof window !== 'undefined' && isDev) {
+  debugLog('API Client initialized:', {
     baseURL: `${API_BASE_URL}/api/v1`,
     origin: window.location.origin,
     apiUrl: API_BASE_URL,
     env: import.meta.env.MODE,
   })
-  
-  // Опциональная проверка доступности сервера (можно отключить)
-  if (import.meta.env.DEV) {
-    fetch(`${API_BASE_URL}/api/v1/grades`)
-      .then(() => console.log('✓ API server is reachable'))
-      .catch((err) => console.warn('⚠ API server check failed:', err.message))
-  }
 }
 
 // Создание Axios инстанса
@@ -51,17 +57,13 @@ apiClient.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     
-    if (import.meta.env.DEV) {
-      console.log('Request config:', {
+    if (isDev) {
+      debugLog('Request config:', {
         url: config.url,
         method: config.method,
         withCredentials: config.withCredentials,
         hasToken: !!token,
       })
-    }
-    
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
     }
 
     // Добавляем Idempotency-Key для операций, требующих идемпотентности
@@ -75,9 +77,9 @@ apiClient.interceptors.request.use(
     }
 
     // Логируем только важные запросы для отладки (можно отключить в production)
-    if (import.meta.env.DEV) {
+    if (isDev) {
       const fullUrl = `${config.baseURL}${config.url}`
-      console.log('API Request:', {
+      debugLog('API Request:', {
         method: config.method?.toUpperCase(),
         url: config.url,
         fullUrl: fullUrl,
@@ -132,7 +134,7 @@ apiClient.interceptors.response.use(
       if (!refreshToken) {
         // Для пробных вопросов не требуется авторизация, просто возвращаем ошибку
         // Но устанавливаем понятное сообщение
-        const errorData = error.response?.data
+        const errorData: any = error.response?.data
         let message = 'Бұл әрекетті орындау үшін авторизация қажет. Жүйеге кіріңіз.'
         if (errorData?.detail) {
           if (typeof errorData.detail === 'string') {
@@ -212,7 +214,7 @@ apiClient.interceptors.response.use(
           authStore.logout()
         }
         // Устанавливаем понятное сообщение об ошибке
-        const refreshErrorData = (refreshError as any).response?.data
+        const refreshErrorData: any = (refreshError as any).response?.data
         let message = 'Сессия мерзімі өтті. Жүйеге қайта кіріңіз.'
         if (refreshErrorData?.detail) {
           if (typeof refreshErrorData.detail === 'string') {
@@ -251,7 +253,7 @@ apiClient.interceptors.response.use(
 
     // Обработка 401 - если не обработано выше (например, после неудачного refresh)
     if (error.response?.status === 401) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       let message = 'Бұл әрекетті орындау үшін авторизация қажет.'
       if (errorData?.detail) {
         if (typeof errorData.detail === 'string') {
@@ -269,8 +271,8 @@ apiClient.interceptors.response.use(
 
     // Обработка 400 - Bad Request (показываем детали ошибки)
     if (error.response?.status === 400) {
-      const errorData = error.response.data
-      console.error('API 400 Error:', {
+      const errorData: any = error.response.data
+      debugError('API 400 Error:', {
         url: originalRequest.url,
         method: originalRequest.method,
         data: originalRequest.data,
@@ -298,35 +300,35 @@ apiClient.interceptors.response.use(
 
     // Обработка 402 - Payment Required
     if (error.response?.status === 402) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       const message = errorData?.detail || errorData?.message || 'Практиканы жалғастыру үшін жазылым қажет. Профильде жазылымды рәсімдеңіз.'
       error.message = message
     }
 
     // Обработка 403 - Forbidden
     if (error.response?.status === 403) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       const message = errorData?.detail || errorData?.message || 'Қол жеткізу тыйым салынған. Сізде бұл әрекетті орындау құқығы жоқ.'
       error.message = message
     }
 
     // Обработка 404 - Not Found
     if (error.response?.status === 404) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       const message = errorData?.detail || errorData?.message || 'Ресурс табылмады.'
       error.message = message
     }
 
     // Обработка 409 - Conflict
     if (error.response?.status === 409) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       const message = errorData?.detail || errorData?.message || 'Қайшылық: операция орындалуы мүмкін емес. Сессия бұрын аяқталған немесе өзгертілген болуы мүмкін.'
       error.message = message
     }
 
     // Обработка 422 - Unprocessable Entity (Validation Error)
     if (error.response?.status === 422) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       let message = 'Деректерді валидациялау қатесі'
       if (errorData?.detail) {
         if (Array.isArray(errorData.detail)) {
@@ -353,7 +355,7 @@ apiClient.interceptors.response.use(
 
     // Обработка 500+ - Server Error
     if (error.response?.status && error.response.status >= 500) {
-      const errorData = error.response.data
+      const errorData: any = error.response.data
       const message = errorData?.detail || errorData?.message || 'Сервер қатесі. Кейінірек қайталап көріңіз.'
       error.message = message
     }
@@ -361,7 +363,7 @@ apiClient.interceptors.response.use(
     // Обработка сетевых ошибок (нет ответа от сервера)
     if (!error.response) {
       const fullUrl = `${originalRequest.baseURL}${originalRequest.url}`
-      console.error('Network Error Details:', {
+      debugError('Network Error Details:', {
         message: error.message,
         code: error.code,
         url: fullUrl,
