@@ -230,6 +230,7 @@ class AnalyticsService:
         classroom = await self.session.get(Classroom, cid)
         if classroom is None or classroom.teacher_id != tid:
             raise AppError(status_code=404, code="not_found", message="Classroom not found")
+        assert classroom is not None
 
         enroll_stmt = select(Enrollment.student_id).where(Enrollment.classroom_id == cid)
         student_ids = [row.student_id for row in (await self.session.execute(enroll_stmt)).all()]
@@ -239,6 +240,7 @@ class AnalyticsService:
             user = await self.session.get(User, sid)
             if user is None:
                 continue
+            assert user is not None
             snap_stmt = select(func.coalesce(func.avg(ProgressSnapshot.best_smartscore), 0)).where(ProgressSnapshot.user_id == sid)
             avg_best = int(round(float((await self.session.execute(snap_stmt)).scalar_one())))
 
@@ -559,8 +561,8 @@ class AnalyticsService:
             s_skill_rows = (await self.session.execute(s_skills_stmt)).all()
 
             last_practiced = None
-            mastered_count = 0
-            proficient_count = 0
+            mastered_count: int = 0
+            proficient_count: int = 0
             s_skills_list = []
             for sr in s_skill_rows:
                 if sr.last_practiced_at and (last_practiced is None or sr.last_practiced_at > last_practiced):
