@@ -369,7 +369,6 @@ class AnalyticsService:
 
     async def _teacher_student_ids(self, *, teacher_id: str) -> list[uuid.UUID]:
         tid = _parse_uuid(teacher_id)
-
         direct_ids = (
             await self.session.execute(
                 select(User.id).where(User.teacher_id == tid, User.role == UserRole.STUDENT)
@@ -518,10 +517,94 @@ class AnalyticsService:
                 "total_time_seconds": int(r.total_time_seconds or 0),
             })
             
+        # 4. Per-student breakdown
+        students_breakdown = []
+        for sid in student_ids:
+            user = await self.session.get(User, sid)
+            if not user:
+                continue
+
+            # Student's total questions & time
+            s_attempts_stmt = (
+                select(
+                    func.count(PracticeAttempt.id),
+                    func.coalesce(func.sum(PracticeAttempt.time_spent_sec), 0),
+                )
+                .select_from(PracticeAttempt)
+                .join(PracticeSession, PracticeSession.id == PracticeAttempt.session_id)
+                .where(PracticeSession.user_id == sid)
+            )
+            s_total_q, s_total_time = (await self.session.execute(s_attempts_stmt)).one()
+            s_total_q = int(s_total_q)
+            s_total_time = int(s_total_time)
+
+            # Student's skills from ProgressSnapshot
+            s_skills_stmt = (
+                select(
+                    ProgressSnapshot.skill_id,
+                    ProgressSnapshot.best_smartscore,
+                    ProgressSnapshot.last_smartscore,
+                    ProgressSnapshot.last_practiced_at,
+                    ProgressSnapshot.total_questions,
+                    Skill.title.label("skill_name"),
+                    Skill.code.label("skill_code"),
+                    Grade.number.label("grade_number"),
+                    Grade.label.label("grade_label"),
+                )
+                .join(Skill, Skill.id == ProgressSnapshot.skill_id)
+                .join(Grade, Grade.id == Skill.grade_id)
+                .where(ProgressSnapshot.user_id == sid)
+                .order_by(ProgressSnapshot.last_practiced_at.desc().nullslast())
+            )
+            s_skill_rows = (await self.session.execute(s_skills_stmt)).all()
+
+            last_practiced = None
+            mastered_count = 0
+            proficient_count = 0
+            s_skills_list = []
+            for sr in s_skill_rows:
+                if sr.last_practiced_at and (last_practiced is None or sr.last_practiced_at > last_practiced):
+                    last_practiced = sr.last_practiced_at
+                if (sr.best_smartscore or 0) >= 100:
+                    mastered_count += 1
+                if (sr.best_smartscore or 0) >= 80:
+                    proficient_count += 1
+
+                # Time for this skill
+                sk_time_stmt = (
+                    select(func.coalesce(func.sum(PracticeSession.active_time_seconds), 0))
+                    .where(PracticeSession.user_id == sid, PracticeSession.skill_id == sr.skill_id)
+                )
+                sk_time = int((await self.session.execute(sk_time_stmt)).scalar_one())
+
+                s_skills_list.append({
+                    "skill_id": sr.skill_id,
+                    "skill_name": sr.skill_name,
+                    "skill_code": sr.skill_code,
+                    "grade_number": sr.grade_number,
+                    "grade_label": sr.grade_label if sr.grade_label else f"{sr.grade_number} сынып",
+                    "total_questions": sr.total_questions or 0,
+                    "total_time_seconds": sk_time,
+                    "best_smartscore": sr.best_smartscore or 0,
+                    "last_smartscore": sr.last_smartscore or 0,
+                })
+
+            students_breakdown.append({
+                "student_id": str(sid),
+                "full_name": user.full_name,
+                "total_questions": s_total_q,
+                "total_time_sec": s_total_time,
+                "last_practiced_at": last_practiced,
+                "mastered_count": mastered_count,
+                "proficient_count": proficient_count,
+                "skills": s_skills_list,
+            })
+
         return {
             "overview": overview,
             "skills": skills_result,
-            "all_questions": await self.teacher_quickview_questions(teacher_id=teacher_id) if include_questions else []
+            "all_questions": await self.teacher_quickview_questions(teacher_id=teacher_id) if include_questions else [],
+            "students_breakdown": students_breakdown,
         }
 
 

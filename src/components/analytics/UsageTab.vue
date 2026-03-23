@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="summary-header">
+    <div v-if="!hideHeader" class="summary-header">
       <h1 class="summary-title">ҚОЛДАНУ МӘЛІМЕТТЕРІ</h1>
       <button class="print-btn" @click="printReport">
         <svg class="print-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -11,7 +11,7 @@
 
     <!-- Accomplishments Card -->
     <div class="accomplishments-card">
-      <h2 class="card-title">Сіздің StudyPoint жетістіктеріңіз</h2>
+      <h2 class="card-title">{{ accomplishmentsTitle }}</h2>
       <div class="stats-grid">
         <div class="stat-item">
           <div class="stat-icon answered">
@@ -116,7 +116,7 @@
     </div>
 
     <!-- Sessions and Skills -->
-    <div class="sessions-section" v-if="sessionsByDate.length > 0">
+    <div class="sessions-section" v-if="!hideSessions && sessionsByDate.length > 0">
       <h2 class="sessions-title">Сессиялар мен дағдылар</h2>
       <div class="sessions-list">
         <div v-for="session in sessionsByDate" :key="session.dateKey" class="session-item">
@@ -206,6 +206,9 @@ const props = defineProps<{
   gradeTo: number
   dateRange: { start: Date | null; end: Date | null }
   period: string
+  accomplishmentsTitle: string
+  hideHeader?: boolean
+  hideSessions?: boolean
 }>()
 
 const analyticsStore = useAnalyticsStore()

@@ -21,9 +21,9 @@
             {{ tab.label }}
             <svg v-if="tab.dropdown" class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
           </button>
-          
+
           <div v-if="tab.dropdown && hoverTab === tab.id" class="tab-dropdown">
-            <button v-for="sub in tab.dropdown" :key="sub.id" 
+            <button v-for="sub in tab.dropdown" :key="sub.id"
               @click.stop="activeTab = sub.id; hoverTab = null"
               :class="['dropdown-item', { active: activeTab === sub.id }]">
               {{ sub.label }}
@@ -96,7 +96,7 @@
       <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview'" class="empty-state teacher-select-prompt">
         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
         <h3 class="text-xl font-medium text-gray-700 mb-2">Оқушыны таңдаңыз</h3>
-        
+
         <div class="student-carousel-container mt-6">
           <button @click="prevStudent" class="carousel-arrow" :disabled="teacherStudents.length === 0">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
@@ -130,36 +130,116 @@
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </button>
         </div>
-        <div v-if="activeTab === 'students_quickview'" class="quickview-container">
-          <div class="quickview-header">
-            <h2 class="quickview-title">ОҚУШЫЛАРДЫҢ ҚЫСҚАША КӨРІНІСІ
-              <button class="print-btn" title="Print">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-              </button>
-            </h2>
-            <div class="quickview-student-select">
-              <select :value="''" @change="onQuickviewStudentChange($event)" class="quickview-select">
-                <option value="" disabled>Белгілі бір оқушыны іздеп жүрсіз бе?</option>
-                <option v-for="s in teacherStudents" :key="s.id" :value="s.id">{{ s.full_name }}</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="mt-8">
-            <UsageTab 
-              :grade-from="gradeFrom" 
-              :grade-to="gradeTo" 
-              :date-range="dateRange" 
-              :period="selectedDateOption" 
+        <div v-if="activeTab === 'students_quickview'" class="quickview-tab-content">
+          <div class="quickview-summary-dashboard">
+            <UsageTab
+              :grade-from="gradeFrom"
+              :grade-to="gradeTo"
+              :date-range="dateRange"
+              :period="selectedDateOption"
+              :accomplishments-title="accomplishmentsTitle"
+              :hide-header="true"
+              :hide-sessions="true"
             />
+          </div>
+
+          <!-- Per-Student Breakdown -->
+          <div class="students-breakdown" v-if="studentsBreakdown.length > 0">
+            <div v-for="student in studentsBreakdown" :key="student.student_id" class="student-card">
+              <table class="student-unified-table">
+                <thead>
+                  <tr class="header-summary-row">
+                    <td colspan="2" class="student-name-column">
+                      <div class="student-avatar-grid">
+                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="currentColor"/></svg>
+                      </div>
+                      <span class="student-name-grid">{{ student.full_name }}</span>
+                    </td>
+                    <td class="stat-align-column questions">
+                      <div class="align-wrapper">
+                        <span class="icon-space">
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        </span>
+                        {{ student.total_questions }} questions
+                      </div>
+                    </td>
+                    <td class="stat-align-column time">
+                      <div class="align-wrapper">
+                        <span class="icon-space">
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                        </span>
+                         {{ formatTimeQuickview(student.total_time_sec).replace(' мин', ' minute') }}
+                      </div>
+                    </td>
+                    <td class="stat-align-column practiced">
+                      <div class="align-wrapper">
+                        <span class="icon-space">
+                          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
+                        </span>
+                        Practiced {{ formatLastPracticedQuickview(student.last_practiced_at) }}
+                      </div>
+                    </td>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="skill in student.skills" :key="skill.skill_id" class="skill-row">
+                    <td class="skill-grade-cell">{{ skill.grade_label }} ({{ skill.skill_code }})</td>
+                    <td class="skill-name-cell">
+                      <router-link :to="`/skill/${skill.skill_id}`" class="skill-link">{{ skill.skill_name }}</router-link>
+                      <span class="skill-sub-code">{{ skill.skill_code.slice(0, 3) }}</span>
+                    </td>
+                    <td class="stat-align-column">
+                      <div class="align-wrapper">
+                        <span class="icon-space"></span>
+                        {{ skill.total_questions }}
+                      </div>
+                    </td>
+                    <td class="stat-align-column">
+                      <div class="align-wrapper">
+                        <span class="icon-space"></span>
+                        {{ formatTimeQuickview(skill.total_time_seconds) }}
+                      </div>
+                    </td>
+                    <td class="stat-align-column row-score">
+                      <div class="align-wrapper">
+                         <span class="icon-space"></span>
+                         <div class="skill-score-flex">
+                          <span class="score-start">0</span>
+                          <div class="score-arrow-horizontal">
+                            <svg viewBox="0 0 20 10" preserveAspectRatio="none"><path d="M0 5 H15 M15 5 L12 2 M15 5 L12 8" stroke="currentColor" fill="none" stroke-width="1.5"/></svg>
+                          </div>
+                          <div class="smartscore-bar-container">
+                            <div class="smartscore-bar-bg"></div>
+                            <div class="smartscore-bar-fill" :style="{ width: skill.last_smartscore + '%' }"></div>
+                          </div>
+                          <span class="score-end" :class="smartScoreColorClass(skill.last_smartscore)">{{ skill.last_smartscore }}</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="student-card-footer">
+                <span class="footer-stat">
+                  <svg class="footer-icon mastered" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6c-1.1 0-2 .9-2 2v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V4c0-1.1-.9-2-2-2zm-1 14.86c-1.35-.35-2.59-.95-3.69-1.78l-.31-.24-.31.24c-1.1.83-2.34 1.43-3.69 1.78V10h8v6.86zM12 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
+                  {{ student.mastered_count }} Mastered
+                </span>
+                <span class="footer-stat">
+                  <svg class="footer-icon proficient" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z"/></svg>
+                  {{ student.proficient_count }} Proficient
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
         <SummaryTab v-else-if="activeTab === 'summary'"
-          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :skill-names="skillNames" />
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :skill-names="skillNames"
+          :accomplishments-title="accomplishmentsTitle" />
 
         <UsageTab v-else-if="activeTab === 'usage'"
-          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :period="selectedDateOption" />
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" :period="selectedDateOption"
+          :accomplishments-title="accomplishmentsTitle" />
 
         <TroubleTab v-else-if="activeTab === 'trouble'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
@@ -194,6 +274,29 @@ import TroubleTab from '@/components/analytics/TroubleTab.vue'
 import QuestionsTab from '@/components/analytics/QuestionsTab.vue'
 import ProgressTab from '@/components/analytics/ProgressTab.vue'
 
+interface SkillBreakdown {
+  skill_id: number
+  skill_name: string
+  skill_code: string
+  grade_number: number
+  grade_label: string
+  total_questions: number
+  total_time_seconds: number
+  best_smartscore: number
+  last_smartscore: number
+}
+
+interface StudentBreakdown {
+  student_id: string
+  full_name: string
+  total_questions: number
+  total_time_sec: number
+  last_practiced_at: string | null
+  mastered_count: number
+  proficient_count: number
+  skills: SkillBreakdown[]
+}
+
 const analyticsStore = useAnalyticsStore()
 const authStore = useAuthStore()
 const teacherStore = useTeacherStore()
@@ -217,6 +320,7 @@ const initialState = loadState()
 const selectedStudentId = ref(initialState.selectedStudentId || '')
 const studentAnalyticsLoading = ref(false)
 const hoverTab = ref<string | null>(null)
+const studentsBreakdown = ref<StudentBreakdown[]>([])
 
 // Carousel Logic
 const prevStudent = () => {
@@ -251,6 +355,37 @@ let teacherQuickviewRequestVersion = 0
 
 const shouldLoadQuestionData = () => {
   return tabsThatNeedQuestionData.has(activeTab.value) || selectedDateOption.value !== 'all'
+}
+
+const formatTimeQuickview = (seconds: unknown): string => {
+  const sec = Number(seconds) || 0
+  if (sec === 0) return '<1 мин'
+  const mins = Math.floor(sec / 60)
+  if (mins < 1) return '<1 мин'
+  if (mins >= 60) {
+    const hrs = Math.floor(mins / 60)
+    const rem = mins % 60
+    return rem > 0 ? `${hrs} сағ ${rem} мин` : `${hrs} сағ`
+  }
+  return `${mins} мин`
+}
+
+const formatLastPracticedQuickview = (dateStr: unknown): string => {
+  if (!dateStr) return ''
+  const date = new Date(String(dateStr))
+  const now = new Date()
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) return 'today'
+  if (diffDays === 1) return 'yesterday'
+  return `${diffDays} days ago`
+}
+
+const smartScoreColorClass = (score: unknown): string => {
+  const s = Number(score) || 0
+  if (s >= 100) return 'score-mastered'
+  if (s >= 80) return 'score-proficient'
+  if (s >= 50) return 'score-medium'
+  return 'score-low'
 }
 
 // Load own analytics (for any user)
@@ -312,10 +447,11 @@ const loadTeacherQuickviewAnalytics = async () => {
     if (requestVersion !== teacherQuickviewRequestVersion) {
       return
     }
-    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
+    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>>; students_breakdown?: Array<Record<string, unknown>> }
     analyticsStore.overview = data.overview as typeof analyticsStore.overview
     analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
     analyticsStore.allQuestions = []
+    studentsBreakdown.value = (data.students_breakdown || []) as unknown as StudentBreakdown[]
     analyticsStore.error = null
   } catch (err: unknown) {
     if (requestVersion !== teacherQuickviewRequestVersion) {
@@ -368,14 +504,6 @@ const onStudentChange = async () => {
   }
 }
 
-const onQuickviewStudentChange = async (event: Event) => {
-  const target = event.target as HTMLSelectElement
-  if (target.value) {
-    selectedStudentId.value = target.value
-    activeTab.value = 'usage'
-    await onStudentChange()
-  }
-}
 
 interface TabItem {
   id: string
@@ -455,7 +583,7 @@ const applyGradeFilter = () => {
 // Date Range Logic
 const dateRangeLabel = ref<string>('Барлық уақыт')
 const showDateDropdown = ref<boolean>(false)
-const selectedDateOption = ref<string>(initialState.selectedDateOption || 'all')
+const selectedDateOption = ref<string>(initialState.selectedDateOption || 'last30')
 
 const dateRange = ref<{ start: Date | null; end: Date | null }>({
   start: null,
@@ -469,9 +597,41 @@ const dateOptions = [
   { id: 'last7', label: 'Соңғы 7 күн' },
   { id: 'month', label: 'Осы ай' },
   { id: 'last30', label: 'Соңғы 30 күн' },
-  { id: 'year', label: 'Осы жыл' },
+  { id: 'year', label: 'Осы оқу жылы' },
   { id: 'all', label: 'Барлық уақыт' },
 ]
+
+// Dynamic accomplishments title based on student name + time period
+const accomplishmentsTitle = computed(() => {
+  // Determine the subject name
+  let subjectName = ''
+  if (isTeacher.value) {
+    if (activeTab.value === 'students_quickview' || !selectedStudentId.value) {
+      subjectName = 'оқушыларыңыз'
+    } else {
+      const student = teacherStudents.value.find((s: { id: string }) => s.id === selectedStudentId.value)
+      subjectName = student ? (student as { full_name: string }).full_name : ''
+    }
+  } else {
+    subjectName = authStore.user?.full_name || ''
+  }
+
+  // Determine the period phrase
+  const periodOption = dateOptions.find(o => o.id === selectedDateOption.value)
+  const periodLabel = periodOption ? periodOption.label.toLowerCase() : ''
+
+  if (selectedDateOption.value === 'all') {
+    // "Нұрсәт — StudyPoint жетістіктері" or "Оқушыларыңыздың StudyPoint жетістіктері"
+    if (isTeacher.value && (activeTab.value === 'students_quickview' || !selectedStudentId.value)) {
+      return 'Оқушыларыңыздың StudyPoint жетістіктері'
+    }
+    return `${subjectName} — StudyPoint жетістіктері`
+  }
+
+  // "Соңғы 30 күн ішінде Нұрсәт..." or "Соңғы 30 күн ішінде оқушыларыңыз..."
+  const capitalPeriod = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1)
+  return `${capitalPeriod} ішінде ${subjectName}...`
+})
 
 const toggleDateDropdown = () => {
   showDateDropdown.value = !showDateDropdown.value
@@ -520,8 +680,12 @@ const selectDateRange = (optionId: string) => {
       dateRange.value = { start: last30, end: new Date() }
       break
     case 'year':
-      const firstDayYear = new Date(today.getFullYear(), 0, 1)
-      dateRange.value = { start: firstDayYear, end: new Date() }
+      // Academic year: Sep 1 – Jun 30
+      // If current month < September (0-indexed: 8), academic year started last year
+      const academicYearStart = today.getMonth() < 8
+        ? new Date(today.getFullYear() - 1, 8, 1)  // Sep 1 of previous year
+        : new Date(today.getFullYear(), 8, 1)       // Sep 1 of current year
+      dateRange.value = { start: academicYearStart, end: new Date() }
       break
     case 'all':
     default:
@@ -545,7 +709,8 @@ watch(
   { deep: true }
 )
 
-// Automatically load quickview data when returning to the quickview tab
+// Automatically load quickview data when returning to the quickview tab,
+// or auto-select first student when switching to a student-specific tab
 watch(activeTab, async (newVal) => {
   if (isTeacher.value && newVal === 'students_quickview') {
     selectedStudentId.value = ''
@@ -554,6 +719,12 @@ watch(activeTab, async (newVal) => {
   }
 
   if (isTeacher.value && selectedStudentId.value && shouldLoadQuestionData() && analyticsStore.allQuestions.length === 0) {
+    await onStudentChange()
+    return
+  }
+
+  if (isTeacher.value && newVal !== 'students_quickview' && !selectedStudentId.value && teacherStudents.value.length > 0) {
+    selectedStudentId.value = teacherStudents.value[0].id
     await onStudentChange()
     return
   }
@@ -599,7 +770,12 @@ onMounted(async () => {
   if (isTeacher.value && teacherStudents.value.length === 0) {
     await teacherStore.fetchStudents()
   }
-  
+
+  // Auto-select first student if teacher has no student selected and not on quickview
+  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && teacherStudents.value.length > 0) {
+    selectedStudentId.value = teacherStudents.value[0].id
+  }
+
   try {
     if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview') {
       // Teacher has a student selected and specific tab — load that student's data
@@ -750,28 +926,12 @@ onMounted(async () => {
 }
 
 /* Quickview Styles */
+.quickview-tab-content {
+  padding: 0;
+}
+
 .quickview-container {
   padding: 24px 0;
-}
-
-.quickview-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #eee;
-}
-
-.quickview-title {
-  font-size: 28px;
-  font-weight: 300;
-  color: #555;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
 .quickview-student-select {
@@ -805,6 +965,26 @@ onMounted(async () => {
   background-repeat: no-repeat;
   background-position: right center;
   background-size: 12px auto;
+}
+
+.print-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  color: #999;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.print-btn:hover {
+  color: #333;
+}
+
+.print-icon {
+  width: 20px;
+  height: 20px;
 }
 
 /* Filters */
@@ -1060,6 +1240,281 @@ onMounted(async () => {
   border-left: 3px solid #00ACC1;
   padding-left: 17px;
 }
+
+/* Quickview Styles */
+.quickview-tab-content {
+  padding: 0;
+}
+
+.quickview-summary-dashboard {
+  margin-bottom: 40px;
+}
+
+/* Students Breakdown */
+.students-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.student-card {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.student-unified-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+/* Header Row Styling */
+.header-summary-row {
+  background: #fafafa;
+  border-bottom: 1px solid #e0e6ed;
+  height: 48px;
+}
+
+.student-name-column {
+  padding: 8px 16px;
+  vertical-align: middle;
+}
+
+.student-avatar-grid {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  background: #8CBA3D;
+  color: white;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  vertical-align: middle;
+}
+
+.student-avatar-grid svg {
+  width: 16px;
+  height: 16px;
+}
+
+.student-name-grid {
+  font-size: 15px;
+  font-weight: 600;
+  color: #039BE5;
+  vertical-align: middle;
+}
+
+/* Common cell alignment logic */
+.align-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.icon-space {
+  display: inline-flex;
+  width: 24px; /* Matches the space taken by icons for perfect stacking */
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.icon-space svg {
+  width: 16px;
+  height: 16px;
+}
+
+.stat-align-column {
+  padding: 8px 16px;
+  font-size: 12px;
+  color: #666;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.stat-align-column.questions { width: 100px; color: #8CBA3D; }
+.stat-align-column.time { width: 120px; color: #00B0FF; }
+.stat-align-column.practiced { width: 220px; color: #5C6BC0; }
+
+.skill-row {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.skill-row:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.skill-row td {
+  padding: 10px 16px;
+  font-size: 13px;
+  color: #444;
+  vertical-align: middle;
+}
+
+.skill-grade-cell {
+  width: 120px;
+  color: #717171;
+  font-weight: 500;
+}
+
+.skill-name-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skill-link {
+  color: #333;
+  text-decoration: none;
+}
+
+.skill-link:hover { text-decoration: underline; color: #00838F; }
+
+.skill-sub-code {
+  color: #cfd8dc;
+  font-size: 11px;
+  margin-left: 8px;
+  text-transform: uppercase;
+}
+
+.skill-score-flex {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+}
+
+.score-arrow-horizontal {
+  color: #8CBA3D;
+  width: 25px;
+  display: flex;
+  align-items: center;
+}
+
+.score-arrow-horizontal svg {
+  width: 100%;
+  height: 8px;
+}
+
+.smartscore-bar-container {
+  position: relative;
+  width: 60px;
+  height: 3px;
+}
+
+.smartscore-bar-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #eee;
+  border-radius: 2px;
+}
+
+.smartscore-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #8BC34A;
+  border-radius: 2px;
+}
+
+.score-start {
+  font-size: 12px;
+  color: #bbb;
+  width: 15px;
+  text-align: right;
+}
+
+.score-end {
+  font-size: 13px;
+  font-weight: 700;
+  width: 25px;
+}
+
+.score-blue { color: #039BE5; }
+.score-gold { color: #FFD600; }
+.score-green { color: #8BC34A; }
+.score-gray { color: #999; }
+
+.smartscore-bar-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #eee;
+  border-radius: 2px;
+}
+
+.smartscore-bar-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: #8BC34A;
+  border-radius: 2px;
+}
+
+.smartscore-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  color: #8BC34A;
+}
+
+.score-start {
+  color: #ccc;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.score-end {
+  font-size: 14px;
+  min-width: 20px;
+  text-align: right;
+}
+
+.score-end.score-mastered { color: #FFB300; }
+.score-end.score-proficient { color: #03A9F4; }
+.score-end.score-medium { color: #4CAF50; }
+.score-end.score-low { color: #333; }
+
+.student-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
+  padding: 10px 20px;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+}
+
+.footer-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #666;
+}
+
+.footer-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.footer-icon.mastered { color: #FFB300; }
+.footer-icon.proficient { color: #03A9F4; }
 
 /* Responsive */
 @media (max-width: 768px) {

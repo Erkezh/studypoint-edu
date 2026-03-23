@@ -11,7 +11,7 @@
 
     <!-- Accomplishments Card -->
     <div class="accomplishments-card">
-      <h2 class="card-title">Сіздің StudyPoint жетістіктеріңіз</h2>
+      <h2 class="card-title">{{ accomplishmentsTitle }}</h2>
       <div class="stats-grid">
         <div class="stat-item">
           <div class="stat-icon answered">
@@ -137,6 +137,7 @@ const props = defineProps<{
   gradeTo: number
   skillNames: Map<number, string>
   dateRange: { start: Date | null; end: Date | null }
+  accomplishmentsTitle: string
 }>()
 
 const analyticsStore = useAnalyticsStore()
