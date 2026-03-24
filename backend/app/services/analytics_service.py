@@ -590,6 +590,7 @@ class AnalyticsService:
                     "total_time_seconds": sk_time,
                     "best_smartscore": sr.best_smartscore or 0,
                     "last_smartscore": sr.last_smartscore or 0,
+                    "last_practiced_at": sr.last_practiced_at.isoformat() if sr.last_practiced_at else None,
                 })
 
             students_breakdown.append({
