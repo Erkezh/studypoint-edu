@@ -298,8 +298,8 @@ const analyzedSkills = computed<SkillData[]>(() => {
         skill.proficient.push(groupData)
       } else {
         skill.practicing.push(groupData)
-        // Check if stuck (IXL often counts < 80 with multiple questions as trouble)
-        if ((studentSkill.total_questions || 0) > 10 && groupData.score < 80) {
+        // IXL: trouble spot = student missed 3+ questions and SmartScore < 80
+        if ((studentSkill.total_questions || 0) >= 3 && groupData.score < 80) {
           troubleInThisSkill = true
         }
       }
@@ -307,7 +307,10 @@ const analyzedSkills = computed<SkillData[]>(() => {
     skill.hasTroubleSpot = troubleInThisSkill
   }
 
-  const result = Array.from(skillMap.values())
+  // Remove skills where nobody actually practiced (all students in "No Practice")
+  const result = Array.from(skillMap.values()).filter(s =>
+    s.mastered.length > 0 || s.proficient.length > 0 || s.practicing.length > 0
+  )
   
   // Basic search filter
   if (searchQuery.value) {
@@ -522,18 +525,18 @@ input:checked + .slider:before {
   font-size: 10px;
   font-weight: bold;
   margin-left: 6px;
-  cursor: help;
+  cursor: default;
 }
 .info-tooltip {
   position: absolute;
-  top: 100%; left: 0;
+  bottom: 100%; left: 0;
   background: white;
   border: 1px solid #ccc;
   padding: 8px 16px;
   border-radius: 4px;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   z-index: 10;
-  margin-top: 8px;
+  margin-bottom: 8px;
   font-size: 12px;
   font-weight: normal;
   line-height: 1.8;

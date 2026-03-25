@@ -13,9 +13,9 @@
               <svg v-if="tab.id === 'summary' && !isTeacher" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
               <svg v-else-if="tab.id === 'students_dropdown' && isTeacher" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               <svg v-else-if="tab.id === 'usage'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <svg v-else-if="tab.id === 'skills_dropdown'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
+              <svg v-else-if="tab.id === 'skills_dropdown' || tab.id === 'skills_practiced'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
               <svg v-else-if="tab.id === 'trouble' || tab.id === 'trouble_dropdown'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-              <svg v-else-if="tab.id === 'scores'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+              <svg v-else-if="tab.id === 'scores_dropdown'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
               <svg v-else-if="tab.id === 'questions'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
               <svg v-else-if="tab.id === 'progress'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
             </span>
@@ -34,7 +34,7 @@
       </nav>
     </div>
 
-    <div v-if="activeTab !== 'scores'" class="filters-bar">
+    <div v-if="activeTab !== 'scores_grid' && activeTab !== 'scores_student' && activeTab !== 'scores_skill'" class="filters-bar">
       <!-- Teacher: Student Picker -->
       <!-- Teacher: Student Picker moved to content -->
       <div class="filter-group grade-range-filter">
@@ -94,7 +94,7 @@
       </div>
 
       <!-- Teacher Needs Selection State -->
-      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis'" class="empty-state teacher-select-prompt">
+      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid'" class="empty-state teacher-select-prompt">
         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
         <h3 class="text-xl font-medium text-gray-700 mb-2">Оқушыны таңдаңыз</h3>
 
@@ -117,7 +117,7 @@
 
       <div v-else>
         <!-- Teacher Student Carousel for active views (Usage, Summary) - HIDDEN on Quickview -->
-        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis'" class="student-carousel-container active-view-carousel">
+        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid'" class="student-carousel-container active-view-carousel">
           <button @click="prevStudent" class="carousel-arrow">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
           </button>
@@ -249,7 +249,10 @@
           @navigate="handleTabNavWithContext" />
 
         <SkillAnalysisTab v-else-if="activeTab === 'skill_analysis'"
-          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
+          :date-label="dateRangeLabel"
+          :all-students-data="studentsBreakdown"
+          @navigate="handleTabNavWithContext" />
 
         <TroubleTab v-else-if="activeTab === 'trouble' || activeTab === 'trouble_class'"
           :is-class-wide="activeTab === 'trouble_class'"
@@ -257,7 +260,13 @@
           :all-students-data="activeTab === 'trouble_class' ? studentsBreakdown : []"
           @select-student="handleTroubleStudentSelect" />
 
-        <ScoresTab v-else-if="activeTab === 'scores'" />
+        <ScoreGridTab v-else-if="activeTab === 'scores_grid'"
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
+          :date-label="dateRangeLabel"
+          :all-students-data="studentsBreakdown"
+          @navigate="handleTabNavWithContext" />
+
+        <ScoresTab v-else-if="activeTab === 'scores_student' || activeTab === 'scores_skill'" />
 
         <QuestionsTab v-else-if="activeTab === 'questions'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
@@ -288,6 +297,7 @@ import SkillsPracticedTab from '@/components/analytics/SkillsPracticedTab.vue'
 import SkillAnalysisTab from '@/components/analytics/SkillAnalysisTab.vue'
 import QuestionsTab from '@/components/analytics/QuestionsTab.vue'
 import ProgressTab from '@/components/analytics/ProgressTab.vue'
+import ScoreGridTab from '@/components/analytics/ScoreGridTab.vue'
 
 interface SkillBreakdown {
   skill_id: number
@@ -506,7 +516,7 @@ const handleTabNavWithContext = (route: string, context?: Record<string, unknown
 const onStudentChange = async () => {
   if (!selectedStudentId.value || !isTeacher.value) {
     selectedStudentId.value = ''
-    if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis')) {
+    if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid')) {
       await loadTeacherQuickviewAnalytics()
     } else {
       await loadOwnAnalytics()
@@ -571,7 +581,15 @@ const tabs = computed<TabItem[]>(() => {
           { id: 'skill_analysis', label: 'Дағдылардың талдауы' },
         ]
       },
-      { id: 'scores', label: 'Ұпайлар' },
+      {
+        id: 'scores_dropdown',
+        label: 'Ұпайлар',
+        dropdown: [
+          { id: 'scores_grid', label: 'Ұпай торы' },
+          { id: 'scores_student', label: 'Оқушы ұпайлары' },
+          { id: 'scores_skill', label: 'Дағды ұпайлары' },
+        ]
+      },
       { id: 'questions', label: 'Сұрақтар' },
       { id: 'progress', label: 'Прогресс' },
     ]
@@ -588,7 +606,15 @@ const tabs = computed<TabItem[]>(() => {
         { id: 'skill_analysis', label: 'Дағдылардың талдауы' },
       ]
     },
-    { id: 'scores', label: 'Ұпайлар' },
+    {
+      id: 'scores_dropdown',
+      label: 'Ұпайлар',
+      dropdown: [
+        { id: 'scores_grid', label: 'Ұпай торы' },
+        { id: 'scores_student', label: 'Оқушы ұпайлары' },
+        { id: 'scores_skill', label: 'Дағды ұпайлары' },
+      ]
+    },
     { id: 'questions', label: 'Сұрақтар' },
     { id: 'progress', label: 'Прогресс' },
   ]
@@ -766,9 +792,18 @@ watch(
 // Automatically load quickview data when returning to the quickview tab,
 // or auto-select first student when switching to a student-specific tab
 watch(activeTab, async (newVal) => {
-  if (isTeacher.value && (newVal === 'students_quickview' || newVal === 'trouble_class' || newVal === 'skills_practiced' || newVal === 'skill_analysis')) {
+  if (isTeacher.value && (newVal === 'students_quickview' || newVal === 'trouble_class')) {
     selectedStudentId.value = ''
     await loadTeacherQuickviewAnalytics()
+    return
+  }
+
+  if (isTeacher.value && (newVal === 'skills_practiced' || newVal === 'skill_analysis' || newVal === 'scores_grid')) {
+    selectedStudentId.value = ''
+    // Only fetch if we don't already have the class-wide data
+    if (studentsBreakdown.value.length === 0) {
+      await loadTeacherQuickviewAnalytics()
+    }
     return
   }
 
@@ -777,7 +812,7 @@ watch(activeTab, async (newVal) => {
     return
   }
 
-  if (isTeacher.value && newVal !== 'students_quickview' && newVal !== 'trouble_class' && newVal !== 'skills_practiced' && newVal !== 'skill_analysis' && !selectedStudentId.value && teacherStudents.value.length > 0) {
+  if (isTeacher.value && newVal !== 'students_quickview' && newVal !== 'trouble_class' && newVal !== 'skills_practiced' && newVal !== 'skill_analysis' && newVal !== 'scores_grid' && !selectedStudentId.value && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
     await onStudentChange()
     return
@@ -826,16 +861,16 @@ onMounted(async () => {
   }
 
   // Auto-select first student if teacher has no student selected and not on quickview
-  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && teacherStudents.value.length > 0) {
+  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
   }
 
   try {
-    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class') {
+    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid') {
       // Teacher has a student selected and specific tab — load that student's data
       await onStudentChange()
-    } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class')) {
-      // Teacher is on quickview page - load aggregate data
+    } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid')) {
+      // Teacher is on class-wide page - load aggregate data
       await loadTeacherQuickviewAnalytics()
     } else {
       // Student or teacher with no selection — load own data
