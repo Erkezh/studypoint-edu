@@ -94,7 +94,7 @@
       </div>
 
       <!-- Teacher Needs Selection State -->
-      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid'" class="empty-state teacher-select-prompt">
+      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill'" class="empty-state teacher-select-prompt">
         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
         <h3 class="text-xl font-medium text-gray-700 mb-2">Оқушыны таңдаңыз</h3>
 
@@ -117,7 +117,7 @@
 
       <div v-else>
         <!-- Teacher Student Carousel for active views (Usage, Summary) - HIDDEN on Quickview -->
-        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid'" class="student-carousel-container active-view-carousel">
+        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill'" class="student-carousel-container active-view-carousel">
           <button @click="prevStudent" class="carousel-arrow">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
           </button>
@@ -266,7 +266,12 @@
           :all-students-data="studentsBreakdown"
           @navigate="handleTabNavWithContext" />
 
-        <ScoresTab v-else-if="activeTab === 'scores_student' || activeTab === 'scores_skill'" />
+        <ScoresTab v-else-if="activeTab === 'scores_student'" />
+
+        <SkillScoreChartTab v-else-if="activeTab === 'scores_skill'"
+          :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
+          :date-label="dateRangeLabel"
+          :all-students-data="studentsBreakdown" />
 
         <QuestionsTab v-else-if="activeTab === 'questions'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
@@ -298,6 +303,7 @@ import SkillAnalysisTab from '@/components/analytics/SkillAnalysisTab.vue'
 import QuestionsTab from '@/components/analytics/QuestionsTab.vue'
 import ProgressTab from '@/components/analytics/ProgressTab.vue'
 import ScoreGridTab from '@/components/analytics/ScoreGridTab.vue'
+import SkillScoreChartTab from '@/components/analytics/SkillScoreChartTab.vue'
 
 interface SkillBreakdown {
   skill_id: number
@@ -516,7 +522,7 @@ const handleTabNavWithContext = (route: string, context?: Record<string, unknown
 const onStudentChange = async () => {
   if (!selectedStudentId.value || !isTeacher.value) {
     selectedStudentId.value = ''
-    if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid')) {
+    if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid' || activeTab.value === 'scores_skill')) {
       await loadTeacherQuickviewAnalytics()
     } else {
       await loadOwnAnalytics()
@@ -798,7 +804,7 @@ watch(activeTab, async (newVal) => {
     return
   }
 
-  if (isTeacher.value && (newVal === 'skills_practiced' || newVal === 'skill_analysis' || newVal === 'scores_grid')) {
+  if (isTeacher.value && (newVal === 'skills_practiced' || newVal === 'skill_analysis' || newVal === 'scores_grid' || newVal === 'scores_skill')) {
     selectedStudentId.value = ''
     // Only fetch if we don't already have the class-wide data
     if (studentsBreakdown.value.length === 0) {
@@ -812,7 +818,7 @@ watch(activeTab, async (newVal) => {
     return
   }
 
-  if (isTeacher.value && newVal !== 'students_quickview' && newVal !== 'trouble_class' && newVal !== 'skills_practiced' && newVal !== 'skill_analysis' && newVal !== 'scores_grid' && !selectedStudentId.value && teacherStudents.value.length > 0) {
+  if (isTeacher.value && newVal !== 'students_quickview' && newVal !== 'trouble_class' && newVal !== 'skills_practiced' && newVal !== 'skill_analysis' && newVal !== 'scores_grid' && newVal !== 'scores_skill' && !selectedStudentId.value && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
     await onStudentChange()
     return
@@ -861,15 +867,15 @@ onMounted(async () => {
   }
 
   // Auto-select first student if teacher has no student selected and not on quickview
-  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && teacherStudents.value.length > 0) {
+  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill' && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
   }
 
   try {
-    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid') {
+    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill') {
       // Teacher has a student selected and specific tab — load that student's data
       await onStudentChange()
-    } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid')) {
+    } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid' || activeTab.value === 'scores_skill')) {
       // Teacher is on class-wide page - load aggregate data
       await loadTeacherQuickviewAnalytics()
     } else {

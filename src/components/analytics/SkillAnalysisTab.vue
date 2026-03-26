@@ -56,9 +56,9 @@
                 </svg>
               </div>
               <div class="donut-legend">
-                <div class="legend-item"><span class="legend-dot bg-green"></span>{{ masteredPercent }}% Mastered</div>
-                <div class="legend-item"><span class="legend-dot bg-blue"></span>{{ practicingPercent }}% Practicing</div>
-                <div class="legend-item"><span class="legend-dot bg-orange"></span>{{ noPracticePercent }}% No practice</div>
+                <div class="legend-item"><span class="legend-dot bg-green"></span>{{ masteredPercent }}% Меңгерілген</div>
+                <div class="legend-item"><span class="legend-dot bg-blue"></span>{{ practicingPercent }}% Жаттығуда</div>
+                <div class="legend-item"><span class="legend-dot bg-orange"></span>{{ noPracticePercent }}% Тәжірибе жоқ</div>
               </div>
             </div>
           </div>
@@ -101,7 +101,7 @@
         <div class="breakdown-section">
           <div class="section-header bg-mastered">
             <span class="section-icon">🏆</span>
-            <span class="section-title">MASTERED</span>
+            <span class="section-title">МЕҢГЕРІЛГЕН</span>
             <span class="section-count">
               <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               {{ masteredStudents.length }}
@@ -124,7 +124,7 @@
         <div class="breakdown-section">
           <div class="section-header bg-practicing">
             <span class="section-icon">📘</span>
-            <span class="section-title">PRACTICING</span>
+            <span class="section-title">ЖАТТЫҒУДА</span>
             <span class="section-count">
               <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               {{ practicingStudents.length }}
@@ -153,7 +153,7 @@
         <div class="breakdown-section">
           <div class="section-header bg-nopractice">
             <span class="section-icon">⏸️</span>
-            <span class="section-title">NO PRACTICE</span>
+            <span class="section-title">ТӘЖІРИБЕ ЖОҚ</span>
             <span class="section-count">
               <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               {{ noPracticeStudents.length }}

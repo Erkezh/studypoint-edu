@@ -67,10 +67,10 @@
           ДАҒДЫЛАР ПРОГРЕСІ
           <span class="info-circle" @mouseenter="showInfoTooltip = true" @mouseleave="showInfoTooltip = false">i</span>
           <div v-if="showInfoTooltip" class="info-tooltip">
-            <div class="tt-item text-green-500">Mastered</div>
-            <div class="tt-item text-cyan-500">Proficient</div>
-            <div class="tt-item text-blue-500">Practicing</div>
-            <div class="tt-item text-orange-400">No practice</div>
+            <div class="tt-item text-green-500">Меңгерілген</div>
+            <div class="tt-item text-cyan-500">Білікті</div>
+            <div class="tt-item text-blue-500">Жаттығуда</div>
+            <div class="tt-item text-orange-400">Тәжірибе жоқ</div>
           </div>
         </div>
         <div class="th-trouble">ҚИЫНДЫҚТАР</div>
@@ -111,7 +111,7 @@
             <div class="exp-cols grid grid-cols-4 gap-4 px-6 py-4">
               <!-- Mastered -->
               <div class="exp-col">
-                <h4 class="col-title text-green-500">MASTERED: {{ skill.mastered.length }} student{{ skill.mastered.length !== 1 ? 's' : '' }}</h4>
+                <h4 class="col-title text-green-500">МЕҢГЕРІЛГЕН: {{ skill.mastered.length }} оқушы</h4>
                 <div class="col-students border-l-2 border-green-200 pl-4 mt-3 space-y-2">
                   <div v-for="st in skill.mastered" :key="st.id" class="st-item">
                     <a href="#" @click.prevent="goToQuestions(st.id)" class="hover:text-teal-600 hover:underline">{{ st.name }}</a> ({{ st.score }})
@@ -120,7 +120,7 @@
               </div>
               <!-- Proficient -->
               <div class="exp-col">
-                <h4 class="col-title text-cyan-500">PROFICIENT: {{ skill.proficient.length }} student{{ skill.proficient.length !== 1 ? 's' : '' }}</h4>
+                <h4 class="col-title text-cyan-500">БІЛІКТІ: {{ skill.proficient.length }} оқушы</h4>
                 <div class="col-students border-l-2 border-cyan-200 pl-4 mt-3 space-y-2">
                   <div v-for="st in skill.proficient" :key="st.id" class="st-item">
                     <a href="#" @click.prevent="goToQuestions(st.id)" class="hover:text-cyan-600 hover:underline">{{ st.name }}</a> ({{ st.score }})
@@ -129,18 +129,18 @@
               </div>
               <!-- Practicing -->
               <div class="exp-col">
-                <h4 class="col-title text-blue-500">PRACTICING: {{ skill.practicing.length }} student{{ skill.practicing.length !== 1 ? 's' : '' }}</h4>
+                <h4 class="col-title text-blue-500">ЖАТТЫҒУДА: {{ skill.practicing.length }} оқушы</h4>
                 <div class="col-students border-l-2 border-blue-200 pl-4 mt-3 space-y-2">
                   <div v-for="st in [...skill.practicing].sort((a,b) => b.score - a.score)" :key="st.id" class="st-item">
-                    <span class="text-xs text-blue-400 font-bold block mb-0.5 mt-2 first:mt-0" v-if="st.score < 50">LEVEL 1</span>
-                    <span class="text-xs text-blue-500 font-bold block mb-0.5 mt-2 first:mt-0" v-else>LEVEL 2</span>
+                    <span class="text-xs text-blue-400 font-bold block mb-0.5 mt-2 first:mt-0" v-if="st.score < 50">1-ДЕҢГЕЙ</span>
+                    <span class="text-xs text-blue-500 font-bold block mb-0.5 mt-2 first:mt-0" v-else>2-ДЕҢГЕЙ</span>
                     <a href="#" @click.prevent="goToQuestions(st.id)" class="hover:text-blue-600 hover:underline">{{ st.name }}</a> ({{ st.score }})
                   </div>
                 </div>
               </div>
               <!-- No Practice -->
               <div class="exp-col">
-                <h4 class="col-title text-orange-400">NO PRACTICE: {{ skill.noPractice.length }} student{{ skill.noPractice.length !== 1 ? 's' : '' }}</h4>
+                <h4 class="col-title text-orange-400">ТӘЖІРИБЕ ЖОҚ: {{ skill.noPractice.length }} оқушы</h4>
                 <div class="col-students border-l-2 border-orange-200 pl-4 mt-3 space-y-2">
                   <div v-for="st in skill.noPractice" :key="st.id" class="st-item text-gray-600">
                     <a href="#" @click.prevent="goToQuestions(st.id)" class="hover:text-gray-800 hover:underline">{{ st.name }}</a>
@@ -151,7 +151,7 @@
 
             <div class="exp-footer px-6 pb-6 text-center">
               <a href="#" @click.prevent="goToAnalysis(skill.skillId)" class="text-blue-500 hover:text-blue-700 font-medium text-sm">
-                See Skill Analysis for detailed class performance including recent questions &gt;
+                Толығырақ ақпарат алу үшін "Дағдылар талдауына" өтіңіз &gt;
               </a>
             </div>
           </div>

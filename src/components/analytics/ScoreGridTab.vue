@@ -36,11 +36,14 @@
       <table class="sg-table">
         <thead>
           <tr>
-            <th class="th-skill" :style="{ minWidth: '280px' }"></th>
-            <th class="th-code"></th>
-            <th v-for="st in displayStudents" :key="st.id" class="th-student">
+            <th class="th-skill"></th>
+            <th v-for="st in displayStudents" :key="st.id" class="th-student"
+                :class="{ 'col-hover': hoveredStudentId === st.id }"
+                @mouseenter="hoveredStudentId = st.id"
+                @mouseleave="hoveredStudentId = null">
               <div class="student-header">{{ st.name }}</div>
             </th>
+            <th class="th-spacer"></th>
           </tr>
         </thead>
         <tbody v-for="group in groupedSkills" :key="group.topicTitle">
@@ -58,8 +61,10 @@
                 <span class="skill-order">{{ skill.order }}.</span>
                 <span class="skill-title">{{ skill.title }}</span>
               </td>
-              <td class="td-code">{{ skill.code }}</td>
-              <td v-for="st in displayStudents" :key="st.id" class="td-score">
+              <td v-for="st in displayStudents" :key="st.id" class="td-score"
+                  :class="{ 'col-hover': hoveredStudentId === st.id }"
+                  @mouseenter="hoveredStudentId = st.id"
+                  @mouseleave="hoveredStudentId = null">
                 <div v-if="getStudentScore(st.id, skill.id) !== null"
                   class="score-cell"
                   :class="getScoreClass(getStudentScore(st.id, skill.id)!)"
@@ -67,6 +72,7 @@
                   {{ getStudentScore(st.id, skill.id) }}
                 </div>
               </td>
+              <td class="td-spacer"></td>
             </tr>
           </template>
         </tbody>
@@ -141,7 +147,7 @@ const defaultGrade = computed(() => {
 })
 
 const gradeOptions = [
-  { value: -1, label: 'Pre-K' },
+  { value: -1, label: 'Мектепке дейінгі' },
   { value: 0, label: '0' },
   ...Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}` })),
 ]
@@ -151,6 +157,7 @@ const selectedStudentFilter = ref('all')
 const loadingSkills = ref(false)
 const catalogSkills = ref<SkillListItem[]>([])
 const expandedTopics = ref<Record<string, boolean>>({})
+const hoveredStudentId = ref<string | null>(null)
 
 // Students list for dropdown
 const studentsList = computed(() =>
@@ -264,7 +271,6 @@ const printReport = () => window.print()
 
 <style scoped>
 .score-grid-tab {
-  max-width: 1200px;
   margin: 0 auto;
   padding: 24px 16px;
   font-family: 'Inter', 'Segoe UI', sans-serif;
@@ -348,12 +354,12 @@ const printReport = () => window.print()
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Table Wrapper */
+/* Table Wrapper — horizontal scroll for students, fixed skills col */
 .sg-table-wrapper {
   overflow-x: auto;
   background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 /* Table */
@@ -361,30 +367,49 @@ const printReport = () => window.print()
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: auto;
+  background: white;
 }
 
 /* Header */
 .sg-table thead tr {
-  background: #f0f7fa;
-  border-bottom: 2px solid #e0e0e0;
+  background: #eef6f8;
 }
 .th-skill {
-  min-width: 260px;
+  width: 30%;
   padding: 8px 12px;
   text-align: left;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: #eef6f8;
+  border-right: 2px solid #ddd;
+  border-bottom: 2px solid #ddd;
 }
 .th-code {
+  width: 5%;
   min-width: 50px;
   padding: 8px 6px;
   text-align: center;
   color: #999;
+  position: sticky;
+  left: 25%;
+  z-index: 3;
+  background: #eef6f8;
+  border-right: 2px solid #bbb;
 }
 .th-student {
-  min-width: 40px;
-  max-width: 50px;
-  padding: 8px 4px;
+  width: 44px;
+  min-width: 44px;
+  padding: 8px 2px 8px 2px;
   text-align: center;
   vertical-align: bottom;
+  border-left: 1px solid #ddd;
+}
+.th-spacer {
+  width: auto;
+  background: #eef6f8;
+  border-left: 1px solid #ddd;
 }
 .student-header {
   writing-mode: vertical-rl;
@@ -394,9 +419,11 @@ const printReport = () => window.print()
   font-weight: 600;
   color: #00838f;
   white-space: nowrap;
-  max-height: 120px;
+  max-height: 130px;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding: 4px 0;
+  margin: 0 auto;
 }
 
 /* Topic Row */
@@ -405,12 +432,11 @@ const printReport = () => window.print()
   user-select: none;
 }
 .topic-cell {
-  background: linear-gradient(135deg, #0bb5c4, #19a5b4);
+  background: #00a0df; /* Bright blue matching IXL */
   color: white;
-  font-weight: 700;
-  font-size: 12px;
+  font-weight: 600;
+  font-size: 13px;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
   padding: 8px 12px;
   border: none;
 }
@@ -421,15 +447,36 @@ const printReport = () => window.print()
 
 /* Skill Rows */
 .skill-row {
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid #ddd;
+  background: white;
 }
 .skill-row:hover {
-  background: #fafffe;
+  background: #eaf4fb;
+}
+.skill-row:hover .td-skill,
+.skill-row:hover .td-score,
+.skill-row:hover .td-spacer {
+  background: #eaf4fb;
+}
+.col-hover {
+  background-color: #eaf4fb !important;
+}
+.skill-row:hover .td-score.col-hover {
+  background-color: #d1eaff !important; /* Slightly darker at table intersection */
 }
 .td-skill {
-  padding: 6px 12px;
+  padding: 8px 12px;
   color: #333;
   font-size: 13px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: inherit;
+  border-right: 2px solid #ddd;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 30%;
 }
 .skill-order {
   color: #999;
@@ -437,37 +484,37 @@ const printReport = () => window.print()
   font-size: 12px;
 }
 .skill-title {
-  color: #333;
-}
-.td-code {
-  padding: 6px;
-  text-align: center;
-  color: #aaa;
-  font-size: 11px;
-  font-family: monospace;
+  color: #555;
 }
 .td-score {
-  padding: 4px;
+  padding: 0;
+  height: 38px;
   text-align: center;
-  min-width: 40px;
+  width: 44px;
+  min-width: 44px;
+  border-left: 1px solid #ddd;
+}
+.td-spacer {
+  border-left: 1px solid #ddd;
+  width: auto;
 }
 
 /* Score Cells */
 .score-cell {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 24px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 700;
-  color: white;
+  width: 100%;
+  height: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  background: transparent;
 }
-.score-mastered { background: #66bb6a; }
-.score-proficient { background: #4caf50; }
-.score-practicing { background: #42a5f5; }
-.score-low { background: #ff9800; }
+.score-mastered { color: #66bb6a; }
+.score-proficient { color: #4caf50; }
+.score-practicing { color: #42a5f5; }
+.score-low { color: #ff9800; }
 
 /* Empty */
 .sg-empty {
