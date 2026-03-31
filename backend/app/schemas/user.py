@@ -23,4 +23,5 @@ class UserMeResponse(BaseModel):
     is_active: bool
     profile: StudentProfileResponse | None = None
     subscription: SubscriptionResponse | None = None
+    parent_id: str | None = None
 

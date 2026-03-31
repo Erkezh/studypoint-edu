@@ -22,6 +22,8 @@ class AuthRegisterRequest(BaseModel):
             raise ValueError("Password must include mixed case letters")
         if not any(ch.isdigit() for ch in v):
             raise ValueError("Password must include a digit")
+        if not any(ch in "!@#$%^&*()_+-=[]{}|;':\",./<>?~`" for ch in v):
+            raise ValueError("Password must include a special character (!@#$%)")
         return v
 
 
@@ -43,6 +45,8 @@ class AuthRegisterFamilyRequest(BaseModel):
             raise ValueError("Password must include mixed case letters")
         if not any(ch.isdigit() for ch in v):
             raise ValueError("Password must include a digit")
+        if not any(ch in "!@#$%^&*()_+-=[]{}|;':\",./<>?~`" for ch in v):
+            raise ValueError("Password must include a special character (!@#$%)")
         return v
 
 
@@ -57,7 +61,7 @@ class AuthRefreshRequest(BaseModel):
 
 
 class SwitchProfileRequest(BaseModel):
-    child_id: uuid.UUID
+    target_user_id: uuid.UUID
 
 
 class LogoutRequest(BaseModel):
@@ -79,3 +83,13 @@ class ChildProfileResponse(BaseModel):
 
 class AuthChildrenResponse(BaseModel):
     children: list[ChildProfileResponse]
+
+class FamilyMemberResponse(BaseModel):
+    id: uuid.UUID
+    full_name: str
+    role: UserRole
+    grade_level: int | None = None
+    is_current: bool
+
+class AuthFamilyResponse(BaseModel):
+    members: list[FamilyMemberResponse]

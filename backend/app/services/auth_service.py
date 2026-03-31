@@ -107,9 +107,8 @@ class AuthService:
                 self.session.add(StudentProfile(user_id=child_user.id, grade_level=child.grade_level))
                 self.session.add(Subscription(user_id=child_user.id, plan=SubscriptionPlan.FAMILY, is_active=True))
 
-            await self.session.commit()
+            await self.session.flush()
         except IntegrityError as e:
-            await self.session.rollback()
             raise AppError(status_code=409, code="conflict", message="Email already registered or error during family creation") from e
             
         # Refetch Parent to ensure relationship is solid
@@ -130,13 +129,22 @@ class AuthService:
                 is_active=parent_user.is_active,
                 profile=None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
+                parent_id=None,
             ),
         )
 
     async def login(self, req: AuthLoginRequest) -> AuthTokensResponse:
         user = await self.users.get_by_email(str(req.email))
-        if user is None or not user.is_active or not verify_password(req.password, user.password_hash):
+        if user is None:
+            logger.warning("LOGIN FAIL: user not found for email/username=%s", req.email)
             raise AppError(status_code=401, code="unauthorized", message="Invalid credentials")
+        if not user.is_active:
+            logger.warning("LOGIN FAIL: user %s is inactive", req.email)
+            raise AppError(status_code=401, code="unauthorized", message="Invalid credentials")
+        if not verify_password(req.password, user.password_hash):
+            logger.warning("LOGIN FAIL: wrong password for user %s (hash starts with: %s)", req.email, user.password_hash[:20] if user.password_hash else "NONE")
+            raise AppError(status_code=401, code="unauthorized", message="Invalid credentials")
+        logger.info("LOGIN OK: user %s role=%s", req.email, user.role)
         tokens = await self._issue_tokens(user_id=str(user.id), role=user.role.value)
         sub = await self.users.get_subscription(user.id)
         profile = user.profile
@@ -151,6 +159,7 @@ class AuthService:
                 is_active=user.is_active,
                 profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
+                parent_id=str(user.parent_id) if getattr(user, 'parent_id', None) else None,
             ),
         )
 
@@ -200,36 +209,87 @@ class AuthService:
                 is_active=user.is_active,
                 profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
+                parent_id=str(user.parent_id) if getattr(user, 'parent_id', None) else None,
             ),
         )
 
-    async def switch_profile(self, parent_id: str, child_id: str) -> AuthTokensResponse:
-        parent = await self.users.get_by_id(parent_id)
-        if parent is None or parent.role != UserRole.PARENT:
-            raise AppError(status_code=403, code="forbidden", message="Only parents can switch profiles")
+    async def switch_profile(self, current_user_id: str, target_user_id: str) -> AuthTokensResponse:
+        current_user = await self.users.get_by_id(current_user_id)
+        target_user = await self.users.get_by_id(target_user_id)
 
-        child = await self.users.get_by_id(child_id)
-        if child is None or child.parent_id != parent.id:
-            raise AppError(status_code=403, code="forbidden", message="Cannot access this child profile")
+        if not current_user or not target_user:
+            raise AppError(status_code=404, code="not_found", message="User not found")
 
-        # issue tokens for child
-        tokens = await self._issue_tokens(user_id=str(child.id), role=child.role.value)
-        sub = await self.users.get_subscription(child.id)
-        profile = child.profile
+        # Verify they belong to the same family
+        # Valid family moves:
+        # parent -> child (target child.parent_id == current parent.id)
+        # child -> parent (current child.parent_id == target parent.id)
+        # child -> child (current child.parent_id == target child.parent_id)
+        is_valid = False
+        if current_user.role == UserRole.PARENT and getattr(target_user, 'parent_id', None) == current_user.id:
+            is_valid = True
+        elif target_user.role == UserRole.PARENT and getattr(current_user, 'parent_id', None) == target_user.id:
+            is_valid = True
+        # Both are children of the same parent
+        elif getattr(current_user, 'parent_id', None) and getattr(current_user, 'parent_id', None) == getattr(target_user, 'parent_id', None):
+            is_valid = True
+        elif current_user.id == target_user.id:
+            is_valid = True
+
+        if not is_valid:
+            raise AppError(status_code=403, code="forbidden", message="Cannot access this profile")
+
+        # issue tokens for target user
+        tokens = await self._issue_tokens(user_id=str(target_user.id), role=target_user.role.value)
+        sub = await self.users.get_subscription(target_user.id)
+        profile = getattr(target_user, 'profile', None)
         
         return AuthTokensResponse(
             access_token=tokens.access_token,
             refresh_token=tokens.refresh_token,
             user=UserMeResponse(
-                id=str(child.id),
-                email=child.email,
-                full_name=child.full_name,
-                role=child.role,
-                is_active=child.is_active,
+                id=str(target_user.id),
+                email=target_user.email,
+                full_name=target_user.full_name,
+                role=target_user.role,
+                is_active=target_user.is_active,
                 profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
+                parent_id=str(target_user.parent_id) if getattr(target_user, 'parent_id', None) else None,
             ),
         )
+
+    async def get_family_members(self, current_user) -> list[dict]:
+        # Determine the parent ID
+        parent_id = current_user.id if current_user.role == UserRole.PARENT else getattr(current_user, 'parent_id', None)
+        if not parent_id:
+            return []
+
+        # Fetch parent
+        parent = await self.users.get_by_id(parent_id)
+        # Fetch children
+        children = await self.users.get_children_by_parent_id(parent_id)
+
+        members = []
+        if parent:
+            members.append({
+                "id": parent.id,
+                "full_name": parent.full_name,
+                "role": parent.role,
+                "grade_level": None,
+                "is_current": parent.id == current_user.id
+            })
+
+        for child in children:
+            members.append({
+                "id": child.id,
+                "full_name": child.full_name,
+                "role": child.role,
+                "grade_level": child.profile.grade_level if child.profile else None,
+                "is_current": child.id == current_user.id
+            })
+
+        return members
 
     async def logout(self, refresh_token: str) -> None:
         payload = decode_token(refresh_token)

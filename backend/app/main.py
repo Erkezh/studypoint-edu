@@ -78,3 +78,105 @@ app.include_router(api_router_v1, prefix=settings.api_v1_prefix)
 plugins_dir = Path(settings.plugins_dir)
 plugins_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/plugins", StaticFiles(directory=str(plugins_dir)), name="plugins")
+
+
+# ============= TEMPORARY DEBUG ENDPOINT — DELETE AFTER TESTING =============
+from fastapi.responses import HTMLResponse
+
+@app.get("/debug/test-student-login", response_class=HTMLResponse)
+async def debug_test_student_login():
+    """Temporary endpoint: creates a student, then tries to log in. Open in browser."""
+    import random
+    from sqlalchemy import select, text
+    from app.db.session import get_sessionmaker
+    from app.models.user import User
+    from app.models.enums import UserRole
+    from app.models.profile import StudentProfile
+    from app.core.security import hash_password, verify_password
+
+    log_lines = []
+    log = lambda msg: log_lines.append(msg)
+
+    sessionmaker = get_sessionmaker()
+
+    async with sessionmaker() as session:
+        async with session.begin():
+            # Step 1: Count existing students
+            result = await session.execute(
+                select(User).where(User.role == UserRole.STUDENT)
+            )
+            students = result.scalars().all()
+            log(f"📊 Total students in DB: {len(students)}")
+            for s in students[:10]:
+                log(f"  - username={s.email}, active={s.is_active}, has_teacher={s.teacher_id is not None}, hash_start={s.password_hash[:25] if s.password_hash else 'NONE'}")
+
+            # Step 2: Create a fresh test student
+            test_username = f"debuguser{random.randint(1000, 9999)}"
+            test_password = "TestPass1!"
+            test_hash = hash_password(test_password)
+            log(f"\n🔧 Creating test student: {test_username} / {test_password}")
+            log(f"   Hash: {test_hash[:40]}...")
+
+            new_student = User(
+                email=test_username,
+                password_hash=test_hash,
+                full_name="Debug Test Student",
+                role=UserRole.STUDENT,
+                is_active=True,
+            )
+            session.add(new_student)
+            session.add(StudentProfile(user_id=new_student.id, grade_level=5, plain_password=test_password))
+            await session.flush()
+            new_id = str(new_student.id)
+            log(f"   Created with ID: {new_id}")
+
+    # Step 3: Try to look up and verify password (in a new session, simulating login)
+    async with sessionmaker() as session:
+        async with session.begin():
+            log(f"\n🔑 Simulating login for: {test_username}")
+            result = await session.execute(
+                select(User).where(User.email == test_username)
+            )
+            found_user = result.scalar_one_or_none()
+
+            if found_user is None:
+                log("❌ FAIL: User NOT FOUND in database after creation!")
+            else:
+                log(f"✅ User found: email={found_user.email}, active={found_user.is_active}, role={found_user.role}")
+                log(f"   Hash from DB: {found_user.password_hash[:40]}...")
+
+                # Verify password
+                pw_ok = verify_password(test_password, found_user.password_hash)
+                if pw_ok:
+                    log("✅ PASSWORD VERIFIED SUCCESSFULLY!")
+                else:
+                    log("❌ FAIL: Password verification FAILED!")
+
+                    # Extra debug: re-hash and compare
+                    re_hash = hash_password(test_password)
+                    log(f"   Re-hash of same password: {re_hash[:40]}...")
+                    log(f"   verify(password, re_hash) = {verify_password(test_password, re_hash)}")
+
+            # Step 4: Test with existing teacher-created students
+            log("\n\n📋 Testing ALL existing students' password verification:")
+            all_students_result = await session.execute(
+                select(User, StudentProfile).outerjoin(StudentProfile, User.id == StudentProfile.user_id).where(User.role == UserRole.STUDENT)
+            )
+            rows = all_students_result.all()
+            for row in rows:
+                user_obj = row[0]
+                profile = row[1]
+                plain_pw = profile.plain_password if profile else None
+                if plain_pw:
+                    pw_check = verify_password(plain_pw, user_obj.password_hash)
+                    log(f"  Student {user_obj.email}: plain_pw={plain_pw}, verify={pw_check}")
+                else:
+                    log(f"  Student {user_obj.email}: NO plain_password stored in profile")
+
+    html = "<html><body style='font-family: monospace; white-space: pre; padding: 20px; background: #1a1a2e; color: #e0e0e0;'>"
+    html += "\n".join(log_lines)
+    html += "\n\n--- END OF DEBUG ---"
+    html += "</body></html>"
+    return HTMLResponse(content=html)
+# ============= END TEMPORARY DEBUG ENDPOINT =============
+

@@ -147,7 +147,7 @@ async def reset_student_password(
     if profile:
         profile.plain_password = new_password
 
-    await svc.session.commit()
+    await svc.session.flush()
     return ApiResponse(data={"username": student.email, "password": new_password})
 
 
@@ -171,5 +171,5 @@ async def delete_student(
     # and SQLAlchemy tries to null it before cascade-deleting (which is illegal).
     # The DB has ON DELETE CASCADE on student_profiles.user_id so raw DELETE works fine.
     await svc.session.execute(sql_delete(User).where(User.id == student_uuid))
-    await svc.session.commit()
+    await svc.session.flush()
     return ApiResponse(data={"deleted": student_id})

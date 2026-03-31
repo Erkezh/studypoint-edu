@@ -161,6 +161,14 @@
             <p class="text-gray-600">Енді оқушылардың аккаунттарын құрамыз.</p>
           </div>
 
+          <!-- Error message -->
+          <div v-if="registrationError" class="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <svg class="w-5 h-5 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm text-red-700">{{ registrationError }}</p>
+          </div>
+
           <form @submit.prevent="submitRegistration" class="space-y-8">
             <!-- Account Info -->
             <div class="bg-[#f8fafc] p-6 rounded border border-gray-200">
@@ -178,7 +186,8 @@
                 </div>
                 <div class="md:col-span-2">
                   <label class="block text-sm font-medium text-gray-700 mb-1">Құпия сөз</label>
-                  <input v-model="regData.parentPassword" type="password" required class="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:border-[#25b8c6] focus:ring-1 focus:ring-[#25b8c6]">
+                  <input v-model="regData.parentPassword" type="password" required minlength="8" class="w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:border-[#25b8c6] focus:ring-1 focus:ring-[#25b8c6]">
+                  <p class="text-xs text-gray-400 mt-1">Ең аз 8 таңба: бас әріп, кіші әріп, сан және арнайы таңба (!@#$%)</p>
                 </div>
               </div>
             </div>
@@ -206,8 +215,9 @@
               </div>
             </div>
 
-            <button type="submit" class="w-full py-3 px-6 rounded text-lg font-medium text-white transition-colors bg-[#5ba100] hover:bg-[#4a8400]">
-              Жалғастыру
+            <button type="submit" :disabled="submittingRegistration" class="w-full py-3 px-6 rounded text-lg font-medium text-white transition-colors bg-[#5ba100] hover:bg-[#4a8400] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+              <div v-if="submittingRegistration" class="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+              {{ submittingRegistration ? 'Тіркелуде...' : 'Жалғастыру' }}
             </button>
           </form>
         </div>
@@ -221,8 +231,8 @@
           <p class="text-gray-600 mb-8 text-lg">
             Сіздің {{ planType === 'family' ? 'отбасылық' : 'мұғалімдік' }} аккаунтыңыз сәтті құрылды. Енді сіз платформаның барлық мүмкіндіктерін пайдалана аласыз.
           </p>
-          <button @click="router.push('/auth/login')" class="py-3 px-8 rounded font-medium text-white transition-colors bg-[#00a6c0] hover:bg-[#008f9c]">
-            Жүйеге кіру
+          <button @click="router.push('/')" class="py-3 px-8 rounded font-medium text-white transition-colors bg-[#00a6c0] hover:bg-[#008f9c]">
+            Бастау
           </button>
         </div>
 
@@ -345,11 +355,34 @@ const submitRegistration = async () => {
 
       currentStep.value = 3
       window.scrollTo({ top: 0, behavior: 'smooth' })
+
+      // Auto-redirect to home after 3 seconds since user is already logged in
+      setTimeout(() => {
+        router.push('/')
+      }, 3000)
     }
   } catch (err: unknown) {
     console.error('Family registration error:', err)
-    const errorResponse = (err as { response?: { data?: { detail?: string; message?: string } } }).response
-    registrationError.value = errorResponse?.data?.detail || errorResponse?.data?.message || 'Тіркелу қатесі. Қайта көріңіз.'
+    const axiosErr = err as { response?: { data?: { detail?: any; message?: string }, status?: number }, message?: string }
+    const resp = axiosErr.response
+    
+    if (resp?.status === 422 && Array.isArray(resp.data?.detail)) {
+      // Pydantic validation errors - translate common ones to Kazakh
+      const messages = resp.data.detail.map((e: any) => {
+        const msg = String(e.msg || e.message || '')
+        if (msg.includes('mixed case')) return 'Құпия сөзде үлкен және кіші әріптер болуы керек'
+        if (msg.includes('digit')) return 'Құпия сөзде кемінде 1 сан болуы керек'
+        if (msg.includes('at least 8')) return 'Құпия сөз кемінде 8 таңба болуы керек'
+        if (msg.includes('special character')) return 'Құпия сөзде кемінде 1 арнайы таңба болуы керек (!@#$%)'
+        if (msg.includes('valid email')) return 'Дұрыс email мекенжайын енгізіңіз'
+        return msg
+      })
+      registrationError.value = messages.join('. ')
+    } else if (resp?.data?.message) {
+      registrationError.value = resp.data.message
+    } else {
+      registrationError.value = axiosErr.message || 'Тіркелу қатесі. Қайта көріңіз.'
+    }
   } finally {
     submittingRegistration.value = false
   }

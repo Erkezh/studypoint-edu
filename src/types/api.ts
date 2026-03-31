@@ -80,18 +80,19 @@ export interface AuthRegisterFamilyRequest {
 }
 
 export interface SwitchProfileRequest {
-  child_id: string
+  target_user_id: string
 }
 
-export interface ChildProfileResponse {
+export interface FamilyMemberResponse {
   id: string
   full_name: string
-  grade_level: number
-  school: string | null
+  role: UserRole
+  grade_level?: number | null
+  is_current: boolean
 }
 
-export interface AuthChildrenResponse {
-  children: ChildProfileResponse[]
+export interface AuthFamilyResponse {
+  members: FamilyMemberResponse[]
 }
 
 // User types

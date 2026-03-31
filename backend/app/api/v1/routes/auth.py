@@ -12,7 +12,8 @@ from app.schemas.auth import (
     AuthRegisterFamilyRequest,
     AuthRegisterRequest,
     AuthTokensResponse,
-    ChildProfileResponse,
+    AuthFamilyResponse,
+    FamilyMemberResponse,
     LogoutRequest,
     SwitchProfileRequest,
 )
@@ -72,25 +73,27 @@ async def switch_profile(
     user=Depends(get_current_user),
     svc: AuthService = Depends(),
 ):
-    tokens = await svc.switch_profile(parent_id=str(user.id), child_id=str(body.child_id))
+    tokens = await svc.switch_profile(current_user_id=str(user.id), target_user_id=str(body.target_user_id))
     return ApiResponse(data=tokens)
 
 
-@router.get("/me/children", response_model=ApiResponse[AuthChildrenResponse])
-async def get_children(
+@router.get("/me/family", response_model=ApiResponse[AuthFamilyResponse])
+async def get_family_members(
     user=Depends(get_current_user),
     svc: AuthService = Depends(),
 ):
-    children = await svc.users.get_children_by_parent_id(user.id)
-    child_profiles = []
-    for c in children:
-        child_profiles.append(ChildProfileResponse(
-            id=c.id,
-            full_name=c.full_name,
-            grade_level=c.profile.grade_level if c.profile else 0,
-            school=c.profile.school if c.profile else None,
-        ))
-    return ApiResponse(data=AuthChildrenResponse(children=child_profiles))
+    members_data = await svc.get_family_members(user)
+    members = [
+        FamilyMemberResponse(
+            id=m["id"],
+            full_name=m["full_name"],
+            role=m["role"],
+            grade_level=m["grade_level"],
+            is_current=m["is_current"],
+        )
+        for m in members_data
+    ]
+    return ApiResponse(data=AuthFamilyResponse(members=members))
 
 
 @router.post("/refresh", response_model=ApiResponse[AuthTokensResponse])

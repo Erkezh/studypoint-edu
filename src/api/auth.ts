@@ -6,7 +6,7 @@ import type {
   AuthLoginRequest,
   AuthRefreshRequest,
   AuthTokensResponse,
-  AuthChildrenResponse,
+  AuthFamilyResponse,
   SwitchProfileRequest,
   LogoutRequest,
   UserMeResponse,
@@ -37,9 +37,9 @@ export const authApi = {
     return response.data
   },
 
-  async getChildren(): Promise<ApiResponse<AuthChildrenResponse>> {
-    const response = await apiClient.get<ApiResponse<AuthChildrenResponse>>(
-      '/auth/me/children'
+  async getFamilyMembers(): Promise<ApiResponse<AuthFamilyResponse>> {
+    const response = await apiClient.get<ApiResponse<AuthFamilyResponse>>(
+      '/auth/me/family'
     )
     return response.data
   },
