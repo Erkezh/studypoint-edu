@@ -195,7 +195,7 @@
                   </svg>
                 </div>
                 <span class="text-sm font-medium text-[#00a6c0]">{{ child.full_name }}</span>
-                <span class="text-[10px] text-gray-400">{{ child.grade_level }}-сынып</span>
+                <span class="text-[10px] text-gray-400">{{ child.grade_level ? `${child.grade_level}-сынып` : 'Оқушы' }}</span>
               </button>
 
               <!-- Parent option -->
@@ -227,7 +227,7 @@ import { authApi } from '@/api/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
-import type { ChildProfileResponse } from '@/types/api'
+import type { FamilyMemberResponse } from '@/types/api'
 
 const router = useRouter()
 const route = useRoute()
@@ -242,7 +242,7 @@ const requireSubscription = computed(() => route.query.requireSubscription === '
 // Profile selection modal state
 const showProfileModal = ref(false)
 const loadingChildren = ref(false)
-const childrenList = ref<ChildProfileResponse[]>([])
+const childrenList = ref<FamilyMemberResponse[]>([])
 const switchingProfile = ref(false)
 
 const handleLogin = async () => {
@@ -259,8 +259,8 @@ const handleLogin = async () => {
       showProfileModal.value = true
       loadingChildren.value = true
       try {
-        const childrenResp = await authApi.getChildren()
-        childrenList.value = childrenResp.data?.children || []
+        const childrenResp = await authApi.getFamilyMembers()
+        childrenList.value = (childrenResp.data?.members || []).filter(m => m.role === 'STUDENT')
       } catch (err) {
         console.error('Failed to fetch children:', err)
         childrenList.value = []
@@ -283,7 +283,7 @@ const selectChild = async (childId: string) => {
   if (switchingProfile.value) return
   switchingProfile.value = true
   try {
-    const resp = await authApi.switchProfile({ child_id: childId })
+    const resp = await authApi.switchProfile({ target_user_id: childId })
     if (resp.data) {
       // Update auth store with child tokens
       authStore.setAccessToken(resp.data.access_token)
