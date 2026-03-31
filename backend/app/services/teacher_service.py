@@ -138,7 +138,7 @@ class TeacherService:
             except ValueError:
                 pass # invalid classroom ID format
                 
-        await self.session.flush()
+        await self.session.commit()
         
         return TeacherCreateStudentResponse(
             id=str(student.id),
