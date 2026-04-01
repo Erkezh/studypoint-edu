@@ -205,6 +205,9 @@ router.beforeEach(async (to, from, next) => {
 
       next()
     }
+  } else if (to.name === 'home' && authStore.isAuthenticated && authStore.user?.role === 'TEACHER') {
+    // Teachers see their dashboard as their home/cabinet page
+    next({ name: 'teacher-dashboard' })
   } else {
     // Если роут не требует аутентификации (например, login/register)
     // и пользователь уже авторизован, редирект на главную
