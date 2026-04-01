@@ -363,12 +363,12 @@ const submitRegistration = async () => {
     }
   } catch (err: unknown) {
     console.error('Family registration error:', err)
-    const axiosErr = err as { response?: { data?: { detail?: any; message?: string }, status?: number }, message?: string }
+    const axiosErr = err as { response?: { data?: { detail?: unknown; message?: string }, status?: number }, message?: string }
     const resp = axiosErr.response
     
     if (resp?.status === 422 && Array.isArray(resp.data?.detail)) {
       // Pydantic validation errors - translate common ones to Kazakh
-      const messages = resp.data.detail.map((e: any) => {
+      const messages = (resp.data.detail as Array<{ msg?: string; message?: string }>).map((e) => {
         const msg = String(e.msg || e.message || '')
         if (msg.includes('mixed case')) return 'Құпия сөзде үлкен және кіші әріптер болуы керек'
         if (msg.includes('digit')) return 'Құпия сөзде кемінде 1 сан болуы керек'

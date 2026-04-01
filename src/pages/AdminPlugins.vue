@@ -142,7 +142,7 @@ const handleTsxUpload = async () => {
 
     // Load plugins to find the new one, auto-publish & add to test
     const pluginsResp = await adminApi.listPlugins()
-    const plugins = (pluginsResp.data || []) as Plugin[]
+    const plugins = (pluginsResp.data || []) as unknown as Plugin[]
     const newPlugin = plugins.find(p => p.name === pluginName)
     if (newPlugin) {
       if (!newPlugin.is_published) await adminApi.publishPlugin(newPlugin.id, true)

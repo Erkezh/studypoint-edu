@@ -298,10 +298,10 @@ const skillsWithProgress = computed(() => {
   }
 
   return analyticsStore.skills.filter(skill => {
-    if ((skill.total_questions || 0) === 0) return false
+    if (((skill.total_questions as number) || 0) === 0) return false
 
     // Date filter
-    if (skillIdsInRange && !skillIdsInRange.has(skill.skill_id)) return false
+    if (skillIdsInRange && !skillIdsInRange.has(skill.skill_id as number)) return false
 
     const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
     if (gradeNumber !== undefined) {
@@ -318,18 +318,18 @@ const filteredTotalQuestions = computed(() => {
       const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
       if (gradeNumber !== undefined) {
         if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
-          return sum + (skill.total_questions || 0)
+          return sum + ((skill.total_questions as number) || 0)
         }
         return sum
       }
-      return sum + (skill.total_questions || 0)
+      return sum + ((skill.total_questions as number) || 0)
     }, 0)
   }
 
   // If date range IS selected, calculate from granular questions data
   return analyticsStore.allQuestions.reduce((sum, question) => {
     // Grade filter
-    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
+    const skill = analyticsStore.skills.find(s => s.skill_id as number === question.skill_id)
     const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
     if (gradeNum !== undefined) {
       if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
@@ -365,7 +365,7 @@ const filteredTotalTime = computed(() => {
   // If date range active
   return analyticsStore.allQuestions.reduce((sum, question) => {
     // Grade filter
-    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
+    const skill = analyticsStore.skills.find(s => s.skill_id as number === question.skill_id)
     const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
     if (gradeNum !== undefined) {
       if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
@@ -659,7 +659,7 @@ const sessionsByDate = computed(() => {
         questions: qs.map(q => ({
           prompt: (q.question_prompt as string) || '',
           type: (q.question_type as string) || 'TEXT',
-          data: q.question_data || {},
+          data: (q.question_data as Record<string, unknown>) || {},
           isCorrect: q.is_correct as boolean,
           userAnswer: q.user_answer,
           correctAnswer: q.correct_answer as string,

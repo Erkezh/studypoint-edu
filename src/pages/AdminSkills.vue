@@ -265,7 +265,7 @@ const loadPluginPreview = async (skill: SkillListItem) => {
     const plugins = resp.data || []
     // Match by skill title or code
     const pluginName = skill.title
-    const plugin = plugins.find((p: any) => p.name === pluginName) || plugins.find((p: any) => skill.code.includes(p.plugin_id))
+    const plugin = plugins.find((p: Record<string, unknown>) => p.name === pluginName) || plugins.find((p: Record<string, unknown>) => typeof skill.code === 'string' && skill.code.includes(p.plugin_id as string))
     if (plugin) {
       const base = `${API_BASE_URL}/static/plugins/${plugin.plugin_id}/${plugin.version}/${plugin.entry}`
       previewUrl.value = base.includes('?') ? `${base}&embed=1` : `${base}?embed=1`
@@ -300,8 +300,9 @@ const handleDelete = async () => {
     skillToDelete.value = null
     await loadSkills()
     setTimeout(() => { successMessage.value = null }, 3000)
-  } catch (err: any) {
-    error.value = err.response?.data?.error?.message || 'Жою қатесі'
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { error?: { message?: string } } } }
+    error.value = e.response?.data?.error?.message || 'Жою қатесі'
     skillToDelete.value = null
   } finally {
     deletingSkillId.value = null
@@ -313,8 +314,9 @@ const loadSkills = async () => {
   try {
     const response = await adminApi.listSkills(1, 200)
     if (response.data) skillsList.value = response.data
-  } catch (err: any) {
-    if (err.response?.status === 401) {
+  } catch (err: unknown) {
+    const e = err as { response?: { status?: number } }
+    if (e.response?.status === 401) {
       router.push({ name: 'login' })
     } else {
       error.value = 'Тесттерді жүктеу қатесі'

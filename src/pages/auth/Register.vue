@@ -277,6 +277,9 @@ import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
 import type { GradeResponse } from '@/types/api'
+import { UserRole } from '@/types/api'
+
+defineOptions({ name: 'RegisterPage' })
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -318,15 +321,16 @@ const handleRegister = async () => {
       email: email.value,
       password: password.value,
       full_name: fullName.value,
-      role: selectedRole.value as any,
+      role: selectedRole.value as UserRole,
       grade_level: selectedRole.value === 'STUDENT' ? (gradeLevel.value as number) : 0,
       school: school.value || null,
     })
 
     // Redirect to pricing page after registration
     router.push({ name: 'pricing' })
-  } catch (err: any) {
-    error.value = err.response?.data?.detail || err.message || 'Тіркелу қатесі. Қайта көріңіз.'
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { detail?: string } }, message?: string }
+    error.value = e.response?.data?.detail || e.message || 'Тіркелу қатесі. Қайта көріңіз.'
     console.error('Register error:', err)
   }
 }

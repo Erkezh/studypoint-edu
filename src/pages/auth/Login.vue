@@ -227,7 +227,9 @@ import { authApi } from '@/api/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
-import type { FamilyMemberResponse } from '@/types/api'
+import type { FamilyMemberResponse, UserMeResponse } from '@/types/api'
+
+defineOptions({ name: 'LoginPage' })
 
 const router = useRouter()
 const route = useRoute()
@@ -273,8 +275,9 @@ const handleLogin = async () => {
     // Normal redirect for non-parent users
     const redirect = route.query.redirect as string | undefined
     router.push(redirect || { name: 'home' })
-  } catch (err: any) {
-    error.value = err.response?.data?.detail || err.message || 'Кіру қатесі. Қайта көріңіз.'
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { detail?: string } }, message?: string }
+    error.value = e.response?.data?.detail || e.message || 'Кіру қатесі. Қайта көріңіз.'
     console.error('Login error:', err)
   }
 }
@@ -289,7 +292,7 @@ const selectChild = async (childId: string) => {
       authStore.setAccessToken(resp.data.access_token)
       authStore.setRefreshToken(resp.data.refresh_token)
       // Update user in store and localStorage
-      authStore.user = resp.data.user as any
+      authStore.user = resp.data.user as unknown as UserMeResponse
       localStorage.setItem('user', JSON.stringify(resp.data.user))
 
       showProfileModal.value = false

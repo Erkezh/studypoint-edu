@@ -52,6 +52,8 @@ import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Card from '@/components/ui/Card.vue'
 
+defineOptions({ name: 'HomePage' })
+
 const router = useRouter()
 const catalogStore = useCatalogStore()
 
@@ -66,8 +68,9 @@ onMounted(async () => {
   try {
     const fetchedGrades = await catalogStore.getGrades()
     grades.value = fetchedGrades
-  } catch (err: any) {
-    error.value = err.message || 'Сыныптарды жүктеу мүмкін болмады'
+  } catch (err: unknown) {
+    const e = err as { message?: string }
+    error.value = e.message || 'Сыныптарды жүктеу мүмкін болмады'
     console.error('Failed to load grades:', err)
   }
 })

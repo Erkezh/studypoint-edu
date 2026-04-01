@@ -26,13 +26,13 @@ export enum SubscriptionPlan {
 }
 
 // API Response wrapper
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   data: T | null
   meta?: {
     page?: number
     page_size?: number
     total?: number
-    [key: string]: any
+    [key: string]: unknown
   }
 }
 
@@ -206,7 +206,7 @@ export interface PracticeSessionResponse {
   wrong_count: number
   smartscore: number
   time_elapsed_sec: number
-  state: Record<string, any>
+  state: Record<string, unknown>
   current_question?: QuestionPublic | null
 }
 
@@ -215,13 +215,13 @@ export interface QuestionPublic {
   skill_id: number
   type: QuestionType
   prompt: string
-  data: Record<string, any>
+  data: Record<string, unknown>
   level: number
 }
 
 export interface PracticeSubmitRequest {
   question_id: number
-  submitted_answer: Record<string, any>
+  submitted_answer: Record<string, unknown>
   time_spent_sec: number
 }
 
@@ -255,6 +255,6 @@ export interface AnalyticsOverview {
   avg_accuracy_percent: number
   total_questions_answered: number
   total_skills_by_grade?: Record<string, number>
-  [key: string]: any
+  [key: string]: unknown
 }
-export type AnalyticsSkills = Array<Record<string, any>>
+export type AnalyticsSkills = Array<Record<string, unknown>>
