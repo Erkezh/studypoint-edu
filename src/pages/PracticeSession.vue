@@ -47,6 +47,24 @@
 
       <!-- Main content -->
       <div v-else-if="practiceStore.currentSession && (currentQuestion || showingResult)">
+        <div class="mb-4 grid grid-cols-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:hidden">
+          <div class="border-r border-gray-200 px-2 py-2 text-center">
+            <div class="text-[11px] font-medium text-gray-500">Questions</div>
+            <div class="mt-1 text-xl font-bold text-lime-500">{{ practiceStore.questionsAnswered }}</div>
+          </div>
+          <div class="border-r border-gray-200 px-2 py-2 text-center">
+            <div class="text-[11px] font-medium text-gray-500">Time</div>
+            <div class="mt-1 text-base font-bold font-mono text-sky-500">{{ formatTimeCompact(currentTime) }}</div>
+          </div>
+          <div class="border-r border-gray-200 px-2 py-2 text-center">
+            <div class="text-[11px] font-medium text-gray-500">Correct</div>
+            <div class="mt-1 text-xl font-bold text-green-600">{{ practiceStore.correctCount }}</div>
+          </div>
+          <div class="px-2 py-2 text-center">
+            <div class="text-[11px] font-medium text-gray-500">Incorrect</div>
+            <div class="mt-1 text-xl font-bold text-red-500">{{ practiceStore.wrongCount }}</div>
+          </div>
+        </div>
 
         <!-- Trial warning -->
         <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value"
@@ -275,7 +293,7 @@
           </div>
 
           <!-- Right sidebar - Statistics -->
-          <div class="lg:w-64 space-y-4">
+          <div class="hidden lg:block lg:w-64 space-y-4">
             <!-- Questions answered -->
             <div class="rounded-xl overflow-hidden shadow-lg">
               <div class="bg-orange-500 text-white text-center py-2 px-4">
@@ -661,6 +679,18 @@ const formatTimeMinutes = (seconds: number): string => {
 
 const formatTimeSeconds = (seconds: number): string => {
   return (seconds % 60).toString().padStart(2, '0')
+}
+
+const formatTimeCompact = (seconds: number): string => {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = seconds % 60
+
+  if (hours > 0) {
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+  }
+
+  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
 // Информация о навыке для хлебных крошек

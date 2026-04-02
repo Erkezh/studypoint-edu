@@ -1597,6 +1597,21 @@ onMounted(async () => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .analytics-tabs {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .tab-item {
+    flex: 0 0 auto;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+  }
+
   .filters-bar {
     flex-direction: column;
     gap: 12px;
