@@ -182,13 +182,6 @@
               🏆 Жетістіктер қорытындысы ›
             </a>
           </div>
-
-          <!-- Achievement summary footer -->
-          <div class="achievement-footer">
-            <a href="#" class="achievement-link">
-              🏆 Жетістіктер қорытындысы ›
-            </a>
-          </div>
         </template>
       </template>
 
