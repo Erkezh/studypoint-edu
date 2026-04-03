@@ -5,11 +5,11 @@
     <!-- Sub-navigation tabs -->
     <div class="tabs-bar">
       <div class="tabs-inner">
-        <div 
-          v-for="tab in tabs" 
-          :key="tab.key" 
+        <div
+          v-for="tab in tabs"
+          :key="tab.key"
           class="tab-item-group"
-          @mouseenter="hoverTab = tab.key" 
+          @mouseenter="hoverTab = tab.key"
           @mouseleave="hoverTab = null"
         >
           <button
@@ -118,12 +118,12 @@
                   <div class="stat-row stat-proficient">
                     <span class="stat-number">{{ currentProficient }}</span>
                     <span class="stat-line"></span>
-                    <span class="stat-label">ЖЕТІК</span>
+                    <span class="stat-label">БІЛІКТІ</span>
                   </div>
                   <div class="stat-row stat-practiced">
                     <span class="stat-number">{{ currentSkillsPracticed }}</span>
                     <span class="stat-line"></span>
-                    <span class="stat-label">ЖАТТЫҒЫЛҒАН</span>
+                    <span class="stat-label">ЖАТТЫҒУДА</span>
                   </div>
                 </div>
               </div>
@@ -365,9 +365,9 @@ const QuizIcon = { render: () => h('svg', { class: 'tab-icon', fill: 'none', str
 ])}
 
 const tabs = ref([
-  { 
-    key: 'glance_group', 
-    label: 'Қысқаша шолу', 
+  {
+    key: 'glance_group',
+    label: 'Қысқаша шолу',
     icon: EyeIcon,
     dropdown: [
       { key: 'glance', label: 'Жалпы көрініс' },
@@ -399,6 +399,7 @@ interface StudentBreakdown {
   total_time_sec: number
   mastered_count: number
   proficient_count: number
+  practicing_count: number
   skills: Array<Record<string, unknown>>
 }
 
@@ -444,26 +445,36 @@ const currentTimeFormatted = computed(() => {
   return `${hrs} сағ ${remMin} мин`
 })
 
-const currentSkillsPracticed = computed(() => {
-  if (selectedStudentId.value === 'all') return overviewData.value.skills_practiced
-  const s = studentsBreakdown.value.find(x => x.student_id === selectedStudentId.value)
-  return s?.skills?.length || 0
-})
+// Helper: count skills by smartscore range from a student's skills array
+const countSkills = (skills: Array<Record<string, unknown>>, filter: (score: number) => boolean): number => {
+  return (skills || []).filter(sk => filter(Number(sk.best_smartscore) || 0)).length
+}
 
 const currentMastered = computed(() => {
+  const filter = (score: number) => score >= 100
   if (selectedStudentId.value === 'all') {
-    return studentsBreakdown.value.reduce((sum, s) => sum + (s.mastered_count || 0), 0)
+    return studentsBreakdown.value.reduce((sum, s) => sum + countSkills(s.skills, filter), 0)
   }
   const s = studentsBreakdown.value.find(x => x.student_id === selectedStudentId.value)
-  return s?.mastered_count || 0
+  return s ? countSkills(s.skills, filter) : 0
 })
 
 const currentProficient = computed(() => {
+  const filter = (score: number) => score >= 80 && score < 100
   if (selectedStudentId.value === 'all') {
-    return studentsBreakdown.value.reduce((sum, s) => sum + (s.proficient_count || 0), 0)
+    return studentsBreakdown.value.reduce((sum, s) => sum + countSkills(s.skills, filter), 0)
   }
   const s = studentsBreakdown.value.find(x => x.student_id === selectedStudentId.value)
-  return s?.proficient_count || 0
+  return s ? countSkills(s.skills, filter) : 0
+})
+
+const currentSkillsPracticed = computed(() => {
+  const filter = (score: number) => score > 0 && score < 80
+  if (selectedStudentId.value === 'all') {
+    return studentsBreakdown.value.reduce((sum, s) => sum + countSkills(s.skills, filter), 0)
+  }
+  const s = studentsBreakdown.value.find(x => x.student_id === selectedStudentId.value)
+  return s ? countSkills(s.skills, filter) : 0
 })
 
 const currentSkillsPracticedThisWeek = ref(0) // We don't track weekly yet
@@ -676,7 +687,7 @@ const confirmDelete = async (student: StudentInfo) => {
   color: #00BCD4;
   font-weight: 600;
   border-left: 3px solid #00BCD4;
-  padding-left: 21px; 
+  padding-left: 21px;
 }
 
 /* ============ MAIN ============ */

@@ -564,14 +564,18 @@ class AnalyticsService:
             last_practiced = None
             mastered_count: int = 0
             proficient_count: int = 0
+            practicing_count: int = 0
             s_skills_list = []
             for sr in s_skill_rows:
                 if sr.last_practiced_at and (last_practiced is None or sr.last_practiced_at > last_practiced):
                     last_practiced = sr.last_practiced_at
-                if (sr.best_smartscore or 0) >= 100:
+                score = sr.best_smartscore or 0
+                if score >= 100:
                     mastered_count += 1  # type: ignore
-                if (sr.best_smartscore or 0) >= 80:
+                elif score >= 80:
                     proficient_count += 1  # type: ignore
+                elif score > 0:
+                    practicing_count += 1  # type: ignore
 
                 # Time for this skill
                 sk_time_stmt = (
@@ -601,6 +605,7 @@ class AnalyticsService:
                 "last_practiced_at": last_practiced,
                 "mastered_count": mastered_count,
                 "proficient_count": proficient_count,
+                "practicing_count": practicing_count,
                 "skills": s_skills_list,
             })
 
