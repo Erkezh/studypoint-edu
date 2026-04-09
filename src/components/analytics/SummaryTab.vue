@@ -95,34 +95,36 @@
       <div v-if="completedTopics.length === 0" class="empty-state">
         <p>Әлі өткен дағдылар жоқ. Практиканы бастаңыз!</p>
       </div>
-      <table v-else class="skills-table">
-        <thead>
-          <tr>
-            <th @click="sortBy('skill')">
-              Дағды
-              <span class="sort-icon inline-block ml-1">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-              </span>
-            </th>
-            <th @click="sortBy('lastPracticed')">
-              Соңғы жаттығу
-              <span class="sort-icon inline-block ml-1">
-                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
-              </span>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="skill in sortedSkills" :key="skill.skill_id">
-            <td>
-              <router-link :to="`/skill/${skill.skill_id}`" class="skill-link">
-                {{ skill.name }}
-              </router-link>
-            </td>
-            <td class="date-cell">{{ formatLastPracticed(skill.last_practiced) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="overflow-x-auto scrollbar-hide">
+        <table class="skills-table">
+          <thead>
+            <tr>
+              <th @click="sortBy('skill')">
+                Дағды
+                <span class="sort-icon inline-block ml-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                </span>
+              </th>
+              <th @click="sortBy('lastPracticed')">
+                Соңғы жаттығу
+                <span class="sort-icon inline-block ml-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="skill in sortedSkills" :key="skill.skill_id">
+              <td>
+                <router-link :to="`/skill/${skill.skill_id}`" class="skill-link">
+                  {{ skill.name }}
+                </router-link>
+              </td>
+              <td class="date-cell">{{ formatLastPracticed(skill.last_practiced) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -437,10 +439,16 @@ const sortBy = (field: string) => {
 }
 
 .summary-title {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 300;
   color: #333;
   letter-spacing: 1px;
+}
+
+@media (min-width: 640px) {
+  .summary-title {
+    font-size: 28px;
+  }
 }
 
 .print-btn {
@@ -472,10 +480,16 @@ const sortBy = (field: string) => {
 }
 
 .card-title {
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 400;
   color: #333;
   margin-bottom: 32px;
+}
+
+@media (min-width: 640px) {
+  .card-title {
+    font-size: 22px;
+  }
 }
 
 .stats-grid {

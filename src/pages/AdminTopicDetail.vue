@@ -21,17 +21,17 @@
             <template v-else>
                 <!-- Theme Header -->
                 <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-200">
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-center gap-4">
+                    <div class="flex flex-col sm:flex-row items-start justify-between gap-4">
+                        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             <span class="text-4xl" v-if="topic.icon">{{ topic.icon }}</span>
                             <div>
-                                <h1 class="text-2xl font-bold text-gray-900">{{ topic.title }}</h1>
-                                <p class="text-sm text-gray-500 mt-1">slug: {{ topic.slug }} · реттілік: {{ topic.order }}</p>
-                                <p v-if="topic.description" class="text-gray-600 mt-2">{{ topic.description }}</p>
+                                <h1 class="text-2xl font-bold text-gray-900 leading-tight">{{ topic.title }}</h1>
+                                <p class="text-xs text-gray-500 mt-1">slug: {{ topic.slug }} · реттілік: {{ topic.order }}</p>
+                                <p v-if="topic.description" class="text-sm text-gray-600 mt-2">{{ topic.description }}</p>
                             </div>
                         </div>
                         <span :class="topic.is_published ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
-                            class="text-xs font-medium px-2.5 py-1 rounded-full">
+                            class="text-xs font-medium px-2.5 py-1 rounded-full shrink-0">
                             {{ topic.is_published ? 'Жарияланған' : 'Жарияланбаған' }}
                         </span>
                     </div>
@@ -47,20 +47,20 @@
                         <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
                         {{ editingSubthemeId ? 'Ішкі тақырыпты өңдеу' : 'Жаңа ішкі тақырып қосу' }}
                     </h2>
-                    <form @submit.prevent="handleSubthemeSubmit" class="flex flex-wrap gap-4 items-end">
-                        <div class="flex-1 min-w-[150px]">
+                    <form @submit.prevent="handleSubthemeSubmit" class="flex flex-col sm:flex-row flex-wrap gap-4 items-end">
+                        <div class="w-full sm:flex-1 min-w-[150px]">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Slug *</label>
                             <input v-model="subForm.slug" type="text" required
                                 class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                                 placeholder="addition" />
                         </div>
-                        <div class="flex-1 min-w-[150px]">
+                        <div class="w-full sm:flex-1 min-w-[150px]">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Атауы *</label>
                             <input v-model="subForm.title" type="text" required
                                 class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
                                 placeholder="Қосу" />
                         </div>
-                        <div class="w-24">
+                        <div class="w-full sm:w-24">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Реттілік</label>
                             <input v-model.number="subForm.order" type="number" min="0"
                                 class="w-full p-2.5 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none"
@@ -86,21 +86,21 @@
                     <p class="text-sm text-gray-500 mb-3">Бұл тесттер тікелей тақырыпқа тіркелген, бірақ ішкі тақырыпқа бөлінбеген. Әрбір тесті ішкі тақырыпқа тасымалдау үшін таңдаңыз:</p>
                     <div class="space-y-2">
                         <div v-for="skill in directSkills" :key="skill.id"
-                            class="flex items-center justify-between py-2 px-3 rounded-lg bg-orange-50 border border-orange-100">
+                            class="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-3 rounded-lg bg-orange-50 border border-orange-100 gap-3">
                             <div class="flex items-center gap-3">
                                 <span class="text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{{ skill.code }}</span>
                                 <span class="text-sm text-gray-700">{{ skill.title }}</span>
                                 <span class="text-xs text-gray-400">grade_id: {{ skill.grade_id }}</span>
                             </div>
-                            <div class="flex items-center gap-2" v-if="subthemes.length > 0">
+                            <div class="flex items-center gap-2 w-full sm:w-auto" v-if="subthemes.length > 0">
                                 <select v-model="moveTargets[skill.id]"
-                                    class="text-xs p-1.5 border border-gray-300 rounded-lg bg-white focus:border-blue-500 focus:outline-none">
+                                    class="text-xs p-1.5 border border-gray-300 rounded-lg bg-white focus:border-blue-500 focus:outline-none flex-1 sm:flex-none">
                                     <option :value="undefined">-- Ішкі тақырыпқа --</option>
                                     <option v-for="sub in subthemes" :key="sub.id" :value="sub.id">{{ sub.title }}</option>
                                 </select>
                                 <button @click="moveSkillToSubtheme(skill.id)"
                                     :disabled="!moveTargets[skill.id]"
-                                    class="text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg transition-colors">
+                                    class="text-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed px-3 py-1.5 rounded-lg transition-colors shrink-0">
                                     →
                                 </button>
                             </div>

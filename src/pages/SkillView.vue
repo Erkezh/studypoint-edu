@@ -25,7 +25,7 @@
 
       <div v-else-if="skill">
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h1 class="text-3xl font-bold mb-4">{{ skill.title }}</h1>
+          <h1 class="text-2xl sm:text-3xl font-bold mb-4">{{ skill.title }}</h1>
           <p class="text-gray-600 mb-4">{{ skill.description || 'Описание отсутствует' }}</p>
 
           <div class="flex flex-wrap gap-4 mb-4">

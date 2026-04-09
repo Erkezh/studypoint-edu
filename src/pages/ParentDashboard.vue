@@ -2,9 +2,9 @@
   <div class="min-h-screen bg-gray-50 flex flex-col">
     <Header />
     <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
-      <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Отбасы кабинеті (Parent Dashboard)</h1>
-        <Button @click="showAddModal = true" variant="primary" class="flex items-center gap-2">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">Отбасы кабинеті</h1>
+        <Button @click="showAddModal = true" variant="primary" class="w-full sm:w-auto flex items-center justify-center gap-2">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           Бала қосу
         </Button>
@@ -29,34 +29,61 @@
           Әзірге балалар тіркелмеген. "Бала қосу" түймесін басып тіркеңіз.
         </div>
         
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Аты-жөні</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сұрақтар саны</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дәлдік</th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уақыт (минут)</th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="child in childrenAnalytics" :key="child.child_id">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  {{ child.name }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ child.overview.total_questions_answered }}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ child.overview.avg_accuracy_percent }}%
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {{ Math.round(child.overview.total_time_sec / 60) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <!-- Desktop and Mobile Views -->
+        <template v-else>
+          <!-- Desktop Table -->
+          <div class="hidden sm:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Аты-жөні</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Сұрақтар саны</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Дәлдік</th>
+                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Уақыт (минут)</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="child in childrenAnalytics" :key="child.child_id">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {{ child.name }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ child.overview.total_questions_answered }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ child.overview.avg_accuracy_percent }}%
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {{ Math.round(child.overview.total_time_sec / 60) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mobile Card List -->
+          <div class="block sm:hidden divide-y divide-gray-200">
+            <div v-for="child in childrenAnalytics" :key="child.child_id" class="p-4 bg-white">
+              <div class="flex justify-between items-start mb-3">
+                <h4 class="text-base font-bold text-gray-900">{{ child.name }}</h4>
+              </div>
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-blue-50 p-2 rounded">
+                  <p class="text-[10px] text-blue-600 uppercase font-bold">Сұрақтар</p>
+                  <p class="text-sm font-bold text-blue-900">{{ child.overview.total_questions_answered }}</p>
+                </div>
+                <div class="bg-green-50 p-2 rounded">
+                  <p class="text-[10px] text-green-600 uppercase font-bold">Дәлдік</p>
+                  <p class="text-sm font-bold text-green-900">{{ child.overview.avg_accuracy_percent }}%</p>
+                </div>
+                <div class="bg-amber-50 p-2 rounded">
+                  <p class="text-[10px] text-amber-600 uppercase font-bold">Уақыт</p>
+                  <p class="text-sm font-bold text-amber-900">{{ Math.round(child.overview.total_time_sec / 60) }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </main>
     <Footer />

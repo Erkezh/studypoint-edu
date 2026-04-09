@@ -469,7 +469,17 @@ const formatAnswer = (answer: unknown): string => {
   gap: 12px;
   margin-bottom: 20px;
 }
-.page-title { font-size: 28px; font-weight: 400; color: #333; }
+.page-title { 
+  font-size: 20px; 
+  font-weight: 400; 
+  color: #333; 
+}
+
+@media (min-width: 640px) {
+  .page-title {
+    font-size: 28px;
+  }
+}
 .print-btn { background: none; border: none; cursor: pointer; color: #aaa; padding: 4px; }
 .print-btn:hover { color: #555; }
 
@@ -518,15 +528,35 @@ const formatAnswer = (answer: unknown): string => {
 }
 .summary-body {
   display: flex;
+  flex-direction: column;
   background: white;
+}
+
+@media (min-width: 768px) {
+  .summary-body {
+    flex-direction: row;
+  }
 }
 
 /* Stats panel */
 .summary-stats {
-  width: 200px;
-  flex-shrink: 0;
-  border-right: 1px solid #eee;
+  width: 100%;
+  border-right: none;
+  border-bottom: 1px solid #eee;
   padding: 16px 0;
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+  .summary-stats {
+    width: 200px;
+    border-right: 1px solid #eee;
+    border-bottom: none;
+    flex-direction: column;
+    justify-content: flex-start;
+  }
 }
 .stat-row {
   display: flex;

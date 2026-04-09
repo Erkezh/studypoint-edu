@@ -814,7 +814,11 @@ const confirmDelete = async (student: StudentInfo) => {
   display: flex;
   gap: 0;
   padding: 0;
-  overflow: visible;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.tabs-inner::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
 }
 .tab-item-group {
   position: relative;
@@ -990,6 +994,11 @@ const confirmDelete = async (student: StudentInfo) => {
   gap: 12px;
   flex-wrap: wrap;
 }
+@media (max-width: 640px) {
+  .blue-strip { padding: 20px 10px; }
+  .blue-strip-inner { gap: 8px; }
+  .blue-strip-label { font-size: 11px; letter-spacing: 1px; }
+}
 .blue-strip-label {
   color: rgba(255,255,255,0.95);
   font-size: 13px;
@@ -1014,6 +1023,13 @@ const confirmDelete = async (student: StudentInfo) => {
   font-size: 32px;
   font-weight: 800;
   text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+@media (max-width: 640px) {
+  .digit-box {
+    width: 32px;
+    height: 40px;
+    font-size: 24px;
+  }
 }
 
 /* ============ DASHBOARD CARDS ============ */
@@ -1072,6 +1088,12 @@ const confirmDelete = async (student: StudentInfo) => {
   flex-direction: column;
   gap: 18px;
 }
+@media (max-width: 480px) {
+  .mountain-stats { gap: 8px; top: 10%; }
+  .stat-number { font-size: 20px; }
+  .stat-line { width: 20px; }
+  .stat-label { font-size: 8px; }
+}
 .stat-row {
   display: flex;
   align-items: center;
@@ -1104,9 +1126,12 @@ const confirmDelete = async (student: StudentInfo) => {
   align-items: center;
   justify-content: center;
   gap: 24px;
-  margin-bottom: 12px;
+  margin-bottom: 24px;
   width: 100%;
   min-height: 180px;
+}
+@media (max-width: 480px) {
+  .donut-area { flex-direction: column; gap: 16px; min-height: auto; }
 }
 .donut-wrapper {
   position: relative;

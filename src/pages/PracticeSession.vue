@@ -2,19 +2,19 @@
   <div class="min-h-screen bg-gradient-to-b from-cyan-50 to-cyan-100">
     <Header />
 
-    <!-- Breadcrumb -->
-    <div class="bg-gray-100 border-b border-gray-200 py-2 px-4">
+    <!-- Breadcrumb (Scrollable on mobile) -->
+    <div class="bg-gray-100 border-b border-gray-200 py-2 px-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
       <div class="container mx-auto">
-        <nav class="flex items-center text-sm text-gray-600">
-          <router-link to="/" class="hover:text-green-600">Басты бет</router-link>
-          <span class="mx-2 text-gray-400">
+        <nav class="flex items-center text-xs sm:text-sm text-gray-600">
+          <router-link to="/" class="hover:text-green-600 shrink-0">Басты бет</router-link>
+          <span class="mx-2 text-gray-400 shrink-0">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </span>
-          <span v-if="skillInfo" class="text-gray-800">{{ skillInfo.gradeNumber }} сынып</span>
-          <span class="mx-2 text-gray-400">
+          <span v-if="skillInfo" class="text-gray-800 shrink-0">{{ skillInfo.gradeNumber }} сынып</span>
+          <span class="mx-2 text-gray-400 shrink-0">
              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </span>
-          <span v-if="skillInfo" class="font-medium text-gray-900">{{ skillInfo.code }} {{ skillInfo.title }}</span>
+          <span v-if="skillInfo" class="font-medium text-gray-900 truncate">{{ skillInfo.code }} {{ skillInfo.title }}</span>
         </nav>
       </div>
     </div>
@@ -92,7 +92,7 @@
           <!-- Main question area -->
           <div class="flex-1 lg:w-3/4">
             <!-- Question card -->
-            <div class="bg-white rounded-xl shadow-lg p-8 mb-6 relative"
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 relative"
               :class="{ 'opacity-75': shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value }">
 
               <!-- Overlay for trial exhausted -->
@@ -107,7 +107,7 @@
               <!-- Question display - always visible when there's a question -->
               <div v-if="currentQuestion && !showingResult">
                 <!-- Question prompt (hide for plugins) -->
-                <p v-if="currentQuestion.type !== 'PLUGIN'" class="text-xl text-gray-800 mb-8 leading-relaxed"
+                <p v-if="currentQuestion.type !== 'PLUGIN'" class="text-lg sm:text-xl text-gray-800 mb-6 sm:mb-8 leading-relaxed"
                   v-html="containsFraction(currentQuestion.prompt) ? formatFraction(currentQuestion.prompt) : currentQuestion.prompt">
                 </p>
 
@@ -212,12 +212,12 @@
               <!-- Result display - shows below question/iframe -->
               <div v-if="showingResult && lastResult" class="mt-6">
                 <div :class="[
-                  'rounded-xl p-6',
+                  'rounded-xl p-4 sm:p-6',
                   lastResult.is_correct
                     ? 'bg-green-50 border-2 border-green-300 text-green-800'
                     : 'bg-red-50 border-2 border-red-300 text-red-800',
                 ]">
-                  <p class="font-bold text-xl mb-4 flex items-center gap-2">
+                  <p class="font-bold text-lg sm:text-xl mb-3 sm:mb-4 flex items-center gap-2">
                     <svg v-if="lastResult.is_correct" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                     <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     {{ lastResult.is_correct ? 'Дұрыс!' : 'Қате' }}

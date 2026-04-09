@@ -16,20 +16,23 @@
       <div v-if="successMessage" class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">{{ successMessage }}</div>
 
       <!-- Filters -->
-      <div class="bg-white rounded-lg shadow-sm p-4 mb-4 flex flex-wrap gap-4 items-center">
-        <div class="flex-1 min-w-[200px]">
-          <input v-model="searchQuery" type="text" placeholder="Іздеу..."
-            class="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm" />
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-6 border border-gray-100 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+        <div class="relative flex-1">
+          <svg class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input v-model="searchQuery" type="text" placeholder="Тест атауы немесе код бойынша іздеу..."
+            class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none transition-all" />
         </div>
-        <select v-model="filterGradeId" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
-          <option :value="null">Барлық сыныптар</option>
-          <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
-        </select>
-        <select v-model="filterTopicId" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
-          <option :value="null">Барлық тақырыптар</option>
-          <option v-for="t in themes" :key="t.id" :value="t.id">{{ t.icon ? t.icon + ' ' : '' }}{{ t.title }}</option>
-        </select>
-        <span class="text-sm text-gray-500">{{ filteredSkills.length }} тест</span>
+        <div class="flex flex-wrap gap-2">
+          <select v-model="filterGradeId" class="flex-1 min-w-[120px] p-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm">
+            <option :value="null">Барлық сыныптар</option>
+            <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
+          </select>
+          <select v-model="filterTopicId" class="flex-1 min-w-[120px] p-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm">
+            <option :value="null">Барлық тақырыптар</option>
+            <option v-for="t in themes" :key="t.id" :value="t.id">{{ t.icon ? t.icon + ' ' : '' }}{{ t.title }}</option>
+          </select>
+        </div>
+        <span class="text-sm text-gray-500 text-center md:text-left">{{ filteredSkills.length }} тест</span>
       </div>
 
       <!-- Skills List -->

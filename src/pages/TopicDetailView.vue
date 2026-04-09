@@ -42,7 +42,7 @@
         <div v-else-if="currentTopic">
             <!-- Hero Header -->
             <div class="mb-8">
-                <h1 class="text-3xl font-bold text-green-700 mb-3">{{ currentTopic.title }}</h1>
+                <h1 class="text-2xl sm:text-3xl font-bold text-green-700 mb-3">{{ currentTopic.title }}</h1>
                 <p class="text-gray-600 text-base max-w-4xl leading-relaxed">
                     {{ currentTopic.description || `Мұнда "${currentTopic.title}" тақырыбына қатысты барлық дағдылар тізімі берілген. Бұл дағдылар сынып бойынша топтастырылған. Кез келген дағды атауына басып, жаттығуды бастаңыз.` }}
                 </p>
