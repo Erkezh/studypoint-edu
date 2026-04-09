@@ -1,7 +1,8 @@
 {
   "executionEnvironments": [
     {
-      "root": "backend"
+      "root": "backend",
+      "extraPaths": ["backend"]
     }
   ],
   "extraPaths": [

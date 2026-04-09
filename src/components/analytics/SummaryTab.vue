@@ -212,8 +212,8 @@ const isDateRunning = (dateStr: string | undefined) => {
 const filteredTotalQuestions = computed(() => {
   // If no date range is selected, use the aggregated stats from skills
   if (!props.dateRange.start) {
-    return analyticsStore.skills.reduce((sum, skill) => {
-      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+    return analyticsStore.skills.reduce((sum, skill: any) => {
+      const gradeNumber = skill.grade_number as number | undefined
       if (gradeNumber !== undefined) {
         if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
           return sum + (skill.total_questions || 0)
@@ -227,8 +227,8 @@ const filteredTotalQuestions = computed(() => {
   // If date range IS selected, calculate from granular questions data
   return analyticsStore.allQuestions.reduce((sum, question) => {
     // Grade filter
-    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
-    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+    const skill: any = analyticsStore.skills.find((s: any) => s.skill_id === question.skill_id)
+    const gradeNum = skill?.grade_number as number | undefined
 
     if (gradeNum !== undefined) {
       if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
@@ -248,9 +248,9 @@ const filteredTotalQuestions = computed(() => {
 const filteredTotalTime = computed(() => {
    // If no date range, use aggregated
   if (!props.dateRange.start) {
-    return analyticsStore.skills.reduce((sum, skill) => {
-      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-      const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
+    return analyticsStore.skills.reduce((sum, skill: any) => {
+      const gradeNumber = skill.grade_number as number | undefined
+      const totalTime = skill.total_time_seconds as number | undefined
       if (gradeNumber !== undefined) {
          if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
           return sum + (totalTime || 0)
@@ -264,8 +264,8 @@ const filteredTotalTime = computed(() => {
   // If date range active, sum up time spent on questions in that range
   return analyticsStore.allQuestions.reduce((sum, question) => {
     // Grade filter
-    const skill = analyticsStore.skills.find(s => s.skill_id === question.skill_id)
-    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+    const skill: any = analyticsStore.skills.find((s: any) => s.skill_id === question.skill_id)
+    const gradeNum = skill?.grade_number as number | undefined
     if (gradeNum !== undefined) {
       if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
         return sum
@@ -285,9 +285,12 @@ const filteredTotalTime = computed(() => {
 // Skills with progress, filtered by grade range AND date range
 const skillsWithProgress = computed(() => {
   if (!props.dateRange.start) {
-    return analyticsStore.skills.filter(skill => {
-      if ((skill.total_questions || 0) === 0) return false
-      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+    return analyticsStore.skills.filter((skill: any) => {
+      // "хотя бы на 1 вопрос" means total_questions > 0
+      // if for some reason total_questions is missing, we use total_time_seconds as fallback 
+      // or we just trust that if it's in `skills` array, they practiced it.
+      if ((skill.total_questions || 0) === 0 && (skill.total_time_seconds || 0) === 0) return false
+      const gradeNumber = skill.grade_number as number | undefined
       if (gradeNumber !== undefined) {
         return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
       }
@@ -304,9 +307,9 @@ const skillsWithProgress = computed(() => {
      }
   })
 
-  return analyticsStore.skills.filter(skill => {
+  return analyticsStore.skills.filter((skill: any) => {
     if (!skillIdsInRange.has(skill.skill_id)) return false
-    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+    const gradeNumber = skill.grade_number as number | undefined
     if (gradeNumber !== undefined) {
       return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
     }
@@ -317,23 +320,23 @@ const skillsWithProgress = computed(() => {
 // Completed topics (SmartScore = 100)
 const completedTopics = computed(() => {
   return analyticsStore.skills
-    .filter(skill => {
+    .filter((skill: any) => {
       if ((skill.best_smartscore || 0) < 100) return false
-      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+      const gradeNumber = skill.grade_number as number | undefined
       if (gradeNumber !== undefined) {
         return gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo
       }
       return true
     })
-    .map(skill => {
-      const apiName = (skill as Record<string, unknown>).skill_name as string | undefined
+    .map((skill: any) => {
+      const apiName = skill.skill_name as string | undefined
       return {
-        skill_id: skill.skill_id,
+        skill_id: skill.skill_id as number,
         name: apiName || props.skillNames.get(skill.skill_id) || `Дағды ${skill.skill_id}`,
         best_smartscore: skill.best_smartscore || 0,
         total_questions: skill.total_questions || 0,
         accuracy_percent: skill.accuracy_percent || 0,
-        last_practiced: skill.last_practiced_at || '',
+        last_practiced: (skill.last_practiced_at || skill.last_practiced) as string || '',
       }
     })
 })
@@ -362,21 +365,19 @@ const getPrimaryTopicTitle = (topicId: number | undefined): string => {
 const skillsByTopic = computed(() => {
   const topicMap = new Map<string, { name: string; count: number }>()
 
-  for (const skill of skillsWithProgress.value) {
-    const rec = skill as Record<string, unknown>
-    // Get the base topic ID from the skill. If the analytics payload doesn't provide topic_id directly
-    // we can try looking it up in the catalogStore's skills list if needed, but assuming rec has it:
-    let topicId = rec.topic_id as number | undefined
+  for (const skill of skillsWithProgress.value as any[]) {
+    // Get the base topic ID from the skill.
+    let topicId = skill.topic_id as number | undefined
 
     // Fallback: look up in catalogStore if missing in analytics payload
     if (!topicId) {
-      const catalogSkill = catalogStore.skills.find(s => s.id === (skill as Record<string, unknown>).skill_id || s.id === (skill as Record<string, unknown>).id)
+      const catalogSkill = catalogStore.skills.find(s => s.id === skill.skill_id || s.id === skill.id)
       if (catalogSkill) {
         topicId = catalogSkill.topic_id ?? undefined
       }
     }
 
-    const topicTitle = topicId ? getPrimaryTopicTitle(topicId) : ((rec.topic_title as string) || 'Басқа')
+    const topicTitle = topicId ? getPrimaryTopicTitle(topicId) : (skill.topic_title || 'Басқа')
 
     if (topicMap.has(topicTitle)) {
       topicMap.get(topicTitle)!.count++

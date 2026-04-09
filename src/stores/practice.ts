@@ -11,7 +11,7 @@ import router from '@/router'
 import { useTrialQuestions } from '@/composables/useTrialQuestions'
 import { useAuthStore } from '@/stores/auth'
 
-const HEARTBEAT_INTERVAL = 30000 // 30 секунд
+const HEARTBEAT_INTERVAL = 2000 // 2 секунды
 const INACTIVITY_THRESHOLD = 300000 // 5 минут
 const isDev = import.meta.env.DEV
 

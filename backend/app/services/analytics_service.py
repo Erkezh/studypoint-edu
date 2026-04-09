@@ -118,7 +118,10 @@ class AnalyticsService:
         time_stmt = select(func.coalesce(func.sum(PracticeSession.time_elapsed_sec), 0)).where(PracticeSession.user_id == uid)
         total_time = int((await self.session.execute(time_stmt)).scalar_one())
 
-        skills_stmt = select(func.count(func.distinct(PracticeSession.skill_id))).where(PracticeSession.user_id == uid)
+        skills_stmt = select(func.count(func.distinct(PracticeSession.skill_id))).where(
+            PracticeSession.user_id == uid,
+            PracticeSession.total_questions_answered > 0
+        )
         skills_practiced = int((await self.session.execute(skills_stmt)).scalar_one())
 
         attempts_stmt = (
@@ -420,7 +423,10 @@ class AnalyticsService:
         time_stmt = select(func.coalesce(func.sum(PracticeSession.time_elapsed_sec), 0)).where(PracticeSession.user_id.in_(student_ids))
         total_time = int((await self.session.execute(time_stmt)).scalar_one())
 
-        skills_stmt = select(func.count(func.distinct(PracticeSession.skill_id))).where(PracticeSession.user_id.in_(student_ids))
+        skills_stmt = select(func.count(func.distinct(PracticeSession.skill_id))).where(
+            PracticeSession.user_id.in_(student_ids),
+            PracticeSession.total_questions_answered > 0
+        )
         skills_practiced = int((await self.session.execute(skills_stmt)).scalar_one())
 
         attempts_stmt = (

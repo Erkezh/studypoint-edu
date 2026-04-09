@@ -88,6 +88,12 @@ defineOptions({ name: 'WelcomePage' })
 
 const router = useRouter()
 const countdown = ref(10)
+
+// TODO: fetch actual plan data or pass through route state
+const billingCycle = ref('monthly')
+const planType = ref('family')
+const childrenCount = ref(1)
+
 let timer: ReturnType<typeof setInterval> | null = null
 
 onMounted(() => {

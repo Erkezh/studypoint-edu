@@ -264,7 +264,7 @@
         <div class="live-classroom">
           <div class="live-header">
             <h1 class="live-title">ЖАНДЫ СЫНЫП <span class="live-pulse"></span> <span class="help-circle">?</span></h1>
-            <p class="live-subtitle" v-if="livePollingActive">Автоматты жаңару: 5 секунд сайын</p>
+            <p class="live-subtitle" v-if="livePollingActive">Автоматты жаңару: 1 секунд сайын</p>
           </div>
 
           <div class="stats-row">
@@ -557,9 +557,9 @@ const currentTimeFormatted = computed(() => {
   return `${hrs} сағ ${remMin} мин`
 })
 
-// Helper: count skills by smartscore range from a student's skills array
-const countSkills = (skills: Array<Record<string, unknown>>, filter: (score: number) => boolean): number => {
-  return (skills || []).filter(sk => filter(Number(sk.best_smartscore) || 0)).length
+// Helper: filter skills from a student's skills array
+const countSkills = (skills: Array<Record<string, unknown>>, filter: (sk: Record<string, unknown>) => boolean): number => {
+  return (skills || []).filter(filter).length
 }
 
 const getScoreClass = (score: number) => {
@@ -570,7 +570,7 @@ const getScoreClass = (score: number) => {
 }
 
 const currentMastered = computed(() => {
-  const filter = (score: number) => score >= 100
+  const filter = (sk: Record<string, unknown>) => (Number(sk.best_smartscore) || 0) >= 100
   if (selectedStudentId.value === 'all') {
     return studentsBreakdown.value.reduce((sum, s) => sum + countSkills(s.skills, filter), 0)
   }
@@ -579,7 +579,10 @@ const currentMastered = computed(() => {
 })
 
 const currentProficient = computed(() => {
-  const filter = (score: number) => score >= 80 && score < 100
+  const filter = (sk: Record<string, unknown>) => {
+    const score = Number(sk.best_smartscore) || 0
+    return score >= 80 && score < 100
+  }
   if (selectedStudentId.value === 'all') {
     return studentsBreakdown.value.reduce((sum, s) => sum + countSkills(s.skills, filter), 0)
   }
@@ -588,7 +591,11 @@ const currentProficient = computed(() => {
 })
 
 const currentSkillsPracticed = computed(() => {
-  const filter = (score: number) => score > 0 && score < 80
+  const filter = (sk: Record<string, unknown>) => {
+    const score = Number(sk.best_smartscore) || 0
+    const questions = Number(sk.total_questions) || 0
+    return questions > 0 && score < 80
+  }
   if (selectedStudentId.value === 'all') {
     return studentsBreakdown.value.reduce((sum, s) => sum + countSkills(s.skills, filter), 0)
   }
@@ -618,14 +625,13 @@ const copyToClipboard = (text: string, id: string) => {
 const form = ref({ firstName: '', lastName: '', gradeId: '' as string | number })
 const createdStudentData = ref<{ full_name: string; username: string; password: string } | null>(null)
 
-onMounted(async () => {
-  // Load analytics data
-  loadingData.value = true
+const fetchAnalyticsData = async (showLoading = false) => {
+  if (showLoading) loadingData.value = true
   try {
     const [quickviewResp] = await Promise.all([
       teacherApi.getTeacherQuickviewAnalytics(false),
-      teacherStore.fetchStudents(),
       grades.value.length === 0 ? catalogStore.getGrades() : Promise.resolve(),
+      showLoading ? teacherStore.fetchStudents() : Promise.resolve()
     ])
     const qd = quickviewResp.data?.data as Record<string, unknown> | undefined
     if (qd) {
@@ -645,8 +651,26 @@ onMounted(async () => {
   } catch (err) {
     console.error('Failed to load teacher dashboard data:', err)
   } finally {
-    loadingData.value = false
+    if (showLoading) loadingData.value = false
   }
+}
+
+let glancePollingTimer: ReturnType<typeof setInterval> | null = null
+
+const startGlancePolling = () => {
+  if (glancePollingTimer) return
+  glancePollingTimer = setInterval(() => fetchAnalyticsData(false), 2000)
+}
+
+const stopGlancePolling = () => {
+  if (glancePollingTimer) {
+    clearInterval(glancePollingTimer)
+    glancePollingTimer = null
+  }
+}
+
+onMounted(async () => {
+  await fetchAnalyticsData(true)
 })
 
 // ============ LIVE CLASSROOM DATA ============
@@ -697,7 +721,7 @@ const startLivePolling = () => {
   if (livePollingTimer) return
   livePollingActive.value = true
   fetchLiveStudents() // initial fetch
-  livePollingTimer = setInterval(fetchLiveStudents, 5000)
+  livePollingTimer = setInterval(fetchLiveStudents, 1000)
 }
 
 const stopLivePolling = () => {
@@ -712,13 +736,19 @@ const stopLivePolling = () => {
 watch(activeTab, (tab) => {
   if (tab === 'tools') {
     startLivePolling()
+    stopGlancePolling()
+  } else if (tab === 'glance') {
+    startGlancePolling()
+    stopLivePolling()
   } else {
     stopLivePolling()
+    stopGlancePolling()
   }
 }, { immediate: true })
 
 onUnmounted(() => {
   stopLivePolling()
+  stopGlancePolling()
 })
 
 const isNeedsHelp = (student: LiveStudent) => {

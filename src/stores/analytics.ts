@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import { analyticsApi } from '@/api/analytics'
 import type { AnalyticsOverview, AnalyticsSkills } from '@/types/api'
 
-const CACHE_TTL = 5 * 60 * 1000 // 5 минут
+const CACHE_TTL = 0 // Кеширование отключено для мгновенного обновления
 const isDev = import.meta.env.DEV
 
 export const useAnalyticsStore = defineStore('analytics', () => {
