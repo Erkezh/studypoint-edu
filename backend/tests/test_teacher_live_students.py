@@ -4,8 +4,13 @@ import uuid
 
 import pytest
 from redis.asyncio import Redis
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.config import settings
+from app.core.security import hash_password
+from app.models.profile import StudentProfile
+from app.models.user import User
 
 
 async def _login(client, email: str, password: str) -> dict:
@@ -21,6 +26,25 @@ async def _clear_presence() -> None:
             await redis.delete(key)
     finally:
         await redis.aclose()
+
+
+async def _restore_seeded_student_password() -> None:
+    engine = create_async_engine(settings.database_url)
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(
+                update(User)
+                .where(User.email == "student@example.com")
+                .values(password_hash=hash_password("Password123!"))
+            )
+            await conn.execute(
+                update(StudentProfile)
+                .where(StudentProfile.user_id == User.id)
+                .where(User.email == "student@example.com")
+                .values(plain_password=None)
+            )
+    finally:
+        await engine.dispose()
 
 
 @pytest.mark.asyncio
@@ -166,15 +190,18 @@ async def test_teacher_can_reset_password_for_enrolled_only_student(client, clea
     teacher = await _login(client, "teacher@example.com", "Password123!")
     student = await _login(client, "student@example.com", "Password123!")
 
-    response = await client.post(
-        f"/api/v1/teacher/students/{student['user']['id']}/reset-password",
-        headers={"Authorization": f"Bearer {teacher['access_token']}"},
-    )
-    assert response.status_code == 200, response.text
-    payload = response.json()["data"]
-    assert payload["username"] == "student@example.com"
-    assert isinstance(payload["password"], str)
-    assert payload["password"]
+    try:
+        response = await client.post(
+            f"/api/v1/teacher/students/{student['user']['id']}/reset-password",
+            headers={"Authorization": f"Bearer {teacher['access_token']}"},
+        )
+        assert response.status_code == 200, response.text
+        payload = response.json()["data"]
+        assert payload["username"] == "student@example.com"
+        assert isinstance(payload["password"], str)
+        assert payload["password"]
+    finally:
+        await _restore_seeded_student_password()
 
 
 @pytest.mark.asyncio

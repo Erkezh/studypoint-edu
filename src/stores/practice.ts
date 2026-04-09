@@ -62,6 +62,7 @@ export const usePracticeStore = defineStore('practice', () => {
       if (response.data) {
         currentSession.value = response.data
         currentQuestion.value = response.data.current_question || null
+        updateActivity()
         
         // Восстанавливаем из localStorage если есть сохранённая сессия
         const savedSessionId = localStorage.getItem(`session_${numericSkillId}`)
@@ -146,6 +147,7 @@ export const usePracticeStore = defineStore('practice', () => {
       if (response.data) {
         currentSession.value = response.data
         currentQuestion.value = response.data.current_question || null
+        updateActivity()
         saveSessionState()
         startHeartbeat(sessionId)
         return response.data
@@ -360,7 +362,7 @@ export const usePracticeStore = defineStore('practice', () => {
       clearInterval(heartbeatTimer.value)
     }
 
-    heartbeatTimer.value = window.setInterval(async () => {
+    const sendHeartbeatIfActive = async () => {
       if (!currentSession.value) return
 
       const now = Date.now()
@@ -371,9 +373,13 @@ export const usePracticeStore = defineStore('practice', () => {
         return
       }
 
-      // Send heartbeat to server to keep presence alive
-      updateActivity()
+      // Send heartbeat to server to keep presence alive.
       await practiceApi.sendHeartbeat(sessionId)
+    }
+
+    void sendHeartbeatIfActive()
+    heartbeatTimer.value = window.setInterval(() => {
+      void sendHeartbeatIfActive()
     }, HEARTBEAT_INTERVAL)
   }
 

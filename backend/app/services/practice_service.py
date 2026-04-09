@@ -57,6 +57,7 @@ class PracticeService:
                 active.finished_at = utc_now()
                 await self.session.flush()
             else:
+                await self._refresh_presence(active, user_uuid=user_uuid)
                 q = None
                 if active.last_question_id is not None:
                     q = await self.questions.get(active.last_question_id)
@@ -193,16 +194,7 @@ class PracticeService:
         await self.session.flush()
 
         # Update presence so teacher can see this student is active
-        await update_presence(
-            user_id=str(user_uuid),
-            skill_id=skill_id,
-            skill_name=skill.title,
-            smartscore=ps.current_smartscore,
-            correct=ps.total_correct,
-            wrong=ps.total_incorrect,
-            questions_answered=ps.total_questions_answered,
-            session_id=str(ps.id),
-        )
+        await self._refresh_presence(ps, user_uuid=user_uuid, skill_name=skill.title)
 
         return await self._to_session_response(ps, current_question=q)
 
@@ -844,16 +836,7 @@ class PracticeService:
             await remove_presence(str(user_uuid))
         else:
             skill_name = skill.title if skill else "Unknown"
-            await update_presence(
-                user_id=str(user_uuid),
-                skill_id=ps.skill_id,
-                skill_name=skill_name,
-                smartscore=ps.current_smartscore,
-                correct=ps.total_correct,
-                wrong=ps.total_incorrect,
-                questions_answered=ps.total_questions_answered,
-                session_id=str(ps.id),
-            )
+            await self._refresh_presence(ps, user_uuid=user_uuid, skill_name=skill_name)
 
         session_resp = await self._to_session_response(ps, current_question=None)
         # Логируем финальный результат перед возвратом
@@ -1005,18 +988,7 @@ class PracticeService:
         await self._touch_activity(ps)
 
         # Refresh presence TTL so teacher continues to see this student
-        skill = await self.skills.get(ps.skill_id)
-        skill_name = skill.title if skill else "Unknown"
-        await update_presence(
-            user_id=str(user_uuid),
-            skill_id=ps.skill_id,
-            skill_name=skill_name,
-            smartscore=ps.current_smartscore,
-            correct=ps.total_correct,
-            wrong=ps.total_incorrect,
-            questions_answered=ps.total_questions_answered,
-            session_id=str(ps.id),
-        )
+        await self._refresh_presence(ps, user_uuid=user_uuid)
 
         q = await self.questions.get(ps.last_question_id) if ps.last_question_id else None
         return await self._to_session_response(ps, current_question=q)
@@ -1030,6 +1002,29 @@ class PracticeService:
         ps.active_time_seconds = new_active
         ps.last_activity_at = new_last
         ps.time_elapsed_sec = ps.active_time_seconds
+
+    async def _refresh_presence(
+        self,
+        ps: PracticeSession,
+        *,
+        user_uuid: uuid.UUID,
+        skill_name: str | None = None,
+    ) -> None:
+        resolved_skill_name = skill_name
+        if resolved_skill_name is None:
+            skill = await self.skills.get(ps.skill_id)
+            resolved_skill_name = skill.title if skill else "Unknown"
+
+        await update_presence(
+            user_id=str(user_uuid),
+            skill_id=ps.skill_id,
+            skill_name=resolved_skill_name,
+            smartscore=ps.current_smartscore,
+            correct=ps.total_correct,
+            wrong=ps.total_incorrect,
+            questions_answered=ps.total_questions_answered,
+            session_id=str(ps.id),
+        )
 
     async def _update_assignment_status(
         self,

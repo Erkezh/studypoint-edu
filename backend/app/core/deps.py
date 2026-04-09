@@ -37,22 +37,19 @@ async def get_current_user_optional(
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
     session: AsyncSession = Depends(get_db_session),
 ):
-    """Optional user dependency - returns None if not authenticated (for trial questions)"""
+    """Optional user dependency - returns None only when credentials are absent."""
     if creds is None:
         return None
-    try:
-        payload = decode_token(creds.credentials)
-        require_token_type(payload, "access")
-        user_id = payload.get("sub")
-        if not user_id:
-            return None
-        repo = UserRepository(session)
-        user = await repo.get_by_id(user_id)
-        if user is None or not user.is_active:
-            return None
-        return user
-    except Exception:
-        return None
+    payload = decode_token(creds.credentials)
+    require_token_type(payload, "access")
+    user_id = payload.get("sub")
+    if not user_id:
+        raise AppError(status_code=401, code="unauthorized", message="Invalid token subject")
+    repo = UserRepository(session)
+    user = await repo.get_by_id(user_id)
+    if user is None or not user.is_active:
+        raise AppError(status_code=401, code="unauthorized", message="User not found or inactive")
+    return user
 
 
 async def get_or_create_guest_user(
@@ -80,4 +77,3 @@ async def get_or_create_guest_user(
         await session.flush()
     
     return guest_user
-

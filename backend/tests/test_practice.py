@@ -31,3 +31,12 @@ async def test_practice_session_and_submit_updates_smartscore(client, student_to
     assert res["session"]["questions_answered"] == 1
     assert res["session"]["smartscore"] > 0
     assert res["next_question"] is not None
+
+
+async def test_practice_session_rejects_invalid_bearer_token(client, cleanup_practice_tables):
+    response = await client.post(
+        "/api/v1/practice/sessions",
+        json={"skill_id": 1},
+        headers={"Authorization": "Bearer invalid-token", "Idempotency-Key": "start-invalid-token"},
+    )
+    assert response.status_code == 401, response.text
