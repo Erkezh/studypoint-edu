@@ -1,0 +1,85 @@
+
+> math-edu-beta-1@0.0.0 build
+> run-p type-check "build-only {@}" --
+
+
+> math-edu-beta-1@0.0.0 type-check
+> vue-tsc --build
+
+
+> math-edu-beta-1@0.0.0 prebuild-only
+> npm run check:node
+
+
+> math-edu-beta-1@0.0.0 check:node
+> node scripts/check-node-version.cjs
+
+
+> math-edu-beta-1@0.0.0 build-only
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 10 modules transformed.
+✗ Build failed in 342ms
+error during build:
+[vite:vue] v-else/v-else-if has no adjacent v-if or v-else-if.
+
+/Users/ayaulyzhumakan/Desktop/studypoint-edu/src/pages/ParentDashboard.vue
+61 |  
+62 |          <!-- Mobile Card List -->
+63 |          <div v-else class="block sm:hidden divide-y divide-gray-200">
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+64 |            <div v-for="child in childrenAnalytics" :key="child.child_id" class="p-4 bg-white">
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+65 |              <div class="flex justify-between items-start mb-3">
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+66 |                <h4 class="text-base font-bold text-gray-900">{{ child.name }}</h4>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+67 |              </div>
+   |  ^^^^^^^^^^^^^^^^^^
+68 |              <div class="grid grid-cols-3 gap-2 text-center">
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+69 |                <div class="bg-blue-50 p-2 rounded">
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+70 |                  <p class="text-[10px] text-blue-600 uppercase font-bold">Сұрақтар</p>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+71 |                  <p class="text-sm font-bold text-blue-900">{{ child.overview.total_questions_answered }}</p>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+72 |                </div>
+   |  ^^^^^^^^^^^^^^^^^^^^
+73 |                <div class="bg-green-50 p-2 rounded">
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+74 |                  <p class="text-[10px] text-green-600 uppercase font-bold">Дәлдік</p>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+75 |                  <p class="text-sm font-bold text-green-900">{{ child.overview.avg_accuracy_percent }}%</p>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+76 |                </div>
+   |  ^^^^^^^^^^^^^^^^^^^^
+77 |                <div class="bg-amber-50 p-2 rounded">
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+78 |                  <p class="text-[10px] text-amber-600 uppercase font-bold">Уақыт</p>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+79 |                  <p class="text-sm font-bold text-amber-900">{{ Math.round(child.overview.total_time_sec / 60) }}</p>
+   |  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+80 |                </div>
+   |  ^^^^^^^^^^^^^^^^^^^^
+81 |              </div>
+   |  ^^^^^^^^^^^^^^^^^^
+82 |            </div>
+   |  ^^^^^^^^^^^^^^^^
+83 |          </div>
+   |  ^^^^^^^^^^^^^^
+
+file: /Users/ayaulyzhumakan/Desktop/studypoint-edu/src/pages/ParentDashboard.vue:undefined:undefined
+    at createCompilerError (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:1374:17)
+    at processIf (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:4670:13)
+    at /Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:4607:12
+    at Array.<anonymous> (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3606:26)
+    at traverseNode (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3548:38)
+    at traverseChildren (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3540:5)
+    at traverseNode (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3583:7)
+    at traverseChildren (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3540:5)
+    at traverseNode (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3583:7)
+    at traverseChildren (/Users/ayaulyzhumakan/Desktop/studypoint-edu/node_modules/@vue/compiler-core/dist/compiler-core.cjs.prod.js:3540:5)
+ERROR: "build-only" exited with 1.
