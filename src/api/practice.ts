@@ -26,8 +26,8 @@ export const practiceApi = {
     return response.data
   },
 
-  async getNextQuestion(sessionId: string): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  async getNextQuestion(sessionId: string): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       `/practice/sessions/${sessionId}/next`
     )
     return response.data
@@ -50,10 +50,18 @@ export const practiceApi = {
     )
   },
 
-  async finishSession(sessionId: string): Promise<ApiResponse<Record<string, any>>> {
-    const response = await apiClient.post<ApiResponse<Record<string, any>>>(
+  async finishSession(sessionId: string): Promise<ApiResponse<Record<string, unknown>>> {
+    const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
       `/practice/sessions/${sessionId}/finish`
     )
     return response.data
+  },
+
+  async sendHeartbeat(sessionId: string): Promise<void> {
+    try {
+      await apiClient.post(`/practice/sessions/${sessionId}/heartbeat`, {})
+    } catch {
+      // Silently ignore heartbeat failures
+    }
   },
 }

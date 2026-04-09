@@ -80,7 +80,7 @@ export const usePracticeStore = defineStore('practice', () => {
         return response.data
       }
       throw new Error('Failed to create session')
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       if (isDev) {
         console.error('PracticeStore: Failed to create session:', err)
         console.error('PracticeStore: Error response:', err.response?.data)
@@ -123,7 +123,7 @@ export const usePracticeStore = defineStore('practice', () => {
       } else {
         const errorMsg = err.response?.data?.detail 
           ? (Array.isArray(err.response.data.detail) 
-            ? err.response.data.detail.map((e: any) => e.msg).join(', ')
+            ? err.response.data.detail.map((e: any) => e.msg).join(', ') // eslint-disable-line @typescript-eslint/no-explicit-any
             : err.response.data.detail)
           : err.message || 'Failed to create session'
         error.value = errorMsg
@@ -151,7 +151,7 @@ export const usePracticeStore = defineStore('practice', () => {
         return response.data
       }
       throw new Error('Session not found')
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       const status = err.response?.status
       if (status === 404) {
         error.value = 'Сессия табылмады немесе аяқталған. Жаңа практиканы бастаңыз.'
@@ -161,7 +161,7 @@ export const usePracticeStore = defineStore('practice', () => {
             const state = JSON.parse(raw)
             if (state?.sessionId === sessionId) localStorage.removeItem('practice_session_state')
           }
-        } catch (_) { /* ignore */ }
+        } catch { /* ignore */ }
       } else {
         error.value = err.response?.data?.error?.message || err.message || 'Сессияны жүктеу мүмкін болмады.'
       }
@@ -178,7 +178,7 @@ export const usePracticeStore = defineStore('practice', () => {
     try {
       const response = await practiceApi.getNextQuestion(sessionId)
       if (response.data) {
-        currentQuestion.value = response.data.question || null
+        currentQuestion.value = (response.data.question as any) || null // eslint-disable-line @typescript-eslint/no-explicit-any
         if (currentSession.value) {
           currentSession.value.current_question = currentQuestion.value
         }
@@ -186,7 +186,7 @@ export const usePracticeStore = defineStore('practice', () => {
         return currentQuestion.value
       }
       return null
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       error.value = err.message || 'Failed to get next question'
       throw err
     }
@@ -260,7 +260,7 @@ export const usePracticeStore = defineStore('practice', () => {
         return response.data
       }
       throw new Error('Failed to submit answer')
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Обработка ошибки 402 (Payment Required)
       if (err.response?.status === 402) {
         const authStore = useAuthStore()
@@ -302,7 +302,7 @@ export const usePracticeStore = defineStore('practice', () => {
       } else {
         const errorMsg = err.response?.data?.detail
           ? (Array.isArray(err.response.data.detail)
-            ? err.response.data.detail.map((e: any) => e.msg).join(', ')
+            ? err.response.data.detail.map((e: any) => e.msg).join(', ') // eslint-disable-line @typescript-eslint/no-explicit-any
             : err.response.data.detail)
           : err.message || 'Failed to submit answer'
         
@@ -338,7 +338,7 @@ export const usePracticeStore = defineStore('practice', () => {
         localStorage.removeItem(`session_${currentSession.value.skill_id}`)
       }
       localStorage.removeItem('practice_session_state')
-    } catch (err: any) {
+    } catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       // Если ошибка 409 (Conflict) - сессия уже завершена, это нормально
       if (err.response?.status === 409) {
         if (isDev) {
@@ -354,13 +354,13 @@ export const usePracticeStore = defineStore('practice', () => {
     }
   }
 
-  // Heartbeat для обновления времени активности
+  // Heartbeat для обновления времени активности и присутствия (presence)
   const startHeartbeat = (sessionId: string) => {
     if (heartbeatTimer.value) {
       clearInterval(heartbeatTimer.value)
     }
 
-    heartbeatTimer.value = window.setInterval(() => {
+    heartbeatTimer.value = window.setInterval(async () => {
       if (!currentSession.value) return
 
       const now = Date.now()
@@ -371,9 +371,9 @@ export const usePracticeStore = defineStore('practice', () => {
         return
       }
 
-      // Heartbeat можно отправить через обновление сессии
-      // Или через специальный endpoint, если он есть в API
+      // Send heartbeat to server to keep presence alive
       updateActivity()
+      await practiceApi.sendHeartbeat(sessionId)
     }, HEARTBEAT_INTERVAL)
   }
 

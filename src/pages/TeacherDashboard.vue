@@ -259,12 +259,131 @@
         </div>
       </template>
 
-      <!-- ===================== Құралдар ===================== -->
+      <!-- ===================== БЕЛСЕНДІЛІК ҚҰРАЛДАРЫ (LIVE CLASSROOM) ===================== -->
       <template v-if="activeTab === 'tools'">
-        <div class="empty-tab">
-          <div class="empty-icon">⚙️</div>
-          <h2>Құралдар</h2>
-          <p>Бұл бөлім әзірше бос. Жуық арада жаңа мүмкіндіктер қосылады.</p>
+        <div class="live-classroom">
+          <div class="live-header">
+            <h1 class="live-title">ЖАНДЫ СЫНЫП <span class="live-pulse"></span> <span class="help-circle">?</span></h1>
+            <p class="live-subtitle" v-if="livePollingActive">Автоматты жаңару: 5 секунд сайын</p>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-box">
+              <div class="stat-icon-wrapper green-icon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ liveData.active_count }}</div>
+                <div class="stat-label">ҚАЗІР<br>БЕЛСЕНДІ</div>
+              </div>
+            </div>
+            
+            <div class="stat-box">
+              <div class="stat-icon-wrapper grey-icon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ liveData.inactive_count }}</div>
+                <div class="stat-label">БЕЛСЕНДІ<br>ЕМЕС</div>
+              </div>
+            </div>
+            
+            <div class="stat-box">
+              <div class="stat-icon-wrapper orange-icon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ liveData.needs_help_count }}</div>
+                <div class="stat-label">КӨМЕК ҚАЖЕТ<br>ЕТУІ МҮМКІН</div>
+              </div>
+            </div>
+            
+            <div class="stat-box">
+              <div class="stat-icon-wrapper blue-icon">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ liveData.total_students }}</div>
+                <div class="stat-label">ЖАЛПЫ<br>ОҚУШЫ</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="activity-wall-container">
+            <div class="activity-wall-header">
+              <h2 class="activity-wall-title">Қазір тапсырма орындап жатқан оқушылар</h2>
+            </div>
+
+            <!-- No active students -->
+            <div v-if="liveData.active_count === 0" class="live-empty-state">
+              <div class="live-empty-icon">
+                <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+              </div>
+              <p class="live-empty-text">Қазір тапсырма орындап жатқан оқушы жоқ</p>
+              <p class="live-empty-hint">Оқушы тапсырманы бастағанда, бұл жерде автоматты түрде көрінеді</p>
+            </div>
+
+            <!-- Active students grid -->
+            <div v-else class="activity-grid">
+              <div
+                class="student-activity-card"
+                :class="{ 'needs-help': isNeedsHelp(student) }"
+                v-for="student in liveData.students"
+                :key="student.student_id"
+              >
+                <div class="sac-header">
+                  <h3 class="sac-name">
+                    <span class="sac-pulse"></span>
+                    {{ student.full_name }}
+                  </h3>
+                  <span v-if="isNeedsHelp(student)" class="needs-help-badge">Көмек қажет</span>
+                </div>
+                <div class="sac-body">
+                  <p class="sac-skill">{{ student.skill_name || 'Белгісіз дағды' }}</p>
+                  
+                  <div class="sac-detail-row">
+                    <div class="sac-detail">
+                      <span class="sac-detail-label">Сұрақтар</span>
+                      <span class="sac-detail-value">{{ student.questions_answered }}</span>
+                    </div>
+                    <div class="sac-detail">
+                      <span class="sac-detail-label">Дұрыс</span>
+                      <span class="sac-detail-value sac-correct">{{ student.correct }}</span>
+                    </div>
+                    <div class="sac-detail">
+                      <span class="sac-detail-label">Қате</span>
+                      <span class="sac-detail-value sac-wrong">{{ student.wrong }}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="sac-stats">
+                    <div class="sac-score-label">SmartScore</div>
+                    <div class="sac-score" :class="getScoreClass(student.smartscore)">
+                      {{ student.smartscore }}
+                    </div>
+                  </div>
+                  <div class="sac-bar-bg">
+                    <div class="sac-bar-fill" :class="getScoreClass(student.smartscore) + '-bg'" :style="{ width: Math.min(student.smartscore, 100) + '%' }"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="inactive-students" v-if="liveData.inactive_count > 0">
+              <button class="show-inactive-btn" @click="showInactiveStudents = !showInactiveStudents">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                {{ showInactiveStudents ? 'Белсенді емес оқушыларды жасыру' : `${liveData.inactive_count} белсенді емес оқушыны көрсету` }}
+                <svg :class="['w-4 h-4 ml-1 transition-transform', { 'rotate-180': showInactiveStudents }]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </button>
+            </div>
+
+            <div v-if="showInactiveStudents && inactiveStudentNames.length > 0" class="inactive-list">
+              <div class="inactive-student-chip" v-for="name in inactiveStudentNames" :key="name">
+                <span class="inactive-dot"></span>
+                {{ name }}
+              </div>
+            </div>
+          </div>
         </div>
       </template>
 
@@ -331,7 +450,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { h } from 'vue'
 import Header from '@/components/layout/Header.vue'
@@ -367,7 +486,7 @@ const tabs = ref([
       { key: 'roster', label: 'Оқушылар тізімі' }
     ]
   },
-  { key: 'tools', label: 'Құралдар', icon: BoltIcon },
+  { key: 'tools', label: 'Белсенділік құралдары', icon: BoltIcon },
   { key: 'quizzes', label: 'Квиздер', icon: QuizIcon },
 ])
 
@@ -441,6 +560,13 @@ const currentTimeFormatted = computed(() => {
 // Helper: count skills by smartscore range from a student's skills array
 const countSkills = (skills: Array<Record<string, unknown>>, filter: (score: number) => boolean): number => {
   return (skills || []).filter(sk => filter(Number(sk.best_smartscore) || 0)).length
+}
+
+const getScoreClass = (score: number) => {
+  if (score >= 90) return 'score-gold'
+  if (score >= 80) return 'score-green'
+  if (score >= 70) return 'score-orange'
+  return 'score-blue'
 }
 
 const currentMastered = computed(() => {
@@ -521,6 +647,89 @@ onMounted(async () => {
   } finally {
     loadingData.value = false
   }
+})
+
+// ============ LIVE CLASSROOM DATA ============
+interface LiveStudent {
+  student_id: string
+  full_name: string
+  skill_name: string
+  smartscore: number
+  correct: number
+  wrong: number
+  questions_answered: number
+  last_active_seconds_ago: number
+}
+
+interface LiveData {
+  active_count: number
+  inactive_count: number
+  needs_help_count: number
+  total_students: number
+  students: LiveStudent[]
+}
+
+const liveData = ref<LiveData>({
+  active_count: 0,
+  inactive_count: 0,
+  needs_help_count: 0,
+  total_students: 0,
+  students: [],
+})
+
+const livePollingActive = ref(false)
+const showInactiveStudents = ref(false)
+let livePollingTimer: ReturnType<typeof setInterval> | null = null
+
+const fetchLiveStudents = async () => {
+  try {
+    const resp = await teacherApi.getLiveStudents()
+    const d = resp.data?.data
+    if (d) {
+      liveData.value = d as LiveData
+    }
+  } catch (err) {
+    console.error('Failed to fetch live students:', err)
+  }
+}
+
+const startLivePolling = () => {
+  if (livePollingTimer) return
+  livePollingActive.value = true
+  fetchLiveStudents() // initial fetch
+  livePollingTimer = setInterval(fetchLiveStudents, 5000)
+}
+
+const stopLivePolling = () => {
+  livePollingActive.value = false
+  if (livePollingTimer) {
+    clearInterval(livePollingTimer)
+    livePollingTimer = null
+  }
+}
+
+// Start/stop polling when tools tab is active
+watch(activeTab, (tab) => {
+  if (tab === 'tools') {
+    startLivePolling()
+  } else {
+    stopLivePolling()
+  }
+}, { immediate: true })
+
+onUnmounted(() => {
+  stopLivePolling()
+})
+
+const isNeedsHelp = (student: LiveStudent) => {
+  return student.smartscore < 30 && student.wrong > 3
+}
+
+const inactiveStudentNames = computed(() => {
+  const activeIds = new Set(liveData.value.students.map(s => s.student_id))
+  return students.value
+    .filter(s => !activeIds.has(s.id))
+    .map(s => s.full_name)
 })
 
 const submitAddStudent = async () => {
@@ -1219,4 +1428,419 @@ const confirmDelete = async (student: StudentInfo) => {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ============ LIVE CLASSROOM ============ */
+.live-classroom {
+  animation: fadeIn 0.3s ease;
+  padding: 0 0 40px 0;
+}
+
+.live-header {
+  margin-bottom: 24px;
+}
+.live-title {
+  font-family: Georgia, 'Times New Roman', Times, serif;
+  font-size: 28px;
+  color: #5a6a72;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.help-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid #b1c1c9;
+  color: #b1c1c9;
+  font-size: 11px;
+  font-family: sans-serif;
+  cursor: pointer;
+}
+
+.stats-row {
+  display: flex;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  margin-bottom: 30px;
+  overflow: hidden;
+  border: 1px solid #e0e8ec;
+}
+.stat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 10px;
+  border-right: 1px solid #f0f4f5;
+  text-align: center;
+  gap: 8px;
+}
+.stat-box:last-child {
+  border-right: none;
+}
+.stat-icon-wrapper {
+  margin-bottom: 4px;
+}
+.stat-icon-wrapper.blue-icon { color: #2196f3; }
+.stat-icon-wrapper.grey-icon { color: #b1c1c9; }
+.stat-icon-wrapper.orange-icon { color: #ff9800; }
+.stat-icon-wrapper.yellow-icon { color: #ffeb3b; }
+.stat-icon-wrapper.green-icon { color: #4caf50; }
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.stat-number {
+  font-size: 28px;
+  font-weight: 300;
+  color: #2196f3;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-icon-wrapper.grey-icon + .stat-content .stat-number { color: #b1c1c9; }
+.stat-icon-wrapper.orange-icon + .stat-content .stat-number { color: #ff9800; }
+.stat-icon-wrapper.yellow-icon + .stat-content .stat-number { color: #ffb300; }
+.stat-icon-wrapper.green-icon + .stat-content .stat-number { color: #4caf50; }
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7c85;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1.3;
+}
+
+.activity-wall-container {
+  margin-top: 10px;
+}
+.activity-wall-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #c9dfdb;
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+.activity-wall-title {
+  font-size: 22px;
+  font-weight: 400;
+  color: #5a6a72;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.send-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: #e8f4f8;
+  color: #2196f3;
+  cursor: pointer;
+}
+
+.activity-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 14px;
+  color: #5a6a72;
+}
+.sort-control {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.group-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #cfd8dc;
+  border-radius: 20px;
+  width: 44px;
+  height: 22px;
+  position: relative;
+  cursor: pointer;
+  box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+}
+.toggle-knob {
+  width: 18px;
+  height: 18px;
+  background: white;
+  border: 1px solid #cfd8dc;
+  border-radius: 50%;
+  position: absolute;
+  left: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.toggle-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #b0bec5;
+  position: absolute;
+  right: 6px;
+  text-transform: uppercase;
+}
+
+.activity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.student-activity-card {
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.06);
+  padding: 16px;
+  border-top: 4px solid #2196f3;
+}
+.sac-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.sac-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #3f454a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.send-icon-small {
+  color: #2196f3;
+  opacity: 0.8;
+}
+
+.sac-skill {
+  font-size: 12px;
+  color: #6b7c85;
+  margin-bottom: 24px;
+  min-height: 36px; /* for 2 lines */
+}
+
+.sac-stats {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.sac-questions {
+  font-size: 11px;
+  color: #8aa0ab;
+}
+.sac-score {
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.score-blue { color: #2196f3; }
+.score-gold { color: #ffb300; }
+.score-green { color: #4caf50; }
+.score-orange { color: #ff9800; }
+
+.sac-bar-bg {
+  width: 100%;
+  height: 4px;
+  background: #eef2f4;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.sac-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+.score-blue-bg { background-color: #2196f3; }
+.score-gold-bg { background-color: #ffb300; }
+.score-green-bg { background-color: #4caf50; }
+.score-orange-bg { background-color: #ff9800; }
+
+.inactive-students {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  border-top: 1px solid rgba(0,0,0,0.05);
+}
+.show-inactive-btn {
+  display: inline-flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: #6b7c85;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.show-inactive-btn:hover {
+  color: #4a5568;
+}
+
+/* ============ LIVE CLASSROOM ENHANCEMENTS ============ */
+.live-pulse {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  background: #4caf50;
+  border-radius: 50%;
+  animation: livePulse 2s ease-in-out infinite;
+}
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.5); }
+  50% { box-shadow: 0 0 0 8px rgba(76, 175, 80, 0); }
+}
+
+.live-subtitle {
+  font-size: 12px;
+  color: #8aa0ab;
+  margin-top: 4px;
+  font-weight: 400;
+}
+
+.live-empty-state {
+  background: white;
+  border: 2px dashed #d2eef3;
+  border-radius: 16px;
+  padding: 60px 24px;
+  text-align: center;
+  animation: fadeIn 0.3s ease;
+}
+.live-empty-icon {
+  color: #b1c1c9;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 20px;
+}
+.live-empty-text {
+  font-size: 18px;
+  color: #5a6a72;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+.live-empty-hint {
+  font-size: 14px;
+  color: #8aa0ab;
+}
+
+/* Active student card enhancements */
+.student-activity-card.needs-help {
+  border-top-color: #ff9800;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.15);
+}
+
+.sac-pulse {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: #4caf50;
+  border-radius: 50%;
+  margin-right: 6px;
+  flex-shrink: 0;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+.needs-help-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: #e65100;
+  background: #fff3e0;
+  border: 1px solid #ffcc80;
+  border-radius: 12px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.sac-detail-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.sac-detail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+}
+.sac-detail-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #8aa0ab;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.sac-detail-value {
+  font-size: 20px;
+  font-weight: 300;
+  color: #3f454a;
+  line-height: 1;
+}
+.sac-correct {
+  color: #4caf50;
+}
+.sac-wrong {
+  color: #f44336;
+}
+
+.sac-score-label {
+  font-size: 11px;
+  color: #8aa0ab;
+  font-weight: 500;
+}
+
+/* Inactive students list */
+.inactive-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 0;
+  animation: fadeIn 0.3s ease;
+}
+.inactive-student-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f5f7f8;
+  border: 1px solid #e0e8ec;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #6b7c85;
+  font-weight: 500;
+}
+.inactive-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: #cfd8dc;
+  border-radius: 50%;
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
+}
+.transition-transform {
+  transition: transform 0.2s ease;
+}
+
 </style>

@@ -59,4 +59,23 @@ export const teacherApi = {
   deleteStudent(studentId: string) {
     return apiClient.delete<{ data: { deleted: string } }>(`/teacher/students/${studentId}`)
   },
+
+  getLiveStudents() {
+    return apiClient.get<{ data: {
+      active_count: number
+      inactive_count: number
+      needs_help_count: number
+      total_students: number
+      students: Array<{
+        student_id: string
+        full_name: string
+        skill_name: string
+        smartscore: number
+        correct: number
+        wrong: number
+        questions_answered: number
+        last_active_seconds_ago: number
+      }>
+    } }>('/teacher/live-students')
+  },
 }

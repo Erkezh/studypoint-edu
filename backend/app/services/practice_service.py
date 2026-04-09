@@ -27,6 +27,7 @@ from app.services.scoring import WindowStats, compute_next_smartscore, zone_for_
 from app.services.timer_service import apply_active_time_delta, inactivity_threshold_seconds_for_grade
 from app.utils.redis import get_redis
 from app.utils.time import utc_now
+from app.services.presence_service import update_presence, remove_presence
 
 
 class PracticeService:
@@ -190,6 +191,18 @@ class PracticeService:
             )
         
         await self.session.flush()
+
+        # Update presence so teacher can see this student is active
+        await update_presence(
+            user_id=str(user_uuid),
+            skill_id=skill_id,
+            skill_name=skill.title,
+            smartscore=ps.current_smartscore,
+            correct=ps.total_correct,
+            wrong=ps.total_incorrect,
+            questions_answered=ps.total_questions_answered,
+            session_id=str(ps.id),
+        )
 
         return await self._to_session_response(ps, current_question=q)
 
@@ -825,12 +838,29 @@ class PracticeService:
 
         await self.session.flush()
 
+        # Update or remove presence after answer
+        finished = ps.finished_at is not None
+        if finished:
+            await remove_presence(str(user_uuid))
+        else:
+            skill_name = skill.title if skill else "Unknown"
+            await update_presence(
+                user_id=str(user_uuid),
+                skill_id=ps.skill_id,
+                skill_name=skill_name,
+                smartscore=ps.current_smartscore,
+                correct=ps.total_correct,
+                wrong=ps.total_incorrect,
+                questions_answered=ps.total_questions_answered,
+                session_id=str(ps.id),
+            )
+
         session_resp = await self._to_session_response(ps, current_question=None)
         # Логируем финальный результат перед возвратом
         logger.info(
             f"Returning PracticeSubmitResponse: "
             f"is_correct={is_correct} (type: {type(is_correct)}), "
-            f"finished={ps.finished_at is not None}, "
+            f"finished={finished}, "
             f"smartscore={ps.current_smartscore}, "
             f"questions_answered={ps.total_questions_answered}, "
             f"explanation_length={len(explanation) if explanation else 0}"
@@ -841,7 +871,7 @@ class PracticeService:
             explanation=(None if is_correct else explanation),
             session=session_resp,
             next_question=_to_question_public(next_q) if next_q is not None else None,
-            finished=ps.finished_at is not None,
+            finished=finished,
         )
 
     async def finish(self, *, user_id, session_id: str) -> None:
@@ -855,6 +885,9 @@ class PracticeService:
         ps.last_question_id = None
         ps.state["current_question_id"] = None
         await self.session.flush()
+
+        # Remove presence — student is no longer practicing
+        await remove_presence(str(user_uuid))
 
     async def _select_next_question(self, session_obj: PracticeSession):
         desired_levels = _level_search_order(3 if session_obj.current_zone == PracticeZone.CHALLENGE else 2)
@@ -970,6 +1003,21 @@ class PracticeService:
         if ps.finished_at is not None:
             return await self._to_session_response(ps, current_question=None)
         await self._touch_activity(ps)
+
+        # Refresh presence TTL so teacher continues to see this student
+        skill = await self.skills.get(ps.skill_id)
+        skill_name = skill.title if skill else "Unknown"
+        await update_presence(
+            user_id=str(user_uuid),
+            skill_id=ps.skill_id,
+            skill_name=skill_name,
+            smartscore=ps.current_smartscore,
+            correct=ps.total_correct,
+            wrong=ps.total_incorrect,
+            questions_answered=ps.total_questions_answered,
+            session_id=str(ps.id),
+        )
+
         q = await self.questions.get(ps.last_question_id) if ps.last_question_id else None
         return await self._to_session_response(ps, current_question=q)
 

@@ -10,6 +10,7 @@ from app.schemas.teacher import TeacherCreateStudentRequest, TeacherCreateStuden
 from app.services.analytics_service import AnalyticsService
 from app.services.assignment_service import AssignmentService
 from app.services.teacher_service import TeacherService
+from app.services.presence_service import get_active_students
 from app.models.user import User
 from app.models.profile import StudentProfile
 from app.models.classroom import Enrollment
@@ -100,6 +101,44 @@ async def teacher_quickview_questions(
     svc: AnalyticsService = Depends(),
 ):
     return ApiResponse(data=await svc.teacher_quickview_questions(teacher_id=user.id))
+
+
+@router.get("/live-students", response_model=ApiResponse[dict])
+async def get_live_students(
+    user=Depends(get_current_user),
+    svc: TeacherService = Depends(),
+):
+    """Return students who are currently practicing (have an active presence in Redis)."""
+    # Get this teacher's student IDs
+    stmt = select(User.id, User.full_name).where(User.teacher_id == user.id).order_by(User.full_name)
+    rows = (await svc.session.execute(stmt)).all()
+
+    student_ids = [str(row.id) for row in rows]
+    student_names = {str(row.id): row.full_name for row in rows}
+    total_students = len(student_ids)
+
+    # Check Redis presence for each student
+    active_list = await get_active_students(student_ids)
+
+    # Enrich with full_name
+    for entry in active_list:
+        entry["full_name"] = student_names.get(entry["student_id"], "Unknown")
+
+    # Count needs-help: SmartScore < 30 AND wrong > 3
+    needs_help_count = sum(
+        1 for s in active_list
+        if s.get("smartscore", 0) < 30 and s.get("wrong", 0) > 3
+    )
+
+    active_count = len(active_list)
+    return ApiResponse(data={
+        "active_count": active_count,
+        "inactive_count": total_students - active_count,
+        "needs_help_count": needs_help_count,
+        "total_students": total_students,
+        "students": active_list,
+    })
+
 
 @router.get("/students/{student_id}/analytics", response_model=ApiResponse[dict])
 async def student_analytics(
