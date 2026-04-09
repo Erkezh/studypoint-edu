@@ -13,7 +13,7 @@
           @mouseleave="hoverTab = null"
         >
           <button
-            @click="tab.dropdown ? (activeTab = tab.dropdown[0].key) : (activeTab = tab.key)"
+            @click="tab.dropdown ? (hoverTab === tab.key ? hoverTab = null : hoverTab = tab.key) : (activeTab = tab.key)"
             class="tab-btn"
             :class="{ active: activeTab === tab.key || (tab.dropdown && tab.dropdown.some(d => d.key === activeTab)) }"
           >
@@ -24,7 +24,7 @@
 
           <div v-if="tab.dropdown && hoverTab === tab.key" class="tab-dropdown">
             <button v-for="sub in tab.dropdown" :key="sub.key"
-              @click.stop="activeTab = sub.key; hoverTab = null"
+              @click.stop="activeTab = sub.key; hoverTab = null; $nextTick(() => { if(sub.key === 'glance') startGlancePolling(); else stopGlancePolling(); })"
               :class="['dropdown-item', { active: activeTab === sub.key }]">
               {{ sub.label }}
             </button>
@@ -842,8 +842,7 @@ const confirmDelete = async (student: StudentInfo) => {
   display: flex;
   gap: 0;
   padding: 0;
-  overflow-x: auto;
-  scrollbar-width: none; /* Firefox */
+  overflow: visible; /* Fix: allow dropdowns to be visible outside the bar */
 }
 .tabs-inner::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
