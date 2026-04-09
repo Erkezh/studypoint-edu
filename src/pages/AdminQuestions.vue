@@ -214,16 +214,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
 import { adminApi } from '@/api/admin'
-import router from '@/router'
+import { useRouter } from 'vue-router'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const loading = ref(false)
 const submitting = ref(false)
 const error = ref<string | null>(null)
@@ -480,7 +481,7 @@ const handleSubmit = async () => {
             throw new Error('Не удалось получить ID созданного навыка')
           }
 
-          finalSkillId = skillResponse.data.id
+          finalSkillId = skillResponse.data.id as any
           console.log('Using skill_id:', finalSkillId)
           successMessage.value = `✅ Автоматически создан новый навык: ${skillTitle} (ID: ${finalSkillId})`
         } else {
@@ -650,7 +651,9 @@ const autoFillFromCode = () => {
 }
 
 // Проверка прав доступа
-if (!authStore.isAuthenticated || authStore.user?.role !== 'ADMIN') {
-  error.value = 'Только администраторы могут создавать интерактивные задания'
-}
+onMounted(() => {
+  if (!authStore.isAuthenticated || authStore.user?.role !== 'ADMIN') {
+    error.value = 'Только администраторы могут создавать интерактивные задания'
+  }
+})
 </script>
