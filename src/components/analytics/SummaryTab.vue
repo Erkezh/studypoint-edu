@@ -54,7 +54,7 @@
 
     <!-- Skills by Topic Chart -->
     <div class="skills-practiced-card">
-      <h3 class="section-title">МЕҢГЕРІЛГЕН МАТЕМАТИКА ДАҒДЫЛАРЫ</h3>
+      <h3 class="section-title">ТАҚЫРЫПТАР БОЙЫНША ПРАКТИКАЛАНҒАН ДАҒДЫЛАР</h3>
       <div class="chart-section">
         <div class="donut-chart" @mousemove="updateTooltipPosition" @mouseleave="hideTooltip">
           <svg viewBox="0 0 100 100" class="chart-svg">
@@ -237,7 +237,7 @@ const filteredTotalQuestions = computed(() => {
     }
 
     // Check date filter
-    const timestamp = question.converted_at || question.created_at || question.answered_at
+    const timestamp = question.answered_at || question.converted_at || question.created_at
     if (isDateRunning(timestamp as string)) {
        return sum + 1
     }
@@ -273,7 +273,7 @@ const filteredTotalTime = computed(() => {
     }
 
     // Date filter
-    const timestamp = question.converted_at || question.created_at || question.answered_at
+    const timestamp = question.answered_at || question.converted_at || question.created_at
     if (isDateRunning(timestamp as string)) {
        const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
        return sum + timeSeconds
@@ -301,7 +301,7 @@ const skillsWithProgress = computed(() => {
   // Identify unique skills played in date range
   const skillIdsInRange = new Set<number>()
   analyticsStore.allQuestions.forEach(q => {
-     const timestamp = q.created_at || q.submitted_at
+     const timestamp = q.answered_at || q.created_at || q.submitted_at
      if (isDateRunning(timestamp)) {
        skillIdsInRange.add(q.skill_id)
      }

@@ -378,7 +378,7 @@ const nextStudent = () => {
   onStudentChange()
 }
 
-const tabsThatNeedQuestionData = new Set(['usage', 'trouble', 'trouble_class', 'questions', 'progress', 'students_quickview'])
+const tabsThatNeedQuestionData = new Set(['usage', 'summary', 'trouble', 'trouble_class', 'questions', 'progress', 'students_quickview'])
 const ownQuestionsLoaded = ref(false)
 const quickviewQuestionsLoaded = ref(false)
 const quickviewQuestionsLoading = ref(false)
