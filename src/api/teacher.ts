@@ -66,6 +66,10 @@ export const teacherApi = {
       inactive_count: number
       needs_help_count: number
       total_students: number
+      inactive_students: Array<{
+        student_id: string
+        full_name: string
+      }>
       students: Array<{
         student_id: string
         full_name: string

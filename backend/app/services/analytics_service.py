@@ -15,6 +15,7 @@ from app.models.classroom import Classroom, Enrollment  # type: ignore
 from app.models.enums import AssignmentStatus, UserRole  # type: ignore
 from app.models.practice import PracticeAttempt, PracticeSession, ProgressSnapshot  # type: ignore
 from app.models.user import User  # type: ignore
+from app.services.teacher_scope import list_teacher_scoped_students
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
@@ -375,19 +376,8 @@ class AnalyticsService:
 
     async def _teacher_student_ids(self, *, teacher_id: str) -> list[uuid.UUID]:
         tid = _parse_uuid(teacher_id)
-        direct_ids = (
-            await self.session.execute(
-                select(User.id).where(User.teacher_id == tid, User.role == UserRole.STUDENT)
-            )
-        ).scalars().all()
-        enrolled_ids = (
-            await self.session.execute(
-                select(Enrollment.student_id)
-                .join(Classroom, Classroom.id == Enrollment.classroom_id)
-                .where(Classroom.teacher_id == tid)
-            )
-        ).scalars().all()
-        return list(dict.fromkeys([*direct_ids, *enrolled_ids]))
+        students = await list_teacher_scoped_students(self.session, teacher_id=tid)
+        return [student.id for student in students]
 
     async def teacher_quickview_questions(self, *, teacher_id: str, limit: int = 200) -> list[dict[str, Any]]:
         student_ids = await self._teacher_student_ids(teacher_id=teacher_id)

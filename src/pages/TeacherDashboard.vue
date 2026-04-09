@@ -377,10 +377,10 @@
               </button>
             </div>
 
-            <div v-if="showInactiveStudents && inactiveStudentNames.length > 0" class="inactive-list">
-              <div class="inactive-student-chip" v-for="name in inactiveStudentNames" :key="name">
+            <div v-if="showInactiveStudents && liveData.inactive_students.length > 0" class="inactive-list">
+              <div class="inactive-student-chip" v-for="student in liveData.inactive_students" :key="student.student_id">
                 <span class="inactive-dot"></span>
-                {{ name }}
+                {{ student.full_name }}
               </div>
             </div>
           </div>
@@ -690,6 +690,10 @@ interface LiveData {
   inactive_count: number
   needs_help_count: number
   total_students: number
+  inactive_students: Array<{
+    student_id: string
+    full_name: string
+  }>
   students: LiveStudent[]
 }
 
@@ -698,6 +702,7 @@ const liveData = ref<LiveData>({
   inactive_count: 0,
   needs_help_count: 0,
   total_students: 0,
+  inactive_students: [],
   students: [],
 })
 
@@ -754,13 +759,6 @@ onUnmounted(() => {
 const isNeedsHelp = (student: LiveStudent) => {
   return student.smartscore < 30 && student.wrong > 3
 }
-
-const inactiveStudentNames = computed(() => {
-  const activeIds = new Set(liveData.value.students.map(s => s.student_id))
-  return students.value
-    .filter(s => !activeIds.has(s.id))
-    .map(s => s.full_name)
-})
 
 const submitAddStudent = async () => {
   if (!form.value.firstName || !form.value.lastName || form.value.gradeId === '') {

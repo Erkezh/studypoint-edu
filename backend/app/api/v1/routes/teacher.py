@@ -9,8 +9,9 @@ from app.schemas.base import ApiResponse
 from app.schemas.teacher import TeacherCreateStudentRequest, TeacherCreateStudentResponse
 from app.services.analytics_service import AnalyticsService
 from app.services.assignment_service import AssignmentService
-from app.services.teacher_service import TeacherService
 from app.services.presence_service import get_active_students
+from app.services.teacher_scope import list_teacher_scoped_students, teacher_can_access_student
+from app.services.teacher_service import TeacherService
 from app.models.user import User
 from app.models.profile import StudentProfile
 from app.models.classroom import Enrollment
@@ -109,13 +110,10 @@ async def get_live_students(
     svc: TeacherService = Depends(),
 ):
     """Return students who are currently practicing (have an active presence in Redis)."""
-    # Get this teacher's student IDs
-    stmt = select(User.id, User.full_name).where(User.teacher_id == user.id).order_by(User.full_name)
-    rows = (await svc.session.execute(stmt)).all()
-
-    student_ids = [str(row.id) for row in rows]
-    student_names = {str(row.id): row.full_name for row in rows}
-    total_students = len(student_ids)
+    scoped_students = await list_teacher_scoped_students(svc.session, teacher_id=user.id)
+    student_ids = [str(student.id) for student in scoped_students]
+    student_names = {str(student.id): student.full_name for student in scoped_students}
+    total_students = len(scoped_students)
 
     # Check Redis presence for each student
     active_list = await get_active_students(student_ids)
@@ -130,13 +128,24 @@ async def get_live_students(
         if s.get("smartscore", 0) < 30 and s.get("wrong", 0) > 3
     )
 
+    active_ids = {entry["student_id"] for entry in active_list}
+    inactive_students = [
+        {
+            "student_id": str(student.id),
+            "full_name": student.full_name,
+        }
+        for student in scoped_students
+        if str(student.id) not in active_ids
+    ]
+
     active_count = len(active_list)
     return ApiResponse(data={
         "active_count": active_count,
-        "inactive_count": total_students - active_count,
+        "inactive_count": len(inactive_students),
         "needs_help_count": needs_help_count,
         "total_students": total_students,
         "students": active_list,
+        "inactive_students": inactive_students,
     })
 
 
@@ -149,10 +158,8 @@ async def student_analytics(
     teacher_svc: TeacherService = Depends(),
 ):
     from app.services.analytics_service import _parse_uuid
-    # Verify student belongs to this teacher
-    stmt = select(User).where(User.id == _parse_uuid(student_id), User.teacher_id == user.id)
-    student = (await teacher_svc.session.execute(stmt)).scalar_one_or_none()
-    if not student:
+    student_uuid = _parse_uuid(student_id)
+    if not await teacher_can_access_student(teacher_svc.session, teacher_id=user.id, student_id=student_uuid):
         raise AppError(status_code=403, code="forbidden", message="Not your student")
 
     overview = await svc.overview(user_id=student_id)
@@ -173,10 +180,13 @@ async def reset_student_password(
     from app.services.teacher_service import _generate_password
 
     student_uuid = _parse_uuid(student_id)
-    stmt = select(User).where(User.id == student_uuid, User.teacher_id == user.id)
+    if not await teacher_can_access_student(svc.session, teacher_id=user.id, student_id=student_uuid):
+        raise AppError(status_code=403, code="forbidden", message="Not your student")
+
+    stmt = select(User).where(User.id == student_uuid)
     student = (await svc.session.execute(stmt)).scalar_one_or_none()
     if not student:
-        raise AppError(status_code=403, code="forbidden", message="Not your student")
+        raise AppError(status_code=404, code="not_found", message="Student not found")
 
     new_password = _generate_password()
     student.password_hash = hash_password(new_password)
@@ -200,10 +210,7 @@ async def delete_student(
     from sqlalchemy import delete as sql_delete
 
     student_uuid = _parse_uuid(student_id)
-    # Verify student belongs to this teacher
-    stmt = select(User).where(User.id == student_uuid, User.teacher_id == user.id)
-    student = (await svc.session.execute(stmt)).scalar_one_or_none()
-    if not student:
+    if not await teacher_can_access_student(svc.session, teacher_id=user.id, student_id=student_uuid):
         raise AppError(status_code=403, code="forbidden", message="Not your student")
 
     # Use raw SQL DELETE — ORM delete() fails because student_profiles.user_id is a PK
