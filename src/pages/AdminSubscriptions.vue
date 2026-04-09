@@ -8,10 +8,10 @@
         Админ панелі
       </router-link>
 
-      <div class="flex items-center justify-between mb-8">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Жазылымдар</h1>
-          <p class="text-gray-500 mt-1">Пайдаланушылардың жазылымдарын басқару</p>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900">Жазылымдар</h1>
+          <p class="text-sm text-gray-500 mt-1">Пайдаланушылардың жазылымдарын басқару</p>
         </div>
       </div>
 
@@ -46,14 +46,15 @@
       </div>
 
       <!-- Subscriptions Table -->
-      <div v-else class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div v-else class="bg-white rounded-xl shadow-sm border border-gray-100">
         <div v-if="subscriptions.length === 0" class="text-center py-12 text-gray-400">
           <svg class="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
           <p>Жазылымдар жоқ</p>
         </div>
 
-        <table v-else class="w-full text-sm">
-          <thead class="bg-gray-50 border-b border-gray-100">
+        <div v-else class="overflow-x-auto">
+          <table class="w-full text-sm border-collapse">
+            <thead class="bg-gray-50 border-b border-gray-100 whitespace-nowrap">
             <tr>
               <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Пайдаланушы</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Жоспар</th>
@@ -93,7 +94,8 @@
               </td>
             </tr>
           </tbody>
-        </table>
+          </table>
+        </div>
       </div>
 
       <!-- Add Subscription (for users without one) -->

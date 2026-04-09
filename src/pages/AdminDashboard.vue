@@ -20,7 +20,7 @@
       </div>
 
       <!-- Статистика -->
-      <section class="grid grid-cols-2 gap-4 mb-8">
+      <section class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex flex-col items-center">
           <svg class="w-8 h-8 text-blue-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
           <span class="text-2xl font-bold text-gray-900">{{ stats.topics }}</span>
@@ -112,14 +112,14 @@
 
         <!-- Форма создания темы -->
         <div v-if="showTopicForm" class="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-200">
-          <form @submit.prevent="handleCreateTopic" class="flex flex-wrap gap-3 items-end">
+          <form @submit.prevent="handleCreateTopic" class="flex flex-col sm:flex-row gap-4 items-stretch sm:items-end">
             <div class="flex-1 min-w-[140px]">
               <label class="block text-xs font-medium text-gray-600 mb-1">Slug *</label>
               <input
                 v-model="topicForm.slug"
                 type="text"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none bg-white"
                 placeholder="arithmetic"
               />
             </div>
@@ -129,23 +129,23 @@
                 v-model="topicForm.title"
                 type="text"
                 required
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none bg-white"
                 placeholder="Арифметика"
               />
             </div>
-            <div class="w-20">
+            <div class="w-full sm:w-20">
               <label class="block text-xs font-medium text-gray-600 mb-1">Иконка</label>
               <input
                 v-model="topicForm.icon"
                 type="text"
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none"
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-400 focus:border-green-400 outline-none bg-white"
                 placeholder="📐"
               />
             </div>
             <button
               type="submit"
               :disabled="creatingTopic"
-              class="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+              class="flex items-center justify-center gap-1.5 px-6 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
               {{ creatingTopic ? '...' : 'Қосу' }}
@@ -166,23 +166,25 @@
           <div
             v-for="topic in topicsList"
             :key="topic.id"
-            class="flex items-center justify-between px-4 py-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
           >
             <div class="flex items-center gap-3">
-              <span class="text-xl">{{ topic.icon || '📁' }}</span>
-              <div>
-                <span class="font-medium text-gray-900">{{ topic.title }}</span>
-                <span class="text-xs text-gray-400 ml-2">{{ topic.slug }}</span>
-                <span
-                  v-if="!topic.is_published"
-                  class="inline-flex items-center gap-1 text-xs text-yellow-600 ml-2"
-                >
-                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-                  жарияланбаған
-                </span>
+              <span class="text-xl shrink-0">{{ topic.icon || '📁' }}</span>
+              <div class="min-w-0">
+                <p class="font-medium text-gray-900 truncate">{{ topic.title }}</p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="text-xs text-gray-400">{{ topic.slug }}</span>
+                  <span
+                    v-if="!topic.is_published"
+                    class="inline-flex items-center gap-1 text-[10px] sm:text-xs text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                    жарияланбаған
+                  </span>
+                </div>
               </div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex gap-2 shrink-0 self-end sm:self-auto">
               <router-link
                 :to="'/admin/topics'"
                 class="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-gray-200 hover:bg-gray-100 transition-colors text-gray-600"
@@ -196,7 +198,7 @@
                 class="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-red-200 hover:bg-red-50 transition-colors text-red-600 disabled:opacity-50"
               >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                {{ deletingTopicId === topic.id ? '...' : 'Жою' }}
+                Жою
               </button>
             </div>
           </div>

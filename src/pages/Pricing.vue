@@ -4,12 +4,12 @@
 
     <main class="flex-1 container mx-auto px-4 py-16 max-w-6xl">
       <!-- Title -->
-      <div class="text-center mb-16 px-4">
-        <h1 class="text-3xl sm:text-5xl font-light text-white mb-6">
+      <div class="text-center mb-10 sm:mb-16 px-4">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-light text-white mb-4 sm:mb-6 leading-tight">
           <span class="font-bold">StudyPoint</span> — бұл жекелендірілген оқыту
         </h1>
-        <p class="text-white/90 text-base sm:text-lg max-w-4xl mx-auto font-light">
-          Математика
+        <p class="text-white/90 text-sm sm:text-lg max-w-4xl mx-auto font-light">
+          Математика — кез келген уақытта, кез келген жерде
         </p>
       </div>
 

@@ -4,7 +4,7 @@
 
     <!-- IXL-style Header with Tabs -->
     <div class="analytics-header">
-      <nav class="analytics-tabs">
+      <nav class="analytics-tabs scrollbar-hide">
         <div v-for="tab in tabs" :key="tab.id" class="tab-item-group"
              @mouseenter="hoverTab = tab.id" @mouseleave="hoverTab = null">
           <button @click="tab.dropdown ? (activeTab = tab.dropdown[0].id) : (activeTab = tab.id)"
@@ -1118,7 +1118,7 @@ onMounted(async () => {
   border: 1px solid #ddd;
   border-radius: 4px;
   background: white;
-  color: #00ACC1;
+  color: #00AEEF;
   font-weight: 600;
 }
 
@@ -1597,30 +1597,68 @@ onMounted(async () => {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .analytics-header {
+    padding: 0;
+  }
   .analytics-tabs {
+    padding: 0 16px;
+    gap: 0;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
   }
-
   .tab-item {
     flex: 0 0 auto;
     justify-content: center;
-    gap: 8px;
-    padding: 14px 18px;
+    gap: 6px;
+    padding: 12px 14px;
     font-size: 13px;
+    white-space: nowrap;
   }
+  .tab-icon { margin-right: 0; }
+  .tab-icon svg { width: 18px; height: 18px; }
 
   .filters-bar {
     flex-direction: column;
-    gap: 12px;
+    align-items: stretch;
+    padding: 12px 16px;
+    gap: 8px;
   }
+  .filter-group { width: 100%; }
+  .filter-label.clickable { width: 100%; justify-content: space-between; }
+
+  .analytics-content { padding: 16px; }
+
+  .student-carousel-container {
+    padding: 16px 8px;
+    gap: 8px;
+  }
+  .carousel-arrow svg { width: 24px; height: 24px; }
+  .carousel-select { font-size: 16px; padding: 8px; }
+  .carousel-label { font-size: 10px; }
 
   .date-dropdown-popup {
-    right: auto;
+    right: 0;
     left: 0;
+    width: 100%;
   }
+
+  /* Quickview Table Adjustments */
+  .header-summary-row { height: auto; }
+  .student-unified-table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .student-name-column { min-width: 150px; }
+  .stat-align-column.questions, 
+  .stat-align-column.time, 
+  .stat-align-column.practiced { min-width: 100px; padding: 8px; }
+  
+  .skill-grade-cell { min-width: 80px; font-size: 11px; }
+  .skill-name-cell { min-width: 150px; }
+  .skill-score-flex { gap: 6px; }
+  .smartscore-bar-container { width: 40px; }
+}
+
+@media (max-width: 480px) {
+  .student-card-footer { flex-direction: column; gap: 8px; align-items: flex-start; }
 }
 
 /* ===== PRINT STYLES ===== */

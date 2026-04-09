@@ -122,12 +122,12 @@
 
             <!-- Список тем -->
             <div class="bg-white rounded-lg shadow-md p-6">
-                <div class="flex items-center justify-between mb-4">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4">
                     <h2 class="text-xl font-semibold flex items-center gap-2">
                         <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                         Барлық тақырыптар
                     </h2>
-                    <Button @click="loadTopics" variant="outline" :loading="loading" class="flex items-center gap-2">
+                    <Button @click="loadTopics" variant="outline" :loading="loading" class="flex items-center gap-2 w-full sm:w-auto justify-center">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                         Жаңарту
                     </Button>
@@ -144,31 +144,31 @@
 
                 <div v-else class="space-y-3">
                     <div v-for="topic in topLevelThemes" :key="topic.id"
-                         class="flex items-center justify-between p-4 rounded-lg border bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors"
+                         class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 rounded-lg border bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer transition-colors gap-4"
                          @click="router.push({ name: 'admin-topic-detail', params: { topicId: topic.id } })">
-                        <div class="flex items-center gap-3">
-                            <span class="text-2xl" v-if="topic.icon">{{ topic.icon }}</span>
-                            <svg v-else class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+                        <div class="flex items-start sm:items-center gap-3">
+                            <span class="text-2xl mt-1 sm:mt-0" v-if="topic.icon">{{ topic.icon }}</span>
+                            <svg v-else class="w-8 h-8 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
                             <div>
                                 <h3 class="font-semibold text-gray-900">{{ topic.title }}</h3>
-                                <p class="text-sm text-gray-500 flex items-center gap-2">
+                                <p class="text-sm text-gray-500 flex flex-wrap items-center gap-2">
                                     slug: {{ topic.slug }} · реттілік: {{ topic.order }}
-                                    <span v-if="!topic.is_published" class="text-yellow-600 ml-2 flex items-center gap-1">
+                                    <span v-if="!topic.is_published" class="text-yellow-600 flex items-center gap-1">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                                         жарияланбаған
                                     </span>
                                 </p>
                             </div>
                         </div>
-                        <div class="flex gap-2" @click.stop>
-                            <Button @click="editTopic(topic)" variant="outline" class="text-blue-600 flex items-center gap-1">
+                        <div class="flex gap-2 w-full sm:w-auto" @click.stop>
+                            <Button @click="editTopic(topic)" variant="outline" class="text-blue-600 flex items-center gap-1 flex-1 sm:flex-none justify-center">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                             </Button>
-                            <Button @click="confirmDelete(topic)" variant="outline" class="text-red-600 hover:bg-red-50 flex items-center gap-1"
+                            <Button @click="confirmDelete(topic)" variant="outline" class="text-red-600 hover:bg-red-50 flex items-center gap-1 flex-1 sm:flex-none justify-center"
                                 :loading="deletingTopicId === topic.id">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             </Button>
-                            <Button @click="router.push({ name: 'admin-topic-detail', params: { topicId: topic.id } })" variant="outline" class="text-green-600 flex items-center gap-1">
+                            <Button @click="router.push({ name: 'admin-topic-detail', params: { topicId: topic.id } })" variant="outline" class="text-green-600 flex items-center gap-1 flex-1 sm:flex-none justify-center">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                             </Button>
                         </div>

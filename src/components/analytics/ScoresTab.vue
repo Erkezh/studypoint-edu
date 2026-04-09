@@ -106,43 +106,45 @@
       <div v-if="allGradeSkills.length === 0" class="empty-state">
         <p>Бұл сыныпта дағдылар табылмады</p>
       </div>
-      <table v-else class="scores-table">
-        <thead>
-          <tr>
-            <th class="skill-col">ДАҒДЫ</th>
-            <th class="score-col">SMARTSCORE</th>
-            <th class="num-col">СҰРАҚТАР</th>
-            <th class="num-col">УАҚЫТ</th>
-            <th class="date-col">СОҢҒЫ ПРАКТИКА</th>
-          </tr>
-        </thead>
-        <tbody v-for="group in allSkillsGroupedByTopic" :key="group.topicTitle">
-          <tr class="topic-header-row">
-            <td colspan="5" class="topic-header-cell">
-              <span class="topic-header-icon">▼</span>
-              {{ group.topicTitle }}
-            </td>
-          </tr>
-          <tr v-for="skill in group.skills" :key="skill.id" :class="{ 'skill-row-practiced': skill.hasPractice }">
-            <td class="skill-col">
-              <span class="skill-name-text">{{ skill.title }}</span>
-            </td>
-            <td class="score-col">
-              <template v-if="skill.hasPractice">
-                <div class="score-bar-container">
-                  <div class="score-bar-track">
-                    <div class="score-bar-fill" :style="{ width: skill.best_smartscore + '%', backgroundColor: getScoreColor(skill.best_smartscore) }"></div>
+      <div v-else class="overflow-x-auto scrollbar-hide">
+        <table class="scores-table">
+          <thead>
+            <tr>
+              <th class="skill-col">ДАҒДЫ</th>
+              <th class="score-col">SMARTSCORE</th>
+              <th class="num-col">СҰРАҚТАР</th>
+              <th class="num-col">УАҚЫТ</th>
+              <th class="date-col">СОҢҒЫ ПРАКТИКА</th>
+            </tr>
+          </thead>
+          <tbody v-for="group in allSkillsGroupedByTopic" :key="group.topicTitle">
+            <tr class="topic-header-row">
+              <td colspan="5" class="topic-header-cell">
+                <span class="topic-header-icon">▼</span>
+                {{ group.topicTitle }}
+              </td>
+            </tr>
+            <tr v-for="skill in group.skills" :key="skill.id" :class="{ 'skill-row-practiced': skill.hasPractice }">
+              <td class="skill-col">
+                <span class="skill-name-text">{{ skill.title }}</span>
+              </td>
+              <td class="score-col">
+                <template v-if="skill.hasPractice">
+                  <div class="score-bar-container">
+                    <div class="score-bar-track">
+                      <div class="score-bar-fill" :style="{ width: skill.best_smartscore + '%', backgroundColor: getScoreColor(skill.best_smartscore) }"></div>
+                    </div>
+                    <span class="score-value" :style="{ color: getScoreColor(skill.best_smartscore) }">{{ skill.best_smartscore }}</span>
                   </div>
-                  <span class="score-value" :style="{ color: getScoreColor(skill.best_smartscore) }">{{ skill.best_smartscore }}</span>
-                </div>
-              </template>
-            </td>
-            <td class="num-col">{{ skill.hasPractice ? skill.total_questions : '' }}</td>
-            <td class="num-col">{{ skill.hasPractice ? formatTimeShort(skill.total_time_seconds) : '' }}</td>
-            <td class="date-col">{{ skill.hasPractice ? formatLastPracticed(skill.last_practiced_at) : '' }}</td>
-          </tr>
-        </tbody>
-      </table>
+                </template>
+              </td>
+              <td class="num-col">{{ skill.hasPractice ? skill.total_questions : '' }}</td>
+              <td class="num-col">{{ skill.hasPractice ? formatTimeShort(skill.total_time_seconds) : '' }}</td>
+              <td class="date-col">{{ skill.hasPractice ? formatLastPracticed(skill.last_practiced_at) : '' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -445,13 +447,21 @@ const formatLastPracticed = (dateString: string): string => {
 <style scoped>
 .scores-date-filter {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
   padding: 12px 20px;
   background: white;
   border-radius: 8px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+@media (min-width: 768px) {
+  .scores-date-filter {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
 .scores-filter-label {
@@ -613,10 +623,18 @@ const formatLastPracticed = (dateString: string): string => {
 
 .chart-section {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 48px;
+  gap: 24px;
   padding: 24px 0;
+}
+
+@media (min-width: 768px) {
+  .chart-section {
+    flex-direction: row;
+    gap: 48px;
+  }
 }
 
 .donut-chart {

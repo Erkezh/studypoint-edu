@@ -8,6 +8,12 @@
         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           <!-- Success Header -->
           <div class="bg-gradient-to-br from-green-500 to-emerald-600 px-8 py-10 relative overflow-hidden">
+            <!-- Save Badge -->
+            <div class="absolute -top-7 -right-2 bg-[#ffc107] text-[#1a365d] text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-1 shadow-sm shrink-0 whitespace-nowrap transform rotate-2">
+              20% үнемдеңіз!
+              <div class="absolute -bottom-1 right-2 w-2 h-2 bg-[#d39e00] transform rotate-45 -z-10"></div>
+            </div>
+
             <!-- Decorative circles -->
             <div class="absolute top-4 left-8 w-3 h-3 rounded-full bg-white/20 animate-bounce" style="animation-delay: 0s;"></div>
             <div class="absolute top-12 right-12 w-2 h-2 rounded-full bg-white/30 animate-bounce" style="animation-delay: 0.3s;"></div>
@@ -22,14 +28,16 @@
               </svg>
             </div>
 
-            <h1 class="text-3xl font-bold text-white mb-2">Құттықтаймыз! 🎉</h1>
-            <p class="text-green-100 text-sm">Сіздің жазылымыңыз сәтті рәсімделді</p>
+            <h1 class="text-2xl sm:text-3xl font-bold text-white mb-2">Құттықтаймыз! 🎉</h1>
+            <p class="text-green-100 text-xs sm:text-sm">Сіздің жазылымыңыз сәтті рәсімделді</p>
           </div>
 
           <!-- Content -->
           <div class="px-8 py-8">
-            <p class="text-gray-600 mb-8">
-              Енді сіз барлық мүмкіндіктерге қол жеткізе аласыз. Бастау үшін төмендегі сілтемелерді пайдаланыңыз.
+            <p class="text-gray-500 mb-8 border-b border-gray-100 pb-8 text-sm sm:text-base">
+              {{ billingCycle === 'monthly' ? 'ай сайын төленеді' : 'жылына бір рет төленеді' }}
+              <span v-if="planType === 'family'">({{ childrenCount }} бала үшін)</span>
+              <span v-else>(1 мұғалім және оқушылар үшін)</span>
             </p>
 
             <div class="space-y-3">

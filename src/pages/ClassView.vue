@@ -4,35 +4,32 @@
     <div class="bg-white border-b border-gray-200">
       <ViewByToggle />
     </div>
-    <main class="flex">
-      <!-- Боковая панель с классами (IXL style - Popout Overlay) -->
-      <aside class="relative shrink-0 w-12 z-30 pt-4 select-none">
-        <!-- Sidebar Border Line -->
-        <div class="absolute right-0 top-0 bottom-0 w-px bg-gray-200 z-10"></div>
-
-        <nav class="flex flex-col gap-1 w-full relative z-20">
+    <main class="flex flex-row">
+      <!-- Боковая панель с классами (IXL style - Vertical on all devices) -->
+      <aside class="relative shrink-0 w-10 md:w-12 z-30 pt-4 select-none">
+        <nav class="flex flex-col gap-1 w-full items-center px-0 pb-10 overflow-y-auto scrollbar-hide h-[calc(100vh-120px)] md:h-auto sticky top-24">
           <div v-for="(grade, index) in grades" :key="grade.number"
-               class="relative h-14 w-full">
+               class="relative shrink-0 h-10 md:h-14 w-10 md:w-full">
 
-            <!-- Tab Button (Absolute positioned to grow right) -->
+            <!-- Tab Button -->
             <button @click="navigateToGrade(grade.number)"
-              class="group absolute left-0 top-1 h-12 flex items-center transition-all duration-300 ease-out shadow-sm overflow-hidden border border-transparent"
+              class="group absolute left-0 h-10 md:h-12 w-8 md:w-12 flex items-center justify-center transition-all duration-300 ease-out shadow-sm overflow-hidden rounded-r-full rounded-l-none border-2 border-l-0 border-transparent"
               :class="[
                 currentGradeId === grade.number
-                  ? 'w-[49px] hover:w-56 md:hover:w-64 z-50 rounded-l-full rounded-r-none hover:rounded-r-full pr-0 shadow-none -mr-px border-gray-200 border-r-0 hover:border-r'
-                  : 'w-12 hover:w-56 md:hover:w-64 z-30 rounded-l-full rounded-r-none hover:rounded-r-full hover:shadow-md hover:z-50',
+                  ? 'w-[40px] md:w-[49px] md:hover:w-64 z-50 shadow-none border-gray-200'
+                  : 'w-8 md:w-12 md:hover:w-64 z-30 hover:shadow-md hover:z-50',
               ]"
               :style="currentGradeId === grade.number
                 ? { backgroundColor: '#f9fafb', color: getGradeColor(index), borderColor: '#e5e7eb' }
                 : { backgroundColor: getGradeColor(index), color: 'white' }">
 
-               <!-- Grade Title (Visible ONLY on Hover) -->
-               <span class="absolute left-14 font-medium whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100 delay-75 pointer-events-none">
+               <!-- Grade Title (Visible ONLY on Hover in Desktop) -->
+               <span class="hidden md:block absolute left-14 font-medium whitespace-nowrap opacity-0 transition-opacity duration-200 group-hover:opacity-100 delay-75 pointer-events-none">
                  {{ grade.title }}
                </span>
 
-               <!-- Grade Label/Number (Always visible circle part) -->
-               <span class="absolute left-0 w-12 h-12 flex items-center justify-center font-bold text-xl shrink-0 z-10">
+               <!-- Grade Label/Number (Always visible) -->
+               <span class="md:absolute left-0 w-8 md:w-12 h-8 md:h-12 flex items-center justify-center font-bold text-sm md:text-xl shrink-0 z-10">
                  {{ grade.label || grade.number }}
                </span>
             </button>
@@ -41,26 +38,26 @@
       </aside>
 
       <!-- Основной контент -->
-      <div class="flex-1 pl-6 pr-8 py-8">
-        <div class="mb-8 flex items-end justify-between border-b pb-4">
+      <div class="flex-1 pl-4 md:pl-6 pr-4 md:pr-8 py-8">
+        <div class="mb-8 flex flex-col md:flex-row items-start md:items-end justify-between border-b pb-4 gap-4">
           <div>
-             <h1 class="text-3xl font-bold text-orange-600 mb-2">
+             <h1 class="text-2xl md:text-3xl font-bold text-orange-600 mb-2">
               {{ currentGrade?.title || currentGradeTitle }}
             </h1>
-            <p class="text-gray-600 max-w-3xl">
+            <p class="text-gray-600 max-w-3xl text-sm md:text-base">
               Math Edu offers hundreds of {{ (currentGrade?.title || currentGradeTitle).toLowerCase() }} skills to explore and learn! Not sure where to start?
             </p>
           </div>
 
           <!-- Mock Stats (IXL Style) -->
-          <div class="hidden md:flex gap-4">
-             <div class="flex flex-col items-center px-4 py-1 bg-orange-50 rounded-full border border-orange-200">
-               <span class="text-lg font-bold text-orange-600">{{ skills.length }}</span>
-               <span class="text-xs text-orange-800 uppercase font-semibold">skills</span>
+          <div class="flex gap-2 md:gap-4 scale-90 md:scale-100 origin-left">
+             <div class="flex flex-col items-center px-3 md:px-4 py-1 bg-orange-50 rounded-full border border-orange-200">
+               <span class="text-base md:text-lg font-bold text-orange-600">{{ skills.length }}</span>
+               <span class="text-[10px] md:text-xs text-orange-800 uppercase font-semibold">skills</span>
              </div>
-             <div class="flex flex-col items-center px-4 py-1 bg-orange-50 rounded-full border border-orange-200">
-               <span class="text-lg font-bold text-orange-600">--</span>
-               <span class="text-xs text-orange-800 uppercase font-semibold">lessons</span>
+             <div class="flex flex-col items-center px-3 md:px-4 py-1 bg-orange-50 rounded-full border border-orange-200">
+               <span class="text-base md:text-lg font-bold text-orange-600">--</span>
+               <span class="text-[10px] md:text-xs text-orange-800 uppercase font-semibold">lessons</span>
              </div>
           </div>
         </div>
@@ -97,7 +94,7 @@
                   <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
                     {{ skillIdx + 1 }}
                   </span>
-                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
+                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1 py-1">
                     {{ skill.title }}
                   </span>
                   <div v-if="loadingSkillId === skill.id" class="ml-auto shrink-0 pl-1 flex items-center gap-1 text-green-700">
@@ -113,11 +110,11 @@
                        {{ skillStats.get(skill.id)!.best_smartscore }}
                      </span>
                   </div>
-                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1" title="Edit Skill">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-400 hover:text-blue-500 md:opacity-0 md:group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1 p-1" title="Edit Skill">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   </button>
-                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="confirmDeleteSkill(skill.id, skill.title)" class="text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0" title="Delete Skill">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="confirmDeleteSkill(skill.id, skill.title)" class="text-gray-400 hover:text-red-500 md:opacity-0 md:group-hover/skill:opacity-100 transition-opacity shrink-0 p-1" title="Delete Skill">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
               </div>
@@ -139,7 +136,7 @@
                   <span class="text-sm font-medium text-gray-500 w-4 text-right shrink-0 group-hover/skill:text-green-600 pt-px">
                     {{ index + 1 }}
                   </span>
-                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1">
+                  <span class="text-sm text-gray-700 group-hover/skill:text-green-700 group-hover/skill:underline decoration-green-700/50 underline-offset-2 leading-snug flex-1 py-1">
                     {{ skill.title }}
                   </span>
                   <div v-if="loadingSkillId === skill.id" class="ml-auto shrink-0 pl-1 flex items-center gap-1 text-green-700">
@@ -155,11 +152,11 @@
                        {{ skillStats.get(skill.id)!.best_smartscore }}
                      </span>
                   </div>
-                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-300 hover:text-blue-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1" title="Edit Skill">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-400 hover:text-blue-500 md:opacity-0 md:group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1 p-1" title="Edit Skill">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   </button>
-                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="confirmDeleteSkill(skill.id, skill.title)" class="text-gray-300 hover:text-red-500 opacity-0 group-hover/skill:opacity-100 transition-opacity shrink-0" title="Delete Skill">
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="confirmDeleteSkill(skill.id, skill.title)" class="text-gray-400 hover:text-red-500 md:opacity-0 md:group-hover/skill:opacity-100 transition-opacity shrink-0 p-1" title="Delete Skill">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                   </button>
                 </div>
               </div>

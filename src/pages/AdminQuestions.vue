@@ -2,9 +2,15 @@
   <div class="min-h-screen bg-gray-50">
     <Header />
     <main class="container mx-auto px-4 py-8 max-w-5xl">
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold mb-2">Интерактивті тапсырма қосу</h1>
-        <p class="text-gray-600">Мұнда сіз дайын кодты кірістіре аласыз</p>
+      <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">Интерактивті тапсырма қосу</h1>
+          <p class="text-gray-600 mt-1">Мұнда сіз дайын React кодын кірістіре аласыз</p>
+        </div>
+        <button @click="router.push({ name: 'admin-questions-list' })"
+          class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors">
+          Тізімге оралу →
+        </button>
       </div>
 
       <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -85,8 +91,7 @@
               v-model="formData.component_code"
               @input="autoFillFromCode"
               required
-              rows="25"
-              class="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-xs"
+              class="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-xs h-[400px] md:h-[600px]"
               placeholder="Мұнда React кодты кірістіріңіз... (Барлық қажетті ақпарат автоматты түрде анықталады)"
             ></textarea>
             <div v-if="autoFilled" class="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700 flex items-center gap-2">

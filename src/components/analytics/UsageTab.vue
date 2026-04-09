@@ -726,9 +726,15 @@ const prevQuestion = (dateKey: string, skillId: number) => {
 }
 
 .summary-title {
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 400;
   color: #333;
+}
+
+@media (min-width: 640px) {
+  .summary-title {
+    font-size: 28px;
+  }
 }
 
 .print-btn {
@@ -758,16 +764,29 @@ const prevQuestion = (dateKey: string, skillId: number) => {
 }
 
 .card-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 300;
   color: #555;
   margin-bottom: 28px;
 }
 
+@media (min-width: 640px) {
+  .card-title {
+    font-size: 20px;
+  }
+}
+
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 640px) {
+  .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+  }
 }
 
 .stat-item {

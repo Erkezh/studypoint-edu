@@ -8,7 +8,7 @@
         </router-link>
 
         <!-- Desktop Navigation (center) -->
-        <div class="hidden md:flex items-center gap-6 absolute left-1/2 transform -translate-x-1/2">
+        <div class="hidden md:flex items-center gap-6">
           <template v-if="!authStore.isAuthenticated">
             <router-link to="/topics" class="text-white hover:text-gray-100 transition-colors font-medium">Оқу</router-link>
             <router-link to="/" class="text-white hover:text-gray-100 transition-colors font-medium">Диагностика</router-link>
@@ -22,9 +22,8 @@
             <router-link to="/analytics" class="text-white hover:text-gray-100 transition-colors font-medium">Талдау</router-link>
             <router-link v-if="authStore.user?.role === 'ADMIN'" to="/admin" class="text-white hover:text-gray-100 transition-colors font-medium flex items-center gap-2" title="Админ панелі">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-              Админ панелі
+              Админ
             </router-link>
-
           </template>
         </div>
 
@@ -123,53 +122,107 @@
         </div>
       </div>
 
-      <!-- Mobile Menu -->
-      <div v-if="showMobileMenu" class="md:hidden mt-4 pb-2 border-t border-white/20 pt-4 space-y-2">
-        <template v-if="!authStore.isAuthenticated">
-          <router-link to="/topics" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Оқу</router-link>
-          <router-link to="/" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Диагностика</router-link>
-          <router-link to="/analytics" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Талдау</router-link>
-          <div class="pt-2 border-t border-white/20 flex gap-2">
-            <router-link to="/auth/login" @click="showMobileMenu = false" class="flex-1">
-              <Button variant="outline" class="w-full bg-white border-white hover:bg-gray-100" style="color: #38B000;">Кіру</Button>
+      <!-- Mobile Menu (Accordion style) -->
+      <transition
+        enter-active-class="transition duration-200 ease-out"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition duration-150 ease-in"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div v-if="showMobileMenu" class="md:hidden mt-4 pb-4 border-t border-white/20 pt-4 space-y-3">
+          <template v-if="!authStore.isAuthenticated">
+            <router-link to="/topics" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+              <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              Оқу
             </router-link>
-            <router-link to="/pricing" @click="showMobileMenu = false" class="flex-1">
-              <Button variant="primary" class="w-full text-white border" style="background-color: #2d8a00; border-color: #2d8a00;">Жазылым</Button>
+            <router-link to="/" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+              <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              Диагностика
             </router-link>
-          </div>
-        </template>
+            <router-link to="/analytics" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+              <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              Талдау
+            </router-link>
 
-        <template v-else>
-          <router-link to="/" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Менің кабинетім</router-link>
-          <router-link v-if="userGradeLevel" :to="{ name: 'class', params: { gradeId: userGradeLevel } }" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Оқу</router-link>
-          <router-link to="/" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Диагностика</router-link>
-          <router-link to="/analytics" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Талдау</router-link>
-          <router-link v-if="authStore.user?.role === 'ADMIN'" to="/admin" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Админ панелі</router-link>
-          <router-link v-if="authStore.user?.role === 'TEACHER'" to="/teacher" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Мұғалім кабинеті</router-link>
+            <div class="grid grid-cols-2 gap-3 pt-3">
+              <router-link to="/auth/login" @click="showMobileMenu = false">
+                <Button variant="outline" class="w-full bg-white border-0 py-3 rounded-xl shadow-sm" style="color: #38B000;">Кіру</Button>
+              </router-link>
+              <router-link to="/pricing" @click="showMobileMenu = false">
+                <Button variant="primary" class="w-full py-3 rounded-xl shadow-lg border-0" style="background-color: #2d8a00;">Жазылым</Button>
+              </router-link>
+            </div>
+          </template>
 
-          <!-- Mobile family profile switcher -->
-          <div v-if="familyProfiles.length > 0" class="pt-2 border-t border-white/20">
-            <p class="px-3 py-1 text-[11px] font-semibold text-white/50 uppercase tracking-wide">Профильді ауыстыру</p>
-            <button
-              v-for="profile in familyProfiles"
-              :key="profile.id"
-              @click="switchToProfile(profile); showMobileMenu = false"
-              class="w-full flex items-center gap-3 px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-            >
-              <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
-                :style="{ backgroundColor: profile.isParent ? '#6366f1' : '#f59e0b' }">
-                {{ profile.name[0].toUpperCase() }}
+          <template v-else>
+            <!-- User Profile Summary in Menu -->
+            <div class="px-3 py-2 mb-2 flex items-center gap-3 bg-white/5 rounded-xl border border-white/10">
+              <div class="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-lg"
+                :style="{ backgroundColor: isParentRole ? '#6366f1' : '#22c55e' }">
+                {{ (authStore.user?.full_name || '?')[0].toUpperCase() }}
               </div>
-              <span class="font-medium text-sm">{{ profile.name }}</span>
-            </button>
-          </div>
+              <div class="min-w-0 flex-1">
+                <p class="font-bold text-white truncate text-base">{{ authStore.user?.full_name }}</p>
+                <p class="text-white/60 text-xs truncate">{{ isParentRole ? 'Ата-ана' : (authStore.user?.role === 'STUDENT' ? 'Оқушы' : authStore.user?.role) }}</p>
+              </div>
+            </div>
 
-          <div class="pt-2 border-t border-white/20">
-            <router-link to="/profile" @click="showMobileMenu = false" class="block px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Профиль</router-link>
-            <button @click="handleLogout" class="w-full text-left px-3 py-2 text-white hover:bg-white/10 rounded-lg transition-colors font-medium">Шығу</button>
-          </div>
-        </template>
-      </div>
+            <nav class="space-y-1">
+              <router-link to="/" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                Басты бет
+              </router-link>
+              <router-link v-if="userGradeLevel" :to="{ name: 'class', params: { gradeId: userGradeLevel } }" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                Оқу
+              </router-link>
+              <router-link to="/analytics" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                Талдау
+              </router-link>
+              <router-link v-if="authStore.user?.role === 'ADMIN'" to="/admin" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                Админ панелі
+              </router-link>
+            </nav>
+
+            <!-- Mobile family profile switcher (Vertical) -->
+            <div v-if="familyProfiles.length > 0" class="pt-3 pb-1 border-t border-white/10 mt-2">
+              <p class="px-3 py-1 text-[11px] font-bold text-white/40 uppercase tracking-widest">Профильді ауыстыру</p>
+              <div class="space-y-1">
+                <button
+                  v-for="profile in familyProfiles"
+                  :key="profile.id"
+                  @click="switchToProfile(profile); showMobileMenu = false"
+                  class="w-full flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all"
+                >
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shadow-sm"
+                    :style="{ backgroundColor: profile.isParent ? '#6366f1' : '#f59e0b' }">
+                    {{ profile.name[0].toUpperCase() }}
+                  </div>
+                  <div class="text-left flex-1 min-w-0">
+                    <p class="font-semibold text-sm truncate text-white/90">{{ profile.name }}</p>
+                    <p class="text-[10px] text-white/50">{{ profile.isParent ? 'Ата-ана' : `${profile.gradeLevel}-сынып` }}</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-white/10 mt-2 space-y-1">
+              <router-link to="/profile" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                Профиль
+              </router-link>
+              <button @click="handleLogout" class="w-full flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+                <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                Шығу
+              </button>
+            </div>
+          </template>
+        </div>
+      </transition>
     </nav>
   </header>
 </template>

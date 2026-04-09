@@ -25,19 +25,22 @@
       <!-- ==================== SKILLS TAB ==================== -->
       <div v-if="activeTab === 'skills'">
         <!-- Filters -->
-        <div class="bg-white rounded-lg shadow-sm p-4 mb-4 flex flex-wrap gap-4 items-center">
-          <div class="flex-1 min-w-[200px]">
+        <div class="bg-white rounded-xl shadow-sm p-4 mb-6 border border-gray-100 flex flex-col md:flex-row gap-4 items-stretch md:items-center">
+          <div class="relative flex-1">
+            <svg class="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
             <input v-model="skillSearch" type="text" placeholder="Тест атауы бойынша іздеу..."
-              class="w-full p-2 border border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none text-sm" />
+              class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none transition-all text-sm" />
           </div>
-          <select v-model="skillFilterGradeId" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
-            <option :value="null">Барлық сыныптар</option>
-            <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
-          </select>
-          <select v-model="skillFilterTopicId" class="p-2 border border-gray-300 rounded-lg text-sm bg-white">
-            <option :value="null">Барлық тақырыптар</option>
-            <option v-for="t in themes" :key="t.id" :value="t.id">{{ t.icon ? t.icon + ' ' : '' }}{{ t.title }}</option>
-          </select>
+          <div class="flex flex-wrap gap-2">
+            <select v-model="skillFilterGradeId" class="flex-1 min-w-[120px] p-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm">
+              <option :value="null">Барлық сыныптар</option>
+              <option v-for="g in grades" :key="g.id" :value="g.id">{{ g.title }}</option>
+            </select>
+            <select v-model="skillFilterTopicId" class="flex-1 min-w-[120px] p-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm">
+              <option :value="null">Барлық тақырыптар</option>
+              <option v-for="t in themes" :key="t.id" :value="t.id">{{ t.icon ? t.icon + ' ' : '' }}{{ t.title }}</option>
+            </select>
+          </div>
         </div>
 
         <!-- Skills List -->
@@ -92,31 +95,34 @@
       <!-- ==================== QUESTIONS TAB ==================== -->
       <div v-if="activeTab === 'questions'">
         <!-- Filters -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Навык атауы бойынша іздеу</label>
-              <input v-model="filters.search" type="text"
-                class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
-                placeholder="Навық атауын жазыңыз..." @keyup.enter="loadQuestions" />
+        <div class="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="sm:col-span-2 lg:col-span-1">
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Мазмұны бойынша іздеу</label>
+              <div class="relative">
+                <svg class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input v-model="filters.search" type="text"
+                  class="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm transition-all"
+                  placeholder="Мәтінді жазыңыз..." @keyup.enter="loadQuestions" />
+              </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Навық ID</label>
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Тест (Skill) ID</label>
               <input v-model.number="filters.skill_id" type="number"
-                class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none"
+                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm transition-all"
                 placeholder="ID нөмірі" />
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Сұрыптау</label>
+              <label class="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Сұрыптау</label>
               <select v-model="filters.sort_order" @change="loadQuestions"
-                class="w-full p-3 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:outline-none">
+                class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-sm transition-all">
                 <option value="desc">Жаңалары алдымен</option>
                 <option value="asc">Ескілері алдымен</option>
               </select>
             </div>
-            <div class="flex items-end gap-2">
-              <Button @click="loadQuestions" variant="primary" :loading="loadingQ">Іздеу</Button>
-              <Button @click="resetFilters" variant="outline">Тазалау</Button>
+            <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
+              <Button @click="loadQuestions" variant="primary" :loading="loadingQ" class="flex-1 py-2 text-sm justify-center">Іздеу</Button>
+              <Button @click="resetFilters" variant="outline" class="flex-1 py-2 text-sm justify-center">Тазалау</Button>
             </div>
           </div>
         </div>
