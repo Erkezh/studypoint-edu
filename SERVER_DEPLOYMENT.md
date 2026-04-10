@@ -65,7 +65,7 @@ docker compose up -d --build postgres redis
 docker compose up -d --build api
 docker compose run --rm api python -m alembic upgrade head
 docker compose run --rm api python -m app.db.seed
-docker compose up -d api
+docker compose up -d --force-recreate --no-deps api
 ```
 
 Postgres and Redis are intentionally kept on the internal Docker network only. Do not publish
@@ -260,7 +260,7 @@ sudo docker compose up -d --build postgres redis
 sudo ./scripts/sync_postgres_password.sh
 sudo docker compose up -d --build api
 sudo docker compose run --rm api python -m alembic upgrade head
-sudo docker compose up -d api
+sudo docker compose up -d --force-recreate --no-deps api
 ```
 
 ## 9. Optional CI/CD (GitHub Actions)

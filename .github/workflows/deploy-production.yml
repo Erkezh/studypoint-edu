@@ -195,7 +195,9 @@ jobs:
             cd "$REPO_DIR/backend"
             run_privileged docker compose up -d --build
             run_privileged ./scripts/sync_postgres_password.sh
-            run_privileged docker compose up -d api
+            # The api service bind-mounts the repo into /app, so a plain "up -d"
+            # can leave the old uvicorn process running against stale code after git pull.
+            run_privileged docker compose up -d --force-recreate --no-deps api
             echo "Checking esbuild in API container..."
             if ! run_privileged docker compose exec -T api sh -lc 'test -x /app/node_modules/.bin/esbuild'; then
               echo "esbuild not found in /app/node_modules. Installing backend npm dependencies..."
@@ -205,7 +207,9 @@ jobs:
             run_privileged docker compose run --rm api python -m alembic upgrade head
             # Keep default demo/admin users available (seed is idempotent).
             run_privileged docker compose run --rm api python -m app.db.seed
-            run_privileged docker compose up -d api
+            # Recreate the running api container again after migrations/seed so
+            # the live process definitely picks up the freshly pulled code.
+            run_privileged docker compose up -d --force-recreate --no-deps api
 
             cd "$REPO_DIR"
             npm ci
