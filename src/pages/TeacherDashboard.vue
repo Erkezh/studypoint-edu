@@ -387,12 +387,71 @@
         </div>
       </template>
 
-      <!-- ===================== КВИЗЫ ===================== -->
+      <!-- ===================== КВИЗДЕР ===================== -->
       <template v-if="activeTab === 'quizzes'">
-        <div class="empty-tab">
-          <div class="empty-icon">📝</div>
-          <h2>Квизы</h2>
-          <p>Квизы мен тесттер жуық арада қосылады</p>
+        <div class="quizzes-section">
+          <QuizCreator 
+            v-if="isCreatingQuiz || isEditingQuiz" 
+            :initial-quiz="selectedEditQuiz" 
+            @cancel="handleQuizCreationCancel" 
+            @created="handleQuizCreatedOrUpdated" 
+          />
+          
+          <template v-else>
+            <div class="tools-header">
+              <div>
+                <h1 class="tools-title">Квиздер</h1>
+                <p class="tools-subtitle">Оқушыларға арналған тесттер мен тапсырмалар</p>
+              </div>
+              <button @click="isCreatingQuiz = true" class="add-btn">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                Квиз құру
+              </button>
+            </div>
+
+            <div class="mt-6">
+              <div v-if="loadingQuizzes" class="flex justify-center flex-col items-center p-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                <div class="spinner"></div>
+                <p class="text-gray-500 mt-4 text-sm">Квиздер жүктелуде...</p>
+              </div>
+              <div v-else-if="quizzesError" class="text-red-500 p-6 bg-red-50 rounded-xl shadow-sm border border-red-100">{{ quizzesError }}</div>
+              <div v-else-if="quizzes.length === 0" class="text-center p-12 bg-white rounded-xl shadow-sm border border-gray-100">
+                <div class="empty-icon text-4xl mb-4">📝</div>
+                <p class="font-medium text-gray-700">Әзірге квиздер жоқ</p>
+                <p class="text-sm text-gray-400 mt-1">Жаңа квиз жасау үшін «Квиз құру» түймесін басыңыз</p>
+              </div>
+              <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div v-for="(quiz, index) in quizzes" :key="quiz.id" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition">
+                  <div class="flex justify-between items-start mb-4">
+                    <h3 class="font-semibold text-lg text-gray-900 line-clamp-2 pr-4 leading-tight">{{ quiz.name }}</h3>
+                    <span class="bg-cyan-50 text-cyan-700 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap">{{ index + 1 }}-квиз</span>
+                  </div>
+                  
+                  <div class="space-y-3 mb-6 flex-1">
+                    <div class="flex items-center text-sm text-gray-600">
+                      <svg class="w-4 h-4 mr-2 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      {{ quiz.questions.length }} сұрақ
+                    </div>
+                    <div class="flex items-center text-sm text-gray-600">
+                      <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      {{ new Date(quiz.created_at).toLocaleDateString() }}
+                    </div>
+                  </div>
+                  
+                  <div class="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
+                    <button @click="viewQuiz(quiz)" class="flex items-center text-cyan-600 hover:text-cyan-800 text-sm font-medium transition-colors">
+                      <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      Көру
+                    </button>
+                    <div class="flex items-center space-x-4">
+                      <button @click="editQuiz(quiz)" class="text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors">Өңдеу</button>
+                      <button @click="confirmDeleteQuiz(quiz)" class="text-red-500 hover:text-red-700 text-sm font-medium transition-colors">Өшіру</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
       </template>
 
@@ -430,6 +489,39 @@
       </template>
     </Modal>
 
+    <!-- View Quiz Modal -->
+    <Modal :is-open="showViewQuizModal" title="Квиз туралы мәлімет" :show-close="true" @close="showViewQuizModal = false">
+      <template #content>
+        <div v-if="selectedViewQuiz" class="space-y-4">
+          <div>
+            <h3 class="text-lg font-medium text-gray-900">{{ selectedViewQuiz.name }}</h3>
+            <p class="text-sm text-gray-500">Сұрақтар: {{ selectedViewQuiz.questions.length }}</p>
+          </div>
+          <div class="bg-gray-50 p-4 rounded-md">
+            <h4 class="text-sm font-medium text-gray-700 mb-2">Параметрлері:</h4>
+            <ul class="text-sm text-gray-600 space-y-1">
+              <li>Сұрақтар реті: {{ selectedViewQuiz.question_order === 'FIXED' ? 'Берілген ретпен' : 'Кездейсоқ' }}</li>
+              <li>Квизді аяқтау: {{ selectedViewQuiz.end_type === 'MANUAL' ? 'Қолмен аяқтау' : 'Белгіленген уақытта' }}</li>
+              <li>Нәтижелерді көрсету: {{ selectedViewQuiz.result_visibility === 'ALWAYS' ? 'Ұпайлар мен дұрыс жауаптарды көрсету' : (selectedViewQuiz.result_visibility === 'SCORE_ONLY' ? 'Тек ұпайларды көрсету' : 'Жасыру') }}</li>
+            </ul>
+          </div>
+          <div v-if="selectedViewQuiz.questions && selectedViewQuiz.questions.length > 0" class="mt-4">
+            <h4 class="text-sm font-medium text-gray-700 mb-3">Тапсырмалар:</h4>
+            <div class="space-y-3 max-h-64 overflow-y-auto pr-2">
+              <div v-for="(q, index) in selectedViewQuiz.questions" :key="q.id" class="p-3 border rounded-md bg-white text-sm">
+                <span class="font-medium text-gray-500 mr-2">{{ Number(index) + 1 }}.</span>
+                <span v-if="q.question" v-html="q.question.prompt" class="text-gray-800"></span>
+                <span v-else class="text-gray-400 italic">Сұрақ мәтіні жүктелмеді</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template #actions>
+        <button @click="showViewQuizModal = false" class="cancel-btn w-full">Жабу</button>
+      </template>
+    </Modal>
+
     <!-- Success Modal -->
     <Modal :is-open="showSuccessModal" title="Оқушы сәтті құрылды!" :show-close="false">
       <template #content>
@@ -461,6 +553,8 @@ import { teacherApi } from '@/api/teacher'
 import type { StudentInfo } from '@/api/teacher'
 import { useCatalogStore } from '@/stores/catalog'
 import { useAuthStore } from '@/stores/auth'
+import { useQuizStore } from '@/stores/quiz'
+import QuizCreator from '@/components/teacher/QuizCreator.vue'
 
 defineOptions({ name: 'TeacherDashboard' })
 
@@ -496,9 +590,15 @@ const hoverTab = ref<string | null>(null)
 const teacherStore = useTeacherStore()
 const catalogStore = useCatalogStore()
 const authStore = useAuthStore()
+const quizStore = useQuizStore()
 
 const { students, loading: loadingStudents, error: studentsError } = storeToRefs(teacherStore)
 const { grades } = storeToRefs(catalogStore)
+const { quizzes, loading: loadingQuizzes, error: quizzesError } = storeToRefs(quizStore)
+
+const isCreatingQuiz = ref(false)
+const isEditingQuiz = ref(false)
+const selectedEditQuiz = ref<any>(null)
 
 // Dashboard analytics data
 const loadingData = ref(true)
@@ -521,6 +621,42 @@ const overviewData = ref<{
   avg_accuracy_percent: number
   total_questions_answered: number
 }>({ total_time_sec: 0, skills_practiced: 0, avg_accuracy_percent: 0, total_questions_answered: 0 })
+
+const showViewQuizModal = ref(false)
+const selectedViewQuiz = ref<any>(null)
+
+const viewQuiz = (quiz: any) => {
+  selectedViewQuiz.value = quiz
+  showViewQuizModal.value = true
+}
+
+const editQuiz = (quiz: any) => {
+  selectedEditQuiz.value = quiz
+  isEditingQuiz.value = true
+}
+
+const handleQuizCreationCancel = () => {
+    isCreatingQuiz.value = false
+    isEditingQuiz.value = false
+    selectedEditQuiz.value = null
+}
+
+const handleQuizCreatedOrUpdated = () => {
+    isCreatingQuiz.value = false
+    isEditingQuiz.value = false
+    selectedEditQuiz.value = null
+    quizStore.fetchQuizzes()
+}
+
+const confirmDeleteQuiz = async (quiz: any) => {
+  if (confirm(`"${quiz.name}" квизін өшіргіңіз келетініне сенімдісіз бе?`)) {
+    try {
+      await quizStore.deleteQuiz(quiz.id);
+    } catch (e: any) {
+      alert('Квизді өшіру мүмкін болмады: ' + (e.response?.data?.message || e.message));
+    }
+  }
+}
 
 const studentsBreakdown = ref<StudentBreakdown[]>([])
 
@@ -745,6 +881,10 @@ watch(activeTab, (tab) => {
   } else if (tab === 'glance') {
     startGlancePolling()
     stopLivePolling()
+  } else if (tab === 'quizzes') {
+    quizStore.fetchQuizzes()
+    stopLivePolling()
+    stopGlancePolling()
   } else {
     stopLivePolling()
     stopGlancePolling()

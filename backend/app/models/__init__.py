@@ -9,6 +9,7 @@ from app.models.topic import Topic
 from app.models.user import User
 from app.models.awards import AwardEvent
 from app.models.plugin import Plugin
+from app.models.quiz import Quiz, QuizAssignment, QuizQuestion
 
 __all__ = [
     "Assignment",
@@ -22,6 +23,9 @@ __all__ = [
     "ProgressSnapshot",
     "Plugin",
     "Question",
+    "Quiz",
+    "QuizAssignment",
+    "QuizQuestion",
     "Skill",
     "StudentProfile",
     "Subject",

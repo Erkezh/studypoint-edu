@@ -43,3 +43,19 @@ class MistakeType(str, enum.Enum):
     WRONG = "WRONG"
     INVALID_FORMAT = "INVALID_FORMAT"
     TIMEOUT = "TIMEOUT"
+
+
+class QuizQuestionOrder(str, enum.Enum):
+    FIXED = "FIXED"
+    RANDOMIZED = "RANDOMIZED"
+
+
+class QuizResultVisibility(str, enum.Enum):
+    ALWAYS = "ALWAYS"
+    SCORE_ONLY = "SCORE_ONLY"
+    HIDDEN = "HIDDEN"
+
+
+class QuizEndType(str, enum.Enum):
+    MANUAL = "MANUAL"
+    SCHEDULED = "SCHEDULED"

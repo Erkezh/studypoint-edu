@@ -12,9 +12,13 @@ from app.services.assignment_service import AssignmentService
 from app.services.presence_service import get_active_students
 from app.services.teacher_scope import list_teacher_scoped_students, teacher_can_access_student
 from app.services.teacher_service import TeacherService
+from app.services.catalog_service import CatalogService
 from app.models.user import User
 from app.models.profile import StudentProfile
 from app.models.classroom import Enrollment
+from app.models.catalog import Grade, Skill
+from app.models.topic import Topic
+from app.models.question import Question
 from sqlalchemy import select, outerjoin
 
 router = APIRouter(dependencies=[Depends(require_roles("TEACHER"))])
@@ -219,3 +223,54 @@ async def delete_student(
     await svc.session.execute(sql_delete(User).where(User.id == student_uuid))
     await svc.session.flush()
     return ApiResponse(data={"deleted": student_id})
+
+
+@router.get("/catalog/grades/{grade_num}/topics", response_model=ApiResponse[list[dict]])
+async def list_grade_topics(
+    grade_num: int,
+    user=Depends(get_current_user),
+    svc: TeacherService = Depends(),
+):
+    """List topics that have skills in a specific grade."""
+    # First find grade_id
+    grade_stmt = select(Grade.id).where(Grade.number == grade_num)
+    grade_id = (await svc.session.execute(grade_stmt)).scalar_one_or_none()
+    if not grade_id:
+        raise AppError(status_code=404, code="not_found", message="Grade not found")
+
+    stmt = (
+        select(Topic.id, Topic.title, Topic.description)
+        .distinct()
+        .join(Skill, Skill.topic_id == Topic.id)
+        .where(Skill.grade_id == grade_id)
+        .order_by(Topic.title)
+    )
+    rows = (await svc.session.execute(stmt)).all()
+    return ApiResponse(data=[{"id": r.id, "title": r.title, "description": r.description} for r in rows])
+
+
+@router.get("/catalog/topics/{topic_id}/questions", response_model=ApiResponse[list[dict]])
+async def browse_catalog_questions(
+    topic_id: int,
+    user=Depends(get_current_user),
+    svc: TeacherService = Depends(),
+):
+    """List questions for a specific topic across skills in that topic."""
+    stmt = (
+        select(Question)
+        .join(Skill, Question.skill_id == Skill.id)
+        .where(Skill.topic_id == topic_id)
+        .order_by(Question.id)
+    )
+    result = await svc.session.execute(stmt)
+    questions = result.scalars().all()
+    
+    return ApiResponse(data=[
+        {
+            "id": q.id,
+            "type": q.type,
+            "prompt": q.prompt,
+            "level": q.level,
+            "explanation": q.explanation
+        } for q in questions
+    ])

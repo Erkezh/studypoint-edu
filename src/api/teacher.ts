@@ -61,25 +61,35 @@ export const teacherApi = {
   },
 
   getLiveStudents() {
-    return apiClient.get<{ data: {
-      active_count: number
-      inactive_count: number
-      needs_help_count: number
-      total_students: number
-      inactive_students: Array<{
-        student_id: string
-        full_name: string
-      }>
-      students: Array<{
-        student_id: string
-        full_name: string
-        skill_name: string
-        smartscore: number
-        correct: number
-        wrong: number
-        questions_answered: number
-        last_active_seconds_ago: number
-      }>
-    } }>('/teacher/live-students')
+    return apiClient.get<{
+      data: {
+        active_count: number
+        inactive_count: number
+        needs_help_count: number
+        total_students: number
+        inactive_students: Array<{
+          student_id: string
+          full_name: string
+        }>
+        students: Array<{
+          student_id: string
+          full_name: string
+          skill_name: string
+          smartscore: number
+          correct: number
+          wrong: number
+          questions_answered: number
+          last_active_seconds_ago: number
+        }>
+      }
+    }>('/teacher/live-students')
+  },
+
+  getGradeTopics(gradeNum: number) {
+    return apiClient.get<{ data: Array<{ id: number; title: string; description: string }> }>(`/teacher/catalog/grades/${gradeNum}/topics`)
+  },
+
+  getTopicQuestions(topicId: number) {
+    return apiClient.get<{ data: Array<{ id: number; type: string; prompt: string; level: number; explanation: string }> }>(`/teacher/catalog/topics/${topicId}/questions`)
   },
 }
