@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.routes import admin, analytics, assignments, auth, awards, catalog, classrooms, family, health, me, practice, reports, teacher, users, quiz
+from app.api.v1.routes import admin, analytics, assignments, auth, awards, catalog, classrooms, family, health, me, practice, reports, teacher, users, quiz, student_quiz
 
 api_router_v1 = APIRouter()
 
@@ -19,5 +19,6 @@ api_router_v1.include_router(reports.router, prefix="/reports", tags=["Reports"]
 api_router_v1.include_router(awards.router, prefix="/awards", tags=["Awards"])
 api_router_v1.include_router(teacher.router, prefix="/teacher", tags=["Teacher"])
 api_router_v1.include_router(quiz.router, prefix="/teacher/quizzes", tags=["Quiz"])
+api_router_v1.include_router(student_quiz.router, prefix="/student/quizzes", tags=["StudentQuiz"])
 api_router_v1.include_router(family.router, prefix="/family", tags=["Family"])
 api_router_v1.include_router(admin.router, prefix="/admin", tags=["Admin"])

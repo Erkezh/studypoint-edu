@@ -57,6 +57,15 @@ export interface QuizAssignmentCreate {
     end_at?: string
 }
 
+export interface StudentQuizAssignmentResponse {
+    id: string
+    quiz_id: string
+    quiz: QuizResponse
+    due_at: string | null
+    end_at: string | null
+    created_at: string
+}
+
 export const quizApi = {
     createQuiz(payload: QuizCreateRequest) {
         return apiClient.post<{ data: QuizResponse }>('/teacher/quizzes', payload)
@@ -76,5 +85,9 @@ export const quizApi = {
 
     deleteQuiz(quizId: string) {
         return apiClient.delete<{ data: boolean }>(`/teacher/quizzes/${quizId}`)
+    },
+
+    listStudentAssignedQuizzes() {
+        return apiClient.get<{ data: QuizResponse[] }>('/student/quizzes/all')
     }
 }

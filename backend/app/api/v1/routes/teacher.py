@@ -274,3 +274,29 @@ async def browse_catalog_questions(
             "explanation": q.explanation
         } for q in questions
     ])
+
+
+@router.get("/catalog/skills/{skill_id}/questions", response_model=ApiResponse[list[dict]])
+async def browse_skill_questions(
+    skill_id: int,
+    user=Depends(get_current_user),
+    svc: TeacherService = Depends(),
+):
+    """List questions for a specific skill."""
+    stmt = (
+        select(Question)
+        .where(Question.skill_id == skill_id)
+        .order_by(Question.id)
+    )
+    result = await svc.session.execute(stmt)
+    questions = result.scalars().all()
+    
+    return ApiResponse(data=[
+        {
+            "id": q.id,
+            "type": q.type,
+            "prompt": q.prompt,
+            "level": q.level,
+            "explanation": q.explanation
+        } for q in questions
+    ])

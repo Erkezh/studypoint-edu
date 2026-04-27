@@ -92,4 +92,8 @@ export const teacherApi = {
   getTopicQuestions(topicId: number) {
     return apiClient.get<{ data: Array<{ id: number; type: string; prompt: string; level: number; explanation: string }> }>(`/teacher/catalog/topics/${topicId}/questions`)
   },
+
+  getSkillQuestions(skillId: number) {
+    return apiClient.get<{ data: Array<{ id: number; type: string; prompt: string; level: number; explanation: string }> }>(`/teacher/catalog/skills/${skillId}/questions`)
+  },
 }

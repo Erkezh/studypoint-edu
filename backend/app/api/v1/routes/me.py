@@ -19,4 +19,3 @@ async def my_assignments(user=Depends(get_current_user), svc: AssignmentService 
 @router.get("/assignments/{assignment_id}", response_model=ApiResponse[StudentAssignmentResponse])
 async def my_assignment(assignment_id: str, user=Depends(get_current_user), svc: AssignmentService = Depends()):
     return ApiResponse(data=await svc.get_my_assignment(student_id=user.id, assignment_id=assignment_id))
-

@@ -65,3 +65,15 @@ class QuizAssignmentResponse(QuizAssignmentBase):
 
     class Config:
         from_attributes = True
+
+
+class StudentQuizAssignmentResponse(BaseModel):
+    id: uuid.UUID
+    quiz_id: uuid.UUID
+    quiz: QuizResponse
+    due_at: datetime | None = None
+    end_at: datetime | None = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

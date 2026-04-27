@@ -61,32 +61,35 @@
                 </div>
               </div>
 
-              <!-- Topics List -->
-              <div v-else-if="selectedGrade !== null && selectedTopic === null" class="selector-menu">
-                <div @click="selectedGrade = -1; topics = []" class="menu-item back">
+              <!-- Skills List -->
+              <div v-else-if="selectedGrade !== null && selectedSkill === null" class="selector-menu">
+                <div @click="selectedGrade = -1; skillsList = []" class="menu-item back">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
                   {{ selectedGrade }} сынып
                 </div>
-                <div v-if="loadingTopics" class="p-4 text-center text-gray-400">
+                <div v-if="loadingSkills" class="p-4 text-center text-gray-400">
                    Жүктелуде...
                 </div>
-                <div v-else-if="topics.length === 0" class="p-8 text-center text-gray-400">
-                  Бұл сынып үшін тақырыптар табылмады
+                <div v-else-if="skillsList.length === 0" class="p-8 text-center text-gray-400">
+                  Бұл сынып үшін дағдылар табылмады
                 </div>
-                <div v-for="topic in topics" :key="topic.id" @click="selectTopic(topic)" class="menu-item">
-                  {{ topic.title }}
+                <div v-for="skill in skillsList" :key="skill.id" @click="selectSkill(skill)" class="menu-item">
+                  {{ skill.title }}
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                 </div>
               </div>
 
               <!-- Questions List -->
               <div v-else class="question-list">
-                <div @click="selectedTopic = null" class="menu-item back">
+                <div @click="selectedSkill = null" class="menu-item back">
                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                  {{ selectedTopic.title }}
+                  {{ selectedSkill?.title }}
                 </div>
                 <div v-if="loadingQuestions" class="p-4 text-center">Жүктелуде...</div>
-                <div v-for="q in questions" :key="q.id" class="question-item">
+                <div v-else-if="questions.length === 0" class="p-8 text-center text-gray-500 bg-gray-50 m-4 rounded-xl border border-gray-100">
+                  Бұл дағды үшін әлі сұрақтар қосылмаған. Басқа дағдыны таңдап көріңіз.
+                </div>
+                <div v-else v-for="q in questions" :key="q.id" class="question-item">
                   <label class="q-checkbox">
                     <input type="checkbox" :checked="isQuestionSelected(q.id)" @change="toggleQuestion(q)" />
                     <span class="checkmark"></span>
@@ -226,12 +229,12 @@ const quizStore = useQuizStore()
 const currentStep = ref(1)
 const quizName = ref('')
 const selectedGrade = ref<number | null>(null)
-const selectedTopic = ref<any | null>(null)
-const topics = ref<any[]>([])
+const selectedSkill = ref<any | null>(null)
+const skillsList = ref<any[]>([])
 const questions = ref<any[]>([])
 const selectedQuestions = ref<any[]>([])
 
-const loadingTopics = ref(false)
+const loadingSkills = ref(false)
 const loadingQuestions = ref(false)
 const loading = ref(false)
 
@@ -276,21 +279,26 @@ const openGrades = async () => {
 
 const selectGrade = async (gradeNum: number) => {
   selectedGrade.value = gradeNum
-  loadingTopics.value = true
+  loadingSkills.value = true
   try {
-    const res = await teacherApi.getGradeTopics(gradeNum)
-    topics.value = res.data.data
+    skillsList.value = await catalogStore.getSkills({ grade_number: gradeNum, page_size: 500 })
   } finally {
-    loadingTopics.value = false
+    loadingSkills.value = false
   }
 }
 
-const selectTopic = async (topic: any) => {
-  selectedTopic.value = topic
+const selectSkill = async (skill: any) => {
+  selectedSkill.value = skill
   loadingQuestions.value = true
+  questions.value = []
   try {
-    const res = await teacherApi.getTopicQuestions(topic.id)
-    questions.value = res.data.data
+    const res = await teacherApi.getSkillQuestions(skill.id)
+    questions.value = res.data?.data || []
+  } catch (err: any) {
+    console.error('Error fetching questions for skill:', err)
+    if (err.response?.status === 404) {
+      alert('Сіз бэкендке жаңа өзгерістер қостыңыз, бірақ ол әлі қайта қосылмаған. Бэкенд терминалын (make run) тоқтатып, қайта қосыңыз!')
+    }
   } finally {
     loadingQuestions.value = false
   }

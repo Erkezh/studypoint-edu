@@ -165,6 +165,19 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresRole: 'ADMIN' },
   },
   {
+    path: '/my-ixl',
+    name: 'my-ixl',
+    component: () => import('@/pages/MyIxlView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/my-ixl/quiz/:quizId',
+    name: 'student-quiz',
+    component: () => import('@/pages/StudentQuizView.vue'),
+    meta: { requiresAuth: true },
+    props: true,
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/pages/NotFound.vue'),

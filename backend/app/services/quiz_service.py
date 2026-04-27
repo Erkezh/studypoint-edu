@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload, joinedload
 from app.db.session import get_db_session
 from app.models.quiz import Quiz, QuizQuestion, QuizAssignment
 from app.schemas.quiz import QuizCreateRequest, QuizAssignmentCreate
+from app.schemas.quiz import StudentQuizAssignmentResponse
 
 
 class QuizService:
@@ -101,6 +102,18 @@ class QuizService:
         result = await self.session.execute(stmt)
         return result.scalars().all()
 
+    async def list_all_quizzes(self) -> Sequence[Quiz]:
+        """Return all quizzes from all teachers (for student view)."""
+        stmt = (
+            select(Quiz)
+            .options(
+                selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+            )
+            .order_by(Quiz.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
+
     async def get_quiz(self, quiz_id: uuid.UUID | str) -> Quiz | None:
         quiz_uuid = uuid.UUID(str(quiz_id))
         stmt = (
@@ -125,6 +138,19 @@ class QuizService:
         await self.session.flush()
         await self.session.refresh(assignment)
         return assignment
+
+    async def list_assigned_quizzes(self, student_id: uuid.UUID | str) -> Sequence[QuizAssignment]:
+        student_uuid = uuid.UUID(str(student_id))
+        stmt = (
+            select(QuizAssignment)
+            .where(QuizAssignment.student_id == student_uuid)
+            .options(
+                joinedload(QuizAssignment.quiz).selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+            )
+            .order_by(QuizAssignment.created_at.desc())
+        )
+        result = await self.session.execute(stmt)
+        return result.scalars().all()
         
     async def delete_quiz(self, teacher_id: uuid.UUID | str, quiz_id: uuid.UUID | str) -> bool:
         teacher_uuid = uuid.UUID(str(teacher_id))
