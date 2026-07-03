@@ -81,14 +81,28 @@
 
 
     <main class="analytics-content">
+      <!-- Stale Data Warning Banner -->
+      <div v-if="analyticsStore.isStale" class="stale-warning-banner">
+        <div class="warning-message">
+          <span class="warning-icon">⚠️</span>
+          <span class="warning-text">
+            Соңғы сақталған деректер көрсетілуде (жаңартылған уақыты: {{ formatLastUpdated(analyticsStore.lastUpdated) }}). Желі қосылымын тексеріңіз.
+          </span>
+        </div>
+        <button @click="refreshDataSilently" :disabled="analyticsStore.loading" class="refresh-btn">
+          <span v-if="analyticsStore.loading" class="btn-spinner"></span>
+          {{ analyticsStore.loading ? 'Жаңартылуда...' : 'Қазір жаңарту' }}
+        </button>
+      </div>
+
       <!-- Loading State -->
-      <div v-if="analyticsStore.loading" class="loading-state">
+      <div v-if="analyticsStore.loading && !analyticsStore.overview" class="loading-state">
         <div class="spinner"></div>
         <p>Жүктелуде...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="analyticsStore.error" class="error-state">
+      <div v-else-if="analyticsStore.error && !analyticsStore.overview" class="error-state">
         <p class="error-title">Талдауды жүктеу қатесі:</p>
         <p>{{ analyticsStore.error }}</p>
       </div>
@@ -466,10 +480,10 @@ const loadTeacherQuickviewQuestions = async (requestVersion = teacherQuickviewRe
   }
 }
 
-// Load teacher aggregate analytics
 const loadTeacherQuickviewAnalytics = async () => {
   const requestVersion = ++teacherQuickviewRequestVersion
   analyticsStore.loading = true
+  analyticsStore.isStale = false
   studentAnalyticsLoading.value = true
   quickviewQuestionsLoaded.value = false
   quickviewQuestionsLoading.value = false
@@ -533,6 +547,7 @@ const onStudentChange = async () => {
   // Teacher selected a specific student
   studentAnalyticsLoading.value = true
   analyticsStore.loading = true
+  analyticsStore.isStale = false
   try {
     const includeQuestions = shouldLoadQuestionData()
     const resp = await teacherApi.getStudentAnalytics(selectedStudentId.value, includeQuestions)
@@ -840,6 +855,26 @@ watch(selectedDateOption, async () => {
     }
   }
 })
+
+const formatLastUpdated = (timestamp: number | null): string => {
+  if (!timestamp) return 'белгісіз уақыт'
+  const date = new Date(timestamp)
+  return date.toLocaleTimeString() + ' ' + date.toLocaleDateString()
+}
+
+const refreshDataSilently = async () => {
+  try {
+    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill') {
+      await onStudentChange()
+    } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid' || activeTab.value === 'scores_skill')) {
+      await loadTeacherQuickviewAnalytics()
+    } else {
+      await loadOwnAnalytics(true)
+    }
+  } catch (err) {
+    console.error('Failed to manually refresh analytics:', err)
+  }
+}
 
 onMounted(async () => {
   // Initialize date range from saved state
@@ -1706,6 +1741,80 @@ onMounted(async () => {
   table,
   tr {
     page-break-inside: avoid;
+  }
+}
+
+/* Warning Banner Styles */
+.stale-warning-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  background-color: #fff9e6;
+  border: 1px solid #ffeeba;
+  border-radius: 8px;
+  padding: 12px 20px;
+  margin-bottom: 24px;
+  color: #856404;
+  font-size: 14px;
+}
+
+.warning-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.warning-icon {
+  font-size: 18px;
+}
+
+.warning-text {
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #ffc107;
+  color: #212529;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+  white-space: nowrap;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background-color: #e0a800;
+}
+
+.refresh-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.refresh-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #212529;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinner-spin 0.8s linear infinite;
+}
+
+@keyframes spinner-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 </style>

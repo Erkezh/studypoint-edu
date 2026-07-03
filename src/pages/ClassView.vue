@@ -7,9 +7,9 @@
     <main class="flex flex-row">
       <!-- Боковая панель с классами (IXL style - Vertical on all devices) -->
       <aside class="relative shrink-0 w-10 md:w-12 z-30 pt-4 select-none">
-        <nav class="flex flex-col gap-1 w-full items-center px-0 pb-10 overflow-y-auto scrollbar-hide h-[calc(100vh-120px)] md:h-auto sticky top-24">
+        <nav class="flex flex-col gap-1 w-full items-center px-0 pb-10 overflow-y-auto md:overflow-visible scrollbar-hide h-[calc(100vh-120px)] md:h-auto sticky top-24">
           <div v-for="(grade, index) in grades" :key="grade.number"
-               class="relative shrink-0 h-10 md:h-14 w-10 md:w-full">
+               class="relative shrink-0 h-10 md:h-14 w-10 md:w-full hover:z-50">
 
             <!-- Tab Button -->
             <button @click="navigateToGrade(grade.number)"

@@ -29,11 +29,9 @@ export const useAuthStore = defineStore('auth', () => {
       getRefreshToken: () => refreshToken.value,
       setAccessToken: (token: string) => {
         accessToken.value = token
-        localStorage.setItem('access_token', token)
       },
       setRefreshToken: (token: string) => {
         refreshToken.value = token
-        localStorage.setItem('refresh_token', token)
       },
       logout: () => {
         accessToken.value = null
@@ -44,33 +42,54 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // Инициализация store из localStorage
+  const initPromise = ref<Promise<void> | null>(null)
+
+  // Инициализация store из localStorage (fallback) и silent refresh из cookie
   const init = () => {
-    if (initialized.value) {
-      syncAuthBridge()
-      return
-    }
+    if (initPromise.value) return initPromise.value
 
-    const storedToken = localStorage.getItem('access_token')
-    const storedRefresh = localStorage.getItem('refresh_token')
-    const storedUser = localStorage.getItem('user')
+    initPromise.value = (async () => {
+      const storedToken = localStorage.getItem('access_token')
+      const storedRefresh = localStorage.getItem('refresh_token')
+      const storedUser = localStorage.getItem('user')
 
-    if (storedToken) {
-      accessToken.value = storedToken
-    }
-    if (storedRefresh) {
-      refreshToken.value = storedRefresh
-    }
-    if (storedUser) {
-      try {
-        user.value = JSON.parse(storedUser)
-      } catch (e) {
-        console.error('Failed to parse stored user', e)
+      if (storedToken) {
+        accessToken.value = storedToken
       }
-    }
+      if (storedRefresh) {
+        refreshToken.value = storedRefresh
+      }
+      if (storedUser) {
+        try {
+          user.value = JSON.parse(storedUser)
+        } catch (e) {
+          console.error('Failed to parse stored user', e)
+        }
+      }
 
-    initialized.value = true
-    syncAuthBridge()
+      // Если токенов в localStorage нет, пробуем бесшумно обновиться через cookie
+      if (!accessToken.value) {
+        try {
+          const response = await authApi.refresh({ refresh_token: '' })
+          if (response.data) {
+            accessToken.value = response.data.access_token
+            refreshToken.value = response.data.refresh_token
+            user.value = response.data.user
+          }
+        } catch (e) {
+          // Бесшумное обновление не удалось (кука отсутствует или истекла) - это нормально для гостей
+          accessToken.value = null
+          refreshToken.value = null
+          user.value = null
+          clearStoredAuth()
+        }
+      }
+
+      initialized.value = true
+      syncAuthBridge()
+    })()
+
+    return initPromise.value
   }
 
   const login = async (credentials: AuthLoginRequest) => {
@@ -82,8 +101,8 @@ export const useAuthStore = defineStore('auth', () => {
         refreshToken.value = response.data.refresh_token
         user.value = response.data.user
 
-        localStorage.setItem('access_token', response.data.access_token)
-        localStorage.setItem('refresh_token', response.data.refresh_token)
+        // НЕ сохраняем access_token и refresh_token в localStorage.
+        // Сохраняем только объект пользователя для быстрого UI рендеринга.
         localStorage.setItem('user', JSON.stringify(response.data.user))
         syncAuthBridge()
 
@@ -114,8 +133,7 @@ export const useAuthStore = defineStore('auth', () => {
         refreshToken.value = response.data.refresh_token
         user.value = response.data.user
 
-        localStorage.setItem('access_token', response.data.access_token)
-        localStorage.setItem('refresh_token', response.data.refresh_token)
+        // НЕ сохраняем access_token и refresh_token в localStorage.
         localStorage.setItem('user', JSON.stringify(response.data.user))
         syncAuthBridge()
 
@@ -173,13 +191,11 @@ export const useAuthStore = defineStore('auth', () => {
 
   const setAccessToken = (token: string) => {
     accessToken.value = token
-    localStorage.setItem('access_token', token)
     syncAuthBridge()
   }
 
   const setRefreshToken = (token: string) => {
     refreshToken.value = token
-    localStorage.setItem('refresh_token', token)
     syncAuthBridge()
   }
 

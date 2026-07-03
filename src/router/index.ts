@@ -193,6 +193,9 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
 
+  // Ждем завершения инициализации (бесшумного обновления токена через cookie)
+  await authStore.init()
+
   // Если роут требует аутентификацию
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {

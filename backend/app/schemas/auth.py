@@ -57,7 +57,7 @@ class AuthLoginRequest(BaseModel):
 
 
 class AuthRefreshRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class SwitchProfileRequest(BaseModel):
@@ -65,7 +65,7 @@ class SwitchProfileRequest(BaseModel):
 
 
 class LogoutRequest(BaseModel):
-    refresh_token: str
+    refresh_token: str | None = None
 
 
 class AuthTokensResponse(BaseModel):

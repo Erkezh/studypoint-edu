@@ -42,14 +42,12 @@ const apiClient: AxiosInstance = axios.create({
 // Interceptor для добавления access token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Получаем токен из localStorage напрямую
-    // authStore может быть не инициализирован на момент запроса
-    const token = localStorage.getItem('access_token')
+    // Получаем токен из Pinia store через bridge (или localStorage напрямую как fallback)
+    const authStore = (window as any).__authStore
+    const token = authStore ? authStore.getAccessToken() : localStorage.getItem('access_token')
     
-    // НЕ используем withCredentials, так как бэкенд возвращает Access-Control-Allow-Origin: *
-    // с Access-Control-Allow-Credentials: true, что недопустимо в браузере
-    // Токен отправляется через заголовок Authorization, а не через cookies
-    config.withCredentials = false
+    // Включаем withCredentials для автоматической передачи/приема cookies (например, refresh_token)
+    config.withCredentials = true
     
     // Добавляем токен только если он есть
     // Для пробных вопросов можно создавать сессию без токена (если бэкенд поддерживает)
@@ -126,12 +124,14 @@ apiClient.interceptors.response.use(
 
     // Обработка 401 - токен истёк
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Получаем refresh token из localStorage
-      const refreshToken = localStorage.getItem('refresh_token')
+      // Получаем refresh token из Pinia store через bridge (или localStorage напрямую как fallback)
+      const authStore = (window as any).__authStore
+      const refreshToken = authStore ? authStore.getRefreshToken() : localStorage.getItem('refresh_token')
+      const hasAuthHeader = !!originalRequest.headers?.Authorization
 
-      // Если нет refresh token, просто возвращаем ошибку без попытки refresh
-      // Пользователь может продолжать использовать пробные вопросы без авторизации
-      if (!refreshToken) {
+      // Если нет локального refresh_token и в запросе не было Authorization заголовка,
+      // просто возвращаем ошибку без попытки refresh.
+      if (!refreshToken && !hasAuthHeader) {
         // Для пробных вопросов не требуется авторизация, просто возвращаем ошибку
         // Но устанавливаем понятное сообщение
         const errorData: any = error.response?.data
@@ -178,17 +178,16 @@ apiClient.interceptors.response.use(
       isRefreshing = true
 
       try {
-
         // Пробуем обновить токен
         const response = await axios.post<ApiResponse>(
           `${API_BASE_URL}/api/v1/auth/refresh`,
-          { refresh_token: refreshToken }
+          { refresh_token: refreshToken || '' },
+          { withCredentials: true }
         )
 
         const newAccessToken = response.data?.data?.access_token
 
         if (newAccessToken) {
-          localStorage.setItem('access_token', newAccessToken)
           const authStore = (window as any).__authStore
           if (authStore) {
             authStore.setAccessToken(newAccessToken)
