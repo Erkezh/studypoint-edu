@@ -174,8 +174,7 @@ const getGradeCardClasses = (gradeNumber: number) => {
 }
 
 const formatGradeTitle = (grade: { number: number; title: string }) => {
-  if (grade.number <= 0) return grade.title
-  return `Grade ${grade.title}`
+  return grade.title
 }
 
 const getGradeBadgeTextClass = (label: string) => {

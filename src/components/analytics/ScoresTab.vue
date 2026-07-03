@@ -38,7 +38,7 @@
       <div class="scores-grade-picker">
         <div class="scores-grade-dropdown" @click="showScoreGradeDropdown = !showScoreGradeDropdown">
           <span class="scores-grade-label">СЫНЫП:</span>
-          <span class="scores-grade-value">{{ scoreGrade === -1 ? 'Pre-K' : scoreGrade }}</span>
+          <span class="scores-grade-value">{{ scoreGrade === -1 ? 'Б-а' : scoreGrade === 0 ? 'Б' : scoreGrade }}</span>
           <span class="scores-grade-caret">▼</span>
         </div>
         <div v-if="showScoreGradeDropdown" class="scores-grade-options">
@@ -102,7 +102,7 @@
     <!-- Scores Table: ALL skills grouped by topic -->
     <div class="skills-table-section">
       <h3 class="section-subtitle">Ұпайлар</h3>
-      <p class="scores-viewing-hint">{{ scoreGrade >= 0 ? scoreGrade + ' сынып' : 'Pre-K' }} бойынша дағдылар</p>
+      <p class="scores-viewing-hint">{{ scoreGrade === -1 ? 'Б-а' : scoreGrade === 0 ? 'Б' : scoreGrade + ' сынып' }} бойынша дағдылар</p>
       <div v-if="allGradeSkills.length === 0" class="empty-state">
         <p>Бұл сыныпта дағдылар табылмады</p>
       </div>
@@ -195,8 +195,8 @@ const scoreDateRange = ref<string>('all')
 const showScoreGradeDropdown = ref(false)
 
 const gradeOptions = [
-  { value: -1, label: 'Pre-K' },
-  { value: 0, label: '0' },
+  { value: -1, label: 'Б-а' },
+  { value: 0, label: 'Б' },
   { value: 1, label: '1' },
   { value: 2, label: '2' },
   { value: 3, label: '3' },

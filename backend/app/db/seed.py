@@ -25,16 +25,31 @@ logger = logging.getLogger(__name__)
 
 def _default_grade_specs() -> list[dict[str, int | str]]:
     specs: list[dict[str, int | str]] = [
-        {"id": 1, "number": -1, "label": "Pre-K", "title": "Pre-K", "description": ""},
-        {"id": 2, "number": 0, "label": "K", "title": "K", "description": ""},
+        {"id": 1, "number": -1, "label": "Б-а", "title": "Балабақша алды", "description": ""},
+        {"id": 2, "number": 0, "label": "Б", "title": "Балабақша", "description": ""},
     ]
+    kazakh_numbers = {
+        1: "Бірінші",
+        2: "Екінші",
+        3: "Үшінші",
+        4: "Төртінші",
+        5: "Бесінші",
+        6: "Алтыншы",
+        7: "Жетінші",
+        8: "Сегізінші",
+        9: "Тоғызыншы",
+        10: "Оныншы",
+        11: "Он бірінші",
+        12: "Он екінші",
+    }
     for number in range(1, 13):
+        title = f"{kazakh_numbers[number]} сынып"
         specs.append(
             {
                 "id": number + 2,
                 "number": number,
                 "label": str(number),
-                "title": str(number),
+                "title": title,
                 "description": "",
             }
         )
@@ -119,10 +134,9 @@ async def _ensure_grades(session: AsyncSession) -> None:
             )
             continue
 
-        if _should_apply_default_label(grade):
-            grade.label = str(spec["label"])
-        if not (grade.title or "").strip():
-            grade.title = str(spec["title"])
+        # Force update label and title to keep them in sync with defaults
+        grade.label = str(spec["label"])
+        grade.title = str(spec["title"])
         if grade.description is None:
             grade.description = str(spec["description"])
 

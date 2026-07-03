@@ -267,8 +267,8 @@ const formatTimeShort = (seconds: number): string => {
 
 const formatGradeLabel = (grade: number | undefined): string => {
   if (grade === undefined || grade === null) return ''
-  if (grade === -1) return 'Pre-K'
-  if (grade === 0) return 'Мектепалды'
+  if (grade === -1) return 'Б-а'
+  if (grade === 0) return 'Б'
   return `${grade} сынып`
 }
 

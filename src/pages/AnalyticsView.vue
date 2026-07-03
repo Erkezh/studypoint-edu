@@ -46,14 +46,14 @@
           <p class="dropdown-title">Осы сыныптардағы дағдыларды көрсету:</p>
           <div class="grade-range-selectors">
             <select v-model="gradeFrom" class="filter-select small">
-              <option :value="-1">Pre-K</option>
-              <option :value="0">0</option>
+              <option :value="-1">Б-а</option>
+              <option :value="0">Б</option>
               <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
             </select>
             <span class="range-separator">-</span>
             <select v-model="gradeTo" class="filter-select small">
-              <option :value="-1">Pre-K</option>
-              <option :value="0">0</option>
+              <option :value="-1">Б-а</option>
+              <option :value="0">Б</option>
               <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
             </select>
           </div>
@@ -642,11 +642,13 @@ const skillNames = computed(() => {
 
 // Grade range label for display
 const gradeRangeLabel = computed(() => {
-  const formatGrade = (g: number) => g === -1 ? 'Pre-K' : g
+  const formatGrade = (g: number) => g === -1 ? 'Б-а' : g === 0 ? 'Б' : g
   if (gradeFrom.value === -1 && gradeTo.value === 12) {
     return 'Барлық сыныптар'
   }
   if (gradeFrom.value === gradeTo.value) {
+    if (gradeFrom.value === -1) return 'Б-а (Балабақша алды)'
+    if (gradeFrom.value === 0) return 'Б (Балабақша)'
     return `${formatGrade(gradeFrom.value)} сынып`
   }
   return `${formatGrade(gradeFrom.value)} - ${formatGrade(gradeTo.value)} сынып`

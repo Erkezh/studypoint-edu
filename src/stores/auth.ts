@@ -22,7 +22,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const syncAuthBridge = () => {
-    ;(window as any).__authStore = {
+    ;(window as unknown as Record<string, unknown>).__authStore = {
       accessToken: computed(() => accessToken.value),
       refreshToken: computed(() => refreshToken.value),
       getAccessToken: () => accessToken.value,
@@ -76,7 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
             refreshToken.value = response.data.refresh_token
             user.value = response.data.user
           }
-        } catch (e) {
+        } catch {
           // Бесшумное обновление не удалось (кука отсутствует или истекла) - это нормально для гостей
           accessToken.value = null
           refreshToken.value = null
@@ -101,8 +101,9 @@ export const useAuthStore = defineStore('auth', () => {
         refreshToken.value = response.data.refresh_token
         user.value = response.data.user
 
-        // НЕ сохраняем access_token и refresh_token в localStorage.
-        // Сохраняем только объект пользователя для быстрого UI рендеринга.
+        // Сохраняем токены и объект пользователя в localStorage для персистентности сессии.
+        localStorage.setItem('access_token', response.data.access_token)
+        localStorage.setItem('refresh_token', response.data.refresh_token)
         localStorage.setItem('user', JSON.stringify(response.data.user))
         syncAuthBridge()
 
@@ -116,7 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       throw new Error('Invalid response from server')
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error)
       throw error
     } finally {
@@ -133,7 +134,9 @@ export const useAuthStore = defineStore('auth', () => {
         refreshToken.value = response.data.refresh_token
         user.value = response.data.user
 
-        // НЕ сохраняем access_token и refresh_token в localStorage.
+        // Сохраняем токены и объект пользователя в localStorage для персистентности сессии.
+        localStorage.setItem('access_token', response.data.access_token)
+        localStorage.setItem('refresh_token', response.data.refresh_token)
         localStorage.setItem('user', JSON.stringify(response.data.user))
         syncAuthBridge()
 
@@ -141,7 +144,7 @@ export const useAuthStore = defineStore('auth', () => {
       }
 
       throw new Error('Invalid response from server')
-    } catch (error: any) {
+    } catch (error) {
       console.error('Register error:', error)
       throw error
     } finally {

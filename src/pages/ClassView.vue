@@ -671,7 +671,7 @@ const onSkillSaved = async () => {
 // Обновляем статистику при возврате на страницу
 onActivated(async () => {
   if (catalogStore.skills.length > 0) {
-    await loadAllSkillStats()
+    await loadAllSkillStats(catalogStore.skills)
   }
   // Обновляем текущий класс из props, если изменился
   const gradeNumber = parseInt(props.gradeId, 10)

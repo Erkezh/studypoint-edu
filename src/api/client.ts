@@ -1,7 +1,30 @@
 import axios, { type AxiosInstance, AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { v4 as uuidv4 } from 'uuid'
-import type { ApiResponse } from '@/types/api'
+import type { ApiResponse, AuthTokensResponse } from '@/types/api'
 import { API_BASE_URL } from '@/config/api'
+
+interface AuthStoreBridge {
+  getAccessToken: () => string | null
+  getRefreshToken: () => string | null
+  setAccessToken: (token: string) => void
+  setRefreshToken: (token: string) => void
+  logout: () => void
+}
+
+interface ApiErrorDetail {
+  message?: string
+  error?: {
+    message?: string
+  }
+}
+
+interface ApiErrorResponse {
+  detail?: string | ApiErrorDetail | Array<{ msg?: string; message?: string }>
+  message?: string
+  error?: {
+    message?: string
+  }
+}
 
 // Генерация UUID для idempotency
 let idempotencyKey: string | null = null
@@ -43,7 +66,7 @@ const apiClient: AxiosInstance = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Получаем токен из Pinia store через bridge (или localStorage напрямую как fallback)
-    const authStore = (window as any).__authStore
+    const authStore = (window as unknown as Record<string, unknown>).__authStore as AuthStoreBridge | undefined
     const token = authStore ? authStore.getAccessToken() : localStorage.getItem('access_token')
     
     // Включаем withCredentials для автоматической передачи/приема cookies (например, refresh_token)
@@ -102,8 +125,8 @@ apiClient.interceptors.request.use(
 // Interceptor для обработки ответов и refresh token
 let isRefreshing = false
 let failedQueue: Array<{
-  resolve: (value?: any) => void
-  reject: (reason?: any) => void
+  resolve: (value: string | null) => void
+  reject: (reason: Error) => void
 }> = []
 
 const processQueue = (error: Error | null, token: string | null = null) => {
@@ -125,7 +148,7 @@ apiClient.interceptors.response.use(
     // Обработка 401 - токен истёк
     if (error.response?.status === 401 && !originalRequest._retry) {
       // Получаем refresh token из Pinia store через bridge (или localStorage напрямую как fallback)
-      const authStore = (window as any).__authStore
+      const authStore = (window as unknown as Record<string, unknown>).__authStore as AuthStoreBridge | undefined
       const refreshToken = authStore ? authStore.getRefreshToken() : localStorage.getItem('refresh_token')
       const hasAuthHeader = !!originalRequest.headers?.Authorization
 
@@ -134,15 +157,18 @@ apiClient.interceptors.response.use(
       if (!refreshToken && !hasAuthHeader) {
         // Для пробных вопросов не требуется авторизация, просто возвращаем ошибку
         // Но устанавливаем понятное сообщение
-        const errorData: any = error.response?.data
+        const errorData = error.response?.data as ApiErrorResponse | undefined
         let message = 'Бұл әрекетті орындау үшін авторизация қажет. Жүйеге кіріңіз.'
         if (errorData?.detail) {
           if (typeof errorData.detail === 'string') {
             message = errorData.detail
-          } else if (errorData.detail.message) {
-            message = errorData.detail.message
-          } else if (errorData.detail.error?.message) {
-            message = errorData.detail.error.message
+          } else if (typeof errorData.detail === 'object' && !Array.isArray(errorData.detail)) {
+            const detailObj = errorData.detail as ApiErrorDetail
+            if (detailObj.message) {
+              message = detailObj.message
+            } else if (detailObj.error?.message) {
+              message = detailObj.error.message
+            }
           }
         }
         
@@ -160,7 +186,7 @@ apiClient.interceptors.response.use(
 
       if (isRefreshing) {
         // Если уже идёт refresh, добавляем запрос в очередь
-        return new Promise((resolve, reject) => {
+        return new Promise<string | null>((resolve, reject) => {
           failedQueue.push({ resolve, reject })
         })
           .then((token) => {
@@ -179,7 +205,7 @@ apiClient.interceptors.response.use(
 
       try {
         // Пробуем обновить токен
-        const response = await axios.post<ApiResponse>(
+        const response = await axios.post<ApiResponse<AuthTokensResponse>>(
           `${API_BASE_URL}/api/v1/auth/refresh`,
           { refresh_token: refreshToken || '' },
           { withCredentials: true }
@@ -188,7 +214,7 @@ apiClient.interceptors.response.use(
         const newAccessToken = response.data?.data?.access_token
 
         if (newAccessToken) {
-          const authStore = (window as any).__authStore
+          const authStore = (window as unknown as Record<string, unknown>).__authStore as AuthStoreBridge | undefined
           if (authStore) {
             authStore.setAccessToken(newAccessToken)
           }
@@ -208,20 +234,23 @@ apiClient.interceptors.response.use(
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
-        const authStore = (window as any).__authStore
+        const authStore = (window as unknown as Record<string, unknown>).__authStore as AuthStoreBridge | undefined
         if (authStore) {
           authStore.logout()
         }
         // Устанавливаем понятное сообщение об ошибке
-        const refreshErrorData: any = (refreshError as any).response?.data
+        const refreshErrorData = (refreshError as AxiosError).response?.data as ApiErrorResponse | undefined
         let message = 'Сессия мерзімі өтті. Жүйеге қайта кіріңіз.'
         if (refreshErrorData?.detail) {
           if (typeof refreshErrorData.detail === 'string') {
             message = refreshErrorData.detail
-          } else if (refreshErrorData.detail.message) {
-            message = refreshErrorData.detail.message
-          } else if (refreshErrorData.detail.error?.message) {
-            message = refreshErrorData.detail.error.message
+          } else if (typeof refreshErrorData.detail === 'object' && !Array.isArray(refreshErrorData.detail)) {
+            const detailObj = refreshErrorData.detail as ApiErrorDetail
+            if (detailObj.message) {
+              message = detailObj.message
+            } else if (detailObj.error?.message) {
+              message = detailObj.error.message
+            }
           }
         } else if (refreshErrorData?.message) {
           message = refreshErrorData.message
@@ -242,7 +271,7 @@ apiClient.interceptors.response.use(
             } 
           })
         }
-        ;(refreshError as any).message = message
+        ;(refreshError as Error).message = message
         // НЕ редиректим на логин - пользователь может продолжать без авторизации
         return Promise.reject(refreshError)
       } finally {
@@ -252,13 +281,16 @@ apiClient.interceptors.response.use(
 
     // Обработка 401 - если не обработано выше (например, после неудачного refresh)
     if (error.response?.status === 401) {
-      const errorData: any = error.response.data
+      const errorData = error.response.data as ApiErrorResponse | undefined
       let message = 'Бұл әрекетті орындау үшін авторизация қажет.'
       if (errorData?.detail) {
         if (typeof errorData.detail === 'string') {
           message = errorData.detail
-        } else if (errorData.detail.message) {
-          message = errorData.detail.message
+        } else if (typeof errorData.detail === 'object' && !Array.isArray(errorData.detail)) {
+          const detailObj = errorData.detail as ApiErrorDetail
+          if (detailObj.message) {
+            message = detailObj.message
+          }
         }
       } else if (errorData?.message) {
         message = errorData.message
@@ -270,7 +302,7 @@ apiClient.interceptors.response.use(
 
     // Обработка 400 - Bad Request (показываем детали ошибки)
     if (error.response?.status === 400) {
-      const errorData: any = error.response.data
+      const errorData = error.response.data as ApiErrorResponse | undefined
       debugError('API 400 Error:', {
         url: originalRequest.url,
         method: originalRequest.method,
@@ -282,11 +314,14 @@ apiClient.interceptors.response.use(
       let message = 'Bad Request'
       if (errorData?.detail) {
         if (Array.isArray(errorData.detail)) {
-          message = errorData.detail.map((e: any) => e.msg || e.message).join(', ')
+          message = errorData.detail.map((e) => e.msg || e.message || '').filter(Boolean).join(', ')
         } else if (typeof errorData.detail === 'string') {
           message = errorData.detail
-        } else if (errorData.detail.message) {
-          message = errorData.detail.message
+        } else if (typeof errorData.detail === 'object') {
+          const detailObj = errorData.detail as ApiErrorDetail
+          if (detailObj.message) {
+            message = detailObj.message
+          }
         }
       } else if (errorData?.message) {
         message = errorData.message
@@ -299,43 +334,46 @@ apiClient.interceptors.response.use(
 
     // Обработка 402 - Payment Required
     if (error.response?.status === 402) {
-      const errorData: any = error.response.data
-      const message = errorData?.detail || errorData?.message || 'Практиканы жалғастыру үшін жазылым қажет. Профильде жазылымды рәсімдеңіз.'
+      const errorData = error.response.data as ApiErrorResponse | undefined
+      const message = (errorData?.detail && typeof errorData.detail === 'string' ? errorData.detail : '') || errorData?.message || 'Практиканы жалғастыру үшін жазылым қажет. Профильде жазылымды рәсімдеңіз.'
       error.message = message
     }
 
     // Обработка 403 - Forbidden
     if (error.response?.status === 403) {
-      const errorData: any = error.response.data
-      const message = errorData?.detail || errorData?.message || 'Қол жеткізу тыйым салынған. Сізде бұл әрекетті орындау құқығы жоқ.'
+      const errorData = error.response.data as ApiErrorResponse | undefined
+      const message = (errorData?.detail && typeof errorData.detail === 'string' ? errorData.detail : '') || errorData?.message || 'Қол жеткізу тыйым салынған. Сізде бұл әрекетті орындау құқығы жоқ.'
       error.message = message
     }
 
     // Обработка 404 - Not Found
     if (error.response?.status === 404) {
-      const errorData: any = error.response.data
-      const message = errorData?.detail || errorData?.message || 'Ресурс табылмады.'
+      const errorData = error.response.data as ApiErrorResponse | undefined
+      const message = (errorData?.detail && typeof errorData.detail === 'string' ? errorData.detail : '') || errorData?.message || 'Ресурс табылмады.'
       error.message = message
     }
 
     // Обработка 409 - Conflict
     if (error.response?.status === 409) {
-      const errorData: any = error.response.data
-      const message = errorData?.detail || errorData?.message || 'Қайшылық: операция орындалуы мүмкін емес. Сессия бұрын аяқталған немесе өзгертілген болуы мүмкін.'
+      const errorData = error.response.data as ApiErrorResponse | undefined
+      const message = (errorData?.detail && typeof errorData.detail === 'string' ? errorData.detail : '') || errorData?.message || 'Қайшылық: операция орындалуы мүмкін емес. Сессия бұрын аяқталған немесе өзгертілген болуы мүмкін.'
       error.message = message
     }
 
     // Обработка 422 - Unprocessable Entity (Validation Error)
     if (error.response?.status === 422) {
-      const errorData: any = error.response.data
+      const errorData = error.response.data as ApiErrorResponse | undefined
       let message = 'Деректерді валидациялау қатесі'
       if (errorData?.detail) {
         if (Array.isArray(errorData.detail)) {
-          message = errorData.detail.map((e: any) => e.msg || e.message).join(', ')
+          message = errorData.detail.map((e) => e.msg || e.message || '').filter(Boolean).join(', ')
         } else if (typeof errorData.detail === 'string') {
           message = errorData.detail
-        } else if (errorData.detail.message) {
-          message = errorData.detail.message
+        } else if (typeof errorData.detail === 'object') {
+          const detailObj = errorData.detail as ApiErrorDetail
+          if (detailObj.message) {
+            message = detailObj.message
+          }
         }
       } else if (errorData?.message) {
         message = errorData.message
@@ -354,8 +392,8 @@ apiClient.interceptors.response.use(
 
     // Обработка 500+ - Server Error
     if (error.response?.status && error.response.status >= 500) {
-      const errorData: any = error.response.data
-      const message = errorData?.detail || errorData?.message || 'Сервер қатесі. Кейінірек қайталап көріңіз.'
+      const errorData = error.response.data as ApiErrorResponse | undefined
+      const message = (errorData?.detail && typeof errorData.detail === 'string' ? errorData.detail : '') || errorData?.message || 'Сервер қатесі. Кейінірек қайталап көріңіз.'
       error.message = message
     }
 
@@ -397,8 +435,6 @@ apiClient.interceptors.response.use(
 )
 
 // Rate limiting: локальный счётчик для ограничения частоты отправки ответов
-const attemptQueue: Array<() => Promise<any>> = []
-const isProcessingAttempts = false
 const MAX_ATTEMPTS_PER_MINUTE = 30
 const attemptTimestamps: number[] = []
 

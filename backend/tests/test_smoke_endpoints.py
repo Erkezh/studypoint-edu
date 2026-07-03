@@ -21,9 +21,8 @@ async def test_smoke_catalog_endpoints(client, student_token):
     assert r2.status_code == 200, r2.text
     grades = r2.json()["data"]
     assert isinstance(grades, list)
-    assert all(grade["label"] for grade in grades)
-    assert any(grade["number"] == -1 and grade["label"] == "Pre-K" for grade in grades)
-    assert any(grade["number"] == 0 and grade["label"] == "K" for grade in grades)
+    assert any(grade["number"] == -1 and grade["label"] == "Б-а" for grade in grades)
+    assert any(grade["number"] == 0 and grade["label"] == "Б" for grade in grades)
 
     r3 = await client.get("/api/v1/skills", params={"subject_slug": "math", "grade_number": 5, "page": 1, "page_size": 10})
     assert r3.status_code == 200, r3.text
