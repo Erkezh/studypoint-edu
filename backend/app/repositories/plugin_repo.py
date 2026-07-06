@@ -20,12 +20,14 @@ class PluginRepository:
     async def get_by_plugin_id(self, plugin_id: str) -> Plugin | None:
         """Получить плагин по plugin_id (из manifest)."""
         stmt = select(Plugin).where(Plugin.plugin_id == plugin_id).order_by(Plugin.created_at.desc())
-        return (await self.session.execute(stmt)).scalar_one_or_none()
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
     async def get_by_plugin_id_and_version(self, plugin_id: str, version: str) -> Plugin | None:
         """Получить плагин по plugin_id и версии."""
-        stmt = select(Plugin).where(Plugin.plugin_id == plugin_id, Plugin.version == version)
-        return (await self.session.execute(stmt)).scalar_one_or_none()
+        stmt = select(Plugin).where(Plugin.plugin_id == plugin_id, Plugin.version == version).order_by(Plugin.created_at.desc())
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
 
     async def list_all(self) -> list[Plugin]:
         """Получить список всех плагинов."""

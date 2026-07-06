@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.awards import AwardEvent
 from app.models.plugin import Plugin
 from app.models.quiz import Quiz, QuizAssignment, QuizQuestion
+from app.models.notification import Notification
 
 __all__ = [
     "Assignment",
@@ -18,6 +19,7 @@ __all__ = [
     "Classroom",
     "Enrollment",
     "Grade",
+    "Notification",
     "PracticeAttempt",
     "PracticeSession",
     "ProgressSnapshot",

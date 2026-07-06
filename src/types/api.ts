@@ -258,3 +258,13 @@ export interface AnalyticsOverview {
   [key: string]: unknown
 }
 export type AnalyticsSkills = Array<Record<string, unknown>>
+
+// Notification types
+export interface NotificationResponse {
+  id: string
+  user_id: string
+  title: string
+  content: string
+  is_read: boolean
+  created_at: string
+}

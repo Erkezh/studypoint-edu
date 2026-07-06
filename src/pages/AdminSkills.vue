@@ -270,7 +270,7 @@ const loadPluginPreview = async (skill: SkillListItem) => {
     const pluginName = skill.title
     const plugin = plugins.find((p: Record<string, unknown>) => p.name === pluginName) || plugins.find((p: Record<string, unknown>) => typeof skill.code === 'string' && skill.code.includes(p.plugin_id as string))
     if (plugin) {
-      const base = `${API_BASE_URL}/static/plugins/${plugin.plugin_id}/${plugin.version}/${plugin.entry}`
+      const base = `/static/modules/${plugin.plugin_id}/${plugin.version}/${plugin.entry}`
       previewUrl.value = base.includes('?') ? `${base}&embed=1` : `${base}?embed=1`
       showingPreview.value = true
     } else {

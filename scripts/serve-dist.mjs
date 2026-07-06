@@ -75,7 +75,9 @@ function shouldProxy(pathname) {
     pathname === '/redoc' ||
     pathname.startsWith('/redoc/') ||
     pathname === '/static/plugins' ||
-    pathname.startsWith('/static/plugins/')
+    pathname.startsWith('/static/plugins/') ||
+    pathname === '/static/modules' ||
+    pathname.startsWith('/static/modules/')
   )
 }
 

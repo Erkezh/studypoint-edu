@@ -6,7 +6,7 @@
     <div class="bg-gray-100 border-b border-gray-200 py-2 px-4 shrink-0 overflow-x-auto whitespace-nowrap scrollbar-hide">
       <div class="container mx-auto">
         <nav class="flex items-center text-xs sm:text-sm text-gray-600">
-          <router-link to="/my-ixl" class="hover:text-green-600 shrink-0">Менің IXL</router-link>
+          <router-link to="/my-cabinet" class="hover:text-green-600 shrink-0">{{ isChildWithParent ? 'Менің кабинетім' : 'Менің IXL' }}</router-link>
           <span class="mx-2 text-gray-400 shrink-0">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </span>
@@ -25,7 +25,7 @@
       <!-- Error -->
       <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl text-center max-w-2xl mx-auto mt-8">
         <p class="text-lg font-medium">{{ error }}</p>
-        <button @click="$router.push('/my-ixl')" class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+        <button @click="$router.push('/my-cabinet')" class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
           Артқа қайту
         </button>
       </div>
@@ -118,7 +118,7 @@
             
             <div class="mt-12 pt-6 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
               <span>Сұрақ: {{ currentIndex + 1 }} / {{ sortedQuestions.length }}</span>
-              <button @click="$router.push('/my-ixl')" class="hover:text-gray-800 transition-colors">Алдын ала шығу</button>
+              <button @click="$router.push('/my-cabinet')" class="hover:text-gray-800 transition-colors">Алдын ала шығу</button>
             </div>
           </div>
         </div>
@@ -198,7 +198,7 @@
              </div>
           </div>
 
-          <button @click="$router.push('/my-ixl')" 
+          <button @click="$router.push('/my-cabinet')" 
             class="px-8 py-3 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 transition-colors w-full sm:w-auto">
             Жалғастыру
           </button>
@@ -211,8 +211,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
+
+const authStore = useAuthStore()
+const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
 
 const props = defineProps<{
   quizId: string

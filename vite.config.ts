@@ -9,6 +9,10 @@ const apiProxy = {
     target: 'http://127.0.0.1:8001',
     changeOrigin: true,
   },
+  '/static/modules': {
+    target: 'http://127.0.0.1:8001',
+    changeOrigin: true,
+  },
 }
 
 // https://vite.dev/config/

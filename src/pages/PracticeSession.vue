@@ -522,7 +522,7 @@ const pluginIframeSrc = computed(() => {
   const ver = q.data.plugin_version
   const entry = q.data.entry
   if (!id || !ver || !entry) return ''
-  return `${API_BASE_URL}/static/plugins/${id}/${ver}/${entry}?embed=1`
+  return `/static/modules/${id}/${ver}/${entry}?embed=1`
 })
 
 // Загрузка TSX файла и создание iframe содержимого
@@ -1228,6 +1228,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       // Сохраняем результат и показываем его
       lastResult.value = response
       showingResult.value = true
+      saveToRecentSessions()
       userAnswer.value = answer
 
       // Отправляем результат в iframe для PLUGIN
@@ -1453,6 +1454,29 @@ const pluginMessageHandler = (event: MessageEvent) => {
   }
 }
 
+const saveToRecentSessions = () => {
+  const session = practiceStore.currentSession
+  if (!session) return
+
+  const skillId = session.skill_id
+  const skill = catalogStore.skillDetails.get(skillId)
+  const title = skill?.title || (session as any).skill_title || (session as any).title || 'Тапсырма'
+
+  const data = {
+    id: session.id,
+    skillName: title,
+    correct: session.correct_count || 0,
+    total: session.questions_answered || 0,
+    date: new Date().toISOString()
+  }
+
+  try {
+    localStorage.setItem(`practice_result_${session.id}`, JSON.stringify(data))
+  } catch (err) {
+    console.error('Failed to save practice result to localStorage:', err)
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('message', pluginMessageHandler)
   try {
@@ -1460,6 +1484,11 @@ onMounted(async () => {
 
     // Загружаем статистику навыка для отображения предыдущего результата
     if (session?.skill_id) {
+      try {
+        await catalogStore.getSkill(session.skill_id)
+      } catch {
+        // Игнорируем
+      }
       try {
         const skillStats = await catalogStore.getSkillStats(session.skill_id)
         if (skillStats && skillStats.best_smartscore) {
@@ -1469,6 +1498,9 @@ onMounted(async () => {
         // Игнорируем ошибку загрузки статистики
       }
     }
+
+    // Сохраняем в недавние сессии при открытии
+    saveToRecentSessions()
 
     // Восстанавливаем время сессии
     if (session?.time_elapsed_sec !== undefined) {

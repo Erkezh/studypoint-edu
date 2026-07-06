@@ -254,7 +254,7 @@ export const adminApi = {
     const formData = new FormData()
     formData.append('file', file)
     const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
-      '/admin/plugins/upload',
+      '/admin/modules/upload',
       formData,
       {
         headers: {
@@ -267,7 +267,7 @@ export const adminApi = {
 
   async listPlugins(): Promise<ApiResponse<Array<Record<string, unknown>>>> {
     const response = await apiClient.get<ApiResponse<Array<Record<string, unknown>>>>(
-      '/admin/plugins'
+      '/admin/modules'
     )
     return response.data
   },
@@ -277,7 +277,7 @@ export const adminApi = {
     isPublished: boolean
   ): Promise<ApiResponse<Record<string, unknown>>> {
     const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
-      `/admin/plugins/${pluginId}/publish?is_published=${isPublished}`,
+      `/admin/modules/${pluginId}/publish?is_published=${isPublished}`,
       null
     )
     return response.data
@@ -285,7 +285,7 @@ export const adminApi = {
 
   async deletePlugin(pluginId: string): Promise<ApiResponse<Record<string, unknown>>> {
     const response = await apiClient.delete<ApiResponse<Record<string, unknown>>>(
-      `/admin/plugins/${pluginId}`
+      `/admin/modules/${pluginId}`
     )
     return response.data
   },
@@ -309,7 +309,7 @@ export const adminApi = {
     plugin_version?: string
   }): Promise<ApiResponse<Record<string, unknown>>> {
     const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
-      '/admin/plugins/add-to-test',
+      '/admin/modules/add-to-test',
       data
     )
     return response.data
@@ -329,7 +329,7 @@ export const adminApi = {
       formData.append('grade_id', gradeId.toString())
     }
     const response = await apiClient.post<ApiResponse<Record<string, unknown>>>(
-      '/admin/plugins/upload-tsx',
+      '/admin/modules/upload-tsx',
       formData,
       {
         headers: {
@@ -347,7 +347,7 @@ export const adminApi = {
     const formData = new FormData()
     formData.append('file', file)
     const response = await apiClient.put<ApiResponse<Record<string, unknown>>>(
-      `/admin/plugins/${pluginId}/update-tsx`,
+      `/admin/modules/${pluginId}/update-tsx`,
       formData,
       {
         headers: {

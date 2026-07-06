@@ -1,5 +1,5 @@
 <template>
-  <div class="my-ixl-page" :class="{ 'quizzes-bg': activeMainTab === 'quizzes' }">
+  <div class="my-ixl-page" :class="{ 'quizzes-bg': activeMainTab === 'quizzes' && !isChildWithParent }">
     <Header />
 
     <!-- Sub-tab navigation bar -->
@@ -17,6 +17,7 @@
           Басқару тақтасы
         </button>
         <button
+          v-if="!isChildWithParent"
           class="subtab-btn"
           :class="{ active: activeMainTab === 'quizzes' }"
           @click="activeMainTab = 'quizzes'"
@@ -66,7 +67,7 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
-                Мұғалімнен
+                {{ isChildWithParent ? 'Ата-анадан' : 'Мұғалімнен' }}
               </button>
               <button
                 class="work-tab"
@@ -93,8 +94,8 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                 </svg>
-                <p class="empty-title">Мұғалім тапсырма бермеген</p>
-                <p class="empty-sub">Мұғаліміңіз тапсырма бергенде осында көрінеді</p>
+                <p class="empty-title">{{ isChildWithParent ? 'Ата-ана тапсырма бермеген' : 'Мұғалім тапсырма бермеген' }}</p>
+                <p class="empty-sub">{{ isChildWithParent ? 'Ата-анаңыз тапсырма бергенде осында көрінеді' : 'Мұғаліміңіз тапсырма бергенде осында көрінеді' }}</p>
               </div>
 
               <div v-else class="quiz-list">
@@ -158,14 +159,13 @@
                   </div>
                   <div class="recent-info">
                     <div class="recent-name">{{ session.skillName }}</div>
-                    <div class="recent-meta">
-                      {{ session.correct }}/{{ session.total }} дұрыс ·
-                      {{ formatDate(session.date) }}
+                    <div class="recent-time">
+                      {{ getRelativeDateString(session.date) }}
                     </div>
                   </div>
-                  <div class="recent-score" :class="getScoreClass(session.correct, session.total)">
-                    {{ Math.round((session.correct / session.total) * 100) }}%
-                  </div>
+                  <button class="continue-btn" @click="continuePractice(session.id)">
+                    Жалғастыру →
+                  </button>
                 </div>
               </div>
             </div>
@@ -174,8 +174,8 @@
       </div>
     </div>
 
-    <!-- ==================== QUIZZES TAB ==================== -->
-    <div v-if="activeMainTab === 'quizzes'" class="quizzes-content">
+    <!-- ==================== QUIZZES TAB (only for non-family students) ==================== -->
+    <div v-if="activeMainTab === 'quizzes' && !isChildWithParent" class="quizzes-content">
       <div class="quizzes-header">
         <h1 class="quizzes-title">Квиздер</h1>
         <p class="quizzes-desc">
@@ -268,6 +268,9 @@ const router = useRouter()
 
 // Tabs
 const activeMainTab = ref<'dashboard' | 'quizzes'>('dashboard')
+
+// Family child detection
+const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
 const activeWorkTab = ref<'teacher' | 'recent'>('teacher')
 
 // Data
@@ -366,7 +369,11 @@ const goToQuizzes = () => {
 }
 
 const startQuiz = (quizId: string) => {
-  router.push(`/my-ixl/quiz/${quizId}`)
+  router.push(`/my-cabinet/quiz/${quizId}`)
+}
+
+const continuePractice = (sessionId: string) => {
+  router.push(`/practice/${sessionId}`)
 }
 
 const formatDate = (dateStr: string) => {
@@ -383,6 +390,26 @@ const formatDateFull = (dateStr: string) => {
   return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`
 }
 
+const getRelativeDateString = (dateStr: string) => {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const now = new Date()
+  
+  const dDate = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+  const nowDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  
+  const diffTime = nowDate.getTime() - dDate.getTime()
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays <= 0) {
+    return 'Бүгін'
+  } else if (diffDays === 1) {
+    return 'Кеше'
+  } else {
+    return `${diffDays} күн бұрын`
+  }
+}
+
 const getScoreClass = (correct: number, total: number): string => {
   const pct = total > 0 ? (correct / total) * 100 : 0
   if (pct >= 80) return 'score-high'
@@ -391,7 +418,9 @@ const getScoreClass = (correct: number, total: number): string => {
 }
 
 onMounted(async () => {
-  await fetchAssignedQuizzes()
+  if (!isChildWithParent.value) {
+    await fetchAssignedQuizzes()
+  }
   loadRecentSessions()
 })
 </script>
@@ -711,6 +740,30 @@ onMounted(async () => {
   font-size: 12px;
   color: #9ca3af;
   margin-top: 2px;
+}
+
+.recent-time {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.continue-btn {
+  background-color: #38b000;
+  color: white;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  border: none;
+}
+
+.continue-btn:hover {
+  background-color: #2d8a00;
 }
 
 .recent-score {

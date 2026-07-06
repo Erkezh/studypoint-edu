@@ -43,12 +43,21 @@ class AssignmentService:
         )
         await self.assignments.create(assignment)
         enrollments = await self.classrooms.list_enrollments(classroom.id)
+        from app.models.notification import Notification
         for enr in enrollments:
             self.session.add(
                 AssignmentStatusRow(
                     assignment_id=assignment.id,
                     student_id=enr.student_id,
                     status=AssignmentStatus.NOT_STARTED,
+                )
+            )
+            self.session.add(
+                Notification(
+                    user_id=enr.student_id,
+                    title="Жаңа тапсырма!",
+                    content=f"Мұғалім жаңа тапсырма жүктеді: '{skill.title}'. Өту мерзімі: {req.due_at.strftime('%Y-%m-%d') if req.due_at else 'көрсетілмеген'}.",
+                    is_read=False,
                 )
             )
         await self.session.flush()

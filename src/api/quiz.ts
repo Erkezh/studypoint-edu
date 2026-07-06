@@ -45,6 +45,9 @@ export interface QuizResponse {
             id: number
             prompt: string
             type: string
+            data?: Record<string, any>
+            correct_answer?: Record<string, any>
+            level?: number
         }
     }>
 }
