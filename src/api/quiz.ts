@@ -45,8 +45,8 @@ export interface QuizResponse {
             id: number
             prompt: string
             type: string
-            data?: Record<string, any>
-            correct_answer?: Record<string, any>
+            data?: Record<string, unknown>
+            correct_answer?: Record<string, unknown>
             level?: number
         }
     }>
@@ -83,7 +83,7 @@ export const quizApi = {
     },
 
     assignQuiz(payload: QuizAssignmentCreate) {
-        return apiClient.post<{ data: any }>('/teacher/quizzes/assign', payload)
+        return apiClient.post<{ data: unknown }>('/teacher/quizzes/assign', payload)
     },
 
     deleteQuiz(quizId: string) {

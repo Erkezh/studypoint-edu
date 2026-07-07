@@ -364,7 +364,7 @@ const fetchAssignedQuizzes = async () => {
   }
 }
 
-const goToQuizzes = () => {
+const goToQuizzes = () => { // eslint-disable-line @typescript-eslint/no-unused-vars
   activeMainTab.value = 'quizzes'
 }
 
@@ -410,7 +410,7 @@ const getRelativeDateString = (dateStr: string) => {
   }
 }
 
-const getScoreClass = (correct: number, total: number): string => {
+const getScoreClass = (correct: number, total: number): string => { // eslint-disable-line @typescript-eslint/no-unused-vars
   const pct = total > 0 ? (correct / total) * 100 : 0
   if (pct >= 80) return 'score-high'
   if (pct >= 50) return 'score-mid'

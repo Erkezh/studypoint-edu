@@ -31,7 +31,7 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-1 xl:grid-cols-[80px_1fr_400px] gap-6 items-start">
+      <div class="grid grid-cols-1 xl:grid-cols-[80px_1fr] gap-6 items-start">
         
         <!-- Left Question Navigator (Sidebar Index) -->
         <div class="hidden xl:flex flex-col gap-2 sticky top-6 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm items-center">
@@ -50,7 +50,7 @@
             {{ idx + 1 }}
           </button>
           <button 
-            @click="addNewQuestionSlot"
+            @click="openGeneratorPanel"
             class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-emerald-50 border border-dashed border-emerald-300 text-emerald-600 hover:bg-emerald-100 transition-all"
             title="Жаңа сұрақ ұяшығын қосу"
           >
@@ -60,47 +60,257 @@
 
         <!-- Main Panel: Cards list of added questions -->
         <div class="flex flex-col gap-6">
-          <!-- Selection & Preview Panel (Dynamic Generator Selection) -->
-          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4">
+
+          <!-- Empty placeholder when nothing added yet AND generator is closed -->
+          <div v-if="selectedQuestions.length === 0 && !showGeneratorPanel" class="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-400 shadow-sm">
+            <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+            <p class="font-semibold text-slate-700 mb-1">Сұрақтар әлі таңдалмаған</p>
+            <p class="text-xs">Жоғарыдағы сұрақтар генераторынан дағдыны таңдап, квизге сұрақтарды қосыңыз.</p>
+          </div>
+
+          <!-- List of Question Cards -->
+          <div v-if="selectedQuestions.length > 0" class="flex flex-col gap-6">
+            <div 
+              v-for="(q, idx) in selectedQuestions" 
+              :key="q.id" 
+              :id="`question-card-${idx}`"
+              class="question-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-200"
+              :class="{ 'ring-2 ring-emerald-500/20 border-emerald-500': activeQuestionIndex === idx }"
+              @click="activeQuestionIndex = idx"
+            >
+              <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                  <span class="font-bold text-emerald-600 text-sm">СҰРАҚ {{ idx + 1 }}</span>
+                  <span class="text-xs text-slate-400 font-medium">Дағды: {{ q.skill_title }}</span>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                  <!-- Skill / Difficulty info badge -->
+                  <span class="text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md">Деңгей {{ q.level }}</span>
+
+                  <button @click.stop="removeQuestionCard(idx)" class="text-slate-400 hover:text-rose-600 transition-colors" title="Сұрақты өшіру">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Question Content & Custom Options -->
+              <div class="p-6 space-y-4">
+                <div class="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                  <!-- Change skill in Card -->
+                  <div class="flex items-center gap-2 text-xs w-full md:w-auto">
+                    <span class="text-slate-500">Дағдыны ауыстыру:</span>
+                    <select :value="q.skill_id" @change="changeCardSkill(idx, Number(($event.target as HTMLSelectElement).value))" class="px-2.5 py-1 border border-slate-200 rounded bg-white font-medium flex-1 md:flex-none">
+                      <option v-for="s in skillsList" :key="(s as Record<string, unknown>).id as PropertyKey" :value="(s as Record<string, unknown>).id">{{ (s as Record<string, unknown>).title }}</option>
+                    </select>
+                  </div>
+
+                  <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+                    <!-- Change level in Card -->
+                    <div class="flex items-center gap-1.5 text-xs">
+                      <span class="text-slate-500">Деңгейі:</span>
+                      <select :value="q.level" @change="changeCardLevel(idx, Number(($event.target as HTMLSelectElement).value))" class="px-2 py-0.5 border border-slate-200 rounded bg-white">
+                        <option :value="1">Деңгей 1</option>
+                        <option :value="2">Деңгей 2</option>
+                        <option :value="3">Деңгей 3</option>
+                        <option :value="4">Деңгей 4</option>
+                      </select>
+                    </div>
+
+                    <!-- Regenerate specific question -->
+                    <button @click.stop="regenerateQuestionCard(idx)" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17m-.002 4l-.007-.04M16.5 12h.01" /></svg>
+                      Жаңа сұрақ генерациялау ↻
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Prompt -->
+                <div v-if="!isQuestionPlugin(q)" class="text-sm font-semibold text-slate-800" v-html="q.prompt"></div>
+
+                <!-- PLUGIN / INTERACTIVE -->
+                <div v-if="isQuestionPlugin(q)" class="space-y-3">
+                  <div class="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <iframe
+                      v-if="q.iframeSrcdoc || q.iframeSrc"
+                      :srcdoc="q.iframeSrcdoc || undefined"
+                      :src="q.iframeSrcdoc ? undefined : q.iframeSrc"
+                      :data-card-id="q.id"
+                      :style="{ height: (q.height || 500) + 'px' }"
+                      class="w-full border-0"
+                      sandbox="allow-scripts allow-same-origin"
+                      scrolling="no"
+                    ></iframe>
+                  </div>
+                  <div v-if="q.showAnswer" class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm space-y-1">
+                    <div class="flex items-center gap-1.5 font-bold text-emerald-700">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      Дұрыс жауабы:
+                    </div>
+                    <div class="font-semibold text-emerald-950 pl-5.5 text-base" v-html="q.correct_answer?.value || q.correct_answer?.choice || 'Көрсетілмеген'">
+                    </div>
+                    <div v-if="q.explanation" class="pl-5.5 text-xs text-slate-500 mt-2 border-t border-emerald-100/60 pt-1.5 leading-relaxed">
+                      <span class="font-semibold text-slate-600">Түсіндірме:</span> {{ q.explanation }}
+                    </div>
+                  </div>
+                </div>
+
+                <!-- MCQ Choices -->
+                <div v-else-if="q.type === 'MCQ'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div 
+                    v-for="(option, optIdx) in (q.data?.choices || q.data?.options || [])" 
+                    :key="optIdx"
+                    class="p-3 border rounded-lg text-xs flex items-center justify-between transition-colors"
+                    :class="[
+                      q.showAnswer && isOptionCorrect(q, option, optIdx)
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    ]"
+                  >
+                    <span v-html="formatMCQOption(option)"></span>
+                    <svg v-if="q.showAnswer && isOptionCorrect(q, option, optIdx)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                  </div>
+                </div>
+
+                <!-- NUMERIC/TEXT Answers -->
+                <div v-else class="p-3 border border-slate-200 bg-white rounded-lg inline-flex items-center gap-2 text-xs">
+                  <span class="text-slate-400 font-medium">Жауап өрісі</span>
+                  <span v-if="q.showAnswer" class="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Дұрыс мән: {{ q.correct_answer?.value || q.correct_answer?.choice || 'Көрсетілмеген' }}
+                  </span>
+                </div>
+
+                <!-- Card action bottom -->
+                <div class="flex justify-end pt-3 border-t border-slate-100">
+                  <button @click.stop="toggleCardAnswer(q)" class="text-xs text-slate-600 hover:text-slate-800 font-semibold flex items-center gap-1 border border-slate-300 rounded px-2.5 py-1.5 bg-white transition-colors">
+                    {{ q.showAnswer ? 'Жауапты жасыру' : 'Дұрыс жауабын көрсету' }}
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- ─── Generator Panel (shown when showGeneratorPanel = true) ─── -->
+          <div v-if="showGeneratorPanel" id="generator-panel" class="bg-white rounded-2xl border border-slate-100 shadow-sm">
+            <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4 rounded-t-2xl flex items-center justify-between">
               <h3 class="font-bold text-slate-800 text-base">Сұрақтар генераторы</h3>
+              <button v-if="selectedQuestions.length > 0" @click="showGeneratorPanel = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold leading-none">&times;</button>
             </div>
             
-            <div class="p-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-              <!-- Grade selection -->
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-500">Сынып</label>
-                <select v-model="selectedGrade" @change="onGradeChange" class="px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500 transition-colors">
-                  <option :value="null" disabled>Сынып таңдаңыз</option>
-                  <option v-for="g in grades" :key="g.id" :value="g.number">{{ g.number }} сынып</option>
-                </select>
-              </div>
+            <div class="p-6">
+              <div class="relative w-full max-w-2xl mx-auto dropdown-container-el">
+                <label class="block text-xs font-semibold text-slate-500 mb-2 text-center">Квиз дағдысын таңдау (Дағдыны таңдаңыз)</label>
+                <button 
+                  @click="showSkillDropdown = !showSkillDropdown" 
+                  class="w-full flex items-center justify-between px-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm md:text-base cursor-pointer"
+                >
+                  <span class="truncate">
+                    {{ selectedSkill ? `${selectedSkill.code} - ${selectedSkill.title}` : 'Дағдыны таңдау үшін басыңыз...' }}
+                  </span>
+                  <svg class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': showSkillDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                </button>
 
-              <!-- Theme selection -->
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-500">Тақырып (Тема)</label>
-                <select v-model="selectedTheme" @change="onThemeChange" :disabled="!selectedGrade" class="px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50 disabled:text-slate-400">
-                  <option :value="null">Барлығы</option>
-                  <option v-for="t in parentThemes" :key="t.id" :value="t">{{ t.title }}</option>
-                </select>
-              </div>
+                <!-- CUSTOM HIERARCHICAL DROPDOWN PANEL -->
+                <div v-if="showSkillDropdown" class="absolute z-20 top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl p-5 min-w-[320px] max-h-[420px] overflow-y-auto space-y-4">
+                  <!-- Header / Breadcrumb / Back button -->
+                  <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
+                    <button v-if="dropdownStep !== 'grade'" @click="goBackDropdown" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                      Артқа
+                    </button>
+                    <span v-else class="text-xs font-bold text-slate-400">Бастапқы бет</span>
 
-              <!-- Subtheme selection -->
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-500">Кіші тақырып (Подтема)</label>
-                <select v-model="selectedSubtheme" @change="onSubthemeChange" :disabled="!selectedTheme" class="px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50 disabled:text-slate-400">
-                  <option :value="null">Барлығы</option>
-                  <option v-for="t in childSubthemes" :key="t.id" :value="t">{{ t.title }}</option>
-                </select>
-              </div>
+                    <!-- Breadcrumbs -->
+                    <span class="text-xs font-semibold text-slate-500 truncate max-w-[200px]">
+                      <span v-if="selectedGrade">{{ selectedGrade }} сынып</span>
+                    </span>
+                  </div>
 
-              <!-- Skill selection -->
-              <div class="flex flex-col gap-1.5">
-                <label class="text-xs font-semibold text-slate-500">Дағды (Скилл)</label>
-                <select v-model="selectedSkill" @change="onSkillChange" :disabled="skillsList.length === 0" class="px-3 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500 transition-colors disabled:bg-slate-50 disabled:text-slate-400">
-                  <option :value="null" disabled>Дағды таңдаңыз</option>
-                  <option v-for="s in skillsList" :key="s.id" :value="s">{{ s.code }} - {{ s.title }}</option>
-                </select>
+                  <!-- STEP 1: GRADE SELECT -->
+                  <div v-if="dropdownStep === 'grade'" class="space-y-3">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Сыныпты таңдаңыз</h4>
+                    <div class="grid grid-cols-3 gap-2">
+                      <button 
+                        v-for="g in grades" 
+                        :key="g.id" 
+                        @click="selectDropdownGrade(g.number)"
+                        class="px-3 py-2 text-xs border rounded-lg bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 font-semibold text-slate-700 transition-colors cursor-pointer"
+                      >
+                        {{ g.number }} сынып
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- STEP 2: COMPLETE INLINE HIERARCHICAL CATALOG -->
+                  <div v-else-if="dropdownStep === 'catalog'" class="space-y-4">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Тақырып пен дағдыны таңдаңыз</h4>
+                    
+                    <div v-if="catalogGroups.groups.length === 0 && catalogGroups.orphaned.length === 0" class="py-6 text-center text-xs text-slate-400">
+                      Дағдылар табылмады.
+                    </div>
+
+                    <div class="space-y-4 max-h-[300px] overflow-y-auto pr-1">
+                      <!-- Grouped Themes & Subthemes -->
+                      <div v-for="group in catalogGroups.groups" :key="group.theme.id" class="space-y-2">
+                        <!-- Theme Header -->
+                        <h5 class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
+                          {{ group.theme.title }}
+                        </h5>
+                        
+                        <!-- Direct Skills under theme -->
+                        <div v-if="group.directSkills.length > 0" class="space-y-1 pl-2">
+                          <button 
+                            v-for="skill in group.directSkills" 
+                            :key="skill.id" 
+                            @click="selectDropdownSkill(skill)"
+                            class="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                          >
+                            <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
+                            <span>{{ skill.title }}</span>
+                          </button>
+                        </div>
+
+                        <!-- Subthemes and their skills -->
+                        <div v-for="sub in group.subthemes" :key="sub.subtheme.id" class="space-y-1 pl-2">
+                          <h6 class="text-[11px] font-bold text-slate-500 mt-2 mb-1">
+                            {{ sub.subtheme.title }}
+                          </h6>
+                          
+                          <div class="space-y-1 pl-2">
+                            <button 
+                              v-for="skill in sub.skills" 
+                              :key="skill.id" 
+                              @click="selectDropdownSkill(skill)"
+                              class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-emerald-50 text-xs font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                            >
+                              <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
+                              <span>{{ skill.title }}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- Orphaned/Other Skills -->
+                      <div v-if="catalogGroups.orphaned.length > 0" class="space-y-2">
+                        <h5 class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
+                          Басқа дағдылар (Other Skills)
+                        </h5>
+                        <div class="space-y-1 pl-2">
+                          <button 
+                            v-for="skill in catalogGroups.orphaned" 
+                            :key="skill.id" 
+                            @click="selectDropdownSkill(skill)"
+                            class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-emerald-50 text-xs font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                          >
+                            <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
+                            <span>{{ skill.title }}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -139,12 +349,26 @@
 
                 <div v-else class="space-y-4">
                   <!-- Prompt -->
-                  <div class="text-sm font-semibold text-slate-800" v-html="previewQuestion.prompt"></div>
+                  <div v-if="!isQuestionPlugin(previewQuestion)" class="text-sm font-semibold text-slate-800" v-html="previewQuestion.prompt"></div>
+
+                  <!-- PLUGIN / INTERACTIVE -->
+                  <div v-if="isQuestionPlugin(previewQuestion)" class="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
+                    <iframe
+                      v-if="previewIframeSrcdoc || previewIframeSrc"
+                      :srcdoc="previewIframeSrcdoc || undefined"
+                      :src="previewIframeSrcdoc ? undefined : previewIframeSrc"
+                      data-preview-iframe="true"
+                      :style="{ height: previewIframeHeight + 'px' }"
+                      class="w-full border-0"
+                      sandbox="allow-scripts allow-same-origin"
+                      scrolling="no"
+                    ></iframe>
+                  </div>
 
                   <!-- MCQ Choices -->
-                  <div v-if="previewQuestion.type === 'MCQ'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div v-else-if="previewQuestion.type === 'MCQ'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div 
-                      v-for="(option, index) in (previewQuestion.data?.choices || previewQuestion.data?.options || [])" 
+                      v-for="(option, index) in ((previewQuestion.data as Record<string, unknown>)?.choices as unknown[] || (previewQuestion.data as Record<string, unknown>)?.options as unknown[] || [])" 
                       :key="index"
                       class="p-3 border rounded-lg text-xs transition-all flex items-center justify-between"
                       :class="[
@@ -162,7 +386,7 @@
                   <div v-else class="p-3 border border-slate-200 bg-white rounded-lg inline-flex items-center gap-2 text-xs">
                     <span class="text-slate-400 font-medium">Жауап өрісі</span>
                     <span v-if="showPreviewAnswer" class="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Дұрыс мән: {{ previewQuestion.correct_answer?.value || previewQuestion.correct_answer?.choice || 'Көрсетілмеген' }}
+                      Дұрыс мән: {{ (previewQuestion.correct_answer as Record<string, unknown>)?.value || (previewQuestion.correct_answer as Record<string, unknown>)?.choice || 'Көрсетілмеген' }}
                     </span>
                   </div>
 
@@ -179,9 +403,9 @@
                       </button>
 
                       <div class="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white">
-                        <button @click="previewCount = Math.max(1, previewCount - 1)" class="w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded text-slate-600 font-bold">-</button>
+                        <button type="button" @click.prevent="previewCount = Math.max(1, previewCount - 1)" class="w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded text-slate-600 font-bold">-</button>
                         <span class="w-6 text-center text-sm font-bold text-slate-700">{{ previewCount }}</span>
-                        <button @click="previewCount = Math.min(filteredPoolQuestions.length || 1, previewCount + 1)" class="w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded text-slate-600 font-bold">+</button>
+                        <button type="button" @click.prevent="previewCount = Math.min(20, previewCount + 1)" class="w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded text-slate-600 font-bold">+</button>
                       </div>
 
                       <button 
@@ -199,143 +423,18 @@
             </div>
           </div>
 
-          <!-- Empty placeholder list -->
-          <div v-if="selectedQuestions.length === 0" class="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-400 shadow-sm">
-            <svg class="w-12 h-12 text-slate-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-            <p class="font-semibold text-slate-700 mb-1">Сұрақтар әлі таңдалмаған</p>
-            <p class="text-xs">Жоғарыдағы сұрақтар генераторынан дағдыны таңдап, квизге сұрақтарды қосыңыз.</p>
-          </div>
-
-          <!-- List of Question Cards -->
-          <div v-else class="flex flex-col gap-6">
-            <div 
-              v-for="(q, idx) in selectedQuestions" 
-              :key="q.id" 
-              :id="`question-card-${idx}`"
-              class="question-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-200"
-              :class="{ 'ring-2 ring-emerald-500/20 border-emerald-500': activeQuestionIndex === idx }"
-              @click="activeQuestionIndex = idx"
-            >
-              <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-3.5 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <span class="font-bold text-emerald-600 text-sm">СҰРАҚ {{ idx + 1 }}</span>
-                  <span class="text-xs text-slate-400 font-medium">Дағды: {{ q.skill_title }}</span>
-                </div>
-                
-                <div class="flex items-center gap-3">
-                  <!-- Skill / Difficulty info badge -->
-                  <span class="text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md">Деңгей {{ q.level }}</span>
-
-                  <button @click.stop="removeQuestionCard(idx)" class="text-slate-400 hover:text-rose-600 transition-colors" title="Сұрақты өшіру">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Question Content & Custom Options -->
-              <div class="p-6 space-y-4">
-                <div class="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-slate-100 pb-4 mb-4">
-                  <!-- Change skill in Card -->
-                  <div class="flex items-center gap-2 text-xs w-full md:w-auto">
-                    <span class="text-slate-500">Дағдыны ауыстыру:</span>
-                    <select :value="q.skill_id" @change="changeCardSkill(idx, Number(($event.target as HTMLSelectElement).value))" class="px-2.5 py-1 border border-slate-200 rounded bg-white font-medium flex-1 md:flex-none">
-                      <option v-for="s in skillsList" :key="s.id" :value="s.id">{{ s.title }}</option>
-                    </select>
-                  </div>
-
-                  <div class="flex items-center gap-3 w-full md:w-auto justify-end">
-                    <!-- Change level in Card -->
-                    <div class="flex items-center gap-1.5 text-xs">
-                      <span class="text-slate-500">Деңгейі:</span>
-                      <select :value="q.level" @change="changeCardLevel(idx, Number(($event.target as HTMLSelectElement).value))" class="px-2 py-0.5 border border-slate-200 rounded bg-white">
-                        <option :value="1">Деңгей 1</option>
-                        <option :value="2">Деңгей 2</option>
-                        <option :value="3">Деңгей 3</option>
-                        <option :value="4">Деңгей 4</option>
-                      </select>
-                    </div>
-
-                    <!-- Regenerate specific question -->
-                    <button @click.stop="regenerateQuestionCard(idx)" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17m-.002 4l-.007-.04M16.5 12h.01" /></svg>
-                      Жаңа сұрақ генерациялау ↻
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Prompt -->
-                <div class="text-sm font-semibold text-slate-800" v-html="q.prompt"></div>
-
-                <!-- MCQ Choices -->
-                <div v-if="q.type === 'MCQ'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div 
-                    v-for="(option, optIdx) in (q.data?.choices || q.data?.options || [])" 
-                    :key="optIdx"
-                    class="p-3 border rounded-lg text-xs flex items-center justify-between transition-colors"
-                    :class="[
-                      q.showAnswer && isOptionCorrect(q, option, optIdx)
-                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold'
-                        : 'border-slate-200 bg-white text-slate-700'
-                    ]"
-                  >
-                    <span v-html="formatMCQOption(option)"></span>
-                    <svg v-if="q.showAnswer && isOptionCorrect(q, option, optIdx)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                  </div>
-                </div>
-
-                <!-- NUMERIC/TEXT Answers -->
-                <div v-else class="p-3 border border-slate-200 bg-white rounded-lg inline-flex items-center gap-2 text-xs">
-                  <span class="text-slate-400 font-medium">Жауап өрісі</span>
-                  <span v-if="q.showAnswer" class="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Дұрыс мән: {{ q.correct_answer?.value || q.correct_answer?.choice || 'Көрсетілмеген' }}
-                  </span>
-                </div>
-
-                <!-- Card action bottom -->
-                <div class="flex justify-end pt-3 border-t border-slate-100">
-                  <button @click.stop="q.showAnswer = !q.showAnswer" class="text-xs text-slate-600 hover:text-slate-800 font-semibold flex items-center gap-1 border border-slate-300 rounded px-2.5 py-1.5 bg-white transition-colors">
-                    {{ q.showAnswer ? 'Жауапты жасыру' : 'Дұрыс жауабын көрсету' }}
-                  </button>
-                </div>
-
-              </div>
-            </div>
-          </div>
+          <!-- ─── Add More Questions button (shown after questions are added and generator is hidden) ─── -->
+          <button
+            v-if="!showGeneratorPanel"
+            @click="openGeneratorPanel"
+            class="flex items-center justify-center gap-3 w-full py-5 border-2 border-dashed border-emerald-300 rounded-2xl text-emerald-600 hover:bg-emerald-50 hover:border-emerald-400 transition-all font-bold text-sm group"
+          >
+            <span class="w-9 h-9 rounded-full bg-emerald-100 group-hover:bg-emerald-200 flex items-center justify-center text-xl font-bold transition-colors">+</span>
+            Жаңа дағды таңдап сұрақ қосу
+          </button>
 
         </div>
 
-        <!-- Sidebar Right: Info & stats summary -->
-        <div class="sticky top-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-          <div>
-            <h3 class="font-bold text-slate-800 text-sm mb-1">Квиз жиынтығы</h3>
-            <p class="text-xs text-slate-400">Квиз құрамы мен негізгі мәліметтері</p>
-          </div>
-
-          <div class="divide-y divide-slate-100 text-xs">
-            <div class="py-2.5 flex justify-between">
-              <span class="text-slate-500">Квиз атауы:</span>
-              <span class="font-semibold text-slate-800 truncate max-w-[200px]">{{ quizName || '—' }}</span>
-            </div>
-            <div class="py-2.5 flex justify-between">
-              <span class="text-slate-500">Сұрақтар саны:</span>
-              <span class="font-bold text-emerald-600">{{ selectedQuestions.length }} сұрақ</span>
-            </div>
-            <div class="py-2.5 flex justify-between">
-              <span class="text-slate-500">Сынып:</span>
-              <span class="font-semibold text-slate-800">{{ selectedGrade ? `${selectedGrade}-сынып` : 'Таңдалмаған' }}</span>
-            </div>
-          </div>
-
-          <div class="pt-4">
-            <button 
-              @click="nextStep" 
-              :disabled="!quizName.trim() || selectedQuestions.length === 0"
-              class="w-full py-3 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-100 text-white disabled:text-slate-400 font-bold rounded-xl text-sm transition-all shadow-sm shadow-emerald-500/10 cursor-pointer disabled:cursor-not-allowed text-center"
-            >
-              Қарау және жариялау
-            </button>
-          </div>
-        </div>
 
       </div>
     </div>
@@ -470,18 +569,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { useTeacherStore } from '@/stores/teacher'
 import { useQuizStore } from '@/stores/quiz'
 import { teacherApi } from '@/api/teacher'
 import { QuizQuestionOrder, QuizResultVisibility, QuizEndType } from '@/api/quiz'
+import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
 const emit = defineEmits(['cancel', 'created'])
 
 const props = defineProps({
   initialQuiz: {
-    type: Object as () => any | null,
+    type: Object as () => Record<string, unknown> | null,
     default: null
   }
 })
@@ -495,20 +595,151 @@ const quizName = ref('')
 
 // Catalog Selections
 const selectedGrade = ref<number | null>(null)
-const selectedTheme = ref<any | null>(null)
-const selectedSubtheme = ref<any | null>(null)
-const selectedSkill = ref<any | null>(null)
+const selectedTheme = ref<Record<string, unknown> | null>(null)
+const selectedSubtheme = ref<Record<string, unknown> | null>(null)
+const selectedSkill = ref<Record<string, unknown> | null>(null)
+
+// Hierarchical Dropdown state
+const showSkillDropdown = ref(false)
+const dropdownStep = ref<'grade' | 'catalog'>('grade')
+
+// Compute nested catalog groups: Themes -> Subthemes -> Skills & direct skills
+const catalogGroups = computed(() => {
+  const currentSkills = catalogStore.skills
+  const allTopics = catalogStore.topics
+  
+  // Find top level themes (parent_id is null)
+  const topThemes = allTopics.filter(t => !t.parent_id).sort((a, b) => a.order - b.order)
+  
+  const groups: Array<{
+    theme: ReturnType<typeof allTopics.filter>[number]
+    subthemes: Array<{
+      subtheme: ReturnType<typeof allTopics.filter>[number]
+      skills: ReturnType<typeof currentSkills.filter>
+    }>
+    directSkills: ReturnType<typeof currentSkills.filter>
+  }> = []
+  
+  const accountedSkillIds = new Set<number>()
+  
+  topThemes.forEach(theme => {
+    // Find subthemes under this theme
+    const subthemes = allTopics.filter(t => t.parent_id === theme.id).sort((a, b) => a.order - b.order)
+    const subthemeList: { subtheme: ReturnType<typeof allTopics.filter>[number]; skills: ReturnType<typeof currentSkills.filter> }[] = []
+    
+    subthemes.forEach(sub => {
+      const subSkills = currentSkills.filter(s => s.topic_id === sub.id)
+      if (subSkills.length > 0) {
+        subthemeList.push({
+          subtheme: sub,
+          skills: subSkills
+        })
+        subSkills.forEach(s => accountedSkillIds.add(s.id))
+      }
+    })
+    
+    // Direct skills belonging to this theme directly
+    const directSkills = currentSkills.filter(s => s.topic_id === theme.id)
+    directSkills.forEach(s => accountedSkillIds.add(s.id))
+    
+    if (subthemeList.length > 0 || directSkills.length > 0) {
+      groups.push({
+        theme,
+        subthemes: subthemeList,
+        directSkills
+      })
+    }
+  })
+  
+  // Skills with no theme or topic_id that doesn't match any theme/subtheme
+  const orphanedSkills = currentSkills.filter(s => !accountedSkillIds.has(s.id))
+  
+  return {
+    groups,
+    orphaned: orphanedSkills
+  }
+})
+
+const selectDropdownGrade = async (gradeNum: number) => {
+  selectedGrade.value = gradeNum
+  selectedSkill.value = null
+  poolQuestions.value = []
+  previewQuestion.value = null
+  
+  loadingQuestions.value = true
+  try {
+    await catalogStore.getSkills({ grade_number: gradeNum, page_size: 500 })
+    dropdownStep.value = 'catalog'
+  } catch (err) {
+    console.error('Failed to get skills for grade:', err)
+  } finally {
+    loadingQuestions.value = false
+  }
+}
+
+const selectDropdownSkill = async (skill: Record<string, unknown>) => {
+  selectedSkill.value = skill
+  showSkillDropdown.value = false
+  
+  loadingQuestions.value = true
+  poolQuestions.value = []
+  previewQuestion.value = null
+  showPreviewAnswer.value = false
+  
+  try {
+    const res = await teacherApi.getSkillQuestions(skill.id)
+    poolQuestions.value = res.data?.data || []
+    selectNextPreviewQuestion()
+  } catch (err) {
+    console.error('Failed to get questions:', err)
+  } finally {
+    loadingQuestions.value = false
+  }
+}
+
+const goBackDropdown = () => {
+  if (dropdownStep.value === 'catalog') {
+    dropdownStep.value = 'grade'
+  }
+}
+
+const closeDropdownOnOutside = (e: MouseEvent) => {
+  const container = document.querySelector('.dropdown-container-el')
+  if (container && !container.contains(e.target as Node)) {
+    showSkillDropdown.value = false
+  }
+}
 
 // Skills, Question Pool and Preview states
-const skillsList = ref<any[]>([])
-const poolQuestions = ref<any[]>([])
+type QuestionCard = {
+  id: string
+  question_id: number
+  skill_id: number
+  skill_title: string
+  level: number
+  prompt: string
+  type: string
+  data: Record<string, unknown>
+  correct_answer: Record<string, unknown>
+  explanation: string
+  showAnswer: boolean
+  iframeSrcdoc: string
+  iframeSrc: string
+  height?: number
+}
+const skillsList = ref<Record<string, unknown>[]>([])
+const poolQuestions = ref<Record<string, unknown>[]>([])
 const previewDifficulty = ref<number>(1)
 const previewCount = ref<number>(1)
 const showPreviewAnswer = ref(false)
-const previewQuestion = ref<any | null>(null)
+const previewQuestion = ref<Record<string, unknown> | null>(null)
+const previewIframeSrcdoc = ref<string>('')
+const previewIframeSrc = ref<string>('')
+const previewIframeHeight = ref<number>(500)
 
 const activeQuestionIndex = ref<number | null>(null)
-const selectedQuestions = ref<any[]>([])
+const selectedQuestions = ref<QuestionCard[]>([])
+const showGeneratorPanel = ref(true)
 
 const loadingQuestions = ref(false)
 const loading = ref(false)
@@ -529,14 +760,16 @@ const grades = computed(() => catalogStore.grades)
 const students = computed(() => teacherStore.students)
 
 // Extract parent themes (parent_id is null)
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const parentThemes = computed(() => {
   return catalogStore.topics.filter(t => !t.parent_id)
 })
 
 // Extract subthemes for the active parent theme
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const childSubthemes = computed(() => {
   if (!selectedTheme.value) return []
-  return catalogStore.topics.filter(t => t.parent_id === selectedTheme.value.id)
+  return catalogStore.topics.filter((t) => t.parent_id === (selectedTheme.value as Record<string, unknown>)?.id)
 })
 
 const assignedStudentsLabel = computed(() => {
@@ -555,6 +788,7 @@ watch(selectAllStudents, (val) => {
 })
 
 // Catalog event handlers
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onGradeChange = async () => {
   selectedTheme.value = null
   selectedSubtheme.value = null
@@ -565,6 +799,7 @@ const onGradeChange = async () => {
   await loadSkills()
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onThemeChange = async () => {
   selectedSubtheme.value = null
   selectedSkill.value = null
@@ -573,6 +808,7 @@ const onThemeChange = async () => {
   await loadSkills()
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onSubthemeChange = async () => {
   selectedSkill.value = null
   poolQuestions.value = []
@@ -593,7 +829,7 @@ const loadSkills = async () => {
   try {
     skillsList.value = await catalogStore.getSkills({
       grade_number: selectedGrade.value,
-      topic_id: topicId,
+      topic_id: topicId as number | null | undefined,
       page_size: 500
     })
   } catch (err) {
@@ -601,6 +837,7 @@ const loadSkills = async () => {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const onSkillChange = async () => {
   if (!selectedSkill.value) return
   loadingQuestions.value = true
@@ -609,7 +846,7 @@ const onSkillChange = async () => {
   showPreviewAnswer.value = false
   
   try {
-    const res = await teacherApi.getSkillQuestions(selectedSkill.value.id)
+    const res = await teacherApi.getSkillQuestions(selectedSkill.value.id as number)
     poolQuestions.value = res.data?.data || []
     selectNextPreviewQuestion()
   } catch (err) {
@@ -640,92 +877,203 @@ const selectNextPreviewQuestion = () => {
     // Fallback: take any question from the pool if exact level not found
     previewQuestion.value = poolQuestions.value[0] || null
   }
+
+  if (previewQuestion.value) {
+    loadPreviewPlugin(previewQuestion.value)
+  } else {
+    previewIframeSrcdoc.value = ''
+  }
 }
 
 const regeneratePreview = () => {
   selectNextPreviewQuestion()
 }
 
+// Helper to check if a question is a plugin/interactive miniapp
+const isQuestionPlugin = (q: any): boolean => {
+  if (!q) return false
+  const type = q.type
+  if (type === 'PLUGIN' || type === 'INTERACTIVE') return true
+  const data = q.data
+  if (!data) return false
+  if (data.tsx_file || data.miniapp_file) return true
+  if (data.entry && String(data.entry).endsWith('.tsx')) return true
+  const pluginId = (data.plugin_id || q.prompt || '') as string
+  const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
+  if (knownTsxPlugins.some(name => pluginId.includes(name))) return true
+  return false
+}
+
+// URL or path to TSX file
+const getTsxFilePath = (q: Record<string, any> | null | undefined): string | null => {
+  if (!q || !q.data) return null
+  const data = q.data as Record<string, any>
+
+  if (data.tsx_file) return data.tsx_file
+  if (data.miniapp_file) return data.miniapp_file
+  
+  if (data.entry && String(data.entry).endsWith('.tsx')) {
+    const entry = String(data.entry)
+    const fileName = entry.includes('/') ? entry.split('/').pop() : entry
+    return `/miniapp-v2/exercieses/${fileName}`
+  }
+
+  const pluginId = (data.plugin_id || q.prompt || '') as string
+  const pluginFileMap: Record<string, string> = {
+    'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
+    'kazakh-rectangle-area-app-1': 'kazakh_rectangle_area_app.tsx',
+    'kazakh-rectangle-area': 'kazakh_rectangle_area_app.tsx',
+    'fraction-comparison': 'fraction_comparison_app.tsx',
+    'fractioncomparisonapp': 'fraction_comparison_app.tsx',
+  }
+
+  for (const [key, fileName] of Object.entries(pluginFileMap)) {
+    if (pluginId.includes(key) || pluginId.toLowerCase().includes(key.toLowerCase())) {
+      return `/miniapp-v2/exercieses/${fileName}`
+    }
+  }
+
+  return null
+}
+
+const getRegularPluginSrc = (q: Record<string, any> | null | undefined): string => {
+  if (!q || !q.data) return ''
+  const data = q.data as Record<string, any>
+  const id = data.plugin_id as string | undefined
+  const ver = data.plugin_version as string | undefined
+  const entry = data.entry as string | undefined
+  if (!id || !ver || !entry) return ''
+  return `/static/modules/${id}/${ver}/${entry}?embed=1`
+}
+
+// Load plugin iframe for a preview question
+const loadPreviewPlugin = async (q: Record<string, unknown>) => {
+  previewIframeSrcdoc.value = ''
+  previewIframeSrc.value = ''
+  if (!isQuestionPlugin(q)) return
+  
+  const tsxPath = getTsxFilePath(q)
+  if (tsxPath) {
+    try {
+      const resp = await fetch(tsxPath.startsWith('/') ? tsxPath : `/${tsxPath}`)
+      if (resp.ok) {
+        previewIframeSrcdoc.value = createTsxIframeHtml(await resp.text())
+      }
+    } catch (err) {
+      console.error('Failed to load preview TSX:', err)
+    }
+  } else {
+    previewIframeSrc.value = getRegularPluginSrc(q)
+  }
+}
+
+// Load plugin iframe for a card object
+const loadCardPlugin = async (card: QuestionCard) => {
+  card.iframeSrcdoc = ''
+  card.iframeSrc = ''
+  if (!isQuestionPlugin(card)) return
+  
+  const tsxPath = getTsxFilePath(card)
+  if (tsxPath) {
+    try {
+      const resp = await fetch(tsxPath.startsWith('/') ? tsxPath : `/${tsxPath}`)
+      if (resp.ok) {
+        card.iframeSrcdoc = createTsxIframeHtml(await resp.text())
+      }
+    } catch (err) {
+      console.error('Failed to load card TSX:', err)
+    }
+  } else {
+    card.iframeSrc = getRegularPluginSrc(card)
+  }
+}
+
 // Add N questions to the list of selected questions
-const addGeneratedQuestions = () => {
+const addGeneratedQuestions = async () => {
   if (!previewQuestion.value) return
   
   const pool = filteredPoolQuestions.value.length > 0 ? filteredPoolQuestions.value : poolQuestions.value
   if (!pool.length) return
 
-  // Select N unique questions from pool randomly
+  // Select N questions (allowing duplicates if pool size is less than requested count)
   const poolCopy = [...pool]
-  const countToAdd = Math.min(previewCount.value, poolCopy.length)
+  let tempPool = [...poolCopy]
   
-  const added: any[] = []
-  for (let i = 0; i < countToAdd; i++) {
-    const randIdx = Math.floor(Math.random() * poolCopy.length)
-    const q = poolCopy.splice(randIdx, 1)[0]
+  const added: QuestionCard[] = []
+  for (let i = 0; i < previewCount.value; i++) {
+    if (tempPool.length === 0) {
+      tempPool = [...poolCopy] // Refill to allow duplicates
+    }
+    if (tempPool.length === 0) break
+
+    const randIdx = Math.floor(Math.random() * tempPool.length)
+    const q = tempPool.splice(randIdx, 1)[0] as Record<string, unknown>
+    
+    // Generate a unique card ID for Vue :key rendering
+    const uniqueCardId = `card-${q.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
     
     // Add custom properties for cards
-    added.push({
-      id: q.id,
-      skill_id: selectedSkill.value.id,
-      skill_title: selectedSkill.value.title,
-      level: q.level,
-      prompt: q.prompt,
-      type: q.type,
-      data: q.data,
-      correct_answer: q.correct_answer,
-      explanation: q.explanation,
-      showAnswer: false
-    })
+    const cardObj: QuestionCard = {
+      id: uniqueCardId,
+      question_id: q.id as number,
+      skill_id: (selectedSkill.value as Record<string, unknown>).id as number,
+      skill_title: (selectedSkill.value as Record<string, unknown>).title as string,
+      level: q.level as number,
+      prompt: q.prompt as string,
+      type: q.type as string,
+      data: (q.data as Record<string, unknown>) || {},
+      correct_answer: (q.correct_answer as Record<string, unknown>) || {},
+      explanation: q.explanation as string,
+      showAnswer: false,
+      iframeSrcdoc: ''
+    }
+    await loadCardPlugin(cardObj)
+    added.push(cardObj)
   }
 
-  // Deduplicate and push
+  // Push all added questions to selected questions list
   added.forEach(q => {
-    if (!selectedQuestions.value.some(sq => sq.id === q.id)) {
-      selectedQuestions.value.push(q)
-    }
+    selectedQuestions.value.push(q)
   })
 
-  // Set active question
+  // Set active question to the last added one
   if (selectedQuestions.value.length > 0) {
     activeQuestionIndex.value = selectedQuestions.value.length - 1
   }
   
   previewCount.value = 1
+
+  // Collapse the generator panel after adding
+  showGeneratorPanel.value = false
+  // Reset preview state for next use
+  selectedSkill.value = null
+  poolQuestions.value = []
+  previewQuestion.value = null
+  previewIframeSrcdoc.value = ''
+  showPreviewAnswer.value = false
+  showSkillDropdown.value = false
+  dropdownStep.value = 'grade'
 }
 
 // Question navigation and actions in cards list
+// Opens the generator panel at the bottom (and resets to fresh state)
+const openGeneratorPanel = () => {
+  showGeneratorPanel.value = true
+  selectedSkill.value = null
+  poolQuestions.value = []
+  previewQuestion.value = null
+  previewIframeSrcdoc.value = ''
+  showPreviewAnswer.value = false
+  dropdownStep.value = 'grade'
+  // Scroll to generator panel
+  setTimeout(() => {
+    document.getElementById('generator-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, 50)
+}
+
 const scrollToQuestion = (idx: number) => {
   activeQuestionIndex.value = idx
   document.getElementById(`question-card-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-}
-
-const addNewQuestionSlot = () => {
-  // Try to copy the preview question, or the last selected question
-  if (previewQuestion.value && selectedSkill.value) {
-    const q = previewQuestion.value
-    selectedQuestions.value.push({
-      id: q.id,
-      skill_id: selectedSkill.value.id,
-      skill_title: selectedSkill.value.title,
-      level: q.level,
-      prompt: q.prompt,
-      type: q.type,
-      data: q.data,
-      correct_answer: q.correct_answer,
-      explanation: q.explanation,
-      showAnswer: false
-    })
-    activeQuestionIndex.value = selectedQuestions.value.length - 1
-  } else if (selectedQuestions.value.length > 0) {
-    const lastQ = selectedQuestions.value[selectedQuestions.value.length - 1]
-    selectedQuestions.value.push({
-      ...lastQ,
-      id: lastQ.id + Math.floor(Math.random() * 1000) + 1, // temporary unique key
-      showAnswer: false
-    })
-    activeQuestionIndex.value = selectedQuestions.value.length - 1
-  } else {
-    alert('Сұрақ қосу үшін алдымен оқу санатынан дағдыны таңдаңыз.')
-  }
 }
 
 const removeQuestionCard = (idx: number) => {
@@ -739,7 +1087,7 @@ const removeQuestionCard = (idx: number) => {
 
 // Change card specific skill
 const changeCardSkill = async (idx: number, skillId: number) => {
-  const skillObj = skillsList.value.find(s => s.id === skillId)
+  const skillObj = skillsList.value.find(s => (s as Record<string, unknown>).id === skillId) as Record<string, unknown> | undefined
   if (!skillObj) return
   
   try {
@@ -751,17 +1099,23 @@ const changeCardSkill = async (idx: number, skillId: number) => {
     const newQ = levelMatch[0] || questionsPool[0]
     
     if (newQ) {
-      selectedQuestions.value[idx] = {
+      const randSuffix = Math.floor(Math.random() * 1000000)
+      const cardObj: QuestionCard = {
         ...selectedQuestions.value[idx],
-        id: newQ.id,
+        id: `card-${newQ.id}-${Date.now()}-${randSuffix}`,
+        question_id: newQ.id,
         skill_id: skillId,
-        skill_title: skillObj.title,
+        skill_title: skillObj.title as string,
         prompt: newQ.prompt,
         type: newQ.type,
-        data: newQ.data,
-        correct_answer: newQ.correct_answer,
-        explanation: newQ.explanation
+        data: (newQ.data as Record<string, unknown>) || {},
+        correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
+        explanation: newQ.explanation,
+        iframeSrcdoc: '',
+        iframeSrc: ''
       }
+      await loadCardPlugin(cardObj)
+      selectedQuestions.value[idx] = cardObj
     } else {
       alert('Бұл дағдыда сұрақтар табылмады.')
     }
@@ -781,16 +1135,22 @@ const changeCardLevel = async (idx: number, level: number) => {
     const newQ = levelMatch[0] || questionsPool[0]
     
     if (newQ) {
-      selectedQuestions.value[idx] = {
+      const randSuffix = Math.floor(Math.random() * 1000000)
+      const cardObj: QuestionCard = {
         ...card,
-        id: newQ.id,
+        id: `card-${newQ.id}-${Date.now()}-${randSuffix}`,
+        question_id: newQ.id,
         level: newQ.level,
         prompt: newQ.prompt,
         type: newQ.type,
-        data: newQ.data,
-        correct_answer: newQ.correct_answer,
-        explanation: newQ.explanation
+        data: (newQ.data as Record<string, unknown>) || {},
+        correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
+        explanation: newQ.explanation,
+        iframeSrcdoc: '',
+        iframeSrc: ''
       }
+      await loadCardPlugin(cardObj)
+      selectedQuestions.value[idx] = cardObj
     } else {
       alert(`Таңдалған деңгей (${level}) үшін сұрақ табылмады.`);
     }
@@ -809,45 +1169,82 @@ const regenerateQuestionCard = async (idx: number) => {
     // Filter questions matching card level, exclude current question id if possible
     let matches = questionsPool.filter(q => q.level === card.level)
     if (matches.length > 1) {
-      matches = matches.filter(q => q.id !== card.id)
+      matches = matches.filter(q => q.id !== card.question_id)
     }
     
     const newQ = matches[Math.floor(Math.random() * matches.length)] || questionsPool[0]
     
     if (newQ) {
-      selectedQuestions.value[idx] = {
+      const randSuffix = Math.floor(Math.random() * 1000000)
+      const cardObj: QuestionCard = {
         ...card,
-        id: newQ.id,
+        id: `card-${newQ.id}-${Date.now()}-${randSuffix}`,
+        question_id: newQ.id,
         prompt: newQ.prompt,
         type: newQ.type,
-        data: newQ.data,
-        correct_answer: newQ.correct_answer,
-        explanation: newQ.explanation
+        data: (newQ.data as Record<string, unknown>) || {},
+        correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
+        explanation: newQ.explanation,
+        iframeSrcdoc: '',
+        iframeSrc: ''
       }
+      await loadCardPlugin(cardObj)
+      selectedQuestions.value[idx] = cardObj
     }
   } catch (err) {
     console.error('Failed to regenerate card question:', err)
   }
 }
 
+const toggleCardAnswer = (q: QuestionCard) => {
+  q.showAnswer = !q.showAnswer
+  
+  if (q.showAnswer) {
+    // Post show-answer details to dynamic iframes
+    setTimeout(() => {
+      const iframe = document.querySelector(`iframe[data-card-id="${q.id}"]`) as HTMLIFrameElement
+      if (iframe?.contentWindow) {
+        try {
+          iframe.contentWindow.postMessage({
+            type: 'SERVER_RESULT',
+            correct: true,
+            score: 1,
+            explanation: q.explanation || ''
+          }, '*')
+          iframe.contentWindow.postMessage({
+            type: 'SHOW_ANSWER',
+            value: true
+          }, '*')
+        } catch (e) {
+          console.warn('Failed to send show-answer message to iframe:', e)
+        }
+      }
+    }, 50)
+  }
+}
+
 // Option formatting and correct answer matching
-const formatMCQOption = (option: any) => {
+const formatMCQOption = (option: unknown) => {
   if (typeof option === 'object' && option !== null) {
-    return option.text || option.label || option.value || option.id || ''
+    const o = option as Record<string, unknown>
+    return o.text || o.label || o.value || o.id || ''
   }
   return String(option)
 }
 
-const isOptionCorrect = (question: any, option: any, index: number) => {
-  const correctChoice = question.correct_answer?.choice
+const isOptionCorrect = (question: Record<string, unknown>, option: unknown, index: number) => {
+  const correctAnswer = question.correct_answer as Record<string, unknown> | undefined
+  const correctChoice = correctAnswer?.choice
   if (correctChoice) {
-    const optionId = option.id || option.label || index
+    const o = typeof option === 'object' && option !== null ? option as Record<string, unknown> : null
+    const optionId = o?.id || o?.label || index
     return String(optionId).toUpperCase() === String(correctChoice).toUpperCase()
   }
   
-  const correctVal = question.correct_answer?.value
+  const correctVal = correctAnswer?.value
   if (correctVal) {
-    const optionText = option.text || option.value || option
+    const o = typeof option === 'object' && option !== null ? option as Record<string, unknown> : null
+    const optionText = o?.text || o?.value || option
     return String(optionText).toUpperCase() === String(correctVal).toUpperCase()
   }
   return false
@@ -875,18 +1272,18 @@ const publishQuiz = async () => {
   try {
     const payload = {
       name: quizName.value,
-      question_order: settings.value.question_order as any,
-      result_visibility: settings.value.result_visibility as any,
-      end_type: settings.value.end_type as any,
+      question_order: settings.value.question_order,
+      result_visibility: settings.value.result_visibility,
+      end_type: settings.value.end_type,
       questions: selectedQuestions.value.map((q, i) => ({
-        question_id: q.id,
+        question_id: q.question_id,
         position: i
       }))
     }
 
     let createdQuiz
     if (isEditing.value) {
-      createdQuiz = await quizStore.updateQuiz(props.initialQuiz.id, payload)
+      createdQuiz = await quizStore.updateQuiz((props.initialQuiz as Record<string, unknown>).id as string, payload)
     } else {
       createdQuiz = await quizStore.createQuiz(payload)
     }
@@ -906,14 +1303,44 @@ const publishQuiz = async () => {
     }
 
     emit('created')
-  } catch (err: any) {
-    alert(err.response?.data?.message || err.message || 'Error publishing quiz')
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } }; message?: string }
+    alert(e.response?.data?.message || e.message || 'Error publishing quiz')
   } finally {
     loading.value = false
   }
 }
 
+const handleIframeResize = (e: MessageEvent) => {
+  try {
+    const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+    if (!d) return
+    if (d.type === 'resize' || d.type === 'RESIZE' || d.type === 'content-height') {
+      const height = d.height ?? d.contentHeight ?? d.scrollHeight
+      if (typeof height === 'number' && height > 0) {
+        const iframes = document.querySelectorAll('iframe')
+        iframes.forEach((iframe) => {
+          if (iframe.contentWindow === e.source) {
+            const cardId = iframe.getAttribute('data-card-id')
+            if (cardId) {
+              const card = selectedQuestions.value.find(sq => sq.id === cardId)
+              if (card) {
+                card.height = Math.max(height + 20, 300)
+              }
+            }
+            if (iframe.getAttribute('data-preview-iframe') === 'true') {
+              previewIframeHeight.value = Math.max(height + 20, 300)
+            }
+          }
+        })
+      }
+    }
+  } catch { /* ignore */ }
+}
+
 onMounted(async () => {
+  window.addEventListener('click', closeDropdownOnOutside)
+  window.addEventListener('message', handleIframeResize)
   await Promise.all([
     catalogStore.getGrades(),
     catalogStore.getTopics(),
@@ -921,31 +1348,49 @@ onMounted(async () => {
   ])
   
   if (props.initialQuiz) {
-    quizName.value = props.initialQuiz.name
-    settings.value.question_order = props.initialQuiz.question_order
-    settings.value.result_visibility = props.initialQuiz.result_visibility
-    settings.value.end_type = props.initialQuiz.end_type
+    const iq = props.initialQuiz as Record<string, unknown>
+    quizName.value = iq.name as string
+    settings.value.question_order = iq.question_order as QuizQuestionOrder
+    settings.value.result_visibility = iq.result_visibility as QuizResultVisibility
+    settings.value.end_type = iq.end_type as QuizEndType
     
     // Map initial questions with custom details
-    if (props.initialQuiz.questions) {
-      selectedQuestions.value = props.initialQuiz.questions.map((q: any) => ({
-        id: q.question_id,
-        skill_id: q.question?.skill_id || 0,
-        skill_title: q.question?.skill?.title || 'Енгізілген дағды',
-        level: q.question?.level || 1,
-        prompt: q.question ? q.question.prompt : 'Сұрақ мәтіні жүктелмеді',
-        type: q.question?.type || 'MCQ',
-        data: q.question?.data || {},
-        correct_answer: q.question?.correct_answer || {},
-        explanation: q.question?.explanation || '',
-        showAnswer: false
-      }))
+    if (iq.questions) {
+      const mapped = (iq.questions as Record<string, unknown>[]).map((q) => {
+        const question = q.question as Record<string, unknown> | undefined
+        const skill = question?.skill as Record<string, unknown> | undefined
+        const randSuffix = Math.floor(Math.random() * 1000000)
+        return {
+          id: `card-${q.question_id}-${randSuffix}`,
+          question_id: q.question_id as number,
+          skill_id: (question?.skill_id as number) || 0,
+          skill_title: (skill?.title as string) || 'Енгізілген дағды',
+          level: (question?.level as number) || 1,
+          prompt: question ? (question.prompt as string) : 'Сұрақ мәтіні жүктелмеді',
+          type: (question?.type as string) || 'MCQ',
+          data: (question?.data as Record<string, unknown>) || {},
+          correct_answer: (question?.correct_answer as Record<string, unknown>) || {},
+          explanation: (question?.explanation as string) || '',
+          showAnswer: false,
+          iframeSrcdoc: '',
+          iframeSrc: ''
+        } as QuestionCard
+      })
+      for (const card of mapped) {
+        await loadCardPlugin(card)
+      }
+      selectedQuestions.value = mapped
     }
     
     if (selectedQuestions.value.length > 0) {
       activeQuestionIndex.value = 0
     }
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeDropdownOnOutside)
+  window.removeEventListener('message', handleIframeResize)
 })
 </script>
 

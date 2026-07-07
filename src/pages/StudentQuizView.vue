@@ -64,7 +64,7 @@
                     @click="submitAnswer(option)"
                     class="w-full text-left p-4 sm:p-5 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 focus:border-green-500 focus:bg-green-50 transition-all text-base sm:text-lg"
                   >
-                    <span v-html="formatPrompt(option.label || option.text || option.value || String(option))"></span>
+                    <span v-html="formatPrompt(typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option))"></span>
                   </button>
                 </div>
 
@@ -210,7 +210,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
@@ -221,8 +220,6 @@ const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !
 const props = defineProps<{
   quizId: string
 }>()
-
-const router = useRouter()
 
 // UI State
 const loading = ref(true)
@@ -261,12 +258,13 @@ const formatPrompt = (text: string): string => {
   )
 }
 
-const getOptions = (data: any) => {
+const getOptions = (data: unknown) => {
   if (!data) return []
-  return data.choices || data.options || []
+  const d = data as Record<string, unknown>
+  return d.choices || d.options || []
 }
 
-const submitAnswer = (answer: string) => {
+const submitAnswer = (answer: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
   // Clear input
   textAnswer.value = ''
 
@@ -287,7 +285,7 @@ const submitAnswer = (answer: string) => {
         completedAt: new Date().toISOString(),
         score: 100
       }))
-    } catch(e) {}
+    } catch { }
   }
 }
 
