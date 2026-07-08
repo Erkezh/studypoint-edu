@@ -25,6 +25,7 @@ from app.models.gamification import (
     Vehicle,
 )
 from app.models.garage import PlayerCar
+from app.models.notification import Notification
 
 __all__ = [
     "Assignment",
@@ -33,6 +34,7 @@ __all__ = [
     "Classroom",
     "Enrollment",
     "Grade",
+    "Notification",
     "PracticeAttempt",
     "PracticeSession",
     "ProgressSnapshot",

@@ -84,6 +84,7 @@ app.include_router(api_router_v1, prefix=settings.api_v1_prefix)
 plugins_dir = Path(settings.plugins_dir)
 plugins_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/static/plugins", StaticFiles(directory=str(plugins_dir)), name="plugins")
+app.mount("/static/modules", StaticFiles(directory=str(plugins_dir)), name="modules")
 
 
 # ============= TEMPORARY DEBUG ENDPOINT — DELETE AFTER TESTING =============

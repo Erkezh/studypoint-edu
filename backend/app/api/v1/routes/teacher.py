@@ -268,10 +268,12 @@ async def browse_catalog_questions(
     return ApiResponse(data=[
         {
             "id": q.id,
-            "type": q.type,
+            "type": q.type.value if hasattr(q.type, "value") else str(q.type),
             "prompt": q.prompt,
             "level": q.level,
-            "explanation": q.explanation
+            "explanation": q.explanation,
+            "data": q.data,
+            "correct_answer": q.correct_answer
         } for q in questions
     ])
 
@@ -294,9 +296,11 @@ async def browse_skill_questions(
     return ApiResponse(data=[
         {
             "id": q.id,
-            "type": q.type,
+            "type": q.type.value if hasattr(q.type, "value") else str(q.type),
             "prompt": q.prompt,
             "level": q.level,
-            "explanation": q.explanation
+            "explanation": q.explanation,
+            "data": q.data,
+            "correct_answer": q.correct_answer
         } for q in questions
     ])

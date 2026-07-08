@@ -135,6 +135,53 @@ class QuizService:
             end_at=req.end_at
         )
         self.session.add(assignment)
+        
+        # Trigger real-time notifications for assigned students
+        try:
+            from app.models.notification import Notification
+            
+            # Fetch quiz details for naming
+            quiz_stmt = select(Quiz).where(Quiz.id == req.quiz_id)
+            quiz_result = await self.session.execute(quiz_stmt)
+            quiz = quiz_result.scalar_one_or_none()
+            quiz_name = quiz.name if quiz else "Квиз"
+            
+            if req.student_id:
+                self.session.add(
+                    Notification(
+                        user_id=req.student_id,
+                        title="Жаңа квиз!",
+                        content=f"Мұғалім жаңа квиз жариялады: '{quiz_name}'.",
+                        is_read=False,
+                    )
+                )
+            else:
+                student_ids = []
+                if req.classroom_id:
+                    from app.models.classroom import Enrollment
+                    classroom_stmt = select(Enrollment.student_id).where(Enrollment.classroom_id == req.classroom_id)
+                    classroom_res = await self.session.execute(classroom_stmt)
+                    student_ids = list(classroom_res.scalars().all())
+                else:
+                    from app.models.user import User
+                    from app.models.enums import UserRole
+                    student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
+                    student_res = await self.session.execute(student_stmt)
+                    student_ids = list(student_res.scalars().all())
+                
+                for s_id in student_ids:
+                    self.session.add(
+                        Notification(
+                            user_id=s_id,
+                            title="Жаңа квиз!",
+                            content=f"Мұғалім жаңа квиз жариялады: '{quiz_name}'.",
+                            is_read=False,
+                        )
+                    )
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to generate quiz notifications: {e}", exc_info=True)
+
         await self.session.flush()
         await self.session.refresh(assignment)
         return assignment

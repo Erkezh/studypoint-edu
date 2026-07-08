@@ -6,7 +6,7 @@
     <div class="bg-gray-100 border-b border-gray-200 py-2 px-4 shrink-0 overflow-x-auto whitespace-nowrap scrollbar-hide">
       <div class="container mx-auto">
         <nav class="flex items-center text-xs sm:text-sm text-gray-600">
-          <router-link to="/my-ixl" class="hover:text-green-600 shrink-0">Менің IXL</router-link>
+          <router-link to="/my-cabinet" class="hover:text-green-600 shrink-0">{{ isChildWithParent ? 'Менің кабинетім' : 'Менің IXL' }}</router-link>
           <span class="mx-2 text-gray-400 shrink-0">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </span>
@@ -25,7 +25,7 @@
       <!-- Error -->
       <div v-else-if="error" class="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl text-center max-w-2xl mx-auto mt-8">
         <p class="text-lg font-medium">{{ error }}</p>
-        <button @click="$router.push('/my-ixl')" class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+        <button @click="$router.push('/my-cabinet')" class="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
           Артқа қайту
         </button>
       </div>
@@ -50,8 +50,8 @@
           <div class="bg-white rounded-xl shadow-lg p-5 sm:p-8 relative flex-1 flex flex-col">
             
             <div v-if="currentQuestion" class="flex-1 flex flex-col justify-center">
-              <!-- Question prompt -->
-              <p class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
+              <!-- Question prompt (hidden for plugins since iframe shows it) -->
+              <p v-if="!isCurrentQuestionPlugin" class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
                 v-html="formatPrompt(currentQuestion.question?.prompt || '')">
               </p>
 
@@ -64,7 +64,7 @@
                     @click="submitAnswer(option)"
                     class="w-full text-left p-4 sm:p-5 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 focus:border-green-500 focus:bg-green-50 transition-all text-base sm:text-lg"
                   >
-                    <span v-html="formatPrompt(option.label || option.text || option.value || String(option))"></span>
+                    <span v-html="formatPrompt(typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option))"></span>
                   </button>
                 </div>
 
@@ -95,6 +95,22 @@
                   </button>
                 </div>
 
+                <!-- PLUGIN / INTERACTIVE -->
+                <div v-else-if="isCurrentQuestionPlugin" class="space-y-4">
+                  <iframe
+                    v-if="pluginIframeSrc"
+                    ref="pluginIframeRef"
+                    :src="pluginIframeSrc"
+                    :style="{ width: '100%', height: pluginHeight + 'px', border: 'none', borderRadius: '12px' }"
+                    sandbox="allow-scripts allow-same-origin"
+                    scrolling="no"
+                    class="rounded-xl"
+                  ></iframe>
+                  <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-700 text-sm">
+                    Плагин жүктелуде...
+                  </div>
+                </div>
+
                 <!-- Other types (fallback) -->
                 <div v-else class="space-y-6">
                   <p class="text-red-500 font-medium mb-4 flex items-center gap-2">
@@ -118,7 +134,7 @@
             
             <div class="mt-12 pt-6 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
               <span>Сұрақ: {{ currentIndex + 1 }} / {{ sortedQuestions.length }}</span>
-              <button @click="$router.push('/my-ixl')" class="hover:text-gray-800 transition-colors">Алдын ала шығу</button>
+              <button @click="$router.push('/my-cabinet')" class="hover:text-gray-800 transition-colors">Алдын ала шығу</button>
             </div>
           </div>
         </div>
@@ -198,7 +214,7 @@
              </div>
           </div>
 
-          <button @click="$router.push('/my-ixl')" 
+          <button @click="$router.push('/my-cabinet')" 
             class="px-8 py-3 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 transition-colors w-full sm:w-auto">
             Жалғастыру
           </button>
@@ -209,16 +225,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
+
+const authStore = useAuthStore()
+const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
 
 const props = defineProps<{
   quizId: string
 }>()
-
-const router = useRouter()
 
 // UI State
 const loading = ref(true)
@@ -234,6 +251,11 @@ const textAnswer = ref('')
 const currentTime = ref(0)
 let timeInterval: number | null = null
 
+// Plugin state
+const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
+const pluginIframeSrc = ref('')
+const pluginHeight = ref(500)
+
 const sortedQuestions = computed(() => {
   if (!currentQuiz.value?.questions) return []
   return [...currentQuiz.value.questions].sort((a, b) => a.position - b.position)
@@ -242,6 +264,71 @@ const sortedQuestions = computed(() => {
 const currentQuestion = computed(() => {
   if (!sortedQuestions.value.length || currentIndex.value >= sortedQuestions.value.length) return null
   return sortedQuestions.value[currentIndex.value]
+})
+
+// Plugin detection helpers
+const isQuestionPlugin = (q: Record<string, unknown> | null | undefined): boolean => {
+  if (!q) return false
+  const type = q.type as string | undefined
+  return type === 'PLUGIN' || type === 'INTERACTIVE'
+}
+
+const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): string => {
+  if (!q || !q.data) return ''
+  const data = q.data as Record<string, unknown>
+  const id = data.plugin_id as string | undefined
+  const ver = data.plugin_version as string | undefined
+  const entry = data.entry as string | undefined
+  if (!id || !ver || !entry) return ''
+  return `/static/modules/${id}/${ver}/${entry}?embed=1`
+}
+
+const isCurrentQuestionPlugin = computed(() => {
+  if (!currentQuestion.value) return false
+  return isQuestionPlugin(currentQuestion.value.question as Record<string, unknown> | undefined)
+})
+
+// Load plugin iframe when question changes
+const loadCurrentPlugin = async () => {
+  pluginIframeSrc.value = ''
+  pluginHeight.value = 500
+  if (!currentQuestion.value?.question) return
+  const q = currentQuestion.value.question as Record<string, unknown>
+  if (!isQuestionPlugin(q)) return
+
+  pluginIframeSrc.value = getRegularPluginSrc(q)
+}
+
+// Listen for exercise-result messages from plugin iframes
+const handlePluginMessage = (event: MessageEvent) => {
+  try {
+    const d = event.data
+    if (!d || typeof d !== 'object') return
+
+    // Handle iframe resize
+    if (d.type === 'resize' || d.type === 'content-height') {
+      const height = d.height ?? d.contentHeight ?? d.scrollHeight
+      if (typeof height === 'number' && height > 0) {
+        pluginHeight.value = Math.max(height, 400)
+      }
+      return
+    }
+
+    if (d.type !== 'exercise-result') return
+    if (!isCurrentQuestionPlugin.value) return
+
+    // The plugin submitted its result — move to the next question
+    submitAnswer(d.userAnswer ?? d.studentAnswer ?? d.answer ?? 'plugin-answer')
+  } catch (err) {
+    console.error('Plugin message error:', err)
+  }
+}
+
+// Watch question changes to reload plugin
+watch(currentIndex, () => {
+  if (isCurrentQuestionPlugin.value) {
+    loadCurrentPlugin()
+  }
 })
 
 const currentSmartScore = computed(() => {
@@ -257,12 +344,13 @@ const formatPrompt = (text: string): string => {
   )
 }
 
-const getOptions = (data: any) => {
+const getOptions = (data: unknown) => {
   if (!data) return []
-  return data.choices || data.options || []
+  const d = data as Record<string, unknown>
+  return d.choices || d.options || []
 }
 
-const submitAnswer = (answer: string) => {
+const submitAnswer = (answer: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
   // Clear input
   textAnswer.value = ''
 
@@ -283,7 +371,7 @@ const submitAnswer = (answer: string) => {
         completedAt: new Date().toISOString(),
         score: 100
       }))
-    } catch(e) {}
+    } catch { }
   }
 }
 
@@ -330,6 +418,8 @@ const fetchQuiz = async () => {
         currentIndex.value = foundQuiz.questions.length
       } else {
         startTimer()
+        // Load plugin iframe if the first question is a plugin
+        await loadCurrentPlugin()
       }
     } else {
       error.value = 'Викторина табылмады немесе қолжетімсіз.'
@@ -344,10 +434,12 @@ const fetchQuiz = async () => {
 
 onMounted(() => {
   fetchQuiz()
+  window.addEventListener('message', handlePluginMessage)
 })
 
 onUnmounted(() => {
   stopTimer()
+  window.removeEventListener('message', handlePluginMessage)
 })
 </script>
 

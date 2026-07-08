@@ -123,7 +123,20 @@
                   Сұрақ
                   <span v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="q-plugin-badge">Plugin</span>
                 </div>
-                <div class="q-text">{{ q.prompt || (q.questionType === 'PLUGIN' ? '[Плагин тапсырмасы]' : '—') }}</div>
+                
+                <!-- Full Interactive / Visual Preview -->
+                <div class="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
+                  <SessionQuestionPreview
+                    :question="{
+                      prompt: q.prompt || '',
+                      type: q.questionType || '',
+                      data: q.data || {},
+                      userAnswer: q.rawUserAnswer,
+                      isCorrect: q.isCorrect,
+                      correctAnswer: q.correctAnswer
+                    }"
+                  />
+                </div>
 
                 <div class="q-answers">
                   <div class="q-answer-block">
@@ -164,6 +177,7 @@ import {
 } from 'chart.js'
 import { Line } from 'vue-chartjs'
 import { useAnalyticsStore } from '@/stores/analytics'
+import SessionQuestionPreview from './SessionQuestionPreview.vue'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend)
 
@@ -422,6 +436,8 @@ const sessions = computed(() => {
           prompt: pluginQ ? (getPluginPrompt(q) as string) : ((q.question_prompt as string) || ''),
           correctAnswer: pluginQ ? getPluginCorrectAnswer(q) : q.correct_answer,
           userAnswer: pluginQ ? getPluginUserAnswer(q) : q.user_answer,
+          rawUserAnswer: q.user_answer,
+          data: q.question_data || {},
         }
       }).reverse()
 

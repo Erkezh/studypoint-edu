@@ -165,13 +165,13 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresRole: 'ADMIN' },
   },
   {
-    path: '/my-ixl',
-    name: 'my-ixl',
+    path: '/my-cabinet',
+    name: 'my-cabinet',
     component: () => import('@/pages/MyIxlView.vue'),
     meta: { requiresAuth: true },
   },
   {
-    path: '/my-ixl/quiz/:quizId',
+    path: '/my-cabinet/quiz/:quizId',
     name: 'student-quiz',
     component: () => import('@/pages/StudentQuizView.vue'),
     meta: { requiresAuth: true },

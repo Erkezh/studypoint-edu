@@ -15,15 +15,14 @@
             <router-link to="/analytics" class="text-white hover:text-gray-100 transition-colors font-medium">Талдау</router-link>
           </template>
           <template v-else>
-            <router-link to="/" class="text-white hover:text-gray-100 transition-colors font-medium">Менің кабинетім</router-link>
+            <router-link :to="dashboardRoute" class="text-white hover:text-gray-100 transition-colors font-medium flex items-center gap-1">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
+              {{ dashboardText }}
+            </router-link>
             <router-link v-if="userGradeLevel" :to="{ name: 'class', params: { gradeId: userGradeLevel } }" class="text-white hover:text-gray-100 transition-colors font-medium">Оқу</router-link>
             <span v-else class="text-white opacity-50 cursor-not-allowed font-medium" title="Сынып көрсетілмеген">Оқу</span>
             <router-link to="/" class="text-white hover:text-gray-100 transition-colors font-medium">Диагностика</router-link>
             <router-link to="/analytics" class="text-white hover:text-gray-100 transition-colors font-medium">Талдау</router-link>
-            <router-link v-if="authStore.user?.role === 'STUDENT'" to="/my-ixl" class="text-white hover:text-gray-100 transition-colors font-medium flex items-center gap-1">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-              Менің IXL
-            </router-link>
             <router-link v-if="authStore.user?.role === 'ADMIN'" to="/admin" class="text-white hover:text-gray-100 transition-colors font-medium flex items-center gap-2" title="Админ панелі">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               Админ
@@ -33,6 +32,53 @@
 
         <!-- Right side -->
         <div class="flex items-center gap-3">
+          <!-- Notification Button -->
+          <div v-if="authStore.isAuthenticated" class="relative flex items-center" ref="notificationDropdownRef">
+            <button @click="toggleNotificationMenu" class="text-white hover:bg-white/10 p-2 rounded-full relative transition-colors" title="Хабарламалар">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <!-- Badge -->
+              <span v-if="unreadCount > 0" class="absolute top-1 right-1 bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center border border-white">
+                {{ unreadCount }}
+              </span>
+            </button>
+
+            <!-- Notifications Dropdown -->
+            <transition
+              enter-active-class="transition duration-100 ease-out"
+              enter-from-class="opacity-0 scale-95"
+              enter-to-class="opacity-100 scale-100"
+              leave-active-class="transition duration-75 ease-in"
+              leave-from-class="opacity-100 scale-100"
+              leave-to-class="opacity-0 scale-95"
+            >
+              <div v-if="showNotificationMenu" class="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl py-2 z-50 border border-gray-100 overflow-hidden text-gray-800">
+                <div class="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
+                  <span class="font-bold text-sm text-gray-900">Хабарламалар</span>
+                  <button v-if="unreadCount > 0" @click="markAllNotificationsAsRead" class="text-xs text-[#38B000] hover:underline font-semibold transition-colors">
+                    Барлығын оқу
+                  </button>
+                </div>
+                <div class="max-h-64 overflow-y-auto">
+                  <div v-if="notifications.length === 0" class="px-4 py-8 text-center text-gray-400 text-xs">
+                    Хабарламалар жоқ
+                  </div>
+                  <div v-else class="divide-y divide-gray-50">
+                    <div v-for="notif in notifications" :key="notif.id" @click="markNotificationAsRead(notif)" class="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex gap-3 items-start cursor-pointer" :class="{ 'bg-green-50/20': !notif.is_read }">
+                      <div class="w-2 h-2 rounded-full mt-1.5 shrink-0" :class="notif.is_read ? 'bg-transparent' : 'bg-[#38B000]'"></div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-xs font-semibold text-gray-900 leading-snug">{{ notif.title }}</p>
+                        <p class="text-[11px] text-gray-500 mt-0.5 leading-relaxed">{{ notif.content }}</p>
+                        <p class="text-[9px] text-gray-400 mt-1">{{ formatTime(notif.created_at) }}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </transition>
+          </div>
+
           <!-- Profile (authenticated) -->
           <div v-if="authStore.isAuthenticated" class="relative hidden md:block" ref="profileDropdownRef">
             <button @click="toggleProfileMenu"
@@ -186,9 +232,9 @@
                 <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 Талдау
               </router-link>
-              <router-link v-if="authStore.user?.role === 'STUDENT'" to="/my-ixl" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
+              <router-link :to="dashboardRoute" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
                 <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
-                Менің IXL
+                {{ dashboardText }}
               </router-link>
               <router-link v-if="authStore.user?.role === 'ADMIN'" to="/admin" @click="showMobileMenu = false" class="flex items-center gap-3 px-3 py-2.5 text-white hover:bg-white/10 rounded-xl transition-all font-medium">
                 <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
@@ -241,6 +287,8 @@ defineOptions({ name: 'AppHeader' })
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import { notificationApi } from '@/api/notification'
+import type { NotificationResponse } from '@/types/api'
 import Button from '@/components/ui/Button.vue'
 
 interface FamilyProfile {
@@ -257,11 +305,95 @@ const showMobileMenu = ref(false)
 const switchingProfile = ref(false)
 const familyProfiles = ref<FamilyProfile[]>([])
 const profileDropdownRef = ref<HTMLElement | null>(null)
+const notificationDropdownRef = ref<HTMLElement | null>(null)
+
+const showNotificationMenu = ref(false)
+const notifications = ref<NotificationResponse[]>([])
+const unreadCount = computed(() => notifications.value.filter(n => !n.is_read).length)
+
+let pollInterval: ReturnType<typeof setInterval> | null = null
+
+const fetchNotifications = async () => {
+  if (!authStore.isAuthenticated) return
+  try {
+    const res = await notificationApi.getNotifications()
+    if (res.data) {
+      notifications.value = res.data
+    }
+  } catch (err) {
+    console.error('Failed to fetch notifications:', err)
+  }
+}
+
+const toggleNotificationMenu = () => {
+  showNotificationMenu.value = !showNotificationMenu.value
+  if (showNotificationMenu.value) {
+    showProfileMenu.value = false
+    fetchNotifications()
+  }
+}
+
+const markNotificationAsRead = async (notif: NotificationResponse) => {
+  if (notif.is_read) return
+  try {
+    const res = await notificationApi.markAsRead(notif.id)
+    if (res.data) {
+      notif.is_read = true
+    }
+  } catch (err) {
+    console.error('Failed to mark notification as read:', err)
+  }
+}
+
+const markAllNotificationsAsRead = async () => {
+  try {
+    const res = await notificationApi.markAllAsRead()
+    if (res.data) {
+      notifications.value.forEach(n => { n.is_read = true })
+    }
+  } catch (err) {
+    console.error('Failed to mark all notifications as read:', err)
+  }
+}
+
+const formatTime = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Жаңа ғана'
+  if (diffMins < 60) return `${diffMins} min bұryn`
+  if (diffHours < 24) return `${diffHours} saғ bұryn`
+  if (diffDays < 7) return `${diffDays} kүn bұryn`
+  
+  return date.toLocaleDateString('kk-KZ', { month: 'short', day: 'numeric' })
+}
 
 const userGradeLevel = computed(() => authStore.user?.profile?.grade_level || null)
 const isParentRole = computed(() => authStore.user?.role === 'PARENT')
 const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
 const isFamilyUser = computed(() => isParentRole.value || isChildWithParent.value)
+
+const dashboardRoute = computed(() => {
+  const role = authStore.user?.role
+  if (role === 'STUDENT') return '/my-cabinet'
+  if (role === 'PARENT') return '/parent'
+  if (role === 'TEACHER') return '/teacher'
+  if (role === 'ADMIN') return '/admin'
+  return '/'
+})
+
+const dashboardText = computed(() => {
+  const role = authStore.user?.role
+  if (role === 'STUDENT') {
+    return isChildWithParent.value ? 'Менің кабинетім' : 'Менің IXL'
+  }
+  return 'Менің кабинетім'
+})
 
 const loadFamilyProfiles = async () => {
   if (!authStore.isAuthenticated || !isFamilyUser.value) {
@@ -322,16 +454,28 @@ const handleClickOutside = (event: MouseEvent) => {
   if (profileDropdownRef.value && !profileDropdownRef.value.contains(target)) {
     showProfileMenu.value = false
   }
+  if (notificationDropdownRef.value && !notificationDropdownRef.value.contains(target)) {
+    showNotificationMenu.value = false
+  }
 }
 
-watch(() => authStore.user?.id, () => { loadFamilyProfiles() })
+watch(() => authStore.user?.id, () => {
+  loadFamilyProfiles()
+  fetchNotifications()
+})
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   loadFamilyProfiles()
+  fetchNotifications()
+
+  pollInterval = setInterval(fetchNotifications, 30000)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  if (pollInterval) {
+    clearInterval(pollInterval)
+  }
 })
 </script>

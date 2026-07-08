@@ -310,7 +310,7 @@ const scoreGradeFilteredSkills = computed(() => {
 const practicedSkillMap = computed(() => {
   const map = new Map<number, Record<string, unknown>>()
   for (const skill of scoreGradeFilteredSkills.value) {
-    map.set(skill.skill_id, skill as Record<string, unknown>)
+    map.set(skill.skill_id as number, skill as Record<string, unknown>)
   }
   return map
 })
@@ -365,7 +365,7 @@ const scoreBreakdown = computed(() => {
   let practicedOnly = 0
 
   for (const skill of practiced) {
-    const score = skill.best_smartscore || 0
+    const score = (skill.best_smartscore as number) || 0
     if (score >= 100) mastery++
     else if (score >= 80) proficiency++
     else if (score >= 1) practicedOnly++

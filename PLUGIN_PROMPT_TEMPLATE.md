@@ -49,7 +49,7 @@ interface Problem {
   id: number;
   question: string;
   correctAnswer: string;
-  visualData?: any;  // Данные картинки для аналитики
+  visualData?: any;  // Данные для аналитики (тип вопроса)
 }
 
 const Component: React.FC = () => {
@@ -58,11 +58,15 @@ const Component: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // ⚠️ Режим просмотра ошибок (аналитика для учителя/ученика)
+  const reviewMode = (window as any).reviewMode || null;
+  const isReview = !!reviewMode;
+
   const generateProblem = (): Problem => ({
     id: Date.now(),
-    question: 'Текст вопроса',
-    correctAnswer: 'ответ',
-    visualData: { type: 'numberline', numberline: { min: 0, max: 1, divisions: 11, markedPosition: 3 } },
+    question: 'Сұрақ мәтіні',
+    correctAnswer: '3/4',
+    visualData: { type: 'fractionbar', fractionBar: { total: 4, filled: 3 } },
   });
 
   const sendHeight = () => {
@@ -71,11 +75,31 @@ const Component: React.FC = () => {
     }
   };
 
-  useEffect(() => { setProblem(generateProblem()); }, []);
+  useEffect(() => {
+    if (isReview) {
+      // ⚠️ Восстанавливаем сохраненное состояние для аналитики
+      setProblem({
+        id: Date.now(),
+        question: 'Сұрақ мәтіні',
+        correctAnswer: reviewMode.correctAnswer,
+        // Если visualData нужна для отрисовки, родитель может передать ее в reviewMode.questionData
+        visualData: reviewMode.questionData
+      });
+      setUserAnswer(reviewMode.studentAnswer);
+      
+      // Восстановите внутреннее состояние (например, закрашенные ячейки, выбранные кнопки)
+      // на основе reviewMode.studentAnswer!
+      
+      setShowResult(true);
+    } else {
+      setProblem(generateProblem());
+    }
+  }, []);
+
   useEffect(() => { sendHeight(); setTimeout(sendHeight, 100); }, [problem, showResult]);
 
   const handleSubmit = () => {
-    if (!userAnswer || !problem) return;
+    if (isReview || !userAnswer || !problem) return;
     const isCorrect = userAnswer === problem.correctAnswer;
     
     window.parent.postMessage({
@@ -96,7 +120,12 @@ const Component: React.FC = () => {
     setShowResult(false);
   };
 
-  return <div ref={containerRef} className="p-4">{/* UI */}</div>;
+  return (
+    <div ref={containerRef} className="p-4 bg-white rounded-xl">
+      {/* ⚠️ В режиме isReview отключайте любые клики и ввод: disabled={isReview} */}
+      {/* ⚠️ При неверном ответе в isReview покажите верное решение зеленым, а неверное - красным */}
+    </div>
+  );
 };
 
 export default Component;
@@ -192,6 +221,35 @@ const generateShapes = () => {
     },
   };
 };
+```
+
+---
+
+## 3.5. РЕЖИМ ПРОСМОТРА ОШИБОК (АНАЛИТИКА / REVIEW MODE)
+
+Для того чтобы учитель или ученик в аналитике могли увидеть, какую ошибку совершил ученик:
+1. **Проверьте наличие `window.reviewMode`** при старте плагина.
+2. **Отключите интерактивность:** если `isReview` равен `true`, пользователь не должен иметь возможности кликать по кнопкам, менять значения, перетаскивать элементы или вводить данные (`disabled={isReview}`).
+3. **Восстановите состояние ученика:** распарсите ответ ученика из `window.reviewMode.studentAnswer` (например, отметьте те же клетки сетки, выберите ту же опцию или покажите число на прямой) и покажите его.
+4. **Покажите правильный ответ:**
+   - Если ответ ученика верный (`reviewMode.isCorrect === true`), выделите его зеленым цветом (рамка, заливка).
+   - Если ответ неверный, выделите неверный ответ ученика красной рамкой/заливкой, а правильный ответ из `reviewMode.correctAnswer` подсветите зеленой рамкой/заливкой.
+
+Пример разметки сетки:
+```tsx
+const isSelected = selectedCells.has(cellId);
+const isCorrectAnswerCell = isReview && correctCells.has(cellId);
+
+let cellClass = "w-8 h-8 border ";
+if (isReview) {
+  if (isSelected) {
+    cellClass += isCorrect ? "bg-green-400 border-green-500" : "bg-red-400 border-red-500";
+  } else if (isCorrectAnswerCell) {
+    cellClass += "bg-green-200 border-green-300"; // Показываем правильный ответ
+  } else {
+    cellClass += "bg-white border-gray-200";
+  }
+}
 ```
 
 ---

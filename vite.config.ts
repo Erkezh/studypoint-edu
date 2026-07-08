@@ -9,6 +9,10 @@ const apiProxy = {
     target: 'http://127.0.0.1:8001',
     changeOrigin: true,
   },
+  '/static/modules': {
+    target: 'http://127.0.0.1:8001',
+    changeOrigin: true,
+  },
 }
 
 // https://vite.dev/config/
@@ -33,7 +37,6 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
-  // Настройка для раздачи статических файлов из miniapp-v2
   publicDir: 'public',
   server: {
     host: '0.0.0.0',

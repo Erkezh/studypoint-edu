@@ -157,7 +157,7 @@
                 <!-- INTERACTIVE -->
                 <div v-else-if="currentQuestion.type === 'INTERACTIVE'" class="space-y-4">
                   <InteractiveQuestion v-if="currentQuestion.data?.component_code"
-                    :component-code="currentQuestion.data.component_code" :question-data="currentQuestion.data"
+                    :component-code="(currentQuestion.data.component_code as string)" :question-data="currentQuestion.data"
                     :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
                     @answer="handleInteractiveAnswer" />
                   <div v-else class="text-red-500 text-sm flex items-center gap-2">
@@ -168,21 +168,18 @@
 
                 <!-- PLUGIN -->
                 <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
-                  <iframe v-if="isTsxPlugin && pluginIframeSrcdoc" ref="pluginIframeRef" :srcdoc="pluginIframeSrcdoc"
-                    :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
-                    sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
-                  <iframe v-else-if="!isTsxPlugin && pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
-                    :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
-                    sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
-                  <div v-else class="text-red-500 text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-                    Плагин не загружен.
-                  </div>
-                  <button v-if="!isTsxPlugin && pluginIframeSrc" @click="requestPluginAnswer"
-                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
-                  </button>
+                   <iframe v-if="pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
+                     :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
+                     sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
+                   <div v-else class="text-red-500 text-sm flex items-center gap-2">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                     Плагин не загружен.
+                   </div>
+                   <button v-if="pluginIframeSrc" @click="requestPluginAnswer"
+                     :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                     class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                     {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                   </button>
                 </div>
 
                 <!-- Unknown type -->
@@ -438,8 +435,6 @@ import GamificationBar from '@/components/gamification/GamificationBar.vue'
 import RewardModal from '@/components/gamification/RewardModal.vue'
 import { API_BASE_URL } from '@/config/api'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
-import { createTsxIframeHtml } from '@/utils/tsxTransformer'
-
 interface Props {
   sessionId: string
 }
@@ -457,143 +452,27 @@ const catalogStore = useCatalogStore()
 // Статистика навыка для отображения предыдущего результата
 const previousBestScore = ref<number | null>(null)
 
-// Режим разработки - временно закомментировано
-// const isDev = computed(() => import.meta.env.DEV)
-
 const currentQuestion = computed(() => practiceStore.currentQuestion)
 
-// Определяем, является ли плагин TSX файлом из miniapp-v2
-const isTsxPlugin = computed(() => {
-  const q = currentQuestion.value
-  if (!q || q.type !== 'PLUGIN' || !q.data) return false
-
-  // Проверяем наличие tsx_file или miniapp_file в данных вопроса
-  if (q.data.tsx_file || q.data.miniapp_file) return true
-
-  // Проверяем entry с расширением .tsx
-  if (q.data.entry && q.data.entry.endsWith('.tsx')) return true
-
-  // Проверяем по plugin_id - если содержит "kazakh-rectangle" или другие известные TSX плагины
-  const pluginId = q.data.plugin_id || q.prompt || ''
-  const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
-  if (knownTsxPlugins.some(name => pluginId.includes(name))) {
-    return true
-  }
-
-  return false
-})
-
-// URL или путь к TSX файлу
-const tsxFilePath = computed(() => {
-  const q = currentQuestion.value
-  if (!q || q.type !== 'PLUGIN' || !q.data) return null
-
-  // Приоритет: tsx_file > miniapp_file > entry (если заканчивается на .tsx) > определение по plugin_id
-  if (q.data.tsx_file) return q.data.tsx_file
-  if (q.data.miniapp_file) return q.data.miniapp_file
-  if (q.data.entry && q.data.entry.endsWith('.tsx')) {
-    // Если entry - это путь к TSX файлу в miniapp-v2
-    const fileName = q.data.entry.includes('/') ? q.data.entry.split('/').pop() : q.data.entry
-    return `/miniapp-v2/exercieses/${fileName}`
-  }
-
-  // Определяем по plugin_id или prompt
-  const pluginId = q.data.plugin_id || q.prompt || ''
-
-  // Маппинг известных плагинов на файлы
-  const pluginFileMap: Record<string, string> = {
-    'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
-    'kazakh-rectangle-area-app-1': 'kazakh_rectangle_area_app.tsx',
-    'kazakh-rectangle-area': 'kazakh_rectangle_area_app.tsx',
-    'fraction-comparison': 'fraction_comparison_app.tsx',
-    'fractioncomparisonapp': 'fraction_comparison_app.tsx',
-  }
-
-  // Ищем совпадение в plugin_id или prompt
-  for (const [key, fileName] of Object.entries(pluginFileMap)) {
-    if (pluginId.includes(key) || pluginId.toLowerCase().includes(key.toLowerCase())) {
-      return `/miniapp-v2/exercieses/${fileName}`
-    }
-  }
-
-  return null
-})
-
-// Содержимое iframe для TSX файлов (srcdoc)
-const pluginIframeSrcdoc = ref<string>('')
-
-// URL для обычных плагинов (src)
+// URL для плагинов (src)
 const pluginIframeSrc = computed(() => {
   const q = currentQuestion.value
   if (!q || q.type !== 'PLUGIN' || !q.data) return ''
 
-  // Если это TSX файл, используем srcdoc вместо src
-  if (isTsxPlugin.value) return ''
-
-  const id = q.data.plugin_id
-  const ver = q.data.plugin_version
-  const entry = q.data.entry
+  const id = q.data.plugin_id as string | undefined
+  const ver = q.data.plugin_version as string | undefined
+  const entry = q.data.entry as string | undefined
   if (!id || !ver || !entry) return ''
-  return `${API_BASE_URL}/static/plugins/${id}/${ver}/${entry}?embed=1`
+  return `/static/modules/${id}/${ver}/${entry}?embed=1`
 })
-
-// Загрузка TSX файла и создание iframe содержимого
-const loadTsxPlugin = async () => {
-  const filePath = tsxFilePath.value
-  if (!filePath) {
-    pluginIframeSrcdoc.value = ''
-    return
-  }
-
-  try {
-    // Пытаемся загрузить файл
-    let tsxCode: string
-
-    // Если путь начинается с /, это абсолютный путь от корня сайта
-    if (filePath.startsWith('/')) {
-      const response = await fetch(filePath)
-      if (!response.ok) {
-        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
-      }
-      tsxCode = await response.text()
-    } else if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      // Полный URL
-      const response = await fetch(filePath)
-      if (!response.ok) {
-        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
-      }
-      tsxCode = await response.text()
-    } else {
-      // Относительный путь - пробуем от корня проекта
-      const response = await fetch(`/${filePath}`)
-      if (!response.ok) {
-        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
-      }
-      tsxCode = await response.text()
-    }
-
-    // Трансформируем и создаем HTML для iframe
-    pluginIframeSrcdoc.value = createTsxIframeHtml(tsxCode)
-  } catch (err: Error | unknown) {
-    console.error('Failed to load TSX plugin:', err)
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${errorMessage}</p></body></html>`
-  }
-}
 
 // Динамическая высота iframe от плагина
 const dynamicPluginHeight = ref<number | null>(null)
 
-// Отслеживаем изменения вопроса и загружаем TSX при необходимости
-watch([currentQuestion, isTsxPlugin], async () => {
+// Отслеживаем изменения вопроса
+watch(currentQuestion, () => {
   // Сбрасываем динамическую высоту при смене вопроса
   dynamicPluginHeight.value = null
-
-  if (isTsxPlugin.value && currentQuestion.value) {
-    await loadTsxPlugin()
-  } else {
-    pluginIframeSrcdoc.value = ''
-  }
 }, { immediate: true })
 
 const pluginEmbedHeight = computed(() => {
@@ -923,9 +802,9 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
     if (question.data?.correct_answer !== undefined && question.data.correct_answer !== null) {
       const correct = question.data.correct_answer
       // Если это индекс, получаем вариант по индексу
-      if (typeof correct === 'number' && choices[correct] !== undefined) {
-        const option = choices[correct]
-        return typeof option === 'object' ? (option.label || option.text || option.value || String(option)) : String(option)
+      if (typeof correct === 'number' && (choices as unknown[])[correct] !== undefined) {
+        const option = (choices as unknown[])[correct] as Record<string, unknown> | string | number | null
+        return typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option)
       }
       // Если это значение, возвращаем его
       const answerStr = String(correct)
@@ -937,9 +816,9 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
 
     // Проверяем correct_index
     const correctIndex = question.data?.correct_index
-    if (correctIndex !== undefined && choices[correctIndex] !== undefined) {
-      const correct = choices[correctIndex]
-      const answerStr = typeof correct === 'object' ? (correct.label || correct.text || correct.value || String(correct)) : String(correct)
+    if (correctIndex !== undefined && (choices as unknown[])[correctIndex as number] !== undefined) {
+      const correct = (choices as unknown[])[correctIndex as number] as Record<string, unknown> | string | number
+      const answerStr = typeof correct === 'object' && correct !== null ? ((correct as Record<string, unknown>).label || (correct as Record<string, unknown>).text || (correct as Record<string, unknown>).value || String(correct)) as string : String(correct)
       if (containsFraction(answerStr)) {
         return formatFraction(answerStr)
       }
@@ -950,9 +829,9 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
     if (question.data?.answer !== undefined && question.data.answer !== null) {
       const answer = question.data.answer
       // Если это индекс, получаем вариант по индексу
-      if (typeof answer === 'number' && choices[answer] !== undefined) {
-        const option = choices[answer]
-        const answerStr = typeof option === 'object' ? (option.label || option.text || option.value || String(option)) : String(option)
+      if (typeof answer === 'number' && (choices as unknown[])[answer] !== undefined) {
+        const option = (choices as unknown[])[answer] as Record<string, unknown> | string | number
+        const answerStr = typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option)
         if (containsFraction(answerStr)) {
           return formatFraction(answerStr)
         }
@@ -970,12 +849,12 @@ const formatCorrectAnswer = (question: QuestionPublic | null, result: PracticeSu
       const extracted = extractAnswerFromExplanation(result.explanation)
       if (extracted) {
         // Проверяем, соответствует ли извлеченный ответ одному из вариантов
-        const matchingChoice = choices.find((c: any) => {
-          const choiceStr = typeof c === 'object' ? (c.label || c.text || c.value || String(c)) : String(c)
+        const matchingChoice = (choices as unknown[]).find((c: unknown) => {
+          const choiceStr = typeof c === 'object' && c !== null ? ((c as Record<string, unknown>).label || (c as Record<string, unknown>).text || (c as Record<string, unknown>).value || String(c)) as string : String(c)
           return choiceStr === extracted || String(c) === extracted
         })
         if (matchingChoice) {
-          const answerStr = typeof matchingChoice === 'object' ? (matchingChoice.label || matchingChoice.text || matchingChoice.value || String(matchingChoice)) : String(matchingChoice)
+          const answerStr = typeof matchingChoice === 'object' && matchingChoice !== null ? ((matchingChoice as Record<string, unknown>).label || (matchingChoice as Record<string, unknown>).text || (matchingChoice as Record<string, unknown>).value || String(matchingChoice)) as string : String(matchingChoice)
           if (containsFraction(answerStr)) {
             return formatFraction(answerStr)
           }
@@ -1042,17 +921,18 @@ const submitMCQAnswer = async (option: any, index: number) => {
   // 3. Индекс варианта (например, "0", "1", "2") - если правильный ответ хранится как индекс
 
   let choiceValue: string
-  const exactChoice = choices[index]
+  const exactChoice = (choices as unknown[])[index]
 
   if (exactChoice !== undefined) {
     // Если вариант - объект с полем "id", используем ID (например, "A", "B", "C")
-    if (typeof exactChoice === 'object' && exactChoice !== null && exactChoice.id !== undefined) {
-      choiceValue = String(exactChoice.id).trim()
+    if (typeof exactChoice === 'object' && exactChoice !== null && (exactChoice as Record<string, unknown>).id !== undefined) {
+      choiceValue = String((exactChoice as Record<string, unknown>).id).trim()
     }
     // Если вариант - объект без "id", используем value, label, text или choice
     else if (typeof exactChoice === 'object' && exactChoice !== null) {
-      const extracted = exactChoice.value !== undefined ? String(exactChoice.value) :
-        (exactChoice.label || exactChoice.text || exactChoice.choice || String(exactChoice))
+      const ec = exactChoice as Record<string, unknown>
+      const extracted = ec.value !== undefined ? String(ec.value) :
+        ((ec.label || ec.text || ec.choice || String(exactChoice)) as string)
       choiceValue = typeof extracted === 'string' ? extracted.trim() : String(extracted)
     }
     // Если вариант - строка или число, используем его значение
@@ -1085,7 +965,7 @@ const submitMCQAnswer = async (option: any, index: number) => {
 
 
   // Сохраняем для отображения - сохраняем оригинальный вариант для правильного отображения
-  userAnswer.value = typeof option === 'object' ? (option.label || option.text || option.value || String(option)) : option
+  userAnswer.value = typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) : option
   lastQuestion.value = { ...currentQuestion.value }
 
   // Вызываем submitAnswer с уже подготовленной строкой
@@ -1165,7 +1045,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       // Проверяем, что выбранный вариант существует в списке choices
       // Важно: сравниваем точно, учитывая тип исходного варианта
       // Проверка выполняется, но результат не используется, т.к. мы продолжаем в любом случае
-      choices.some((c: any) => {
+      ;(choices as unknown[]).some((c: unknown) => {
         // Если вариант - число, сравниваем как число и как строка
         if (typeof c === 'number') {
           return String(c) === choiceStr || c === Number(choiceStr)
@@ -1176,7 +1056,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         }
         // Если вариант - объект, извлекаем значение и сравниваем
         if (typeof c === 'object' && c !== null) {
-          const cValue = c.value !== undefined ? String(c.value) : (c.label || c.text || String(c))
+          const cv = c as Record<string, unknown>
+          const cValue = cv.value !== undefined ? String(cv.value) : ((cv.label || cv.text || String(c)) as string)
           return String(cValue).trim() === choiceStr || String(c) === choiceStr
         }
         // Для других типов - простое сравнение строк
@@ -1241,6 +1122,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       // Сохраняем результат и показываем его
       lastResult.value = response
       showingResult.value = true
+      saveToRecentSessions()
       userAnswer.value = answer
       gamificationStore.applyReward(response.reward)
       showRewardModal.value = Boolean(response.is_correct && response.reward && (response.reward.xp_gained || response.reward.coins_gained))
@@ -1469,6 +1351,29 @@ const pluginMessageHandler = (event: MessageEvent) => {
   }
 }
 
+const saveToRecentSessions = () => {
+  const session = practiceStore.currentSession
+  if (!session) return
+
+  const skillId = session.skill_id
+  const skill = catalogStore.skillDetails.get(skillId)
+  const title = skill?.title || (session as any).skill_title || (session as any).title || 'Тапсырма'
+
+  const data = {
+    id: session.id,
+    skillName: title,
+    correct: session.correct_count || 0,
+    total: session.questions_answered || 0,
+    date: new Date().toISOString()
+  }
+
+  try {
+    localStorage.setItem(`practice_result_${session.id}`, JSON.stringify(data))
+  } catch (err) {
+    console.error('Failed to save practice result to localStorage:', err)
+  }
+}
+
 onMounted(async () => {
   window.addEventListener('message', pluginMessageHandler)
   try {
@@ -1476,6 +1381,11 @@ onMounted(async () => {
 
     // Загружаем статистику навыка для отображения предыдущего результата
     if (session?.skill_id) {
+      try {
+        await catalogStore.getSkill(session.skill_id)
+      } catch {
+        // Игнорируем
+      }
       try {
         const skillStats = await catalogStore.getSkillStats(session.skill_id)
         if (skillStats && skillStats.best_smartscore) {
@@ -1485,6 +1395,9 @@ onMounted(async () => {
         // Игнорируем ошибку загрузки статистики
       }
     }
+
+    // Сохраняем в недавние сессии при открытии
+    saveToRecentSessions()
 
     // Восстанавливаем время сессии
     if (session?.time_elapsed_sec !== undefined) {

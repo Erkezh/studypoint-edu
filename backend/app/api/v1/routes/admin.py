@@ -18,6 +18,7 @@ router.include_router(topics.router, prefix="/topics", tags=["Admin"])
 router.include_router(skills.router, prefix="/skills", tags=["Admin"])
 router.include_router(questions.router, prefix="/questions", tags=["Admin"])
 router.include_router(plugins_router, prefix="/plugins", tags=["Admin"])
+router.include_router(plugins_router, prefix="/modules", tags=["Admin"])
 router.include_router(subscriptions.router, prefix="/subscriptions", tags=["Admin"])
 
 

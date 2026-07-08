@@ -292,7 +292,7 @@ const skillsWithProgress = computed(() => {
     analyticsStore.allQuestions.forEach(q => {
        const timestamp = q.converted_at || q.created_at || q.answered_at
        if (isDateRunning(timestamp as string)) {
-         skillIdsInRange!.add(q.skill_id)
+         skillIdsInRange!.add(q.skill_id as number)
        }
     })
   }
@@ -521,9 +521,9 @@ const practiceByDay = computed(() => {
   // 2. Aggregate Data
   for (const q of questions) {
     if (!q.answered_at) continue
-    if (!validIds.has(q.skill_id)) continue
+    if (!validIds.has(q.skill_id as number)) continue
 
-    const ts = q.answered_at
+    const ts = q.answered_at as string
     if (!isDateRunning(ts)) continue
 
     const date = new Date(ts)
@@ -610,7 +610,7 @@ const sessionsByDate = computed(() => {
   const dateMap = new Map<string, Array<Record<string, unknown>>>()
   for (const q of questions) {
     // Filter by grade
-    if (!validIds.has(q.skill_id)) continue
+    if (!validIds.has(q.skill_id as number)) continue
 
     const rec = q as Record<string, unknown>
     const answeredAt = rec.answered_at as string
