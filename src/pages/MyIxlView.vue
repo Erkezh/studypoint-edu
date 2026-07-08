@@ -661,7 +661,6 @@ onMounted(async () => {
   color: #065f46;
 }
 
-.quiz-card-right {}
 
 .start-quiz-btn {
   padding: 7px 16px;
@@ -733,7 +732,9 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 600;
   color: #1f2937;
-  truncate: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recent-meta {

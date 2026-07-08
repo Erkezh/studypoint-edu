@@ -130,7 +130,7 @@
                     :question="{
                       prompt: q.prompt || '',
                       type: q.questionType || '',
-                      data: q.data || {},
+                      data: (q.data || {}) as Record<string, unknown>,
                       userAnswer: q.rawUserAnswer,
                       isCorrect: q.isCorrect,
                       correctAnswer: q.correctAnswer
