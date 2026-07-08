@@ -113,15 +113,38 @@ const KazakhRectangleAreaApp = () => {
     return possibleAreas[Math.floor(Math.random() * possibleAreas.length)];
   };
 
+  // ⚠️ Режим просмотра ошибок (аналитика)
+  const reviewMode = (window as any).reviewMode || null;
+  const isReview = !!reviewMode;
+
   useEffect(() => {
-    const newArea = generateRandomArea();
-    setTargetArea(newArea);
-    setSelectedCells(new Set());
-    setShowAnswer(false);
-    setIsCorrect(null);
-    setIsDragging(false);
-    setDragStart(null);
-    setCorrectAnswers(generateCorrectAnswers(newArea));
+    if (isReview) {
+      // Восстанавливаем сохраненный вопрос и ответ
+      const qData = reviewMode.questionData || {};
+      const aData = reviewMode.answerData || {};
+      
+      const restoredArea = qData.targetArea || 12;
+      setTargetArea(restoredArea);
+      
+      if (aData.selectedCells) {
+        setSelectedCells(new Set(aData.selectedCells));
+      } else {
+        setSelectedCells(new Set());
+      }
+      
+      setShowAnswer(true);
+      setIsCorrect(reviewMode.isCorrect !== undefined ? reviewMode.isCorrect : true);
+      setCorrectAnswers(generateCorrectAnswers(restoredArea));
+    } else {
+      const newArea = generateRandomArea();
+      setTargetArea(newArea);
+      setSelectedCells(new Set());
+      setShowAnswer(false);
+      setIsCorrect(null);
+      setIsDragging(false);
+      setDragStart(null);
+      setCorrectAnswers(generateCorrectAnswers(newArea));
+    }
   }, [currentQuestion]);
 
   // Calculate the rectangle area between two points
@@ -220,7 +243,14 @@ const KazakhRectangleAreaApp = () => {
       id: `${EXERCISE_ID}-q${currentQuestion}`,
       correctAnswer: formatCorrectAnswer(targetArea),
       studentAnswer: formatStudentAnswer(selectedCells),
-      isCorrect: correct
+      isCorrect: correct,
+      // ⚠️ Сохраняем сгенерированные параметры вопроса для аналитики
+      questionData: {
+        targetArea: targetArea
+      },
+      answerData: {
+        selectedCells: Array.from(selectedCells)
+      }
     };
     
     // Отправляем сообщение родительскому окну (PracticeSession)
@@ -228,14 +258,6 @@ const KazakhRectangleAreaApp = () => {
       window.parent.postMessage(messageData, '*');
     }
     console.log('[Exercise Result]', messageData);
-    
-    // НЕ переходим автоматически к следующему вопросу - это делает PracticeSession
-    // if (correct) {
-    //   setScore(score + 1);
-    //   setTimeout(() => {
-    //     nextQuestion();
-    //   }, 1500);
-    // }
   };
 
   const nextQuestion = () => {
@@ -326,30 +348,32 @@ const KazakhRectangleAreaApp = () => {
       </div>
 
       {/* Controls */}
-      <div className="flex justify-center gap-4 mb-6">
-        <button
-          onClick={resetGrid}
-          className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-          disabled={showAnswer}
-        >
-          Тазалау
-        </button>
-        <button
-          onClick={checkAnswer}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          disabled={showAnswer || selectedCells.size === 0}
-        >
-          Тексеру
-        </button>
-        {showAnswer && (
+      {!isReview && (
+        <div className="flex justify-center gap-4 mb-6">
           <button
-            onClick={nextQuestion}
-            className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            onClick={resetGrid}
+            className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+            disabled={showAnswer}
           >
-            Келесі сұрақ
+            Тазалау
           </button>
-        )}
-      </div>
+          <button
+            onClick={checkAnswer}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            disabled={showAnswer || selectedCells.size === 0}
+          >
+            Тексеру
+          </button>
+          {showAnswer && (
+            <button
+              onClick={nextQuestion}
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Келесі сұрақ
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Current Selection Info */}
       {selectedCells.size > 0 && !showAnswer && (

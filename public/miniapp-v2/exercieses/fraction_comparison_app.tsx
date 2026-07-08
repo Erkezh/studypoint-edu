@@ -62,16 +62,39 @@ const FractionComparison = () => {
     setScore(0);
   };
 
+  // ⚠️ Режим просмотра ошибок (аналитика)
+  const reviewMode = (window as any).reviewMode || null;
+  const isReview = !!reviewMode;
+
   useEffect(() => {
-    generateProblems();
+    if (isReview) {
+      // Восстанавливаем сохраненный вопрос и ответ
+      const qData = reviewMode.questionData || {};
+      if (qData.frac1 && qData.frac2) {
+        setProblems([{
+          id: 0,
+          frac1: qData.frac1,
+          frac2: qData.frac2,
+          correctAnswer: reviewMode.correctAnswer || getCorrectAnswer(qData.frac1, qData.frac2)
+        }]);
+        setCurrentIndex(0);
+        setUserAnswer(reviewMode.studentAnswer || null);
+        setShowResult(true);
+      } else {
+        generateProblems();
+      }
+    } else {
+      generateProblems();
+    }
   }, []);
 
   const handleAnswerSelect = (value: string) => {
+    if (showResult) return;
     setUserAnswer(value);
   };
 
   const handleSubmit = () => {
-    if (!userAnswer) return;
+    if (!userAnswer || isReview) return;
     setShowResult(true);
     const correctAnswer = problems[currentIndex].correctAnswer;
     const userAnswerStr = String(userAnswer);
@@ -90,6 +113,11 @@ const FractionComparison = () => {
           correctAnswer: correctAnswerStr,
           studentAnswer: userAnswerStr,
           question: `Compare fractions #${currentIndex + 1}`,
+          // ⚠️ Сохраняем сгенерированные параметры вопроса для аналитики
+          questionData: {
+            frac1: problems[currentIndex].frac1,
+            frac2: problems[currentIndex].frac2
+          }
         },
         '*'
       );
@@ -152,10 +180,16 @@ const FractionComparison = () => {
                         onClick={() => handleAnswerSelect(symbol)}
                         disabled={showResult}
                         className={`w-16 h-16 rounded-lg border-2 text-2xl font-bold transition ${
-                          userAnswer === symbol
-                            ? 'bg-indigo-600 text-white border-indigo-600'
-                            : 'bg-white border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
-                        } ${showResult ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                          showResult
+                            ? symbol === currentProblem.correctAnswer
+                              ? 'bg-green-500 text-white border-green-600'
+                              : userAnswer === symbol
+                                ? 'bg-red-500 text-white border-red-600'
+                                : 'bg-white border-gray-200 opacity-50'
+                            : userAnswer === symbol
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'bg-white border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                        } ${showResult ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                       >
                         {symbol}
                       </button>
@@ -187,39 +221,41 @@ const FractionComparison = () => {
                 )}
               </div>
 
-              <div className="flex justify-end items-center">
-                {!showResult && (
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!userAnswer}
-                    className={`px-6 py-3 rounded-lg transition text-lg font-semibold ${
-                      userAnswer
-                        ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
-                  >
-                    Submit
-                  </button>
-                )}
+              {!isReview && (
+                <div className="flex justify-end items-center">
+                  {!showResult && (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!userAnswer}
+                      className={`px-6 py-3 rounded-lg transition text-lg font-semibold ${
+                        userAnswer
+                          ? 'bg-green-600 text-white hover:bg-green-700 cursor-pointer'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Submit
+                    </button>
+                  )}
 
-                {showResult && currentIndex < problems.length - 1 && (
-                  <button
-                    onClick={handleNext}
-                    className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition text-lg font-semibold"
-                  >
-                    Next Question
-                  </button>
-                )}
+                  {showResult && currentIndex < problems.length - 1 && (
+                    <button
+                      onClick={handleNext}
+                      className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition text-lg font-semibold"
+                    >
+                      Next Question
+                    </button>
+                  )}
 
-                {showResult && currentIndex === problems.length - 1 && (
-                  <button
-                    onClick={generateProblems}
-                    className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-lg font-semibold"
-                  >
-                    Try Again
-                  </button>
-                )}
-              </div>
+                  {showResult && currentIndex === problems.length - 1 && (
+                    <button
+                      onClick={generateProblems}
+                      className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition text-lg font-semibold"
+                    >
+                      Try Again
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>

@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decimal Order Exercise</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect, useRef, useCallback } = React;
+const DIFFICULTY_LEVELS = [
+  { label: "\u0416\u0435\u04A3\u0456\u043B", count: [3, 4], decimals: 1, range: [0.1, 0.9] },
+  { label: "\u041E\u0440\u0442\u0430\u0448\u0430", count: [4, 5], decimals: 1, range: [1, 9.9] },
+  { label: "\u041A\u04AF\u0440\u0434\u0435\u043B\u0456", count: [4, 5], decimals: 2, range: [0.1, 9.99] },
+  { label: "\u049A\u0438\u044B\u043D", count: [4, 5], decimals: 2, range: [30, 99.99] }
+];
+function randomInRange(min, max, decimals) {
+  const val = Math.random() * (max - min) + min;
+  return parseFloat(val.toFixed(decimals));
+}
+function fmt(num) {
+  return String(num).replace(".", ",");
+}
+function parseAnswerString(str) {
+  if (!str) return [];
+  return String(str).split(", ").map((s) => parseFloat(s.trim().replace(",", "."))).filter((n) => !Number.isNaN(n));
+}
+function shuffleArray(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function generateProblem() {
+  const level = DIFFICULTY_LEVELS[Math.floor(Math.random() * DIFFICULTY_LEVELS.length)];
+  const count = level.count[0] + Math.floor(Math.random() * (level.count[1] - level.count[0] + 1));
+  const ascending = Math.random() > 0.5;
+  const nums = /* @__PURE__ */ new Set();
+  while (nums.size < count) {
+    nums.add(randomInRange(level.range[0], level.range[1], level.decimals));
+  }
+  const sorted = [...nums].sort((a, b) => ascending ? a - b : b - a);
+  const shuffled = shuffleArray(sorted);
+  if (JSON.stringify(shuffled) === JSON.stringify(sorted)) {
+    const i = 0, j = shuffled.length - 1;
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return {
+    id: Date.now(),
+    question: ascending ? "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440" : "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440",
+    ascending,
+    numbers: shuffled,
+    correctOrder: sorted,
+    level: level.label
+  };
+}
+const COLORS = {
+  bg: "#0a0e1a",
+  card: "#111827",
+  cardBorder: "#1e293b",
+  accent: "#38bdf8",
+  accentGlow: "rgba(56, 189, 248, 0.15)",
+  success: "#34d399",
+  successGlow: "rgba(52, 211, 153, 0.2)",
+  error: "#f87171",
+  errorGlow: "rgba(248, 113, 113, 0.2)",
+  text: "#f1f5f9",
+  textMuted: "#94a3b8",
+  chip: "#1e293b",
+  chipBorder: "#334155",
+  dropzone: "#0f172a",
+  dropzoneActive: "rgba(56, 189, 248, 0.08)"
+};
+function DecimalOrderExercise() {
+  const [problem, setProblem] = useState(null);
+  const [userOrder, setUserOrder] = useState([]);
+  const [remaining, setRemaining] = useState([]);
+  const [showResult, setShowResult] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dragSource, setDragSource] = useState(null);
+  const [hoveredSlot, setHoveredSlot] = useState(null);
+  const [animateIn, setAnimateIn] = useState(false);
+  const [touchDrag, setTouchDrag] = useState(null);
+  const containerRef = useRef(null);
+  const reviewMode = typeof window !== "undefined" && window.reviewMode || null;
+  const isReview = !!reviewMode;
+  const sendHeight = useCallback(() => {
+    if (window.parent !== window && containerRef.current) {
+      window.parent.postMessage(
+        { type: "resize", height: containerRef.current.scrollHeight + 40 },
+        "*"
+      );
+    }
+  }, []);
+  const startNewProblem = useCallback(() => {
+    const p = generateProblem();
+    setProblem(p);
+    setUserOrder([]);
+    setRemaining(p.numbers.map((n, i) => ({ value: n, id: `num-${i}-${n}` })));
+    setShowResult(false);
+    setIsCorrect(false);
+    setAnimateIn(false);
+    setTimeout(() => setAnimateIn(true), 50);
+  }, []);
+  useEffect(() => {
+    if (isReview) {
+      const qd = reviewMode.questionData || {};
+      const numbers = Array.isArray(qd.numbers) ? qd.numbers : [];
+      const ascending = qd.ascending !== void 0 ? qd.ascending : true;
+      const correctOrder = [...numbers].sort((a, b) => ascending ? a - b : b - a);
+      const p = {
+        id: Date.now(),
+        question: reviewMode.question || (ascending ? "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440" : "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440"),
+        ascending,
+        numbers,
+        correctOrder,
+        level: qd.level || ""
+      };
+      const studentValues = parseAnswerString(reviewMode.studentAnswer);
+      const studentOrder = studentValues.map((v, i) => ({ value: v, id: `num-${i}-${v}` }));
+      setProblem(p);
+      setUserOrder(studentOrder);
+      setRemaining([]);
+      setIsCorrect(!!reviewMode.isCorrect);
+      setShowResult(true);
+      setAnimateIn(true);
+    } else {
+      startNewProblem();
+    }
+  }, [isReview, reviewMode, startNewProblem]);
+  useEffect(() => {
+    sendHeight();
+    const timer = setTimeout(sendHeight, 150);
+    return () => clearTimeout(timer);
+  }, [problem, showResult, userOrder, sendHeight]);
+  const handleChipClick = (item) => {
+    if (showResult || isReview) return;
+    setRemaining((r) => r.filter((x) => x.id !== item.id));
+    setUserOrder((o) => [...o, item]);
+  };
+  const handleSlotClick = (item) => {
+    if (showResult || isReview) return;
+    setUserOrder((o) => o.filter((x) => x.id !== item.id));
+    setRemaining((r) => [...r, item]);
+  };
+  const handleDragStart = (item, source) => {
+    if (isReview) return;
+    setDraggedItem(item);
+    setDragSource(source);
+  };
+  const handleDragOverSlot = (e, index) => {
+    e.preventDefault();
+    setHoveredSlot(index);
+  };
+  const handleDropOnAnswer = (e, dropIndex) => {
+    e.preventDefault();
+    setHoveredSlot(null);
+    if (!draggedItem) return;
+    if (dragSource === "remaining") {
+      setRemaining((r) => r.filter((x) => x.id !== draggedItem.id));
+      setUserOrder((o) => {
+        const newO = [...o];
+        newO.splice(dropIndex !== void 0 ? dropIndex : newO.length, 0, draggedItem);
+        return newO;
+      });
+    } else if (dragSource === "answer") {
+      setUserOrder((o) => {
+        const filtered = o.filter((x) => x.id !== draggedItem.id);
+        filtered.splice(dropIndex !== void 0 ? dropIndex : filtered.length, 0, draggedItem);
+        return filtered;
+      });
+    }
+    setDraggedItem(null);
+    setDragSource(null);
+  };
+  const handleDropOnRemaining = (e) => {
+    e.preventDefault();
+    setHoveredSlot(null);
+    if (!draggedItem || dragSource !== "answer") return;
+    setUserOrder((o) => o.filter((x) => x.id !== draggedItem.id));
+    setRemaining((r) => [...r, draggedItem]);
+    setDraggedItem(null);
+    setDragSource(null);
+  };
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragSource(null);
+    setHoveredSlot(null);
+  };
+  const handleSubmit = () => {
+    if (isReview || !problem || userOrder.length !== problem.numbers.length) return;
+    const userValues = userOrder.map((x) => x.value);
+    const correct = JSON.stringify(userValues) === JSON.stringify(problem.correctOrder);
+    setIsCorrect(correct);
+    setShowResult(true);
+    window.parent.postMessage(
+      {
+        type: "exercise-result",
+        isCorrect: correct,
+        question: problem.question,
+        userAnswer: userValues.map((n) => fmt(n)).join(", "),
+        correctAnswer: problem.correctOrder.map((n) => fmt(n)).join(", "),
+        questionData: {
+          type: "decimal-order",
+          numbers: problem.numbers,
+          ascending: problem.ascending,
+          level: problem.level
+        }
+      },
+      "*"
+    );
+  };
+  if (!problem) return null;
+  const allPlaced = userOrder.length === problem.numbers.length;
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      ref: containerRef,
+      style: {
+        fontFamily: "'JetBrains Mono', 'SF Mono', 'Fira Code', monospace",
+        background: COLORS.bg,
+        minHeight: "100vh",
+        padding: "24px 16px",
+        boxSizing: "border-box",
+        color: COLORS.text
+      }
+    },
+    /* @__PURE__ */ React.createElement("style", null, `
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+        
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.3); }
+          50% { box-shadow: 0 0 0 8px rgba(56, 189, 248, 0); }
+        }
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          20% { transform: translateX(-6px); }
+          40% { transform: translateX(6px); }
+          60% { transform: translateX(-4px); }
+          80% { transform: translateX(4px); }
+        }
+        @keyframes bounceIn {
+          0% { transform: scale(0.8); opacity: 0; }
+          60% { transform: scale(1.05); }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes chipAppear {
+          from { opacity: 0; transform: scale(0.85) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .chip {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 12px 20px;
+          border-radius: 12px;
+          font-size: 18px;
+          font-weight: 600;
+          cursor: grab;
+          user-select: none;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          font-family: 'JetBrains Mono', monospace;
+          letter-spacing: 0.02em;
+          position: relative;
+          min-width: 64px;
+          text-align: center;
+        }
+        .chip:active { cursor: grabbing; }
+        
+        .chip-source {
+          background: ${COLORS.chip};
+          border: 1.5px solid ${COLORS.chipBorder};
+          color: ${COLORS.text};
+        }
+        .chip-source:hover {
+          border-color: ${COLORS.accent};
+          background: ${COLORS.accentGlow};
+          transform: translateY(-2px);
+          box-shadow: 0 4px 20px rgba(56, 189, 248, 0.15);
+        }
+        
+        .chip-placed {
+          background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(56, 189, 248, 0.06));
+          border: 1.5px solid rgba(56, 189, 248, 0.4);
+          color: ${COLORS.accent};
+        }
+        .chip-placed:hover {
+          border-color: ${COLORS.error};
+          background: ${COLORS.errorGlow};
+          color: ${COLORS.error};
+        }
+        
+        .chip-correct {
+          background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(52, 211, 153, 0.06));
+          border: 1.5px solid rgba(52, 211, 153, 0.5);
+          color: ${COLORS.success};
+          cursor: default;
+        }
+        .chip-wrong {
+          background: linear-gradient(135deg, rgba(248, 113, 113, 0.15), rgba(248, 113, 113, 0.06));
+          border: 1.5px solid rgba(248, 113, 113, 0.5);
+          color: ${COLORS.error};
+          cursor: default;
+          animation: shake 0.5s ease;
+        }
+        
+        .dropzone {
+          min-height: 56px;
+          border: 2px dashed ${COLORS.chipBorder};
+          border-radius: 14px;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          padding: 12px;
+          transition: all 0.25s ease;
+          background: ${COLORS.dropzone};
+          position: relative;
+        }
+        .dropzone.active {
+          border-color: ${COLORS.accent};
+          background: ${COLORS.dropzoneActive};
+          box-shadow: inset 0 0 30px rgba(56, 189, 248, 0.04);
+        }
+        
+        .slot-indicator {
+          width: 4px;
+          border-radius: 2px;
+          background: ${COLORS.accent};
+          align-self: stretch;
+          min-height: 40px;
+          animation: pulse 1s ease infinite;
+        }
+        
+        .btn {
+          padding: 14px 32px;
+          border-radius: 12px;
+          font-size: 15px;
+          font-weight: 600;
+          border: none;
+          cursor: pointer;
+          font-family: 'JetBrains Mono', monospace;
+          letter-spacing: 0.03em;
+          transition: all 0.2s ease;
+        }
+        .btn:disabled {
+          opacity: 0.35;
+          cursor: not-allowed;
+        }
+        .btn-primary {
+          background: ${COLORS.accent};
+          color: ${COLORS.bg};
+        }
+        .btn-primary:not(:disabled):hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 24px rgba(56, 189, 248, 0.3);
+        }
+        .btn-success {
+          background: ${COLORS.success};
+          color: ${COLORS.bg};
+        }
+        .btn-success:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 24px rgba(52, 211, 153, 0.3);
+        }
+
+        .direction-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 14px;
+          border-radius: 20px;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        
+        .result-banner {
+          padding: 16px 20px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          animation: bounceIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          font-size: 15px;
+          font-weight: 500;
+        }
+      `),
+    /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        style: {
+          maxWidth: 560,
+          margin: "0 auto",
+          animation: animateIn ? "slideUp 0.5s ease" : "none",
+          opacity: animateIn ? 1 : 0
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 28, textAlign: "center" } }, /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          style: {
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 13,
+            fontWeight: 600,
+            color: COLORS.textMuted,
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+            marginBottom: 10
+          }
+        },
+        "\u041E\u043D\u0434\u044B\u049B \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u0440\u0435\u0442\u0442\u0435\u0443"
+      ), /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          style: {
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: 22,
+            fontWeight: 700,
+            color: COLORS.text,
+            lineHeight: 1.3,
+            marginBottom: 14
+          }
+        },
+        problem.question
+      ), /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "direction-badge",
+          style: {
+            background: problem.ascending ? "rgba(56, 189, 248, 0.1)" : "rgba(251, 191, 36, 0.1)",
+            color: problem.ascending ? COLORS.accent : "#fbbf24",
+            border: `1px solid ${problem.ascending ? "rgba(56, 189, 248, 0.25)" : "rgba(251, 191, 36, 0.25)"}`
+          }
+        },
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, problem.ascending ? "\u2191" : "\u2193"),
+        problem.ascending ? "\u041A\u0456\u0448\u0456\u0434\u0435\u043D \u2192 \u04AE\u043B\u043A\u0435\u043D\u0433\u0435" : "\u04AE\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u2192 \u041A\u0456\u0448\u0456\u0433\u0435"
+      )),
+      /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 24 } }, /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          style: {
+            fontSize: 11,
+            fontWeight: 600,
+            color: COLORS.textMuted,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 10
+          }
+        },
+        "\u0421\u0430\u043D\u0434\u0430\u0440"
+      ), /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: `dropzone ${draggedItem && dragSource === "answer" ? "active" : ""}`,
+          onDragOver: (e) => !isReview && e.preventDefault(),
+          onDrop: isReview ? void 0 : handleDropOnRemaining,
+          style: {
+            minHeight: remaining.length === 0 ? 56 : "auto",
+            justifyContent: remaining.length === 0 ? "center" : "flex-start"
+          }
+        },
+        remaining.length === 0 && !draggedItem && /* @__PURE__ */ React.createElement(
+          "span",
+          {
+            style: {
+              color: COLORS.textMuted,
+              fontSize: 13,
+              fontStyle: "italic",
+              opacity: 0.6
+            }
+          },
+          "\u0411\u0430\u0440\u043B\u044B\u049B \u0441\u0430\u043D\u0434\u0430\u0440 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440\u044B\u043B\u0434\u044B"
+        ),
+        remaining.map((item, i) => /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            key: item.id,
+            className: "chip chip-source",
+            draggable: !isReview,
+            onDragStart: () => handleDragStart(item, "remaining"),
+            onDragEnd: handleDragEnd,
+            onClick: () => handleChipClick(item),
+            style: {
+              animation: `chipAppear 0.3s ease ${i * 0.05}s both`,
+              cursor: isReview ? "default" : "grab"
+            }
+          },
+          fmt(item.value)
+        ))
+      )),
+      /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 28 } }, /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          style: {
+            fontSize: 11,
+            fontWeight: 600,
+            color: COLORS.textMuted,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            marginBottom: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }
+        },
+        /* @__PURE__ */ React.createElement("span", null, "\u0416\u0430\u0443\u0430\u043F"),
+        !showResult && !isReview && userOrder.length > 0 && /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.5, fontWeight: 400, fontSize: 10, textTransform: "none" } }, "(\u0431\u0430\u0441\u044B\u043F \u0430\u043B\u0443 \u04AF\u0448\u0456\u043D \u0448\u0435\u0440\u0442)")
+      ), /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: `dropzone ${draggedItem && dragSource === "remaining" ? "active" : ""}`,
+          onDragOver: (e) => !isReview && handleDragOverSlot(e, userOrder.length),
+          onDrop: (e) => !isReview && handleDropOnAnswer(e, userOrder.length),
+          onDragLeave: () => setHoveredSlot(null),
+          style: {
+            minHeight: 56,
+            justifyContent: userOrder.length === 0 ? "center" : "flex-start",
+            borderColor: showResult ? isCorrect ? "rgba(52, 211, 153, 0.4)" : "rgba(248, 113, 113, 0.4)" : void 0,
+            background: showResult ? isCorrect ? "rgba(52, 211, 153, 0.04)" : "rgba(248, 113, 113, 0.04)" : void 0
+          }
+        },
+        userOrder.length === 0 && !draggedItem && /* @__PURE__ */ React.createElement(
+          "span",
+          {
+            style: {
+              color: COLORS.textMuted,
+              fontSize: 13,
+              fontStyle: "italic",
+              opacity: 0.5
+            }
+          },
+          "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043E\u0441\u044B\u043D\u0434\u0430 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440 \u2192"
+        ),
+        userOrder.map((item, i) => {
+          const chipClass = showResult ? item.value === problem.correctOrder[i] ? "chip chip-correct" : "chip chip-wrong" : "chip chip-placed";
+          return /* @__PURE__ */ React.createElement("div", { key: item.id, style: { display: "flex", alignItems: "center", gap: 0 } }, hoveredSlot === i && draggedItem && /* @__PURE__ */ React.createElement("div", { className: "slot-indicator" }), /* @__PURE__ */ React.createElement(
+            "div",
+            {
+              className: chipClass,
+              draggable: !showResult,
+              onDragStart: () => !showResult && handleDragStart(item, "answer"),
+              onDragEnd: handleDragEnd,
+              onDragOver: (e) => !showResult && handleDragOverSlot(e, i),
+              onDrop: (e) => !showResult && handleDropOnAnswer(e, i),
+              onClick: () => !showResult && handleSlotClick(item),
+              style: {
+                animation: showResult ? "bounceIn 0.3s ease" : `chipAppear 0.2s ease ${i * 0.04}s both`
+              }
+            },
+            fmt(item.value),
+            showResult && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 14 } }, item.value === problem.correctOrder[i] ? "\u2713" : "\u2717")
+          ));
+        }),
+        hoveredSlot === userOrder.length && draggedItem && /* @__PURE__ */ React.createElement("div", { className: "slot-indicator" })
+      )),
+      showResult && /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "result-banner",
+          style: {
+            background: isCorrect ? COLORS.successGlow : COLORS.errorGlow,
+            border: `1px solid ${isCorrect ? "rgba(52, 211, 153, 0.3)" : "rgba(248, 113, 113, 0.3)"}`,
+            color: isCorrect ? COLORS.success : COLORS.error,
+            marginBottom: 16
+          }
+        },
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 22 } }, isCorrect ? "\u{1F389}" : "\u{1F4A1}"),
+        /* @__PURE__ */ React.createElement("div", null, isCorrect ? /* @__PURE__ */ React.createElement("span", null, "\u0414\u04B1\u0440\u044B\u0441! \u0416\u0430\u0440\u0430\u0439\u0441\u044B\u04A3!") : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 4 } }, "\u049A\u0430\u0442\u0435. \u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F:"), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, letterSpacing: "0.04em" } }, problem.correctOrder.map((n) => fmt(n)).join("  \u2192  "))))
+      ),
+      !isReview && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, justifyContent: "center" } }, !showResult ? /* @__PURE__ */ React.createElement(
+        "button",
+        {
+          className: "btn btn-primary",
+          disabled: !allPlaced,
+          onClick: handleSubmit
+        },
+        "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+      ) : /* @__PURE__ */ React.createElement("button", { className: "btn btn-success", onClick: startNewProblem }, "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B \u2192")),
+      /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          style: {
+            marginTop: 24,
+            textAlign: "center",
+            fontSize: 11,
+            color: COLORS.textMuted,
+            opacity: 0.5,
+            letterSpacing: "0.05em"
+          }
+        },
+        "\u0414\u0435\u04A3\u0433\u0435\u0439: ",
+        problem.level
+      )
+    )
+  );
+}
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(DecimalOrderExercise));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -217,8 +217,12 @@ export function transformTsx(tsxCode: string): TransformResult {
 /**
  * Создает HTML для iframe с трансформированным TSX кодом
  */
-export function createTsxIframeHtml(tsxCode: string): string {
+export function createTsxIframeHtml(tsxCode: string, reviewData?: Record<string, unknown> | null): string {
   const { code, componentName } = transformTsx(tsxCode)
+
+  const injectScript = reviewData 
+    ? `<script>window.reviewMode = ${JSON.stringify(reviewData)};</script>` 
+    : ''
 
   return `<!DOCTYPE html>
 <html>
@@ -233,6 +237,7 @@ export function createTsxIframeHtml(tsxCode: string): string {
 </head>
 <body>
   <div id="root"></div>
+  ${injectScript}
   <script>${LUCIDE_WRAPPER}</script>
   <script type="text/babel">
 ${code}

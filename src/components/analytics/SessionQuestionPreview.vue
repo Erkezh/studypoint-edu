@@ -46,6 +46,15 @@
                 sandbox="allow-scripts allow-same-origin"
                 @load="onIframeLoad"
               ></iframe>
+             <iframe
+                v-else-if="pluginIframeSrc"
+                ref="iframeRef"
+                :src="pluginIframeSrc"
+                class="w-full border-0"
+                :style="{ height: '400px' }"
+                sandbox="allow-scripts allow-same-origin"
+                @load="onIframeLoad"
+              ></iframe>
                <div v-else class="flex items-center justify-center h-64 bg-gray-50 text-gray-500">
                 <div class="text-center">
                   <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mb-2"></div>
@@ -84,6 +93,7 @@ const props = defineProps<{
 
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 const pluginIframeSrcdoc = ref('')
+const pluginIframeSrc = ref('')
 
 // Helpers for formatted display
 const formatContent = (text: string) => {
@@ -116,43 +126,102 @@ const getMCQClass = (option: unknown, index: number | string) => {
 
 // Plugin Logic (simplified from PracticeSession)
 const loadPlugin = async () => {
-  if (props.question.type !== 'PLUGIN') return
+  pluginIframeSrcdoc.value = ''
+  pluginIframeSrc.value = ''
+
+  if (props.question.type !== 'PLUGIN' && props.question.type !== 'INTERACTIVE') return
 
   const qData = props.question.data
   if (!qData) return
 
-  // Determine TSX path
+  // Determine if it is a TSX plugin
+  let isTsx = false
   let tsxPath = ''
 
-  if (qData.tsx_file) tsxPath = qData.tsx_file
-  else if (qData.miniapp_file) tsxPath = qData.miniapp_file
-  else if (qData.entry && qData.entry.endsWith('.tsx')) {
-     const fileName = qData.entry.split('/').pop()
+  if (qData.tsx_file) {
+    tsxPath = qData.tsx_file as string
+    isTsx = true
+  } else if (qData.miniapp_file) {
+    tsxPath = qData.miniapp_file as string
+    isTsx = true
+  } else if (qData.entry && String(qData.entry).endsWith('.tsx')) {
+     const fileName = String(qData.entry).split('/').pop()
      tsxPath = `/miniapp-v2/exercieses/${fileName}`
-  }
-  // Try to guess from ID if path missing (fallback)
-   else {
-      const pluginId = qData.plugin_id || props.question.prompt || ''
-      if (pluginId.includes('kazakh-rectangle')) tsxPath = '/miniapp-v2/exercieses/kazakh_rectangle_area_app.tsx'
-      else if (pluginId.includes('fraction')) tsxPath = '/miniapp-v2/exercieses/fraction_comparison_app.tsx'
+     isTsx = true
+  } else {
+     const pluginId = (qData.plugin_id || props.question.prompt || '') as string
+     if (pluginId.includes('kazakh-rectangle')) {
+       tsxPath = '/miniapp-v2/exercieses/kazakh_rectangle_area_app.tsx'
+       isTsx = true
+     } else if (pluginId.includes('fraction')) {
+       tsxPath = '/miniapp-v2/exercieses/fraction_comparison_app.tsx'
+       isTsx = true
+     }
   }
 
-  if (!tsxPath) return
+  // Common review data structure injected into plugins
+  const rawUserAns = props.question.userAnswer as Record<string, any> | null
+  const questionData = (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.questionData : null
+  const answerData = (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.answerData : null
 
-  try {
-    const response = await fetch(tsxPath)
-    if (!response.ok) throw new Error('Failed to load plugin code')
-    const code = await response.text()
-    pluginIframeSrcdoc.value = createTsxIframeHtml(code)
-  } catch (e) {
-    console.error('Preview load error:', e)
-    pluginIframeSrcdoc.value = '<body>Error loading preview</body>'
+  const reviewData = {
+    mode: 'review',
+    studentAnswer: (rawUserAns && typeof rawUserAns === 'object') ? (rawUserAns.studentAnswer ?? rawUserAns.userAnswer) : props.question.userAnswer,
+    correctAnswer: (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.correctAnswer : props.question.correctAnswer,
+    isCorrect: props.question.isCorrect,
+    questionData,
+    answerData
+  }
+
+  if (isTsx && tsxPath) {
+    try {
+      const response = await fetch(tsxPath.startsWith('/') ? tsxPath : `/${tsxPath}`)
+      if (!response.ok) throw new Error('Failed to load plugin code')
+      const code = await response.text()
+      pluginIframeSrcdoc.value = createTsxIframeHtml(code, reviewData)
+    } catch (e) {
+      console.error('Preview load error:', e)
+      pluginIframeSrcdoc.value = '<body>Error loading preview</body>'
+    }
+  } else {
+    // Ordinary plugin (HTML/JS)
+    const id = qData.plugin_id as string | undefined
+    const ver = qData.plugin_version as string | undefined
+    const entry = qData.entry as string | undefined
+    if (id && ver && entry) {
+      const params = new URLSearchParams({
+        embed: '1',
+        mode: 'review',
+        studentAnswer: typeof reviewData.studentAnswer === 'object' ? JSON.stringify(reviewData.studentAnswer) : String(reviewData.studentAnswer || ''),
+        correctAnswer: typeof reviewData.correctAnswer === 'object' ? JSON.stringify(reviewData.correctAnswer) : String(reviewData.correctAnswer || ''),
+        isCorrect: String(reviewData.isCorrect || false),
+        questionData: questionData ? JSON.stringify(questionData) : '',
+        answerData: answerData ? JSON.stringify(answerData) : ''
+      })
+      pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
+    }
   }
 }
 
 const onIframeLoad = () => {
-    // Optional: Send message to iframe to set "read-only" state if plugin supports it
-    // iframeRef.value?.contentWindow?.postMessage({ type: 'set-read-only', value: true }, '*')
+    // Optional: Send message to iframe as a fallback mechanism
+    try {
+      iframeRef.value?.contentWindow?.postMessage({
+        type: 'SERVER_RESULT',
+        correct: props.question.isCorrect,
+        score: props.question.isCorrect ? 1 : 0,
+        studentAnswer: props.question.userAnswer,
+        correctAnswer: props.question.correctAnswer,
+        isCorrect: props.question.isCorrect,
+        mode: 'review'
+      }, '*')
+      iframeRef.value?.contentWindow?.postMessage({
+        type: 'SHOW_ANSWER',
+        value: true
+      }, '*')
+    } catch (err) {
+      console.warn('Failed postMessage to iframe in review mode:', err)
+    }
 }
 
 onMounted(() => {
