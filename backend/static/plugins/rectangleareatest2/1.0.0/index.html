@@ -57,57 +57,107 @@
     </script>
     <script>
         (function() {
-            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            const params = new URLSearchParams(window.location.search);
+            const embedMode = params.get('embed') === '1';
+            const isReview = params.get('mode') === 'review';
+            const isCorrectParam = params.get('isCorrect') === 'true';
+            
+            let questionDataParam = null;
+            let answerDataParam = null;
+            try {
+                const qd = params.get('questionData');
+                if (qd) questionDataParam = JSON.parse(qd);
+                const ad = params.get('answerData');
+                if (ad) answerDataParam = JSON.parse(ad);
+            } catch(e) {}
+
+            const isOldAttempt = isReview && (!questionDataParam || !questionDataParam.targetArea);
+
             if (embedMode) {
                 document.body.classList.add('embed');
             }
             
             const { useState, useEffect } = React;
-const { Check, X } = window.lucideReact;
-const RectangleAreaTest = () => {
-  const [problems, setProblems] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedCells, setSelectedCells] = useState(/* @__PURE__ */ new Set());
-  const [showResult, setShowResult] = useState(false);
-  const [score, setScore] = useState(0);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState(null);
-  const GRID_SIZE = 8;
-  const generateProblem = (id) => {
-    const areas = [6, 8, 10, 12, 15, 16, 18, 20];
-    const targetArea = areas[Math.floor(Math.random() * areas.length)];
-    const validDimensions = [];
-    for (let w = 2; w <= GRID_SIZE; w++) {
-      for (let h = 2; h <= GRID_SIZE; h++) {
-        if (w * h === targetArea) {
-          validDimensions.push([w, h]);
-        }
-      }
-    }
-    const validOptions = validDimensions.map(([w, h]) => `${w}\xD7${h}`);
-    return {
-      id,
-      targetArea,
-      validDimensions,
-      validOptions,
-      question: `${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0441\u044B\u0437\u044B\u04A3\u044B\u0437`
-    };
-  };
-  const generateProblems = () => {
-    const newProblems = [];
-    for (let i = 0; i < 10; i++) {
-      newProblems.push(generateProblem(i));
-    }
-    setProblems(newProblems);
-    setCurrentIndex(0);
-    setSelectedCells(/* @__PURE__ */ new Set());
-    setShowResult(false);
-    setScore(0);
-  };
-  useEffect(() => {
-    generateProblems();
-  }, []);
+            const { Check, X } = window.lucideReact;
+            const RectangleAreaTest = () => {
+              const [problems, setProblems] = useState([]);
+              const [currentIndex, setCurrentIndex] = useState(0);
+              const [selectedCells, setSelectedCells] = useState(/* @__PURE__ */ new Set());
+              const [showResult, setShowResult] = useState(false);
+              const [score, setScore] = useState(0);
+              const [isCorrect, setIsCorrect] = useState(false);
+              const [isDragging, setIsDragging] = useState(false);
+              const [dragStart, setDragStart] = useState(null);
+              const GRID_SIZE = 8;
+              const generateProblem = (id) => {
+                const areas = [6, 8, 10, 12, 15, 16, 18, 20];
+                const targetArea = areas[Math.floor(Math.random() * areas.length)];
+                const validDimensions = [];
+                for (let w = 2; w <= GRID_SIZE; w++) {
+                  for (let h = 2; h <= GRID_SIZE; h++) {
+                    if (w * h === targetArea) {
+                      validDimensions.push([w, h]);
+                    }
+                  }
+                }
+                const validOptions = validDimensions.map(([w, h]) => `${w}\xD7${h}`);
+                return {
+                  id,
+                  targetArea,
+                  validDimensions,
+                  validOptions,
+                  question: `${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0441\u044B\u0437\u044B\u04A3\u044B\u0437`
+                };
+              };
+              const generateProblems = () => {
+                const newProblems = [];
+                for (let i = 0; i < 10; i++) {
+                  newProblems.push(generateProblem(i));
+                }
+                setProblems(newProblems);
+                setCurrentIndex(0);
+                setSelectedCells(/* @__PURE__ */ new Set());
+                setShowResult(false);
+                setScore(0);
+              };
+              useEffect(() => {
+                if (isReview) {
+                  if (!isOldAttempt && questionDataParam) {
+                    const restoredArea = questionDataParam.targetArea;
+                    const p = {
+                      id: 0,
+                      targetArea: restoredArea,
+                      validDimensions: [],
+                      validOptions: [],
+                      question: `${restoredArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0441\u044B\u0437\u044B\u04A3\u044B\u0437`
+                    };
+                    
+                    // calculate valid dimensions for correct Answers display
+                    for (let w = 2; w <= GRID_SIZE; w++) {
+                      for (let h = 2; h <= GRID_SIZE; h++) {
+                        if (w * h === restoredArea) {
+                          p.validDimensions.push([w, h]);
+                        }
+                      }
+                    }
+                    p.validOptions = p.validDimensions.map(([w, h]) => `${w}\xD7${h}`);
+
+                    setProblems([p]);
+                    setCurrentIndex(0);
+                    
+                    if (answerDataParam && answerDataParam.selectedCells) {
+                      setSelectedCells(new Set(answerDataParam.selectedCells));
+                    } else {
+                      setSelectedCells(new Set());
+                    }
+                    
+                    setIsCorrect(isCorrectParam);
+                    setShowResult(true);
+                  }
+                } else {
+                  generateProblems();
+                }
+              }, []);
   const getCellKey = (row, col) => `${row}-${col}`;
   const handleMouseDown = (row, col) => {
     if (showResult) return;
@@ -255,6 +305,19 @@ const RectangleAreaTest = () => {
     setIsDragging(false);
     setDragStart(null);
   };
+  if (isOldAttempt) {
+    return /* @__PURE__ */ React.createElement(
+      "div", 
+      { className: "min-h-screen bg-gray-50 flex items-center justify-center p-6" }, 
+      /* @__PURE__ */ React.createElement(
+        "div", 
+        { className: "max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center border border-amber-200 bg-amber-50 text-amber-800" }, 
+        /* @__PURE__ */ React.createElement("div", { className: "text-4xl mb-3" }, "⚠️"),
+        /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-bold mb-1" }, "\u0422\u0430\u043F\u0441\u044B\u0440\u043C\u0430\u043D\u044B \u049B\u0430\u0440\u0430\u0443 \u043C\u04AF\u043C\u043A\u0456\u043D \u0435\u043C\u0435\u0441"),
+        /* @__PURE__ */ React.createElement("p", { className: "text-sm text-amber-600" }, "\u0411\u04B1\u043B \u0435\u0441\u043A\u0456 \u04E3\u0440\u0435\u043A\u0435\u0442\u0442\u0456\u04A3 \u0441\u04B1\u0440\u0430\u049B \u0434\u0435\u0440\u0435\u043A\u0442\u0435\u0440\u0456 \u0441\u0430\u049B\u0442\u0430\u043B\u043C\u0430\u0493\u0430\u043D. \u0416\u0430\u04A3\u0430 \u04E3\u0440\u0435\u043A\u0435\u0442\u0442\u0435\u0440\u0434\u0456\u04A3 \u0431\u0430\u0441\u049B\u0430 \u043C\u04D9\u043B\u0456\u043C\u0435\u0442\u0442\u0435\u0440\u0456 \u0442\u043E\u043B\u044B\u049B \u043A\u04E9\u0440\u0441\u0435\u0442\u0456\u043B\u0435\u0434\u0456.")
+      )
+    );
+  }
   if (problems.length === 0) {
     return /* @__PURE__ */ React.createElement("div", { className: "min-h-screen bg-gray-50 flex items-center justify-center" }, /* @__PURE__ */ React.createElement("div", { className: "text-xl text-gray-600" }, "\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435..."));
   }
@@ -283,14 +346,20 @@ const RectangleAreaTest = () => {
             disabled: showResult,
             className: `
                         w-10 h-10 border-2 transition-all duration-100 rounded
-                        ${isSelected ? "bg-blue-500 border-blue-600 shadow-md" : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50"}
+                        ${isSelected 
+                          ? showResult
+                            ? isCorrect
+                              ? "bg-green-500 border-green-600 shadow-md"
+                              : "bg-red-500 border-red-600 shadow-md"
+                            : "bg-blue-500 border-blue-600 shadow-md" 
+                          : "bg-white border-gray-300 hover:border-blue-400 hover:bg-blue-50"}
                         ${showResult ? "cursor-not-allowed" : "cursor-pointer"}
                       `
           }
         );
       })
     )
-  )), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4" }, !showResult ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
+  )), !isReview && /* @__PURE__ */ React.createElement("div", { className: "flex gap-4" }, !showResult ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement(
     "button",
     {
       onClick: handleReset,

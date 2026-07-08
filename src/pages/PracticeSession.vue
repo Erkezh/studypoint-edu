@@ -166,21 +166,18 @@
 
                 <!-- PLUGIN -->
                 <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
-                  <iframe v-if="isTsxPlugin && pluginIframeSrcdoc" ref="pluginIframeRef" :srcdoc="pluginIframeSrcdoc"
-                    :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
-                    sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
-                  <iframe v-else-if="!isTsxPlugin && pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
-                    :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
-                    sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
-                  <div v-else class="text-red-500 text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
-                    Плагин не загружен.
-                  </div>
-                  <button v-if="!isTsxPlugin && pluginIframeSrc" @click="requestPluginAnswer"
-                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                    class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                    {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
-                  </button>
+                   <iframe v-if="pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
+                     :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
+                     sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
+                   <div v-else class="text-red-500 text-sm flex items-center gap-2">
+                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                     Плагин не загружен.
+                   </div>
+                   <button v-if="pluginIframeSrc" @click="requestPluginAnswer"
+                     :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                     class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                     {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                   </button>
                 </div>
 
                 <!-- Unknown type -->
@@ -426,8 +423,6 @@ import Modal from '@/components/ui/Modal.vue'
 import InteractiveQuestion from '@/components/practice/InteractiveQuestion.vue'
 import AnswerVisualizer from '@/components/analytics/AnswerVisualizer.vue'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
-import { createTsxIframeHtml } from '@/utils/tsxTransformer'
-
 interface Props {
   sessionId: string
 }
@@ -444,79 +439,12 @@ const catalogStore = useCatalogStore()
 // Статистика навыка для отображения предыдущего результата
 const previousBestScore = ref<number | null>(null)
 
-// Режим разработки - временно закомментировано
-// const isDev = computed(() => import.meta.env.DEV)
-
 const currentQuestion = computed(() => practiceStore.currentQuestion)
 
-// Определяем, является ли плагин TSX файлом из miniapp-v2
-const isTsxPlugin = computed(() => {
-  const q = currentQuestion.value
-  if (!q || q.type !== 'PLUGIN' || !q.data) return false
-
-  // Проверяем наличие tsx_file или miniapp_file в данных вопроса
-  if (q.data.tsx_file || q.data.miniapp_file) return true
-
-  // Проверяем entry с расширением .tsx
-  if (q.data.entry && (q.data.entry as string).endsWith('.tsx')) return true
-
-  // Проверяем по plugin_id - если содержит "kazakh-rectangle" или другие известные TSX плагины
-  const pluginId = (q.data.plugin_id || q.prompt || '') as string
-  const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
-  if (knownTsxPlugins.some(name => pluginId.includes(name))) {
-    return true
-  }
-
-  return false
-})
-
-// URL или путь к TSX файлу
-const tsxFilePath = computed(() => {
-  const q = currentQuestion.value
-  if (!q || q.type !== 'PLUGIN' || !q.data) return null
-
-  // Приоритет: tsx_file > miniapp_file > entry (если заканчивается на .tsx) > определение по plugin_id
-  if (q.data.tsx_file) return q.data.tsx_file
-  if (q.data.miniapp_file) return q.data.miniapp_file
-  if (q.data.entry && (q.data.entry as string).endsWith('.tsx')) {
-    // Если entry - это путь к TSX файлу в miniapp-v2
-    const entry = q.data.entry as string
-    const fileName = entry.includes('/') ? entry.split('/').pop() : entry
-    return `/miniapp-v2/exercieses/${fileName}`
-  }
-
-  // Определяем по plugin_id или prompt
-  const pluginId = (q.data.plugin_id || q.prompt || '') as string
-
-  // Маппинг известных плагинов на файлы
-  const pluginFileMap: Record<string, string> = {
-    'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
-    'kazakh-rectangle-area-app-1': 'kazakh_rectangle_area_app.tsx',
-    'kazakh-rectangle-area': 'kazakh_rectangle_area_app.tsx',
-    'fraction-comparison': 'fraction_comparison_app.tsx',
-    'fractioncomparisonapp': 'fraction_comparison_app.tsx',
-  }
-
-  // Ищем совпадение в plugin_id или prompt
-  for (const [key, fileName] of Object.entries(pluginFileMap)) {
-    if ((pluginId as string).includes(key) || (pluginId as string).toLowerCase().includes(key.toLowerCase())) {
-      return `/miniapp-v2/exercieses/${fileName}`
-    }
-  }
-
-  return null
-})
-
-// Содержимое iframe для TSX файлов (srcdoc)
-const pluginIframeSrcdoc = ref<string>('')
-
-// URL для обычных плагинов (src)
+// URL для плагинов (src)
 const pluginIframeSrc = computed(() => {
   const q = currentQuestion.value
   if (!q || q.type !== 'PLUGIN' || !q.data) return ''
-
-  // Если это TSX файл, используем srcdoc вместо src
-  if (isTsxPlugin.value) return ''
 
   const id = q.data.plugin_id as string | undefined
   const ver = q.data.plugin_version as string | undefined
@@ -525,63 +453,13 @@ const pluginIframeSrc = computed(() => {
   return `/static/modules/${id}/${ver}/${entry}?embed=1`
 })
 
-// Загрузка TSX файла и создание iframe содержимого
-const loadTsxPlugin = async () => {
-  const filePath = tsxFilePath.value
-  if (!filePath) {
-    pluginIframeSrcdoc.value = ''
-    return
-  }
-
-  try {
-    // Пытаемся загрузить файл
-    let tsxCode: string
-
-    // Если путь начинается с /, это абсолютный путь от корня сайта
-    if ((filePath as string).startsWith('/')) {
-      const response = await fetch(filePath as string)
-      if (!response.ok) {
-        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
-      }
-      tsxCode = await response.text()
-    } else if ((filePath as string).startsWith('http://') || (filePath as string).startsWith('https://')) {
-      // Полный URL
-      const response = await fetch(filePath as string)
-      if (!response.ok) {
-        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
-      }
-      tsxCode = await response.text()
-    } else {
-      // Относительный путь - пробуем от корня проекта
-      const response = await fetch(`/${filePath}`)
-      if (!response.ok) {
-        throw new Error(`Failed to load TSX file (${response.status}): ${response.statusText}`)
-      }
-      tsxCode = await response.text()
-    }
-
-    // Трансформируем и создаем HTML для iframe
-    pluginIframeSrcdoc.value = createTsxIframeHtml(tsxCode)
-  } catch (err: Error | unknown) {
-    console.error('Failed to load TSX plugin:', err)
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
-    pluginIframeSrcdoc.value = `<html><body><p style="color:red;padding:20px">Ошибка загрузки упражнения: ${errorMessage}</p></body></html>`
-  }
-}
-
 // Динамическая высота iframe от плагина
 const dynamicPluginHeight = ref<number | null>(null)
 
-// Отслеживаем изменения вопроса и загружаем TSX при необходимости
-watch([currentQuestion, isTsxPlugin], async () => {
+// Отслеживаем изменения вопроса
+watch(currentQuestion, () => {
   // Сбрасываем динамическую высоту при смене вопроса
   dynamicPluginHeight.value = null
-
-  if (isTsxPlugin.value && currentQuestion.value) {
-    await loadTsxPlugin()
-  } else {
-    pluginIframeSrcdoc.value = ''
-  }
 }, { immediate: true })
 
 const pluginEmbedHeight = computed(() => {

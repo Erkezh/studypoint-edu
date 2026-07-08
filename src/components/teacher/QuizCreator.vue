@@ -575,7 +575,6 @@ import { useTeacherStore } from '@/stores/teacher'
 import { useQuizStore } from '@/stores/quiz'
 import { teacherApi } from '@/api/teacher'
 import { QuizQuestionOrder, QuizResultVisibility, QuizEndType } from '@/api/quiz'
-import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
 const emit = defineEmits(['cancel', 'created'])
 
@@ -893,47 +892,7 @@ const regeneratePreview = () => {
 const isQuestionPlugin = (q: Record<string, unknown> | null | undefined): boolean => {
   if (!q) return false
   const type = q.type as string | undefined
-  if (type === 'PLUGIN' || type === 'INTERACTIVE') return true
-  const data = q.data as Record<string, unknown> | undefined
-  if (!data) return false
-  if (data.tsx_file || data.miniapp_file) return true
-  if (data.entry && String(data.entry).endsWith('.tsx')) return true
-  const pluginId = (data.plugin_id || q.prompt || '') as string
-  const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
-  if (knownTsxPlugins.some(name => pluginId.includes(name))) return true
-  return false
-}
-
-// URL or path to TSX file
-const getTsxFilePath = (q: Record<string, unknown> | null | undefined): string | null => {
-  if (!q || !q.data) return null
-  const data = q.data as Record<string, unknown>
-
-  if (data.tsx_file) return data.tsx_file as string
-  if (data.miniapp_file) return data.miniapp_file as string
-  
-  if (data.entry && String(data.entry).endsWith('.tsx')) {
-    const entry = String(data.entry)
-    const fileName = entry.includes('/') ? entry.split('/').pop() : entry
-    return `/miniapp-v2/exercieses/${fileName}`
-  }
-
-  const pluginId = (data.plugin_id || q.prompt || '') as string
-  const pluginFileMap: Record<string, string> = {
-    'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
-    'kazakh-rectangle-area-app-1': 'kazakh_rectangle_area_app.tsx',
-    'kazakh-rectangle-area': 'kazakh_rectangle_area_app.tsx',
-    'fraction-comparison': 'fraction_comparison_app.tsx',
-    'fractioncomparisonapp': 'fraction_comparison_app.tsx',
-  }
-
-  for (const [key, fileName] of Object.entries(pluginFileMap)) {
-    if (pluginId.includes(key) || pluginId.toLowerCase().includes(key.toLowerCase())) {
-      return `/miniapp-v2/exercieses/${fileName}`
-    }
-  }
-
-  return null
+  return type === 'PLUGIN' || type === 'INTERACTIVE'
 }
 
 const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): string => {
@@ -948,44 +907,16 @@ const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): str
 
 // Load plugin iframe for a preview question
 const loadPreviewPlugin = async (q: Record<string, unknown>) => {
-  previewIframeSrcdoc.value = ''
   previewIframeSrc.value = ''
   if (!isQuestionPlugin(q)) return
-  
-  const tsxPath = getTsxFilePath(q)
-  if (tsxPath) {
-    try {
-      const resp = await fetch(tsxPath.startsWith('/') ? tsxPath : `/${tsxPath}`)
-      if (resp.ok) {
-        previewIframeSrcdoc.value = createTsxIframeHtml(await resp.text())
-      }
-    } catch (err) {
-      console.error('Failed to load preview TSX:', err)
-    }
-  } else {
-    previewIframeSrc.value = getRegularPluginSrc(q)
-  }
+  previewIframeSrc.value = getRegularPluginSrc(q)
 }
 
 // Load plugin iframe for a card object
 const loadCardPlugin = async (card: QuestionCard) => {
-  card.iframeSrcdoc = ''
   card.iframeSrc = ''
   if (!isQuestionPlugin(card)) return
-  
-  const tsxPath = getTsxFilePath(card)
-  if (tsxPath) {
-    try {
-      const resp = await fetch(tsxPath.startsWith('/') ? tsxPath : `/${tsxPath}`)
-      if (resp.ok) {
-        card.iframeSrcdoc = createTsxIframeHtml(await resp.text())
-      }
-    } catch (err) {
-      console.error('Failed to load card TSX:', err)
-    }
-  } else {
-    card.iframeSrc = getRegularPluginSrc(card)
-  }
+  card.iframeSrc = getRegularPluginSrc(card)
 }
 
 // Add N questions to the list of selected questions
