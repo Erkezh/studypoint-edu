@@ -50,8 +50,8 @@
           <div class="bg-white rounded-xl shadow-lg p-5 sm:p-8 relative flex-1 flex flex-col">
             
             <div v-if="currentQuestion" class="flex-1 flex flex-col justify-center">
-              <!-- Question prompt -->
-              <p class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
+              <!-- Question prompt (hidden for plugins since iframe shows it) -->
+              <p v-if="!isCurrentQuestionPlugin" class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
                 v-html="formatPrompt(currentQuestion.question?.prompt || '')">
               </p>
 
@@ -93,6 +93,31 @@
                     class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
                     Жіберу
                   </button>
+                </div>
+
+                <!-- PLUGIN / INTERACTIVE -->
+                <div v-else-if="isCurrentQuestionPlugin" class="space-y-4">
+                  <iframe
+                    v-if="pluginIframeSrcdoc"
+                    ref="pluginIframeRef"
+                    :srcdoc="pluginIframeSrcdoc"
+                    :style="{ width: '100%', height: pluginHeight + 'px', border: 'none', borderRadius: '12px' }"
+                    sandbox="allow-scripts allow-same-origin"
+                    scrolling="no"
+                    class="rounded-xl"
+                  ></iframe>
+                  <iframe
+                    v-else-if="pluginIframeSrc"
+                    ref="pluginIframeRef"
+                    :src="pluginIframeSrc"
+                    :style="{ width: '100%', height: pluginHeight + 'px', border: 'none', borderRadius: '12px' }"
+                    sandbox="allow-scripts allow-same-origin"
+                    scrolling="no"
+                    class="rounded-xl"
+                  ></iframe>
+                  <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-700 text-sm">
+                    Плагин жүктелуде...
+                  </div>
                 </div>
 
                 <!-- Other types (fallback) -->
@@ -209,10 +234,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
+import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
 const authStore = useAuthStore()
 const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
@@ -235,6 +261,12 @@ const textAnswer = ref('')
 const currentTime = ref(0)
 let timeInterval: number | null = null
 
+// Plugin state
+const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
+const pluginIframeSrcdoc = ref('')
+const pluginIframeSrc = ref('')
+const pluginHeight = ref(500)
+
 const sortedQuestions = computed(() => {
   if (!currentQuiz.value?.questions) return []
   return [...currentQuiz.value.questions].sort((a, b) => a.position - b.position)
@@ -243,6 +275,118 @@ const sortedQuestions = computed(() => {
 const currentQuestion = computed(() => {
   if (!sortedQuestions.value.length || currentIndex.value >= sortedQuestions.value.length) return null
   return sortedQuestions.value[currentIndex.value]
+})
+
+// Plugin detection helpers
+const isQuestionPlugin = (q: Record<string, unknown> | null | undefined): boolean => {
+  if (!q) return false
+  const type = q.type as string | undefined
+  if (type === 'PLUGIN' || type === 'INTERACTIVE') return true
+  const data = q.data as Record<string, unknown> | undefined
+  if (!data) return false
+  if (data.tsx_file || data.miniapp_file) return true
+  if (data.entry && String(data.entry).endsWith('.tsx')) return true
+  const pluginId = (data.plugin_id || q.prompt || '') as string
+  const knownTsxPlugins = ['kazakh-rectangle-area', 'kazakh-rectangle-area-app', 'fraction-comparison', 'fraction_comparison']
+  if (knownTsxPlugins.some(name => pluginId.includes(name))) return true
+  return false
+}
+
+const getTsxFilePath = (q: Record<string, unknown> | null | undefined): string | null => {
+  if (!q || !q.data) return null
+  const data = q.data as Record<string, unknown>
+  if (data.tsx_file) return data.tsx_file as string
+  if (data.miniapp_file) return data.miniapp_file as string
+  if (data.entry && String(data.entry).endsWith('.tsx')) {
+    const entry = String(data.entry)
+    const fileName = entry.includes('/') ? entry.split('/').pop() : entry
+    return `/miniapp-v2/exercieses/${fileName}`
+  }
+  const pluginId = (data.plugin_id || q.prompt || '') as string
+  const pluginFileMap: Record<string, string> = {
+    'kazakh-rectangle-area-app': 'kazakh_rectangle_area_app.tsx',
+    'kazakh-rectangle-area-app-1': 'kazakh_rectangle_area_app.tsx',
+    'kazakh-rectangle-area': 'kazakh_rectangle_area_app.tsx',
+    'fraction-comparison': 'fraction_comparison_app.tsx',
+    'fractioncomparisonapp': 'fraction_comparison_app.tsx',
+  }
+  for (const [key, fileName] of Object.entries(pluginFileMap)) {
+    if (pluginId.includes(key) || pluginId.toLowerCase().includes(key.toLowerCase())) {
+      return `/miniapp-v2/exercieses/${fileName}`
+    }
+  }
+  return null
+}
+
+const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): string => {
+  if (!q || !q.data) return ''
+  const data = q.data as Record<string, unknown>
+  const id = data.plugin_id as string | undefined
+  const ver = data.plugin_version as string | undefined
+  const entry = data.entry as string | undefined
+  if (!id || !ver || !entry) return ''
+  return `/static/modules/${id}/${ver}/${entry}?embed=1`
+}
+
+const isCurrentQuestionPlugin = computed(() => {
+  if (!currentQuestion.value) return false
+  return isQuestionPlugin(currentQuestion.value.question as Record<string, unknown> | undefined)
+})
+
+// Load plugin iframe when question changes
+const loadCurrentPlugin = async () => {
+  pluginIframeSrcdoc.value = ''
+  pluginIframeSrc.value = ''
+  pluginHeight.value = 500
+  if (!currentQuestion.value?.question) return
+  const q = currentQuestion.value.question as Record<string, unknown>
+  if (!isQuestionPlugin(q)) return
+
+  const tsxPath = getTsxFilePath(q)
+  if (tsxPath) {
+    try {
+      const resp = await fetch(tsxPath.startsWith('/') ? tsxPath : `/${tsxPath}`)
+      if (resp.ok) {
+        pluginIframeSrcdoc.value = createTsxIframeHtml(await resp.text())
+      }
+    } catch (err) {
+      console.error('Failed to load quiz plugin TSX:', err)
+    }
+  } else {
+    pluginIframeSrc.value = getRegularPluginSrc(q)
+  }
+}
+
+// Listen for exercise-result messages from plugin iframes
+const handlePluginMessage = (event: MessageEvent) => {
+  try {
+    const d = event.data
+    if (!d || typeof d !== 'object') return
+
+    // Handle iframe resize
+    if (d.type === 'resize' || d.type === 'content-height') {
+      const height = d.height ?? d.contentHeight ?? d.scrollHeight
+      if (typeof height === 'number' && height > 0) {
+        pluginHeight.value = Math.max(height, 400)
+      }
+      return
+    }
+
+    if (d.type !== 'exercise-result') return
+    if (!isCurrentQuestionPlugin.value) return
+
+    // The plugin submitted its result — move to the next question
+    submitAnswer(d.userAnswer ?? d.studentAnswer ?? d.answer ?? 'plugin-answer')
+  } catch (err) {
+    console.error('Plugin message error:', err)
+  }
+}
+
+// Watch question changes to reload plugin
+watch(currentIndex, () => {
+  if (isCurrentQuestionPlugin.value) {
+    loadCurrentPlugin()
+  }
 })
 
 const currentSmartScore = computed(() => {
@@ -332,6 +476,8 @@ const fetchQuiz = async () => {
         currentIndex.value = foundQuiz.questions.length
       } else {
         startTimer()
+        // Load plugin iframe if the first question is a plugin
+        await loadCurrentPlugin()
       }
     } else {
       error.value = 'Викторина табылмады немесе қолжетімсіз.'
@@ -346,10 +492,12 @@ const fetchQuiz = async () => {
 
 onMounted(() => {
   fetchQuiz()
+  window.addEventListener('message', handlePluginMessage)
 })
 
 onUnmounted(() => {
   stopTimer()
+  window.removeEventListener('message', handlePluginMessage)
 })
 </script>
 

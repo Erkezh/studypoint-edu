@@ -687,7 +687,7 @@ const selectDropdownSkill = async (skill: Record<string, unknown>) => {
   showPreviewAnswer.value = false
   
   try {
-    const res = await teacherApi.getSkillQuestions(skill.id)
+    const res = await teacherApi.getSkillQuestions(skill.id as number)
     poolQuestions.value = res.data?.data || []
     selectNextPreviewQuestion()
   } catch (err) {
@@ -890,11 +890,11 @@ const regeneratePreview = () => {
 }
 
 // Helper to check if a question is a plugin/interactive miniapp
-const isQuestionPlugin = (q: any): boolean => {
+const isQuestionPlugin = (q: Record<string, unknown> | null | undefined): boolean => {
   if (!q) return false
-  const type = q.type
+  const type = q.type as string | undefined
   if (type === 'PLUGIN' || type === 'INTERACTIVE') return true
-  const data = q.data
+  const data = q.data as Record<string, unknown> | undefined
   if (!data) return false
   if (data.tsx_file || data.miniapp_file) return true
   if (data.entry && String(data.entry).endsWith('.tsx')) return true
@@ -905,12 +905,12 @@ const isQuestionPlugin = (q: any): boolean => {
 }
 
 // URL or path to TSX file
-const getTsxFilePath = (q: Record<string, any> | null | undefined): string | null => {
+const getTsxFilePath = (q: Record<string, unknown> | null | undefined): string | null => {
   if (!q || !q.data) return null
-  const data = q.data as Record<string, any>
+  const data = q.data as Record<string, unknown>
 
-  if (data.tsx_file) return data.tsx_file
-  if (data.miniapp_file) return data.miniapp_file
+  if (data.tsx_file) return data.tsx_file as string
+  if (data.miniapp_file) return data.miniapp_file as string
   
   if (data.entry && String(data.entry).endsWith('.tsx')) {
     const entry = String(data.entry)
@@ -936,9 +936,9 @@ const getTsxFilePath = (q: Record<string, any> | null | undefined): string | nul
   return null
 }
 
-const getRegularPluginSrc = (q: Record<string, any> | null | undefined): string => {
+const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): string => {
   if (!q || !q.data) return ''
-  const data = q.data as Record<string, any>
+  const data = q.data as Record<string, unknown>
   const id = data.plugin_id as string | undefined
   const ver = data.plugin_version as string | undefined
   const entry = data.entry as string | undefined
@@ -1025,7 +1025,8 @@ const addGeneratedQuestions = async () => {
       correct_answer: (q.correct_answer as Record<string, unknown>) || {},
       explanation: q.explanation as string,
       showAnswer: false,
-      iframeSrcdoc: ''
+      iframeSrcdoc: '',
+      iframeSrc: ''
     }
     await loadCardPlugin(cardObj)
     added.push(cardObj)
