@@ -1,0 +1,82 @@
+[
+  {
+    "id": "skateboard",
+    "name": "Скейтборд",
+    "model": "/assets/models/body/skateboard.glb",
+    "preview": "/assets/models/body/skateboard.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "e2f-scooter-yellow",
+    "name": "E2F скутері",
+    "model": "/assets/models/body/e2f_scooter_yellow.glb",
+    "preview": "/assets/models/body/e2f_scooter_yellow.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "btwin-triban-100-bike",
+    "name": "BTWIN Triban 100 велосипеді",
+    "model": "/assets/models/body/btwin_triban_100_road_bike.glb",
+    "preview": "/assets/models/body/btwin_triban_100_road_bike.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "ducati-streetfighter-v4-s",
+    "name": "Ducati Streetfighter V4 S мотоциклі",
+    "model": "/assets/models/body/2024_ducati_streetfighter_v4_s.glb",
+    "preview": "/assets/models/body/2024_ducati_streetfighter_v4_s.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "suzuki-quadzilla-500",
+    "name": "Suzuki Quadzilla 500 квадроциклі",
+    "model": "/assets/models/body/suzuki_quadzilla_500.glb",
+    "preview": "/assets/models/body/suzuki_quadzilla_500.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "mini-car-low-poly-v02",
+    "name": "Mini Car Low Poly",
+    "model": "/assets/models/body/mini_car_low_poly_v02.glb",
+    "preview": "/assets/models/body/mini_car_low_poly_v02.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "ford-mustang-shelby-cobra-gt500",
+    "name": "Ford Mustang Shelby Cobra GT500",
+    "model": "/assets/models/body/1967_ford_mustang_shelby_cobra_gt500.glb",
+    "preview": "/assets/models/body/1967_ford_mustang_shelby_cobra_gt500.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "jaguar-project-7",
+    "name": "Project 7 көлігі",
+    "model": "/assets/models/body/jaguar-project-7.glb",
+    "preview": "/car.webp",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "mclaren-720s-spider",
+    "name": "McLaren 720S Spider",
+    "model": "/assets/models/body/mclaren_720s_spider.glb",
+    "preview": "/assets/models/body/mclaren_720s_spider.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  },
+  {
+    "id": "porsche-963-lmdh-hypercar",
+    "name": "Porsche 963 LMDh",
+    "model": "/assets/models/body/porsche_963_lmdh_hypercar.glb",
+    "preview": "/assets/models/body/porsche_963_lmdh_hypercar.glb",
+    "unlockLevel": 1,
+    "rarity": "legendary"
+  }
+]

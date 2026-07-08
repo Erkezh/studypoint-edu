@@ -1,0 +1,5 @@
+[
+  { "id": "smooth", "name": "Smooth", "model": null, "unlockLevel": 1, "rarity": "common" },
+  { "id": "scoop", "name": "Air Scoop", "model": null, "unlockLevel": 3, "rarity": "rare" },
+  { "id": "vented", "name": "Vented", "model": null, "unlockLevel": 7, "rarity": "epic" }
+]

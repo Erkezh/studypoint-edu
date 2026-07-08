@@ -61,6 +61,9 @@ class PracticeSubmitResponse(BaseModel):
     session: PracticeSessionResponse
     next_question: QuestionPublic | None = None
     finished: bool
+    gained_xp: int = 0
+    gained_coins: int = 0
+    reward: dict[str, Any] | None = None
 
 
 class PracticeHeartbeatRequest(BaseModel):

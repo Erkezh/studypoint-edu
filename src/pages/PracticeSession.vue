@@ -20,6 +20,8 @@
     </div>
 
     <main class="container mx-auto px-4 py-6">
+      <GamificationBar v-if="authStore.isAuthenticated" class="mb-4" />
+
       <!-- Parent Mode Warning -->
       <div v-if="authStore.user?.role === 'PARENT'" class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-4 flex items-start gap-3">
         <svg class="w-6 h-6 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,6 +409,12 @@
         </Button>
       </template>
     </Modal>
+
+    <RewardModal
+      :show="showRewardModal"
+      :reward="lastResult?.reward"
+      @close="showRewardModal = false"
+    />
   </div>
 </template>
 
@@ -417,6 +425,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
+import { useGamificationStore } from '@/stores/gamification'
 import { useTrialQuestions } from '@/composables/useTrialQuestions'
 import { useCatalogStore } from '@/stores/catalog'
 import Header from '@/components/layout/Header.vue'
@@ -425,6 +434,8 @@ import Button from '@/components/ui/Button.vue'
 import Modal from '@/components/ui/Modal.vue'
 import InteractiveQuestion from '@/components/practice/InteractiveQuestion.vue'
 import AnswerVisualizer from '@/components/analytics/AnswerVisualizer.vue'
+import GamificationBar from '@/components/gamification/GamificationBar.vue'
+import RewardModal from '@/components/gamification/RewardModal.vue'
 import { API_BASE_URL } from '@/config/api'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
 import { createTsxIframeHtml } from '@/utils/tsxTransformer'
@@ -437,6 +448,7 @@ const props = defineProps<Props>()
 const router = useRouter()
 const practiceStore = usePracticeStore()
 const authStore = useAuthStore()
+const gamificationStore = useGamificationStore()
 
 // Инициализируем trialQuestions сразу, чтобы он был доступен везде
 const trialQuestions = useTrialQuestions()
@@ -612,6 +624,7 @@ const loadingNext = ref(false) // Загрузка следующего вопр
 const currentTime = ref(0) // Текущее время сессии в секундах
 let timeInterval: number | null = null // Интервал для обновления времени
 const error = ref<string | null>(null) // Ошибка для отображения
+const showRewardModal = ref(false)
 
 // Для всех авторизованных пользователей ограничения не применяются
 // hasActiveSubscription используется для будущего функционала подписок
@@ -1229,6 +1242,8 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       lastResult.value = response
       showingResult.value = true
       userAnswer.value = answer
+      gamificationStore.applyReward(response.reward)
+      showRewardModal.value = Boolean(response.is_correct && response.reward && (response.reward.xp_gained || response.reward.coins_gained))
 
       // Отправляем результат в iframe для PLUGIN
       if (qType === 'PLUGIN' && pluginIframeRef.value?.contentWindow) {
@@ -1329,6 +1344,7 @@ const loadNextQuestion = async () => {
 
   try {
     // Сбрасываем состояние результата
+    showRewardModal.value = false
     showingResult.value = false
     lastResult.value = null
     userAnswer.value = null

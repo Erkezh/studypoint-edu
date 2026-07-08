@@ -2,7 +2,18 @@
   <div class="min-h-screen bg-gray-50">
     <Header />
     <main class="container mx-auto px-4 py-8">
-      <h1 class="text-3xl font-bold mb-6">Басты бет</h1>
+      <GamificationBar />
+      <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
+        <h1 class="text-3xl font-bold text-gray-800">Оқу жолы</h1>
+        <div class="flex flex-wrap items-center gap-3">
+          <router-link to="/garage" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-amber-200 transition-transform hover:-translate-y-1">
+            🚗 Гараж
+          </router-link>
+          <router-link to="/arena" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-indigo-200 transition-transform hover:-translate-y-1">
+            ⚔️ Жарыс алаңы
+          </router-link>
+        </div>
+      </div>
 
       <div v-if="catalogStore.loading" class="text-center py-12">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -76,13 +87,16 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCatalogStore } from '@/stores/catalog'
+import { useGamificationStore } from '@/stores/gamification'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
+import GamificationBar from '@/components/gamification/GamificationBar.vue'
 
 defineOptions({ name: 'HomePage' })
 
 const router = useRouter()
 const catalogStore = useCatalogStore()
+const gamificationStore = useGamificationStore()
 
 const grades = ref(catalogStore.grades)
 const error = ref<string | null>(null)
@@ -187,6 +201,7 @@ const navigateToClass = (gradeNumber: number) => {
 }
 
 onMounted(async () => {
+  gamificationStore.fetchProfile()
   try {
     const fetchedGrades = await catalogStore.getGrades()
     grades.value = fetchedGrades

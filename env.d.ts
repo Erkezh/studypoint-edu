@@ -1,5 +1,11 @@
 /// <reference types="vite/client" />
 
+interface Window {
+  webkitAudioContext?: typeof AudioContext
+}
+
+declare module 'canvas-confetti'
+
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string
   readonly DEV: boolean

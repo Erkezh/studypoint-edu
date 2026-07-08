@@ -10,6 +10,21 @@ from app.models.user import User
 from app.models.awards import AwardEvent
 from app.models.plugin import Plugin
 from app.models.quiz import Quiz, QuizAssignment, QuizQuestion
+from app.models.gamification import (
+    Achievement,
+    DailyMission,
+    GarageItem,
+    SelectedVehicleCustomization,
+    ShopItem,
+    StudentGamification,
+    StudentGarageItem,
+    StudentVehicle,
+    UserAchievement,
+    UserItem,
+    UserMission,
+    Vehicle,
+)
+from app.models.garage import PlayerCar
 
 __all__ = [
     "Assignment",
@@ -32,4 +47,17 @@ __all__ = [
     "Subscription",
     "Topic",
     "User",
+    "ShopItem",
+    "UserItem",
+    "Achievement",
+    "UserAchievement",
+    "DailyMission",
+    "UserMission",
+    "StudentGamification",
+    "Vehicle",
+    "StudentVehicle",
+    "GarageItem",
+    "StudentGarageItem",
+    "SelectedVehicleCustomization",
+    "PlayerCar",
 ]

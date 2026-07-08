@@ -1,0 +1,5 @@
+[
+  { "id": "clean", "name": "Clean", "model": null, "unlockLevel": 1, "rarity": "common" },
+  { "id": "roof-rack", "name": "Adventure Rack", "model": null, "unlockLevel": 6, "rarity": "rare" },
+  { "id": "light-bar", "name": "Light Bar", "model": null, "unlockLevel": 10, "rarity": "epic" }
+]

@@ -1,0 +1,5 @@
+[
+  { "id": "classic", "name": "Classic", "model": null, "unlockLevel": 1, "rarity": "common" },
+  { "id": "aero", "name": "Aero", "model": null, "unlockLevel": 5, "rarity": "rare" },
+  { "id": "chrome", "name": "Chrome", "model": null, "unlockLevel": 8, "rarity": "epic" }
+]

@@ -1,0 +1,5 @@
+[
+  { "id": "none", "name": "None", "model": null, "unlockLevel": 1, "rarity": "common" },
+  { "id": "sport", "name": "Sport Wing", "model": null, "unlockLevel": 4, "rarity": "rare" },
+  { "id": "rocket", "name": "Rocket Wing", "model": null, "unlockLevel": 12, "rarity": "legendary" }
+]

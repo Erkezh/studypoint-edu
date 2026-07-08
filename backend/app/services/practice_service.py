@@ -23,6 +23,7 @@ from app.repositories.question_repo import QuestionRepository
 from app.repositories.subscription_repo import SubscriptionRepository
 from app.schemas.practice import PracticeSessionResponse, PracticeSubmitRequest, PracticeSubmitResponse, QuestionPublic
 from app.services.generator_service import GeneratorService
+from app.services.gamification_service import GamificationService, difficulty_from_question_level
 from app.services.scoring import WindowStats, compute_next_smartscore, zone_for_score
 from app.services.timer_service import apply_active_time_delta, inactivity_threshold_seconds_for_grade
 from app.utils.redis import get_redis
@@ -774,6 +775,22 @@ class PracticeService:
 
             await self._update_assignment_status(student_id=user_uuid, skill_id=ps.skill_id, now=now, session_obj=ps, attempt=attempt)
 
+        reward_payload = {
+            "xp_gained": 0,
+            "coins_gained": 0,
+            "combo_bonus": 0,
+            "combo_streak": 0,
+            "new_level": 1,
+            "level_up": False,
+            "unlocked_vehicle": None,
+        }
+        if not is_parent_preview:
+            reward_payload = await GamificationService(self.session).answer_result(
+                user_uuid,
+                correct=is_correct,
+                difficulty=difficulty_from_question_level(question_level),
+            )
+
         finished = ps.finished_at is not None
         if finished:
             logger.info(
@@ -855,6 +872,9 @@ class PracticeService:
             session=session_resp,
             next_question=_to_question_public(next_q) if next_q is not None else None,
             finished=finished,
+            gained_xp=reward_payload["xp_gained"],
+            gained_coins=reward_payload["coins_gained"],
+            reward=reward_payload,
         )
 
     async def finish(self, *, user_id, session_id: str) -> None:

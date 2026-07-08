@@ -220,9 +220,63 @@ export interface QuestionPublic {
 }
 
 export interface PracticeSubmitRequest {
-  question_id: number
+  question_id: number | string
   submitted_answer: Record<string, unknown>
   time_spent_sec: number
+}
+
+export interface GamificationReward {
+  xp_gained: number
+  coins_gained: number
+  base_coins?: number
+  combo_bonus: number
+  combo_streak: number
+  daily_streak?: number
+  new_level: number
+  level_up: boolean
+  unlocked_vehicle?: GamificationVehicle | null
+}
+
+export interface GamificationVehicle {
+  id: string
+  name: string
+  slug: string
+  unlock_level: number
+  unlock_xp: number
+  coin_price: number
+  model_url?: string | null
+  thumbnail_url?: string | null
+  is_unlocked?: boolean
+  is_owned?: boolean
+  is_selected?: boolean
+}
+
+export interface GamificationGarageItem {
+  id: string
+  vehicle_type: string
+  item_type: string
+  name: string
+  slug: string
+  coin_price: number
+  unlock_level: number
+  model_url?: string | null
+  thumbnail_url?: string | null
+  rarity: string
+  is_owned?: boolean
+}
+
+export interface GamificationProfile {
+  level: number
+  xp: number
+  coins: number
+  combo_streak: number
+  daily_streak: number
+  total_problems_solved: number
+  next_level_xp: number
+  owned_vehicles: string[]
+  selected_vehicle: string
+  vehicles: GamificationVehicle[]
+  shop_items: GamificationGarageItem[]
 }
 
 export interface PracticeSubmitResponse {
@@ -231,6 +285,9 @@ export interface PracticeSubmitResponse {
   session: PracticeSessionResponse
   next_question?: QuestionPublic | null
   finished: boolean
+  gained_xp?: number
+  gained_coins?: number
+  reward?: GamificationReward | null
 }
 
 // Classroom types

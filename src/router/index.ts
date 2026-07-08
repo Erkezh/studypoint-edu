@@ -178,6 +178,18 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
+    path: '/arena',
+    name: 'battle-arena',
+    component: () => import('@/pages/BattleArena.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
+    path: '/garage',
+    name: 'garage',
+    component: () => import('@/pages/GarageView.vue'),
+    meta: { requiresAuth: false },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/pages/NotFound.vue'),

@@ -24,9 +24,14 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@tresjs/cientos": "^5.8.1",
+    "@tresjs/core": "^5.8.3",
+    "@vueuse/motion": "^3.0.3",
     "axios": "^1.7.9",
+    "canvas-confetti": "^1.9.4",
     "chart.js": "^4.4.7",
     "pinia": "^2.3.0",
+    "three": "^0.185.1",
     "uuid": "^11.0.5",
     "vue": "^3.5.13",
     "vue-chartjs": "^5.3.2",
@@ -57,7 +62,7 @@
     "typescript": "~5.7.2",
     "vite": "^6.0.3",
     "vite-plugin-vue-devtools": "^7.6.8",
-    "vitest": "^2.1.8",
+    "vitest": "^4.1.9",
     "vue-tsc": "^2.1.10"
   }
 }

@@ -1,0 +1,28 @@
+{
+  "paint": [
+    { "id": "original", "name": "Бастапқы түс", "unlockLevel": 1 },
+    { "id": "study-blue", "name": "Оқу көгі", "value": "#21a7ff", "unlockLevel": 1 },
+    { "id": "quiz-red", "name": "Квиз қызылы", "value": "#ff4f64", "unlockLevel": 1 },
+    { "id": "coin-gold", "name": "Алтын түс", "value": "#ffc857", "unlockLevel": 3 },
+    { "id": "mint-boost", "name": "Жалбыз түсі", "value": "#45f0b8", "unlockLevel": 6 },
+    { "id": "nova-purple", "name": "Күлгін түс", "value": "#8a5cff", "unlockLevel": 10 }
+  ],
+  "rims": [
+    { "id": "ice", "name": "Мұз", "value": "#d7f4ff", "unlockLevel": 1 },
+    { "id": "graphite", "name": "Графит", "value": "#3f4858", "unlockLevel": 1 },
+    { "id": "sun", "name": "Күн", "value": "#ffcf5c", "unlockLevel": 4 },
+    { "id": "laser", "name": "Лазер", "value": "#5de2ff", "unlockLevel": 8 }
+  ],
+  "windows": [
+    { "id": "clear", "name": "Мөлдір", "value": "#bdefff", "opacity": 0.22, "unlockLevel": 1 },
+    { "id": "smoke", "name": "Түтін", "value": "#182334", "opacity": 0.48, "unlockLevel": 5 },
+    { "id": "violet", "name": "Күлгін", "value": "#765cff", "opacity": 0.36, "unlockLevel": 9 }
+  ],
+  "stickerColors": [
+    { "id": "sticker-white", "name": "Зауыт ақ түсі", "value": "#f8f4ea", "unlockLevel": 1 },
+    { "id": "sticker-black", "name": "Карбон қара", "value": "#111827", "unlockLevel": 1 },
+    { "id": "sticker-red", "name": "Жарыс қызылы", "value": "#ff365f", "unlockLevel": 2 },
+    { "id": "sticker-gold", "name": "Жеңіс алтыны", "value": "#ffd166", "unlockLevel": 4 },
+    { "id": "sticker-blue", "name": "Электр көгі", "value": "#36c5ff", "unlockLevel": 6 }
+  ]
+}
