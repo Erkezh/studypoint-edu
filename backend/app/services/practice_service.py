@@ -365,6 +365,7 @@ class PracticeService:
             _validate_submitted_answer(question_type, question_data, req.submitted_answer)
             
             assert skill is not None
+            assert skill.generator_code is not None
             is_correct, explanation = await GeneratorService.validate_answer(
                 skill.generator_code,
                 q_data,
@@ -795,6 +796,7 @@ class PracticeService:
         if not finished:
             if is_generator_skill:
                 assert skill is not None
+                assert skill.generator_code is not None
                 # Для генераторов создаем новый вопрос
                 logger.info("Generating next question for generator skill")
                 try:
