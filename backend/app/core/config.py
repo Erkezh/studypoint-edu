@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     jwt_issuer: str = "ixl-clone"
     jwt_audience: str = "ixl-clone-users"
     jwt_secret_key: str
-    jwt_access_ttl_sec: int = 60 * 60 * 24          # 24 hours
-    jwt_refresh_ttl_sec: int = 60 * 60 * 24 * 90     # 90 days
+    jwt_access_ttl_sec: int = 60 * 60 * 24 * 365          # 365 days (1 year)
+    jwt_refresh_ttl_sec: int = 60 * 60 * 24 * 365 * 5     # 5 years
 
     password_hash_scheme: str = "argon2"
 

@@ -725,6 +725,7 @@ type QuestionCard = {
   iframeSrcdoc: string
   iframeSrc: string
   height?: number
+  seed: number
 }
 const skillsList = ref<Record<string, unknown>[]>([])
 const poolQuestions = ref<Record<string, unknown>[]>([])
@@ -902,21 +903,25 @@ const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): str
   const ver = data.plugin_version as string | undefined
   const entry = data.entry as string | undefined
   if (!id || !ver || !entry) return ''
-  return `/static/modules/${id}/${ver}/${entry}?embed=1`
+  return `/static/modules/${id}/${ver}/${entry}`
 }
 
-// Load plugin iframe for a preview question
+// Load plugin iframe for a preview question (no seed, no frozen — just preview)
 const loadPreviewPlugin = async (q: Record<string, unknown>) => {
   previewIframeSrc.value = ''
   if (!isQuestionPlugin(q)) return
-  previewIframeSrc.value = getRegularPluginSrc(q)
+  const base = getRegularPluginSrc(q)
+  if (!base) return
+  previewIframeSrc.value = `${base}?embed=1`
 }
 
-// Load plugin iframe for a card object
+// Load plugin iframe for a card object (frozen preview with seed)
 const loadCardPlugin = async (card: QuestionCard) => {
   card.iframeSrc = ''
   if (!isQuestionPlugin(card)) return
-  card.iframeSrc = getRegularPluginSrc(card)
+  const base = getRegularPluginSrc(card)
+  if (!base) return
+  card.iframeSrc = `${base}?embed=1&seed=${card.seed}&frozen=1`
 }
 
 // Add N questions to the list of selected questions
@@ -943,6 +948,9 @@ const addGeneratedQuestions = async () => {
     // Generate a unique card ID for Vue :key rendering
     const uniqueCardId = `card-${q.id}-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
     
+    // Generate a deterministic seed for this question
+    const questionSeed = Math.floor(Math.random() * 2147483647)
+    
     // Add custom properties for cards
     const cardObj: QuestionCard = {
       id: uniqueCardId,
@@ -957,7 +965,8 @@ const addGeneratedQuestions = async () => {
       explanation: q.explanation as string,
       showAnswer: false,
       iframeSrcdoc: '',
-      iframeSrc: ''
+      iframeSrc: '',
+      seed: questionSeed
     }
     await loadCardPlugin(cardObj)
     added.push(cardObj)
@@ -1044,7 +1053,8 @@ const changeCardSkill = async (idx: number, skillId: number) => {
         correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
         explanation: newQ.explanation,
         iframeSrcdoc: '',
-        iframeSrc: ''
+        iframeSrc: '',
+        seed: Math.floor(Math.random() * 2147483647)
       }
       await loadCardPlugin(cardObj)
       selectedQuestions.value[idx] = cardObj
@@ -1079,7 +1089,8 @@ const changeCardLevel = async (idx: number, level: number) => {
         correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
         explanation: newQ.explanation,
         iframeSrcdoc: '',
-        iframeSrc: ''
+        iframeSrc: '',
+        seed: Math.floor(Math.random() * 2147483647)
       }
       await loadCardPlugin(cardObj)
       selectedQuestions.value[idx] = cardObj
@@ -1118,7 +1129,8 @@ const regenerateQuestionCard = async (idx: number) => {
         correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
         explanation: newQ.explanation,
         iframeSrcdoc: '',
-        iframeSrc: ''
+        iframeSrc: '',
+        seed: Math.floor(Math.random() * 2147483647)
       }
       await loadCardPlugin(cardObj)
       selectedQuestions.value[idx] = cardObj
@@ -1209,7 +1221,8 @@ const publishQuiz = async () => {
       end_type: settings.value.end_type,
       questions: selectedQuestions.value.map((q, i) => ({
         question_id: q.question_id,
-        position: i
+        position: i,
+        seed: q.seed
       }))
     }
 
@@ -1305,7 +1318,8 @@ onMounted(async () => {
           explanation: (question?.explanation as string) || '',
           showAnswer: false,
           iframeSrcdoc: '',
-          iframeSrc: ''
+          iframeSrc: '',
+          seed: (q.seed as number) || Math.floor(Math.random() * 2147483647)
         } as QuestionCard
       })
       for (const card of mapped) {

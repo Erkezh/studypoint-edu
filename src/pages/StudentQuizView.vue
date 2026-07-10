@@ -280,7 +280,7 @@ const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): str
   const ver = data.plugin_version as string | undefined
   const entry = data.entry as string | undefined
   if (!id || !ver || !entry) return ''
-  return `/static/modules/${id}/${ver}/${entry}?embed=1`
+  return `/static/modules/${id}/${ver}/${entry}`
 }
 
 const isCurrentQuestionPlugin = computed(() => {
@@ -296,7 +296,11 @@ const loadCurrentPlugin = async () => {
   const q = currentQuestion.value.question as Record<string, unknown>
   if (!isQuestionPlugin(q)) return
 
-  pluginIframeSrc.value = getRegularPluginSrc(q)
+  const base = getRegularPluginSrc(q)
+  if (!base) return
+  // Use seed from quiz question to ensure deterministic question generation
+  const seed = currentQuestion.value.seed
+  pluginIframeSrc.value = seed ? `${base}?embed=1&seed=${seed}` : `${base}?embed=1`
 }
 
 // Listen for exercise-result messages from plugin iframes

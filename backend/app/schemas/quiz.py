@@ -15,11 +15,12 @@ class QuizQuestionBase(BaseModel):
 
 
 class QuizQuestionCreate(QuizQuestionBase):
-    pass
+    seed: int | None = None
 
 
 class QuizQuestionResponse(QuizQuestionBase):
     id: uuid.UUID
+    seed: int | None = None
     question: QuestionPublic | None = None
 
     class Config:

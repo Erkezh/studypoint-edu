@@ -19,6 +19,7 @@ export enum QuizEndType {
 export interface QuizQuestionCreate {
     question_id: number
     position: number
+    seed?: number | null
 }
 
 export interface QuizCreateRequest {
@@ -41,6 +42,7 @@ export interface QuizResponse {
         id: string
         question_id: number
         position: number
+        seed?: number | null
         question?: {
             id: number
             prompt: string

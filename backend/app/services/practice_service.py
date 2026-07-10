@@ -702,7 +702,7 @@ class PracticeService:
             )
         
         logger.info(f"Adding PracticeAttempt to database: session_id={attempt.session_id}, question_id={attempt.question_id}, is_correct={attempt.is_correct}")
-        is_parent_preview = user_role == "PARENT"
+        is_parent_preview = user_role in ("PARENT", "TEACHER", "ADMIN")
         if not is_parent_preview:
             await self.practice.add_attempt(attempt)
             logger.info(f"PracticeAttempt added successfully")

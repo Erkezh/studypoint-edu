@@ -40,6 +40,73 @@ ComponentName() {   // ❌ НЕПРАВИЛЬНО!
 
 ---
 
+## 🔐 SEED РЕЖИМ (ОБЯЗАТЕЛЬНО!)
+
+Плагин **ОБЯЗАН** поддерживать детерминированную генерацию вопросов через `seed`.
+
+Когда учитель создаёт квиз, система передаёт в URL плагина параметр `?seed=12345`.
+Плагин должен использовать этот seed вместо `Math.random()`, чтобы:
+- **Учитель и ученик видели одинаковый вопрос**
+- **При перезагрузке страницы вопрос не менялся**
+
+```tsx
+// ⚠️ Читаем seed из URL
+const urlParams = new URLSearchParams(window.location.search);
+const seedParam = urlParams.get('seed');
+const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
+
+// ⚠️ Детерминированный генератор случайных чисел (ОБЯЗАТЕЛЬНО!)
+function createSeededRandom(s: number): () => number {
+  let state = s;
+  return () => {
+    state = (state * 1664525 + 1013904223) & 0x7fffffff;
+    return state / 0x7fffffff;
+  };
+}
+
+const random = createSeededRandom(seed);
+
+// ✅ ИСПОЛЬЗУЙ random() ВМЕСТО Math.random() ВЕЗДЕ!
+// Примеры:
+const pos = Math.floor(random() * 9) + 1;       // вместо Math.floor(Math.random() * 9) + 1
+const idx = Math.floor(random() * arr.length);   // вместо Math.floor(Math.random() * arr.length)
+```
+
+**❌ ЗАПРЕЩЕНО использовать `Math.random()` напрямую!** Используй только `random()`.
+
+---
+
+## 🧊 FROZEN РЕЖИМ (ОБЯЗАТЕЛЬНО!)
+
+При создании квиза учитель видит превью вопроса. Это превью должно быть **замороженным** — как скриншот, без интерактивности.
+
+URL будет содержать параметр `?frozen=1`. Если этот параметр установлен:
+- **Все кнопки**: `disabled`, `pointer-events: none`
+- **Все input**: `disabled`
+- **Drag-drop**: отключен
+- **Кнопки "Тексеру" / "Келесі сұрақ"**: скрыты
+- **Показывать ТОЛЬКО визуальную часть вопроса** (текст, картинки, фигуры)
+
+```tsx
+// ⚠️ Frozen mode (замороженный вид)
+const isFrozen = urlParams.get('frozen') === '1';
+
+// В рендере:
+<button 
+  disabled={isFrozen || isReview}
+  style={isFrozen ? { pointerEvents: 'none', opacity: 0.7 } : {}}
+>
+  ...
+</button>
+
+// Скрывать кнопки "Тексеру" и "Келесі сұрақ" в frozen режиме:
+{!isFrozen && (
+  <button onClick={handleSubmit}>Тексеру</button>
+)}
+```
+
+---
+
 ## 1. СТРУКТУРА
 
 ```tsx
@@ -58,12 +125,28 @@ const Component: React.FC = () => {
   const [showResult, setShowResult] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // ⚠️ URL параметры
+  const urlParams = new URLSearchParams(window.location.search);
+  const seedParam = urlParams.get('seed');
+  const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
+  const isFrozen = urlParams.get('frozen') === '1';
+
   // ⚠️ Режим просмотра ошибок (аналитика для учителя/ученика)
   const reviewMode = (window as any).reviewMode || null;
   const isReview = !!reviewMode;
 
+  // ⚠️ Детерминированный PRNG
+  function createSeededRandom(s: number): () => number {
+    let state = s;
+    return () => {
+      state = (state * 1664525 + 1013904223) & 0x7fffffff;
+      return state / 0x7fffffff;
+    };
+  }
+  const random = createSeededRandom(seed);
+
   const generateProblem = (): Problem => ({
-    id: Date.now(),
+    id: seed,  // Используем seed как ID
     question: 'Сұрақ мәтіні',
     correctAnswer: '3/4',
     visualData: { type: 'fractionbar', fractionBar: { total: 4, filled: 3 } },
@@ -79,17 +162,12 @@ const Component: React.FC = () => {
     if (isReview) {
       // ⚠️ Восстанавливаем сохраненное состояние для аналитики
       setProblem({
-        id: Date.now(),
+        id: seed,
         question: 'Сұрақ мәтіні',
         correctAnswer: reviewMode.correctAnswer,
-        // Если visualData нужна для отрисовки, родитель может передать ее в reviewMode.questionData
         visualData: reviewMode.questionData
       });
       setUserAnswer(reviewMode.studentAnswer);
-      
-      // Восстановите внутреннее состояние (например, закрашенные ячейки, выбранные кнопки)
-      // на основе reviewMode.studentAnswer!
-      
       setShowResult(true);
     } else {
       setProblem(generateProblem());
@@ -99,7 +177,7 @@ const Component: React.FC = () => {
   useEffect(() => { sendHeight(); setTimeout(sendHeight, 100); }, [problem, showResult]);
 
   const handleSubmit = () => {
-    if (isReview || !userAnswer || !problem) return;
+    if (isReview || isFrozen || !userAnswer || !problem) return;
     const isCorrect = userAnswer === problem.correctAnswer;
     
     window.parent.postMessage({
@@ -115,6 +193,7 @@ const Component: React.FC = () => {
   };
 
   const handleNext = () => {
+    if (isFrozen) return;  // ⚠️ В frozen режиме "Келесі сұрақ" не работает
     setProblem(generateProblem());
     setUserAnswer('');
     setShowResult(false);
@@ -122,7 +201,9 @@ const Component: React.FC = () => {
 
   return (
     <div ref={containerRef} className="p-4 bg-white rounded-xl">
-      {/* ⚠️ В режиме isReview отключайте любые клики и ввод: disabled={isReview} */}
+      {/* ⚠️ В режиме isReview ИЛИ isFrozen отключайте любые клики и ввод */}
+      {/* disabled={isReview || isFrozen} */}
+      {/* ⚠️ В frozen режиме скрывайте кнопки "Тексеру" и "Келесі сұрақ" */}
       {/* ⚠️ При неверном ответе в isReview покажите верное решение зеленым, а неверное - красным */}
     </div>
   );
@@ -176,12 +257,14 @@ postMessage({
 | Сетка | `{ type: 'grid', grid: { rows, cols, filled: ['0-0','0-1'] } }` | Аудан қанша? |
 | Фигуры | `{ type: 'shapes', shapes: { items: [{type, color}], targetType, targetCount, totalCount } }` | Жұлдыздар қанша? |
 
-### Примеры генерации:
+### Примеры генерации (с seed!):
 
 ```tsx
+// ⚠️ ВАЖНО: используем random() вместо Math.random()
+
 // Числовая прямая
 const generateNumberLine = () => {
-  const pos = Math.floor(Math.random() * 9) + 1;
+  const pos = Math.floor(random() * 9) + 1;
   return {
     question: 'Сан түзуінде көрсетілген бөлшек қандай?',
     correctAnswer: `${pos}/10`,
@@ -191,8 +274,9 @@ const generateNumberLine = () => {
 
 // Дробная полоска
 const generateFractionBar = () => {
-  const total = [3,4,5,6,8][Math.floor(Math.random() * 5)];
-  const filled = Math.floor(Math.random() * total) + 1;
+  const totals = [3,4,5,6,8];
+  const total = totals[Math.floor(random() * totals.length)];
+  const filled = Math.floor(random() * total) + 1;
   return {
     question: 'Боялған бөлігі қай бөлшекке тең?',
     correctAnswer: `${filled}/${total}`,
@@ -266,7 +350,9 @@ if (isReview) {
 - Внешние зависимости
 - Прогресс-бары, счётчики ("Вопрос 3 из 10")
 - Score, статистика
+- Кнопки навигации, «На главную», «Выйти», «Назад» и т.д. (плагин должен содержать ТОЛЬКО саму интерактивную задачу и её элементы ввода)
 - Менять структуру postMessage
+- **Использовать `Math.random()` напрямую — ТОЛЬКО `random()` из seed!**
 
 ---
 
@@ -278,3 +364,7 @@ if (isReview) {
 - [ ] `sendHeight()` вызывается
 - [ ] UI на казахском
 - [ ] НЕТ прогресс-баров и счётчиков
+- [ ] НЕТ кнопок навигации («На главную», «Назад» и т.д.)
+- [ ] **Используется `createSeededRandom(seed)` вместо `Math.random()`**
+- [ ] **Поддержан `frozen` режим (`isFrozen`) — кнопки скрыты/отключены**
+- [ ] **`Math.random()` НЕ используется нигде в коде**
