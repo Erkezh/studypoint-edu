@@ -276,6 +276,11 @@ class PracticeService:
         import logging
         logger = logging.getLogger(__name__)
         
+        is_correct = False
+        explanation = ""
+        q_data = None
+        question = None
+        
         user_uuid = _parse_uuid(user_id)
         ps = await self.practice.get_session(session_id=session_id)
         if ps is None or ps.user_id != user_uuid:
@@ -359,8 +364,7 @@ class PracticeService:
             logger.info(f"Validating submitted answer for question {current_q_id}")
             _validate_submitted_answer(question_type, question_data, req.submitted_answer)
             
-            # Проверяем ответ используя генератор
-            logger.info(f"Calling GeneratorService.validate_answer for question {current_q_id}")
+            assert skill is not None
             is_correct, explanation = await GeneratorService.validate_answer(
                 skill.generator_code,
                 q_data,
@@ -403,7 +407,7 @@ class PracticeService:
                     )
                     raise AppError(status_code=409, code="conflict", message="Question does not match current session state")
 
-            question = await self.questions.get(req.question_id)
+            question = await self.questions.get(int(req.question_id))
             if question is None or question.skill_id != ps.skill_id:
                 raise AppError(status_code=404, code="not_found", message="Question not found")
 
@@ -637,6 +641,7 @@ class PracticeService:
 
         # Для генераторов создаем вопрос с данными из q_data
         if is_generator_skill:
+            assert q_data is not None
             logger.info(f"Creating PracticeAttempt for generator question {req.question_id}")
             # Для генераторов используем данные из q_data
             # Для генераторов question_id = None, так как вопроса нет в базе данных
@@ -671,7 +676,8 @@ class PracticeService:
             )
             logger.info(f"PracticeAttempt created for generator, adding to database")
         else:
-            logger.info(f"Creating PracticeAttempt for regular question {question.id if question else 'None'}")
+            assert question is not None
+            logger.info(f"Creating PracticeAttempt for regular question {question.id}")
             # Для PLUGIN/INTERACTIVE разрешаем несколько попыток, не привязывая к question_id
             is_plugin_like = question.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE)
             attempt = PracticeAttempt(
@@ -788,6 +794,7 @@ class PracticeService:
         # Если тест не завершен, загружаем следующий вопрос
         if not finished:
             if is_generator_skill:
+                assert skill is not None
                 # Для генераторов создаем новый вопрос
                 logger.info("Generating next question for generator skill")
                 try:
@@ -812,7 +819,7 @@ class PracticeService:
                     # Если генератор не работает, пытаемся использовать вопросы из БД
                     try:
                         next_q = await self._select_next_question(ps)
-                        if next_q:
+                        if next_q is not None:
                             ps.last_question_id = next_q.id
                             ps.state["current_question_id"] = next_q.id
                             ps.state["recent_question_ids"] = _push_recent(ps.state.get("recent_question_ids", []), next_q.id)
@@ -823,7 +830,7 @@ class PracticeService:
                 # Старый способ - получаем вопрос из БД
                 # IXL-like: keep session open; prepare next question immediately.
                 next_q = await self._select_next_question(ps)
-                if next_q:
+                if next_q is not None:
                     ps.last_question_id = next_q.id
                     ps.state["current_question_id"] = next_q.id
                     ps.state["recent_question_ids"] = _push_recent(ps.state.get("recent_question_ids", []), next_q.id)
@@ -1198,8 +1205,12 @@ def _is_correct(qtype: QuestionType, data: dict[str, Any], correct: dict[str, An
         return set(submitted.get("choices") or []) == set(correct.get("choices") or [])
     if qtype == QuestionType.NUMERIC:
         tol = float(data.get("tolerance") or 0)
+        sub_val = submitted.get("value")
+        corr_val = correct.get("value")
+        if sub_val is None or corr_val is None:
+            return False
         try:
-            return abs(float(submitted.get("value")) - float(correct.get("value"))) <= tol
+            return abs(float(sub_val) - float(corr_val)) <= tol
         except (TypeError, ValueError):
             return False
     if qtype == QuestionType.TEXT:
