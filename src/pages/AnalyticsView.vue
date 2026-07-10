@@ -18,6 +18,7 @@
               <svg v-else-if="tab.id === 'scores_dropdown' || tab.id === 'scores_student'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg>
               <svg v-else-if="tab.id === 'questions'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
               <svg v-else-if="tab.id === 'progress'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+              <svg v-else-if="tab.id === 'quizzes'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
             </span>
             {{ tab.label }}
             <svg v-if="tab.dropdown" class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
@@ -34,7 +35,7 @@
       </nav>
     </div>
 
-    <div v-if="activeTab !== 'scores_grid' && activeTab !== 'scores_student' && activeTab !== 'scores_skill'" class="filters-bar">
+    <div v-if="activeTab !== 'scores_grid' && activeTab !== 'scores_student' && activeTab !== 'scores_skill' && activeTab !== 'quizzes'" class="filters-bar">
       <!-- Teacher: Student Picker -->
       <!-- Teacher: Student Picker moved to content -->
       <div class="filter-group grade-range-filter">
@@ -108,7 +109,7 @@
       </div>
 
       <!-- Teacher Needs Selection State -->
-      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill'" class="empty-state teacher-select-prompt">
+      <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill' && activeTab !== 'quizzes'" class="empty-state teacher-select-prompt">
         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
         <h3 class="text-xl font-medium text-gray-700 mb-2">Оқушыны таңдаңыз</h3>
 
@@ -131,7 +132,7 @@
 
       <div v-else>
         <!-- Teacher Student Carousel for active views (Usage, Summary) - HIDDEN on Quickview -->
-        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill'" class="student-carousel-container active-view-carousel">
+        <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill' && activeTab !== 'quizzes'" class="student-carousel-container active-view-carousel">
           <button @click="prevStudent" class="carousel-arrow">
             <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
           </button>
@@ -292,6 +293,8 @@
 
         <ProgressTab v-else-if="activeTab === 'progress'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :skill-names="skillNames" :date-range="dateRange" />
+
+        <QuizzesTab v-else-if="activeTab === 'quizzes'" />
       </div>
     </main>
 
@@ -301,6 +304,7 @@
 
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useAuthStore } from '@/stores/auth'
 import { useTeacherStore } from '@/stores/teacher'
@@ -318,6 +322,7 @@ import QuestionsTab from '@/components/analytics/QuestionsTab.vue'
 import ProgressTab from '@/components/analytics/ProgressTab.vue'
 import ScoreGridTab from '@/components/analytics/ScoreGridTab.vue'
 import SkillScoreChartTab from '@/components/analytics/SkillScoreChartTab.vue'
+import QuizzesTab from '@/components/analytics/QuizzesTab.vue'
 
 interface SkillBreakdown {
   skill_id: number
@@ -613,6 +618,7 @@ const tabs = computed<TabItem[]>(() => {
       },
       { id: 'questions', label: 'Сұрақтар' },
       { id: 'progress', label: 'Прогресс' },
+      { id: 'quizzes', label: 'Квиздер' },
     ]
   }
   return [
@@ -625,9 +631,20 @@ const tabs = computed<TabItem[]>(() => {
   ]
 })
 
+const route = useRoute()
+
 // Initialize active tab based on role and stored state
 const defaultTeacherTab = 'students_quickview'
-const activeTab = ref<string>(initialState.activeTab || (isTeacher.value ? defaultTeacherTab : 'summary'))
+const activeTab = ref<string>((route.query.tab as string) || initialState.activeTab || (isTeacher.value ? defaultTeacherTab : 'summary'))
+
+watch(
+  () => route.query.tab,
+  (newTab) => {
+    if (newTab && typeof newTab === 'string') {
+      activeTab.value = newTab
+    }
+  }
+)
 const gradeFrom = ref<number>(initialState.gradeFrom !== undefined ? initialState.gradeFrom : -1)
 const gradeTo = ref<number>(initialState.gradeTo !== undefined ? initialState.gradeTo : 12)
 const showGradeDropdown = ref<boolean>(false)
@@ -814,12 +831,17 @@ watch(activeTab, async (newVal) => {
     return
   }
 
+  // Quizzes tab is self-contained — no analytics data needed
+  if (newVal === 'quizzes') {
+    return
+  }
+
   if (isTeacher.value && selectedStudentId.value && shouldLoadQuestionData() && analyticsStore.allQuestions.length === 0) {
     await onStudentChange()
     return
   }
 
-  if (isTeacher.value && newVal !== 'students_quickview' && newVal !== 'trouble_class' && newVal !== 'skills_practiced' && newVal !== 'skill_analysis' && newVal !== 'scores_grid' && newVal !== 'scores_skill' && !selectedStudentId.value && teacherStudents.value.length > 0) {
+  if (isTeacher.value && newVal !== 'students_quickview' && newVal !== 'trouble_class' && newVal !== 'skills_practiced' && newVal !== 'skill_analysis' && newVal !== 'scores_grid' && newVal !== 'scores_skill' && newVal !== 'quizzes' && !selectedStudentId.value && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
     await onStudentChange()
     return
@@ -888,17 +910,20 @@ onMounted(async () => {
   }
 
   // Auto-select first student if teacher has no student selected and not on quickview
-  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill' && teacherStudents.value.length > 0) {
+  if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill' && activeTab.value !== 'quizzes' && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
   }
 
   try {
-    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill') {
+    if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill' && activeTab.value !== 'quizzes') {
       // Teacher has a student selected and specific tab — load that student's data
       await onStudentChange()
     } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid' || activeTab.value === 'scores_skill')) {
       // Teacher is on class-wide page - load aggregate data
       await loadTeacherQuickviewAnalytics()
+    } else if (activeTab.value === 'quizzes') {
+      // Quizzes tab is self-contained — QuizzesTab component loads its own data
+      // No analytics loading needed
     } else {
       // Student or teacher with no selection — load own data
       await loadOwnAnalytics()

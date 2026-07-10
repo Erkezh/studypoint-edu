@@ -30,6 +30,16 @@ export interface QuizCreateRequest {
     questions: QuizQuestionCreate[]
 }
 
+export interface QuizAssignmentResponse {
+    id: string
+    quiz_id: string
+    classroom_id?: string | null
+    student_id?: string | null
+    due_at?: string | null
+    end_at?: string | null
+    created_at: string
+}
+
 export interface QuizResponse {
     id: string
     name: string
@@ -52,6 +62,7 @@ export interface QuizResponse {
             level?: number
         }
     }>
+    assignments: QuizAssignmentResponse[]
 }
 
 export interface QuizAssignmentCreate {
@@ -90,6 +101,10 @@ export const quizApi = {
 
     deleteQuiz(quizId: string) {
         return apiClient.delete<{ data: boolean }>(`/teacher/quizzes/${quizId}`)
+    },
+
+    endQuizAssignment(assignmentId: string) {
+        return apiClient.post<{ data: unknown }>(`/teacher/quizzes/assignments/${assignmentId}/end`)
     },
 
     listStudentAssignedQuizzes() {

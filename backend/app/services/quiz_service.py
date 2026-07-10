@@ -45,7 +45,8 @@ class QuizService:
         
         # Load questions for response
         stmt = select(Quiz).where(Quiz.id == quiz.id).options(
-            selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+            selectinload(Quiz.questions).joinedload(QuizQuestion.question),
+            selectinload(Quiz.assignments)
         )
         return (await self.session.execute(stmt)).scalar_one()
 
@@ -87,7 +88,8 @@ class QuizService:
 
         # Reload with questions
         stmt = select(Quiz).where(Quiz.id == quiz.id).options(
-            selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+            selectinload(Quiz.questions).joinedload(QuizQuestion.question),
+            selectinload(Quiz.assignments)
         )
         return (await self.session.execute(stmt)).scalar_one()
 
@@ -97,7 +99,8 @@ class QuizService:
             select(Quiz)
             .where(Quiz.teacher_id == teacher_uuid)
             .options(
-                selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+                selectinload(Quiz.questions).joinedload(QuizQuestion.question),
+                selectinload(Quiz.assignments)
             )
             .order_by(Quiz.created_at.desc())
         )
@@ -215,3 +218,17 @@ class QuizService:
         await self.session.delete(quiz)
         await self.session.flush()
         return True
+
+    async def end_quiz_assignment(self, assignment_id: uuid.UUID | str) -> QuizAssignment | None:
+        from datetime import datetime, timezone
+        assignment_uuid = uuid.UUID(str(assignment_id))
+        stmt = select(QuizAssignment).where(QuizAssignment.id == assignment_uuid)
+        result = await self.session.execute(stmt)
+        assignment = result.scalar_one_or_none()
+        
+        if not assignment:
+            return None
+            
+        assignment.end_at = datetime.now(timezone.utc)
+        await self.session.flush()
+        return assignment

@@ -43,6 +43,7 @@ class QuizResponse(QuizBase):
     teacher_id: uuid.UUID
     created_at: datetime
     questions: list[QuizQuestionResponse]
+    assignments: list[QuizAssignmentResponse] = []
 
     class Config:
         from_attributes = True

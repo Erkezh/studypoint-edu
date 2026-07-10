@@ -58,3 +58,16 @@ async def delete_quiz(
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Quiz not found")
     return ApiResponse(data=True)
+
+
+@router.post("/assignments/{assignment_id}/end", response_model=ApiResponse[QuizAssignmentResponse])
+async def end_quiz_assignment(
+    assignment_id: uuid.UUID,
+    user=Depends(get_current_user),
+    svc: QuizService = Depends(),
+):
+    assignment = await svc.end_quiz_assignment(assignment_id)
+    if not assignment:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Quiz assignment not found")
+    return ApiResponse(data=assignment)

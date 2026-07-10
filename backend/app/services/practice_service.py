@@ -584,10 +584,10 @@ class PracticeService:
 
         now = utc_now()
         zone_before = ps.current_zone or zone_for_score(ps.current_smartscore)
-        streak_before = int(ps.current_streak_correct or 0)
+        streak_before = ps.current_streak_correct or 0
         window = ps.state.get("recent_window") or {"correct": 0, "total": 0}
         stats = WindowStats(correct=int(window.get("correct", 0)), total=int(window.get("total", 0)))
-        score_before = int(ps.current_smartscore or 0)
+        score_before = ps.current_smartscore or 0
         
         # Логируем состояние перед вычислением SmartScore
         logger.info(
@@ -718,10 +718,10 @@ class PracticeService:
         ps.total_correct += 1 if is_correct else 0
         ps.total_incorrect += 0 if is_correct else 1
         ps.current_streak_correct = score_res.streak
-        ps.max_streak_correct = max(int(ps.max_streak_correct or 0), score_res.streak)
+        ps.max_streak_correct = max(ps.max_streak_correct or 0, score_res.streak)
         ps.current_smartscore = score_res.smartscore
         ps.current_zone = score_res.zone
-        ps.best_smartscore = max(int(ps.best_smartscore or 0), ps.current_smartscore)
+        ps.best_smartscore = max(ps.best_smartscore or 0, ps.current_smartscore)
         
         # Обновляем серию неправильных ответов в state
         ps.state["wrong_streak"] = wrong_streak_after
@@ -734,11 +734,11 @@ class PracticeService:
             ps.state["current_question_id"] = None
 
         # Update rolling window stats for consistency effects.
-        window_total = min(20, int(window.get("total", 0)) + 1)
-        window_correct = int(window.get("correct", 0)) + (1 if is_correct else 0)
+        window_total = min(20, (window.get("total", 0)) + 1)
+        window_correct = (window.get("correct", 0)) + (1 if is_correct else 0)
         if window_total == 20:
             # crude decay once we hit the window size
-            window_correct = int(round(window_correct * 0.95))
+            window_correct = round(window_correct * 0.95)
         ps.state["recent_window"] = {"correct": window_correct, "total": window_total}
 
         if ps.current_zone == PracticeZone.CHALLENGE and not ps.state.get("entered_challenge_zone_at"):
@@ -767,16 +767,16 @@ class PracticeService:
                 )
             snap.last_practiced_at = now
             snap.last_smartscore = ps.current_smartscore
-            snap.best_smartscore = max(int(snap.best_smartscore or 0), ps.current_smartscore)
-            snap.best_smartscore_all_time = max(int(snap.best_smartscore_all_time or 0), ps.current_smartscore)
-            snap.total_questions_answered_all_time = int(snap.total_questions_answered_all_time or 0) + 1
-            snap.total_time_seconds_all_time = int(snap.total_time_seconds_all_time or 0) + int(req.time_spent_sec)
+            snap.best_smartscore = max(snap.best_smartscore or 0, ps.current_smartscore)
+            snap.best_smartscore_all_time = max(snap.best_smartscore_all_time or 0, ps.current_smartscore)
+            snap.total_questions_answered_all_time = (snap.total_questions_answered_all_time or 0) + 1
+            snap.total_time_seconds_all_time = (snap.total_time_seconds_all_time or 0) + req.time_spent_sec
 
-            prev_total = int(snap.total_questions or 0)
+            prev_total = snap.total_questions or 0
             snap.total_questions = prev_total + 1
-            prev_correct_est = int(round(prev_total * (int(snap.accuracy_percent or 0) / 100.0)))
+            prev_correct_est = round(prev_total * ((snap.accuracy_percent or 0) / 100.0))
             new_correct_est = prev_correct_est + (1 if is_correct else 0)
-            snap.accuracy_percent = int(round((new_correct_est / max(1, snap.total_questions)) * 100))
+            snap.accuracy_percent = round((new_correct_est / max(1, snap.total_questions)) * 100)
             await self.practice.upsert_snapshot(snap)
 
             await self._update_assignment_status(student_id=user_uuid, skill_id=ps.skill_id, now=now, session_obj=ps, attempt=attempt)
@@ -884,7 +884,7 @@ class PracticeService:
     async def _select_next_question(self, session_obj: PracticeSession):
         desired_levels = _level_search_order(3 if session_obj.current_zone == PracticeZone.CHALLENGE else 2)
         recent = session_obj.state.get("recent_question_ids") or []
-        recent_ids = [int(x) for x in recent if isinstance(x, int)]
+        recent_ids = [x for x in recent if isinstance(x, int)]
 
         candidates = await self.questions.list_for_skill_levels(
             skill_id=session_obj.skill_id,
@@ -1049,11 +1049,11 @@ class PracticeService:
             if status_row.status == AssignmentStatus.NOT_STARTED:
                 status_row.status = AssignmentStatus.IN_PROGRESS
             status_row.last_smartscore = session_obj.current_smartscore
-            status_row.best_smartscore = max(int(status_row.best_smartscore or 0), int(session_obj.best_smartscore or 0))
-            status_row.questions_answered = int(status_row.questions_answered or 0) + 1
-            status_row.time_spent_seconds = int(getattr(status_row, "time_spent_seconds", 0) or 0) + int(attempt.time_spent_sec or 0)
+            status_row.best_smartscore = max(status_row.best_smartscore or 0, session_obj.best_smartscore or 0)
+            status_row.questions_answered = (status_row.questions_answered or 0) + 1
+            status_row.time_spent_seconds = (getattr(status_row, "time_spent_seconds", 0) or 0) + (attempt.time_spent_sec or 0)
             status_row.last_activity_at = now
-            if status_row.best_smartscore >= int(assignment.target_smartscore or 80):
+            if status_row.best_smartscore >= (assignment.target_smartscore or 80):
                 status_row.status = AssignmentStatus.COMPLETED
                 status_row.completed_at = now
 
@@ -1072,7 +1072,7 @@ def _parse_uuid(value) -> uuid.UUID:
 
 
 def _push_recent(recent: list[Any], qid: int, max_len: int = 20) -> list[int]:
-    out: list[int] = [int(x) for x in recent if isinstance(x, int) and int(x) != qid]
+    out: list[int] = [x for x in recent if isinstance(x, int) and x != qid]
     out.insert(0, qid)
     return out[:max_len]
 
