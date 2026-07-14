@@ -198,7 +198,7 @@
             </div>
             
             <div class="p-6">
-              <div class="relative w-full max-w-2xl mx-auto dropdown-container-el">
+              <div class="relative w-full dropdown-container-el">
                 <label class="block text-xs font-semibold text-slate-500 mb-2 text-center">Квиз дағдысын таңдау (Дағдыны таңдаңыз)</label>
                 <button 
                   @click="showSkillDropdown = !showSkillDropdown" 
@@ -253,7 +253,7 @@
                       <!-- Grouped Themes & Subthemes -->
                       <div v-for="group in catalogGroups.groups" :key="group.theme.id" class="space-y-2">
                         <!-- Theme Header -->
-                        <h5 class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
+                        <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
                           {{ group.theme.title }}
                         </h5>
                         
@@ -263,7 +263,7 @@
                             v-for="skill in group.directSkills" 
                             :key="skill.id" 
                             @click="selectDropdownSkill(skill)"
-                            class="w-full text-left px-3 py-2 rounded-lg hover:bg-emerald-50 text-xs font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                            class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-[11px] font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
                           >
                             <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
                             <span>{{ skill.title }}</span>
@@ -272,7 +272,7 @@
 
                         <!-- Subthemes and their skills -->
                         <div v-for="sub in group.subthemes" :key="sub.subtheme.id" class="space-y-1 pl-2">
-                          <h6 class="text-[11px] font-bold text-slate-500 mt-2 mb-1">
+                          <h6 class="text-[10px] font-bold text-slate-500 mt-2 mb-1">
                             {{ sub.subtheme.title }}
                           </h6>
                           
@@ -281,7 +281,7 @@
                               v-for="skill in sub.skills" 
                               :key="skill.id" 
                               @click="selectDropdownSkill(skill)"
-                              class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-emerald-50 text-xs font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                              class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-[11px] font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
                             >
                               <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
                               <span>{{ skill.title }}</span>
@@ -292,7 +292,7 @@
 
                       <!-- Orphaned/Other Skills -->
                       <div v-if="catalogGroups.orphaned.length > 0" class="space-y-2">
-                        <h5 class="text-xs font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
+                        <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
                           Басқа дағдылар (Other Skills)
                         </h5>
                         <div class="space-y-1 pl-2">
@@ -300,7 +300,7 @@
                             v-for="skill in catalogGroups.orphaned" 
                             :key="skill.id" 
                             @click="selectDropdownSkill(skill)"
-                            class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-emerald-50 text-xs font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                            class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-[11px] font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
                           >
                             <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
                             <span>{{ skill.title }}</span>
@@ -440,7 +440,7 @@
 
     <!-- STEP 2: SETTINGS & PUBLISH -->
     <div v-else class="step-container p-6 bg-slate-50 min-h-screen">
-      <div class="max-w-3xl mx-auto space-y-6">
+      <div class="max-w-5xl mx-auto space-y-6">
         <!-- Back navigation step 2 -->
         <button @click="currentStep = 1" class="flex items-center text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors">
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
@@ -547,22 +547,22 @@
 
     <!-- Student Selection Dialog (Modal) -->
     <div v-if="showStudentSelector" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4" @click.self="showStudentSelector = false">
-      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md border border-slate-100 overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-slate-100 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
           <h3 class="font-bold text-slate-800 text-base">Оқушыларды таңдау</h3>
           <button @click="showStudentSelector = false" class="text-slate-400 hover:text-slate-600 font-bold text-lg">&times;</button>
         </div>
 
         <div class="px-6 py-4 max-h-80 overflow-y-auto space-y-1">
-          <label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm font-semibold text-slate-800">
-            <input type="checkbox" v-model="selectAllStudents" class="w-4.5 h-4.5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+          <label class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs font-semibold text-slate-800">
+            <input type="checkbox" v-model="selectAllStudents" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
             <span>Барлық оқушылар</span>
           </label>
           
           <div class="h-px bg-slate-100 my-2"></div>
 
-          <label v-for="student in students" :key="student.id" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
-            <input type="checkbox" :value="student.id" v-model="assignedStudentIds" class="w-4.5 h-4.5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
+          <label v-for="student in students" :key="student.id" class="flex items-center gap-3 p-2.5 rounded-lg hover:bg-slate-50 cursor-pointer text-xs text-slate-700">
+            <input type="checkbox" :value="student.id" v-model="assignedStudentIds" class="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500" />
             <span>{{ student.full_name }}</span>
           </label>
         </div>

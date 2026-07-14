@@ -63,6 +63,23 @@ class QuizService:
                 )
                 self.session.add(assignment)
             await self.session.flush()
+
+            # Trigger real-time notifications for assigned students
+            try:
+                from app.models.notification import Notification
+                for student_id in student_ids:
+                    self.session.add(
+                        Notification(
+                            user_id=student_id,
+                            title="Жаңа квиз!",
+                            content=f"Мұғалім жаңа квиз жариялады: '{quiz.name}'.",
+                            is_read=False,
+                        )
+                    )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to generate quiz notifications in create_quiz: {e}", exc_info=True)
+            await self.session.flush()
         
         # Load questions for response
         stmt = select(Quiz).where(Quiz.id == quiz.id).options(
@@ -132,6 +149,23 @@ class QuizService:
                     end_at=req.end_at
                 )
                 self.session.add(assignment)
+            await self.session.flush()
+
+            # Trigger real-time notifications for assigned students
+            try:
+                from app.models.notification import Notification
+                for student_id in student_ids:
+                    self.session.add(
+                        Notification(
+                            user_id=student_id,
+                            title="Жаңа квиз!",
+                            content=f"Мұғалім жаңа квиз жариялады: '{quiz.name}'.",
+                            is_read=False,
+                        )
+                    )
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to generate quiz notifications in update_quiz: {e}", exc_info=True)
             await self.session.flush()
 
         # Reload with questions
@@ -358,6 +392,15 @@ class QuizService:
                 
             q_id_str = str(q.id)
             submitted_ans = answers_map.get(q_id_str)
+
+            # Normalize if submitted_ans is a dict
+            if isinstance(submitted_ans, dict):
+                submitted_ans = (
+                    submitted_ans.get("value") 
+                    or submitted_ans.get("label") 
+                    or submitted_ans.get("text") 
+                    or submitted_ans
+                )
 
             submitted_payload = {}
             if q.type.value == "MCQ":

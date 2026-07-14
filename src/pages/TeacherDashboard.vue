@@ -392,7 +392,7 @@
         <div class="quizzes-section">
             <div class="quizzes-top-action">
               <button @click="router.push({ name: 'teacher-quiz-create' })" class="create-quiz-action-btn">
-                Create new quiz
+                Жаңа квиз жасау
               </button>
             </div>
 
@@ -405,11 +405,11 @@
             <div v-else class="quizzes-blocks-container">
               <!-- 1. Active Quizzes Section -->
               <div class="quiz-block-section">
-                <h2 class="block-section-title">Active quizzes</h2>
+                <h2 class="block-section-title">Белсенді квиздер</h2>
                 <div v-if="activeQuizzes.length === 0" class="quiz-block-empty">
-                  No active quizzes.
+                  Белсенді квиздер жоқ.
                 </div>
-                <div v-else class="quiz-cards-column">
+                <div v-else class="quiz-cards-grid">
                   <div v-for="quiz in activeQuizzes" :key="quiz.id" class="quiz-card-item active-quiz">
                     <div class="card-header">
                       <div class="card-title-group">
@@ -424,9 +424,9 @@
                           </svg>
                         </button>
                         <div v-if="openDropdownId === quiz.id" class="options-dropdown-menu">
-                          <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">View</button>
-                          <button @click.stop="editQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Edit</button>
-                          <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Delete</button>
+                          <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Көру</button>
+                          <button @click.stop="editQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Өңдеу</button>
+                          <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Өшіру</button>
                         </div>
                       </div>
                     </div>
@@ -434,7 +434,7 @@
                     <div class="card-body">
                       <div class="info-row">
                         <span class="info-icon">▦</span>
-                        <span class="info-text">Assigned on {{ formatDateShort(quiz.assignments?.[0]?.created_at || quiz.created_at) }}</span>
+                        <span class="info-text">Берілді: {{ formatDateShort(quiz.assignments?.[0]?.created_at || quiz.created_at) }}</span>
                       </div>
                       <div class="info-row">
                         <span class="info-icon">◴</span>
@@ -446,7 +446,7 @@
                           {{ formatAssignedStudents(quiz.assignments?.[0]) }}
                         </span>
                         <span class="completion-badge-count">
-                          ✓ {{ getCompletionStats(quiz).completed }} of {{ getCompletionStats(quiz).total }}
+                          ✓ {{ getCompletionStats(quiz).completed }} / {{ getCompletionStats(quiz).total }}
                         </span>
                       </div>
 
@@ -458,7 +458,7 @@
 
                     <div class="card-footer">
                       <button @click="endQuiz(quiz)" class="end-quiz-btn">
-                        End quiz now
+                        Қазір аяқтау
                         <span class="caret-icon">▼</span>
                       </button>
                     </div>
@@ -468,11 +468,11 @@
 
               <!-- 2. Drafts Section -->
               <div class="quiz-block-section">
-                <h2 class="block-section-title">Quiz drafts</h2>
+                <h2 class="block-section-title">Квиз черновиктері</h2>
                 <div v-if="draftQuizzes.length === 0" class="quiz-block-empty">
-                  No saved drafts.
+                  Сақталған черновиктер жоқ.
                 </div>
-                <div v-else class="quiz-cards-column">
+                <div v-else class="quiz-cards-grid">
                   <div v-for="quiz in draftQuizzes" :key="quiz.id" class="quiz-card-item draft-quiz">
                     <div class="card-header">
                       <h3 class="card-title-text">{{ quiz.name }}</h3>
@@ -485,9 +485,9 @@
                           </svg>
                         </button>
                         <div v-if="openDropdownId === quiz.id" class="options-dropdown-menu">
-                          <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">View</button>
-                          <button @click.stop="editQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Edit</button>
-                          <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Delete</button>
+                          <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Көру</button>
+                          <button @click.stop="editQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Өңдеу</button>
+                          <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Өшіру</button>
                         </div>
                       </div>
                     </div>
@@ -495,17 +495,19 @@
                     <div class="card-body">
                       <div class="info-row">
                         <span class="info-icon">#</span>
-                        <span class="info-text">{{ quiz.questions.length }} InstaQuiz questions added</span>
+                        <span class="info-text">{{ quiz.questions.length }} сұрақ қосылды</span>
                       </div>
                       <div class="info-row">
                         <span class="info-icon">♙</span>
-                        <span class="info-text">No students selected</span>
+                        <span class="info-text">
+                          {{ formatAssignedStudents(quiz.assignments?.[0]) }}
+                        </span>
                       </div>
                     </div>
 
                     <div class="card-footer">
                       <button @click="editQuiz(quiz)" class="keep-adding-btn">
-                        Keep adding
+                        Жалғастыру
                       </button>
                     </div>
                   </div>
@@ -514,18 +516,18 @@
 
               <!-- 3. Past Quizzes Section -->
               <div class="quiz-block-section">
-                <h2 class="block-section-title">Past quizzes</h2>
+                <h2 class="block-section-title">Аяқталған квиздер</h2>
                 <div v-if="pastQuizzes.length === 0" class="quiz-block-empty">
-                  No past quizzes.
+                  Аяқталған квиздер жоқ.
                 </div>
                 <div v-else class="past-quizzes-table-card">
                   <table class="past-quizzes-table">
                     <thead>
                       <tr>
-                        <th>Name</th>
-                        <th>Assigned to</th>
-                        <th>Dates</th>
-                        <th>Student average</th>
+                        <th>Атауы</th>
+                        <th>Кімге берілді</th>
+                        <th>Күндері</th>
+                        <th>Орташа ұпай</th>
                         <th class="no-sort"></th>
                         <th class="no-sort w-10"></th>
                       </tr>
@@ -539,7 +541,7 @@
                         <td class="report-action-cell">
                           <button @click="viewQuizReport(quiz)" class="view-report-link-btn">
                             <span class="graph-icon">▥</span>
-                            View report
+                            Есепті көру
                           </button>
                         </td>
                         <td>
@@ -551,8 +553,8 @@
                               </svg>
                             </button>
                             <div v-if="openDropdownId === quiz.id" class="options-dropdown-menu">
-                              <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">View</button>
-                              <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Delete</button>
+                              <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Көру</button>
+                              <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Өшіру</button>
                             </div>
                           </div>
                         </td>
@@ -811,52 +813,63 @@ const pastQuizzes = computed(() => {
 })
 
 const getCompletionStats = (quiz: QuizResponse) => {
-  let total = students.value.length || 2
   const assignments = quiz.assignments || []
-  const assignment = assignments[0]
-  if (assignment && assignment.student_id) {
-    total = 1
-  }
-  const hash = quiz.id.split('-').reduce((acc: number, val: string) => acc + val.charCodeAt(0), 0)
-  const completed = (hash % (total + 1))
+  const total = assignments.length
+  const completed = assignments.filter(a => !!a.completed_at).length
   return { completed, total }
 }
 
 const getCompletionPercent = (quiz: QuizResponse) => {
   const { completed, total } = getCompletionStats(quiz)
+  if (total === 0) return 0
   return Math.round((completed / total) * 100)
 }
 
 const getAverageScoreText = (quiz: QuizResponse) => {
   const { completed, total } = getCompletionStats(quiz)
   if (completed === 0) return '0%'
-  const hash = quiz.id.split('-').reduce((acc: number, val: string) => acc + val.charCodeAt(0), 0)
-  const score = 50 + (hash % 45)
-  return `${score}% (${completed}/${total})`
+  const completedAssignments = (quiz.assignments || []).filter(a => !!a.completed_at)
+  if (completedAssignments.length === 0) return '0%'
+  const sumScore = completedAssignments.reduce((acc, curr) => acc + (curr.score || 0), 0)
+  const average = Math.round(sumScore / completedAssignments.length)
+  return `${average}% (${completed}/${total})`
 }
+
+const KAZAKH_MONTHS = [
+  'қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым',
+  'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'
+]
 
 const formatDateShort = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  if (isNaN(date.getTime())) return ''
+  const day = date.getDate()
+  const month = KAZAKH_MONTHS[date.getMonth()]
+  return `${day} ${month}`
 }
 
 const formatEndTime = (dateStr?: string | null) => {
-  if (!dateStr) return 'No end date'
+  if (!dateStr) return 'Аяқталу уақыты жоқ'
   const date = new Date(dateStr)
-  return date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+  if (isNaN(date.getTime())) return 'Аяқталу уақыты жоқ'
+  const day = date.getDate()
+  const month = KAZAKH_MONTHS[date.getMonth()]
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${day} ${month}, ${hours}:${minutes}`
 }
 
 const formatAssignedStudents = (assignment?: QuizAssignmentResponse) => {
-  if (!assignment) return 'No students selected'
+  if (!assignment) return 'Оқушылар таңдалмаған'
   if (!assignment.student_id && !assignment.classroom_id) {
-    return 'All students'
+    return 'Барлық оқушылар'
   }
   if (assignment.student_id) {
     const student = students.value.find(s => s.id === assignment.student_id)
-    return student ? student.full_name : '1 student'
+    return student ? student.full_name : '1 оқушы'
   }
-  return 'Classroom students'
+  return 'Сынып оқушылары'
 }
 
 const getPeriodDates = (quiz: QuizResponse) => {
@@ -864,7 +877,7 @@ const getPeriodDates = (quiz: QuizResponse) => {
   if (!assignments.length) return ''
   const first = assignments[0]
   const start = formatDateShort(first.created_at)
-  const end = first.end_at ? formatDateShort(first.end_at) : 'Present'
+  const end = first.end_at ? formatDateShort(first.end_at) : 'Қазіргі уақыт'
   const date = new Date(first.end_at || first.created_at)
   const year = Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear()
   return `${start} - ${end}, ${year}`
@@ -874,13 +887,13 @@ const endQuiz = async (quiz: QuizResponse) => {
   const assignments = quiz.assignments || []
   const activeAssignment = assignments.find((a: QuizAssignmentResponse) => !a.end_at || new Date(a.end_at) > new Date())
   if (!activeAssignment) return
-  if (confirm(`End quiz "${quiz.name}" now?`)) {
+  if (confirm(`"${quiz.name}" квизін қазір аяқтауды растайсыз ба?`)) {
     try {
       await quizStore.endQuizAssignment(activeAssignment.id)
-      alert('Quiz ended successfully!')
+      alert('Квиз сәтті аяқталды!')
     } catch (err) {
       console.error(err)
-      alert('Failed to end quiz.')
+      alert('Квизді аяқтау мүмкін болмады.')
     }
   }
 }
@@ -890,12 +903,12 @@ const viewQuizReport = (quiz: QuizResponse) => {
 }
 
 const confirmDeleteQuiz = async (quiz: QuizResponse) => {
-  if (confirm(`Are you sure you want to delete "${quiz.name}"?`)) {
+  if (confirm(`"${quiz.name}" квизін өшіруді растайсыз ба?`)) {
     try {
       await quizStore.deleteQuiz(quiz.id);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string }
-      alert('Failed to delete quiz: ' + (err.response?.data?.message || err.message));
+      alert('Квизді өшіру мүмкін болмады: ' + (err.response?.data?.message || err.message));
     }
   }
 }
@@ -2448,7 +2461,8 @@ const confirmDelete = async (student: StudentInfo) => {
   display: flex;
   flex-direction: column;
   transition: box-shadow 0.2s ease;
-  width: 346px;
+  width: 100%;
+  max-width: 346px;
   min-height: 190px;
 }
 .quiz-card-item:hover {
@@ -2620,7 +2634,7 @@ const confirmDelete = async (student: StudentInfo) => {
   border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(33, 77, 88, 0.06);
-  max-width: 1060px;
+  width: 100%;
 }
 .past-quizzes-table {
   width: 100%;

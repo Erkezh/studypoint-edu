@@ -434,11 +434,14 @@ const confirmSubmitQuiz = async () => {
   // Submit to API
   if (currentAssignment.value) {
     try {
-      await quizApi.submitQuizAssignment(currentAssignment.value.id, {
+      const resp = await quizApi.submitQuizAssignment(currentAssignment.value.id, {
         score: 100, // calculated securely on server
         time_spent_seconds: currentTime.value,
         question_results: questionAnswers.value
       })
+      if (resp?.data?.data) {
+        currentAssignment.value = resp.data.data
+      }
     } catch (err) {
       console.error('Failed to submit quiz assignment to server:', err)
     }
@@ -449,9 +452,10 @@ const confirmSubmitQuiz = async () => {
   stopTimer()
   
   try {
+    const finalScore = currentAssignment.value?.score ?? 100
     localStorage.setItem(`quiz_result_${props.quizId}`, JSON.stringify({
       completedAt: new Date().toISOString(),
-      score: 100,
+      score: finalScore,
       finalAnswer: pendingFinalAnswer.value
     }))
   } catch { }
@@ -459,11 +463,19 @@ const confirmSubmitQuiz = async () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+const formatSubmittedAnswerText = (answer: unknown): string => {
+  if (!answer) return '—'
+  if (typeof answer === 'object' && answer !== null) {
+    return ((answer as Record<string, unknown>).value || (answer as Record<string, unknown>).label || (answer as Record<string, unknown>).text || JSON.stringify(answer)) as string
+  }
+  return String(answer)
+}
+
 const getStudentSubmittedAnswerText = (qId: string | number | undefined) => {
   if (qId === undefined) return '—'
   const ansObj = questionAnswers.value.find(a => String(a.question_id) === String(qId))
   if (!ansObj) return '—'
-  return String(ansObj.submitted_answer)
+  return formatSubmittedAnswerText(ansObj.submitted_answer)
 }
 
 // Timer Functions

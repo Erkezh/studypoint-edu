@@ -89,7 +89,7 @@
                 <span>Жүктелуде...</span>
               </div>
 
-              <div v-else-if="assignedQuizzes.length === 0" class="empty-state">
+              <div v-else-if="activeQuizzes.length === 0" class="empty-state">
                 <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -100,7 +100,7 @@
 
               <div v-else class="quiz-list">
                 <div
-                  v-for="quiz in assignedQuizzes"
+                  v-for="quiz in activeQuizzes"
                   :key="quiz.id"
                   class="quiz-card"
                 >
@@ -223,33 +223,6 @@
         </div>
       </div>
 
-      <!-- Past Quizzes -->
-      <div class="quizzes-section">
-        <h2 class="section-title">Өткен квиздер</h2>
-
-        <div v-if="completedQuizzes.length === 0" class="quizzes-empty">
-          <p>Аяқталған квиз жоқ</p>
-        </div>
-
-        <div v-else class="past-quizzes-table-wrapper">
-          <table class="past-quizzes-table">
-            <thead>
-              <tr>
-                <th>Атауы</th>
-                <th>Күндері</th>
-                <th>Нәтиже</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="quiz in completedQuizzes" :key="quiz.id">
-                <td>{{ quiz.name }}</td>
-                <td>{{ formatDateFull(getQuizCompletedDate(quiz.id) || quiz.created_at) }}</td>
-                <td>{{ getQuizScoreText(quiz) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -315,59 +288,12 @@ const isQuizCompleted = (quizId: string) => {
   }
 }
 
-const getQuizCompletedDate = (quizId: string) => {
-  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
-  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
-  if (assignment?.completed_at) {
-    return assignment.completed_at
-  }
-  try {
-    const data = localStorage.getItem(`quiz_result_${quizId}`)
-    if (data) {
-      const parsed = JSON.parse(data)
-      return parsed.completedAt
-    }
-  } catch {}
-  return null
-}
 
-const getQuizAssignment = (quiz: QuizResponse) => {
-  return quiz?.assignments?.find((a) => a.student_id === authStore.user?.id)
-}
-
-const isQuizEnded = (quiz: QuizResponse) => {
-  const assignment = getQuizAssignment(quiz)
-  if (!assignment?.end_at) return false
-  return new Date(assignment.end_at) <= new Date()
-}
-
-const getQuizVisibilitySetting = (quiz: QuizResponse) => {
-  if (isQuizEnded(quiz)) {
-    return quiz.ended_result_visibility || 'ALWAYS'
-  } else {
-    return quiz.result_visibility || 'ALWAYS'
-  }
-}
-
-const getQuizScoreText = (quiz: QuizResponse) => {
-  const assignment = getQuizAssignment(quiz)
-  if (!assignment) return 'Аяқталған'
-  
-  const visibility = getQuizVisibilitySetting(quiz)
-  if (visibility === 'HIDDEN') {
-    return 'Жіберілді'
-  }
-  
-  return `${assignment.score ?? 100}%`
-}
 
 const activeQuizzes = computed(() => {
   return assignedQuizzes.value.filter(q => !isQuizCompleted(q.id))
 })
 
-const completedQuizzes = computed(() => {
-  return assignedQuizzes.value.filter(q => isQuizCompleted(q.id))
-})
 
 const loadRecentSessions = () => {
   try {
