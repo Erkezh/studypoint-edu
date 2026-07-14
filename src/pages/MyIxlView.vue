@@ -244,7 +244,7 @@
               <tr v-for="quiz in completedQuizzes" :key="quiz.id">
                 <td>{{ quiz.name }}</td>
                 <td>{{ formatDateFull(getQuizCompletedDate(quiz.id) || quiz.created_at) }}</td>
-                <td>100% (Аяқталған)</td>
+                <td>{{ getQuizScoreText(quiz) }}</td>
               </tr>
             </tbody>
           </table>
@@ -303,6 +303,11 @@ interface RecentSession {
 const recentSessions = ref<RecentSession[]>([])
 
 const isQuizCompleted = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  if (assignment?.completed_at) {
+    return true
+  }
   try {
     return !!localStorage.getItem(`quiz_result_${quizId}`)
   } catch {
@@ -311,6 +316,11 @@ const isQuizCompleted = (quizId: string) => {
 }
 
 const getQuizCompletedDate = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  if (assignment?.completed_at) {
+    return assignment.completed_at
+  }
   try {
     const data = localStorage.getItem(`quiz_result_${quizId}`)
     if (data) {
@@ -319,6 +329,36 @@ const getQuizCompletedDate = (quizId: string) => {
     }
   } catch {}
   return null
+}
+
+const getQuizAssignment = (quiz: QuizResponse) => {
+  return quiz?.assignments?.find((a) => a.student_id === authStore.user?.id)
+}
+
+const isQuizEnded = (quiz: QuizResponse) => {
+  const assignment = getQuizAssignment(quiz)
+  if (!assignment?.end_at) return false
+  return new Date(assignment.end_at) <= new Date()
+}
+
+const getQuizVisibilitySetting = (quiz: QuizResponse) => {
+  if (isQuizEnded(quiz)) {
+    return quiz.ended_result_visibility || 'ALWAYS'
+  } else {
+    return quiz.result_visibility || 'ALWAYS'
+  }
+}
+
+const getQuizScoreText = (quiz: QuizResponse) => {
+  const assignment = getQuizAssignment(quiz)
+  if (!assignment) return 'Аяқталған'
+  
+  const visibility = getQuizVisibilitySetting(quiz)
+  if (visibility === 'HIDDEN') {
+    return 'Жіберілді'
+  }
+  
+  return `${assignment.score ?? 100}%`
 }
 
 const activeQuizzes = computed(() => {

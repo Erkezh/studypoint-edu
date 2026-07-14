@@ -26,6 +26,7 @@ export interface QuizCreateRequest {
     name: string
     question_order: QuizQuestionOrder
     result_visibility: QuizResultVisibility
+    ended_result_visibility: QuizResultVisibility
     end_type: QuizEndType
     questions: QuizQuestionCreate[]
 }
@@ -38,6 +39,10 @@ export interface QuizAssignmentResponse {
     due_at?: string | null
     end_at?: string | null
     created_at: string
+    completed_at?: string | null
+    score?: number | null
+    time_spent_seconds?: number | null
+    question_results?: Record<string, boolean> | null
 }
 
 export interface QuizResponse {
@@ -46,6 +51,7 @@ export interface QuizResponse {
     teacher_id: string
     question_order: QuizQuestionOrder
     result_visibility: QuizResultVisibility
+    ended_result_visibility: QuizResultVisibility
     end_type: QuizEndType
     created_at: string
     questions: Array<{
@@ -80,6 +86,10 @@ export interface StudentQuizAssignmentResponse {
     due_at: string | null
     end_at: string | null
     created_at: string
+    completed_at?: string | null
+    score?: number | null
+    time_spent_seconds?: number | null
+    question_results?: Record<string, boolean> | null
 }
 
 export const quizApi = {
@@ -109,5 +119,9 @@ export const quizApi = {
 
     listStudentAssignedQuizzes() {
         return apiClient.get<{ data: QuizResponse[] }>('/student/quizzes/all')
+    },
+
+    submitQuizAssignment(assignmentId: string, payload: { score: number; time_spent_seconds: number; question_results: Array<{ question_id: string; submitted_answer: unknown }> }) {
+        return apiClient.post<{ data: QuizAssignmentResponse }>(`/student/quizzes/assignments/${assignmentId}/submit`, payload)
     }
 }

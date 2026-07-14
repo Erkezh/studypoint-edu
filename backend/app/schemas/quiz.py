@@ -31,11 +31,16 @@ class QuizBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     question_order: QuizQuestionOrder = QuizQuestionOrder.FIXED
     result_visibility: QuizResultVisibility = QuizResultVisibility.ALWAYS
+    ended_result_visibility: QuizResultVisibility = QuizResultVisibility.ALWAYS
     end_type: QuizEndType = QuizEndType.MANUAL
 
 
 class QuizCreateRequest(QuizBase):
     questions: list[QuizQuestionCreate]
+    student_ids: list[uuid.UUID] | None = None
+    classroom_id: uuid.UUID | None = None
+    end_at: datetime | None = None
+    is_draft: bool = True
 
 
 class QuizResponse(QuizBase):
@@ -64,6 +69,10 @@ class QuizAssignmentCreate(QuizAssignmentBase):
 class QuizAssignmentResponse(QuizAssignmentBase):
     id: uuid.UUID
     created_at: datetime
+    completed_at: datetime | None = None
+    score: int | None = None
+    time_spent_seconds: int | None = None
+    question_results: dict | list | None = None
 
     class Config:
         from_attributes = True
@@ -76,6 +85,10 @@ class StudentQuizAssignmentResponse(BaseModel):
     due_at: datetime | None = None
     end_at: datetime | None = None
     created_at: datetime
+    completed_at: datetime | None = None
+    score: int | None = None
+    time_spent_seconds: int | None = None
+    question_results: dict | list | None = None
 
     class Config:
         from_attributes = True

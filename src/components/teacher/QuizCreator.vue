@@ -1,7 +1,7 @@
 <template>
   <div class="quiz-creator">
     <div class="creator-header bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-      <button @click="$emit('cancel')" class="back-link flex items-center text-gray-500 hover:text-gray-700 transition-colors font-medium">
+      <button @click="handleBack" class="back-link flex items-center text-gray-500 hover:text-gray-700 transition-colors font-medium">
         <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
         Артқа
       </button>
@@ -12,8 +12,7 @@
 
     <!-- STEP 1: ADD QUESTIONS -->
     <div v-if="currentStep === 1" class="step-container p-6 bg-slate-50 min-h-screen">
-      <!-- Quiz Name Banner -->
-      <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+      <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-4 z-20">
         <div class="flex-1 w-full">
           <input 
             v-model="quizName" 
@@ -491,6 +490,16 @@
                 <option value="HIDDEN">Нәтижелерді көрсетпеу</option>
               </select>
             </div>
+
+            <!-- ResultsVisibility (ended) -->
+            <div class="form-group flex flex-col gap-2">
+              <label class="text-sm font-semibold text-slate-700">Мұғалім квизді аяқтағаннан кейінгі нәтиже</label>
+              <select v-model="settings.ended_result_visibility" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500">
+                <option value="ALWAYS">Ұпайлар мен дұрыс жауаптарды көрсету</option>
+                <option value="SCORE_ONLY">Тек ұпайларды көрсету</option>
+                <option value="HIDDEN">Нәтижелерді көрсетпеу</option>
+              </select>
+            </div>
           </div>
 
           <!-- Select target students -->
@@ -569,7 +578,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, onBeforeUnmount, watch } from 'vue'
 import { useCatalogStore } from '@/stores/catalog'
 import { useTeacherStore } from '@/stores/teacher'
 import { useQuizStore } from '@/stores/quiz'
@@ -751,6 +760,7 @@ const selectAllStudents = ref(false)
 const settings = ref({
   question_order: QuizQuestionOrder.FIXED,
   result_visibility: QuizResultVisibility.ALWAYS,
+  ended_result_visibility: QuizResultVisibility.ALWAYS,
   end_type: QuizEndType.MANUAL,
   end_date: '',
   end_time: ''
@@ -1200,6 +1210,110 @@ const nextStep = () => {
 }
 
 const isEditing = computed(() => !!props.initialQuiz)
+const draftId = ref<string | null>(null)
+const isLoaded = ref(false)
+const skipAutoSave = ref(false)
+const isPublished = ref(false)
+
+const buildPayload = (isPublishing: boolean) => {
+  const nameToSave = quizName.value.trim() || getDefaultQuizName()
+  
+  let endAtStr: string | null = null
+  if (settings.value.end_type === 'SCHEDULED' && settings.value.end_date) {
+    const timeStr = settings.value.end_time || '00:00'
+    const dt = new Date(`${settings.value.end_date}T${timeStr}`)
+    if (!isNaN(dt.getTime())) {
+      endAtStr = dt.toISOString()
+    }
+  }
+
+  const isDraft = !isPublished.value && !isPublishing
+  
+  return {
+    name: nameToSave,
+    question_order: settings.value.question_order,
+    result_visibility: settings.value.result_visibility,
+    ended_result_visibility: settings.value.ended_result_visibility,
+    end_type: settings.value.end_type,
+    questions: selectedQuestions.value.map((q, i) => ({
+      question_id: q.question_id,
+      position: i,
+      seed: q.seed
+    })),
+    is_draft: isDraft,
+    student_ids: !isDraft ? (selectAllStudents.value || assignedStudentIds.value.length === 0 ? null : assignedStudentIds.value) : null,
+    classroom_id: null,
+    end_at: !isDraft ? endAtStr : null
+  }
+}
+
+// Generate default quiz name like "Quiz 7/13"
+const getDefaultQuizName = () => {
+  const d = new Date()
+  return `Quiz ${d.getMonth() + 1}/${d.getDate()}`
+}
+
+// Auto-save draft silently (no alerts, no UI blocking)
+const autoSaveDraft = async () => {
+  if (selectedQuestions.value.length === 0) return
+
+  try {
+    const payload = buildPayload(false)
+
+    if (isEditing.value || draftId.value) {
+      const idToUpdate = draftId.value || (props.initialQuiz as Record<string, unknown>).id as string
+      const updated = await quizStore.updateQuiz(idToUpdate, payload)
+      if (updated && updated.id) {
+        draftId.value = updated.id
+      }
+    } else {
+      const created = await quizStore.createQuiz(payload)
+      if (created && created.id) {
+        draftId.value = created.id
+      }
+    }
+  } catch (err) {
+    console.error('Auto-save draft failed:', err)
+  }
+}
+
+// Debounce timer for auto-saving
+let autoSaveTimeout: ReturnType<typeof setTimeout> | null = null
+
+const triggerAutoSave = () => {
+  if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
+  autoSaveTimeout = setTimeout(async () => {
+    await autoSaveDraft()
+  }, 1000) // auto-save after 1 second of inactivity
+}
+
+// Watch fields for changes
+watch(
+  [quizName, () => [...selectedQuestions.value], () => ({ ...settings.value })],
+  () => {
+    if (!isLoaded.value) return
+    triggerAutoSave()
+  },
+  { deep: true }
+)
+
+// When clicking Back, cancel any pending debounced save, trigger instant save, and exit
+const handleBack = async () => {
+  if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
+  if (selectedQuestions.value.length > 0) {
+    await autoSaveDraft()
+  }
+  skipAutoSave.value = true
+  emit('created')
+}
+
+// Also auto-save on component unmount (e.g. when leaving the tab)
+onBeforeUnmount(async () => {
+  if (autoSaveTimeout) clearTimeout(autoSaveTimeout)
+  if (!skipAutoSave.value && selectedQuestions.value.length > 0) {
+    await autoSaveDraft()
+  }
+})
 
 // Publish the created or modified quiz to DB and assign it
 const publishQuiz = async () => {
@@ -1212,39 +1326,16 @@ const publishQuiz = async () => {
     return
   }
 
+  skipAutoSave.value = true
   loading.value = true
   try {
-    const payload = {
-      name: quizName.value,
-      question_order: settings.value.question_order,
-      result_visibility: settings.value.result_visibility,
-      end_type: settings.value.end_type,
-      questions: selectedQuestions.value.map((q, i) => ({
-        question_id: q.question_id,
-        position: i,
-        seed: q.seed
-      }))
-    }
+    const payload = buildPayload(true)
 
-    let createdQuiz
-    if (isEditing.value) {
-      createdQuiz = await quizStore.updateQuiz((props.initialQuiz as Record<string, unknown>).id as string, payload)
+    if (isEditing.value || draftId.value) {
+      const idToUpdate = draftId.value || (props.initialQuiz as Record<string, unknown>).id as string
+      await quizStore.updateQuiz(idToUpdate, payload)
     } else {
-      createdQuiz = await quizStore.createQuiz(payload)
-    }
-
-    // Assign to students
-    if (selectAllStudents.value) {
-      await quizStore.assignQuiz({
-        quiz_id: createdQuiz.id,
-      })
-    } else {
-      for (const studentId of assignedStudentIds.value) {
-        await quizStore.assignQuiz({
-          quiz_id: createdQuiz.id,
-          student_id: studentId
-        })
-      }
+      await quizStore.createQuiz(payload)
     }
 
     emit('created')
@@ -1294,10 +1385,48 @@ onMounted(async () => {
   
   if (props.initialQuiz) {
     const iq = props.initialQuiz as Record<string, unknown>
+    draftId.value = iq.id as string
     quizName.value = iq.name as string
     settings.value.question_order = iq.question_order as QuizQuestionOrder
     settings.value.result_visibility = iq.result_visibility as QuizResultVisibility
+    settings.value.ended_result_visibility = (iq.ended_result_visibility || QuizResultVisibility.ALWAYS) as QuizResultVisibility
     settings.value.end_type = iq.end_type as QuizEndType
+
+    // Load assignments / selected students
+    if (iq.assignments && (iq.assignments as Record<string, unknown>[]).length > 0) {
+      isPublished.value = true
+      const assignments = iq.assignments as Record<string, unknown>[]
+      const isAll = assignments.some(a => !a.student_id && !a.classroom_id)
+      
+      if (isAll) {
+        selectAllStudents.value = true
+        assignedStudentIds.value = students.value.map(s => s.id)
+      } else {
+        selectAllStudents.value = false
+        assignedStudentIds.value = assignments
+          .filter(a => a.student_id)
+          .map(a => a.student_id as string)
+      }
+
+      // Pre-fill end_date and end_time from first assignment's end_at if present
+      const firstA = assignments[0]
+      if (firstA.end_at) {
+        const endAt = new Date(firstA.end_at as string)
+        if (!isNaN(endAt.getTime())) {
+          const year = endAt.getFullYear()
+          const month = String(endAt.getMonth() + 1).padStart(2, '0')
+          const day = String(endAt.getDate()).padStart(2, '0')
+          settings.value.end_date = `${year}-${month}-${day}`
+          
+          const hours = String(endAt.getHours()).padStart(2, '0')
+          const minutes = String(endAt.getMinutes()).padStart(2, '0')
+          settings.value.end_time = `${hours}:${minutes}`
+        }
+      }
+    } else {
+      selectAllStudents.value = false
+      assignedStudentIds.value = []
+    }
     
     // Map initial questions with custom details
     if (iq.questions) {
@@ -1332,6 +1461,8 @@ onMounted(async () => {
       activeQuestionIndex.value = 0
     }
   }
+  
+  isLoaded.value = true
 })
 
 onUnmounted(() => {

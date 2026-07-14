@@ -9,7 +9,7 @@
       >
         <option value="">-- Select a Quiz to View Report --</option>
         <option v-for="quiz in allQuizzes" :key="quiz.id" :value="quiz.id">
-          {{ quiz.name }} (Assigned: {{ quiz.assignments[0] ? formatDateShort(quiz.assignments[0].created_at) : 'Draft' }})
+          {{ quiz.name }} (Assigned: {{ quiz.assignments?.[0] ? formatDateShort(quiz.assignments[0].created_at) : 'Draft' }})
         </option>
       </select>
     </div>
@@ -163,78 +163,82 @@ const formatDateShort = (dateStr: string) => {
 }
 
 const getPeriodDates = (quiz: QuizResponse) => {
-  if (!quiz.assignments.length) return 'Draft'
-  const first = quiz.assignments[0]
+  const assignments = quiz.assignments || []
+  if (!assignments.length) return 'Draft'
+  const first = assignments[0]
   const start = formatDateShort(first.created_at)
   const end = first.end_at ? formatDateShort(first.end_at) : 'Present'
   return `${start} – ${end}, 2026`
 }
 
 const getCompletionStats = (quiz: QuizResponse) => {
-  let total = teacherStudents.value.length || 2
-  const assignment = quiz.assignments[0]
-  if (assignment && assignment.student_id) total = 1
-  const hash = quiz.id.split('-').reduce((acc: number, val: string) => acc + val.charCodeAt(0), 0)
-  const completed = (hash % (total + 1))
+  const assignments = quiz.assignments || []
+  const total = assignments.length
+  const completed = assignments.filter(a => a.completed_at !== null).length
   return { completed, total }
 }
 
 const getCompletionPercent = (quiz: QuizResponse) => {
   const { completed, total } = getCompletionStats(quiz)
+  if (total === 0) return 0
   return Math.round((completed / total) * 100)
 }
 
 const getAverageScoreText = (quiz: QuizResponse) => {
-  const { completed, total } = getCompletionStats(quiz)
-  if (completed === 0) return '0%'
-  const hash = quiz.id.split('-').reduce((acc: number, val: string) => acc + val.charCodeAt(0), 0)
-  const score = 50 + (hash % 45)
-  return `${score}% (${completed}/${total})`
+  const assignments = quiz.assignments || []
+  const completedAssignments = assignments.filter(a => a.completed_at !== null)
+  if (completedAssignments.length === 0) return '0%'
+  const totalScore = completedAssignments.reduce((acc, a) => acc + (a.score || 0), 0)
+  const avg = Math.round(totalScore / completedAssignments.length)
+  return `${avg}% (${completedAssignments.length}/${assignments.length})`
 }
 
 const reportStudents = computed(() => {
   if (!selectedQuiz.value) return []
   const quiz = selectedQuiz.value
-  const { completed } = getCompletionStats(quiz)
+  const assignments = quiz.assignments || []
 
-  const assignedList = teacherStudents.value.length > 0
-    ? [...teacherStudents.value]
-    : [
-        { id: '1', full_name: 'аяулы жұмақан' },
-        { id: '2', full_name: 'Әлихан Сұлтанов' },
-        { id: '3', full_name: 'Мадина Әлімбекова' }
-      ]
+  return assignments.map(assignment => {
+    const student = teacherStudents.value.find(s => s.id === assignment.student_id)
+    const fullName = student?.full_name || `Оқушы (${assignment.student_id?.slice(0, 8) || 'Белгісіз'})`
 
-  return assignedList.map((student, index) => {
-    const isCompleted = index < completed
-    const studentHash = student.id.charCodeAt(0) + quiz.id.charCodeAt(0)
+    const isCompleted = assignment.completed_at !== null
+    const score = assignment.score || 0
+
+    let timeSpent = '—'
+    if (isCompleted && assignment.time_spent_seconds !== null && assignment.time_spent_seconds !== undefined) {
+      const mins = Math.floor(assignment.time_spent_seconds / 60)
+      const secs = assignment.time_spent_seconds % 60
+      timeSpent = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+    }
+
     const totalQuestions = quiz.questions.length || 5
     let correctAnswers = 0
     let questionResults: boolean[] = []
-    let timeSpent = '—'
-    let score = 0
 
     if (isCompleted) {
-      correctAnswers = Math.max(Math.floor(totalQuestions * 0.6), studentHash % (totalQuestions + 1))
-      score = Math.round((correctAnswers / totalQuestions) * 100)
-      const mins = 3 + (studentHash % 12)
-      const secs = studentHash % 60
-      timeSpent = `${mins}m ${secs}s`
-      let count = 0
-      for (let i = 0; i < totalQuestions; i++) {
-        const isCorrect = (studentHash + i) % 3 !== 0 && count < correctAnswers
-        if (isCorrect) count++
-        questionResults.push(isCorrect)
-      }
-      while (count < correctAnswers) {
-        const idx = questionResults.indexOf(false)
-        if (idx !== -1) { questionResults[idx] = true; count++ } else break
+      const sortedQs = [...quiz.questions].sort((a, b) => a.position - b.position)
+      const resultsMap = (assignment.question_results as Record<string, boolean>) || {}
+      
+      for (const q of sortedQs) {
+        const qId = q.question?.id
+        const correct = resultsMap[String(qId)] === true
+        if (correct) correctAnswers++
+        questionResults.push(correct)
       }
     } else {
       questionResults = Array(totalQuestions).fill(false)
     }
 
-    return { id: student.id, full_name: student.full_name, completed: isCompleted, score, correctAnswers, timeSpent, questionResults }
+    return { 
+      id: assignment.student_id || assignment.id, 
+      full_name: fullName, 
+      completed: isCompleted, 
+      score, 
+      correctAnswers, 
+      timeSpent, 
+      questionResults 
+    }
   })
 })
 </script>

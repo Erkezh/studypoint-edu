@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -30,6 +30,11 @@ class Quiz(Base, TimestampMixin):
         default=QuizQuestionOrder.FIXED
     )
     result_visibility: Mapped[QuizResultVisibility] = mapped_column(
+        Enum(QuizResultVisibility, name="quiz_result_visibility"), 
+        nullable=False, 
+        default=QuizResultVisibility.ALWAYS
+    )
+    ended_result_visibility: Mapped[QuizResultVisibility] = mapped_column(
         Enum(QuizResultVisibility, name="quiz_result_visibility"), 
         nullable=False, 
         default=QuizResultVisibility.ALWAYS
@@ -68,5 +73,10 @@ class QuizAssignment(Base, TimestampMixin):
     
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    question_results: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
 
     quiz: Mapped["Quiz"] = relationship(back_populates="assignments")

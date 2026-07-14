@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime
 from typing import Sequence
 
 from fastapi import Depends
@@ -26,6 +27,7 @@ class QuizService:
             teacher_id=teacher_uuid,
             question_order=req.question_order,
             result_visibility=req.result_visibility,
+            ended_result_visibility=req.ended_result_visibility,
             end_type=req.end_type
         )
         self.session.add(quiz)
@@ -41,7 +43,26 @@ class QuizService:
             self.session.add(quiz_q)
             
         await self.session.flush()
-        await self.session.refresh(quiz)
+
+        # Handle assignments if not draft
+        if not req.is_draft:
+            student_ids = req.student_ids
+            if not student_ids:
+                from app.models.user import User
+                from app.models.enums import UserRole
+                student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
+                student_res = await self.session.execute(student_stmt)
+                student_ids = list(student_res.scalars().all())
+
+            for student_id in student_ids:
+                assignment = QuizAssignment(
+                    quiz_id=quiz.id,
+                    classroom_id=req.classroom_id,
+                    student_id=student_id,
+                    end_at=req.end_at
+                )
+                self.session.add(assignment)
+            await self.session.flush()
         
         # Load questions for response
         stmt = select(Quiz).where(Quiz.id == quiz.id).options(
@@ -65,6 +86,7 @@ class QuizService:
         quiz.name = req.name
         quiz.question_order = req.question_order
         quiz.result_visibility = req.result_visibility
+        quiz.ended_result_visibility = req.ended_result_visibility
         quiz.end_type = req.end_type
 
         # Remove old questions
@@ -72,6 +94,12 @@ class QuizService:
         result = await self.session.execute(del_stmt)
         for old_q in result.scalars().all():
             await self.session.delete(old_q)
+
+        # Remove old assignments to allow updating selected students
+        del_assign_stmt = select(QuizAssignment).where(QuizAssignment.quiz_id == quiz_uuid)
+        assign_result = await self.session.execute(del_assign_stmt)
+        for old_assign in assign_result.scalars().all():
+            await self.session.delete(old_assign)
             
         await self.session.flush()
 
@@ -85,6 +113,26 @@ class QuizService:
             self.session.add(quiz_q)
 
         await self.session.flush()
+
+        # Handle assignments if not draft
+        if not req.is_draft:
+            student_ids = req.student_ids
+            if not student_ids:
+                from app.models.user import User
+                from app.models.enums import UserRole
+                student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
+                student_res = await self.session.execute(student_stmt)
+                student_ids = list(student_res.scalars().all())
+
+            for student_id in student_ids:
+                assignment = QuizAssignment(
+                    quiz_id=quiz.id,
+                    classroom_id=req.classroom_id,
+                    student_id=student_id,
+                    end_at=req.end_at
+                )
+                self.session.add(assignment)
+            await self.session.flush()
 
         # Reload with questions
         stmt = select(Quiz).where(Quiz.id == quiz.id).options(
@@ -112,7 +160,8 @@ class QuizService:
         stmt = (
             select(Quiz)
             .options(
-                selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+                selectinload(Quiz.questions).joinedload(QuizQuestion.question),
+                selectinload(Quiz.assignments)
             )
             .order_by(Quiz.created_at.desc())
         )
@@ -132,64 +181,79 @@ class QuizService:
         return result.scalar_one_or_none()
 
     async def assign_quiz(self, req: QuizAssignmentCreate) -> QuizAssignment:
-        assignment = QuizAssignment(
-            quiz_id=req.quiz_id,
-            classroom_id=req.classroom_id,
-            student_id=req.student_id,
-            due_at=req.due_at,
-            end_at=req.end_at
-        )
-        self.session.add(assignment)
-        
+        # If student_id is set, assign only to them
+        if req.student_id:
+            student_ids = [req.student_id]
+        else:
+            student_ids = []
+            if req.classroom_id:
+                from app.models.classroom import Enrollment
+                classroom_stmt = select(Enrollment.student_id).where(Enrollment.classroom_id == req.classroom_id)
+                classroom_res = await self.session.execute(classroom_stmt)
+                student_ids = list(classroom_res.scalars().all())
+            else:
+                from app.models.user import User
+                from app.models.enums import UserRole
+                student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
+                student_res = await self.session.execute(student_stmt)
+                student_ids = list(student_res.scalars().all())
+                
+        first_assignment = None
+        for s_id in student_ids:
+            # Delete any existing assignment for this student and quiz to avoid duplicate key issues
+            del_stmt = select(QuizAssignment).where(QuizAssignment.quiz_id == req.quiz_id, QuizAssignment.student_id == s_id)
+            del_res = await self.session.execute(del_stmt)
+            for old_a in del_res.scalars().all():
+                await self.session.delete(old_a)
+                
+            assignment = QuizAssignment(
+                quiz_id=req.quiz_id,
+                classroom_id=req.classroom_id,
+                student_id=s_id,
+                due_at=req.due_at,
+                end_at=req.end_at
+            )
+            self.session.add(assignment)
+            if not first_assignment:
+                first_assignment = assignment
+                
         # Trigger real-time notifications for assigned students
         try:
             from app.models.notification import Notification
-            
-            # Fetch quiz details for naming
             quiz_stmt = select(Quiz).where(Quiz.id == req.quiz_id)
             quiz_result = await self.session.execute(quiz_stmt)
             quiz = quiz_result.scalar_one_or_none()
             quiz_name = quiz.name if quiz else "Квиз"
             
-            if req.student_id:
+            for s_id in student_ids:
                 self.session.add(
                     Notification(
-                        user_id=req.student_id,
+                        user_id=s_id,
                         title="Жаңа квиз!",
                         content=f"Мұғалім жаңа квиз жариялады: '{quiz_name}'.",
                         is_read=False,
                     )
                 )
-            else:
-                student_ids = []
-                if req.classroom_id:
-                    from app.models.classroom import Enrollment
-                    classroom_stmt = select(Enrollment.student_id).where(Enrollment.classroom_id == req.classroom_id)
-                    classroom_res = await self.session.execute(classroom_stmt)
-                    student_ids = list(classroom_res.scalars().all())
-                else:
-                    from app.models.user import User
-                    from app.models.enums import UserRole
-                    student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
-                    student_res = await self.session.execute(student_stmt)
-                    student_ids = list(student_res.scalars().all())
-                
-                for s_id in student_ids:
-                    self.session.add(
-                        Notification(
-                            user_id=s_id,
-                            title="Жаңа квиз!",
-                            content=f"Мұғалім жаңа квиз жариялады: '{quiz_name}'.",
-                            is_read=False,
-                        )
-                    )
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Failed to generate quiz notifications: {e}", exc_info=True)
 
         await self.session.flush()
-        await self.session.refresh(assignment)
-        return assignment
+        if first_assignment:
+            await self.session.refresh(first_assignment)
+            return first_assignment
+        else:
+            fallback = QuizAssignment(
+                quiz_id=req.quiz_id,
+                classroom_id=req.classroom_id,
+                student_id=req.student_id,
+                due_at=req.due_at,
+                end_at=req.end_at
+            )
+            self.session.add(fallback)
+            await self.session.flush()
+            await self.session.refresh(fallback)
+            return fallback
 
     async def list_assigned_quizzes(self, student_id: uuid.UUID | str) -> Sequence[QuizAssignment]:
         student_uuid = uuid.UUID(str(student_id))
@@ -231,4 +295,96 @@ class QuizService:
             
         assignment.end_at = datetime.now(timezone.utc)
         await self.session.flush()
+        return assignment
+
+    async def submit_quiz_assignment(
+        self,
+        student_id: uuid.UUID | str,
+        assignment_id: uuid.UUID | str,
+        score: int, # unused now, but kept for interface signature compatibility
+        time_spent_seconds: int,
+        question_results: dict | list
+    ) -> QuizAssignment | None:
+        student_uuid = uuid.UUID(str(student_id))
+        assignment_uuid = uuid.UUID(str(assignment_id))
+        
+        stmt = select(QuizAssignment).where(
+            QuizAssignment.id == assignment_uuid,
+            QuizAssignment.student_id == student_uuid
+        )
+        result = await self.session.execute(stmt)
+        assignment = result.scalar_one_or_none()
+        
+        if not assignment:
+            return None
+
+        # Load the quiz questions to grade them
+        from app.models.quiz import Quiz, QuizQuestion
+        from app.services.practice_service import _is_correct
+        
+        quiz_stmt = (
+            select(Quiz)
+            .where(Quiz.id == assignment.quiz_id)
+            .options(
+                selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+            )
+        )
+        quiz_res = await self.session.execute(quiz_stmt)
+        quiz = quiz_res.scalar_one_or_none()
+        
+        if not quiz:
+            return None
+
+        # Map submitted answers by question_id (as strings for easy comparison)
+        answers_map = {}
+        # question_results is list of dict: [{"question_id": "...", "submitted_answer": "..."}]
+        if isinstance(question_results, list):
+            for r in question_results:
+                if isinstance(r, dict):
+                    q_id = str(r.get("question_id") or "")
+                    sub_ans = r.get("submitted_answer")
+                    answers_map[q_id] = sub_ans
+
+        correct_count = 0
+        total_count = len(quiz.questions)
+        graded_results = {}
+
+        # Sort questions by position to maintain the same ordering
+        sorted_qs = sorted(quiz.questions, key=lambda x: x.position)
+        for qq in sorted_qs:
+            q = qq.question
+            if not q:
+                continue
+                
+            q_id_str = str(q.id)
+            submitted_ans = answers_map.get(q_id_str)
+
+            submitted_payload = {}
+            if q.type.value == "MCQ":
+                submitted_payload = {"choice": submitted_ans}
+            elif q.type.value == "NUMERIC":
+                submitted_payload = {"value": submitted_ans}
+            elif q.type.value == "TEXT":
+                submitted_payload = {"text": submitted_ans}
+            else:
+                if isinstance(submitted_ans, dict):
+                    submitted_payload = submitted_ans
+                else:
+                    submitted_payload = {"answer": submitted_ans, "value": submitted_ans, "text": submitted_ans, "choice": submitted_ans}
+                    
+            is_correct = _is_correct(q.type, q.data, q.correct_answer, submitted_payload)
+            if is_correct:
+                correct_count += 1
+            graded_results[q_id_str] = is_correct
+
+        computed_score = 0
+        if total_count > 0:
+            computed_score = round((correct_count / total_count) * 100)
+
+        assignment.completed_at = datetime.utcnow()
+        assignment.score = computed_score
+        assignment.time_spent_seconds = time_spent_seconds
+        assignment.question_results = graded_results
+        
+        await self.session.commit()
         return assignment

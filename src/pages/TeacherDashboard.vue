@@ -390,16 +390,8 @@
       <!-- ===================== КВИЗДЕР ===================== -->
       <template v-if="activeTab === 'quizzes'">
         <div class="quizzes-section">
-          <QuizCreator 
-            v-if="isCreatingQuiz || isEditingQuiz" 
-            :initial-quiz="selectedEditQuiz" 
-            @cancel="handleQuizCreationCancel" 
-            @created="handleQuizCreatedOrUpdated" 
-          />
-          
-          <template v-else>
             <div class="quizzes-top-action">
-              <button @click="isCreatingQuiz = true" class="create-quiz-action-btn">
+              <button @click="router.push({ name: 'teacher-quiz-create' })" class="create-quiz-action-btn">
                 Create new quiz
               </button>
             </div>
@@ -442,16 +434,16 @@
                     <div class="card-body">
                       <div class="info-row">
                         <span class="info-icon">▦</span>
-                        <span class="info-text">Assigned on {{ formatDateShort(quiz.assignments[0]?.created_at || quiz.created_at) }}</span>
+                        <span class="info-text">Assigned on {{ formatDateShort(quiz.assignments?.[0]?.created_at || quiz.created_at) }}</span>
                       </div>
                       <div class="info-row">
                         <span class="info-icon">◴</span>
-                        <span class="info-text">{{ formatEndTime(quiz.assignments[0]?.end_at) }}</span>
+                        <span class="info-text">{{ formatEndTime(quiz.assignments?.[0]?.end_at) }}</span>
                       </div>
                       <div class="info-row">
                         <span class="info-icon">♙</span>
                         <span class="info-text flex-1">
-                          {{ formatAssignedStudents(quiz.assignments[0]) }}
+                          {{ formatAssignedStudents(quiz.assignments?.[0]) }}
                         </span>
                         <span class="completion-badge-count">
                           ✓ {{ getCompletionStats(quiz).completed }} of {{ getCompletionStats(quiz).total }}
@@ -541,7 +533,7 @@
                     <tbody>
                       <tr v-for="quiz in pastQuizzes" :key="quiz.id">
                         <td class="quiz-name-cell">{{ quiz.name }}</td>
-                        <td>{{ formatAssignedStudents(quiz.assignments[0]) }}</td>
+                        <td>{{ formatAssignedStudents(quiz.assignments?.[0]) }}</td>
                         <td>{{ getPeriodDates(quiz) }}</td>
                         <td class="average-score-cell">{{ getAverageScoreText(quiz) }}</td>
                         <td class="report-action-cell">
@@ -570,7 +562,6 @@
                 </div>
               </div>
             </div>
-          </template>
         </div>
       </template>
 
@@ -675,7 +666,6 @@ import type { StudentInfo } from '@/api/teacher'
 import { useCatalogStore } from '@/stores/catalog'
 import { useAuthStore } from '@/stores/auth'
 import { useQuizStore } from '@/stores/quiz'
-import QuizCreator from '@/components/teacher/QuizCreator.vue'
 
 defineOptions({ name: 'TeacherDashboard' })
 
@@ -730,9 +720,6 @@ const { students, loading: loadingStudents, error: studentsError } = storeToRefs
 const { grades } = storeToRefs(catalogStore)
 const { quizzes, error: quizzesError } = storeToRefs(quizStore)
 
-const isCreatingQuiz = ref(false)
-const isEditingQuiz = ref(false)
-const selectedEditQuiz = ref<QuizResponse | null>(null)
 
 // Dashboard analytics data
 const loadingData = ref(true)
@@ -765,22 +752,9 @@ const viewQuiz = (quiz: QuizResponse) => {
 }
 
 const editQuiz = (quiz: QuizResponse) => {
-  selectedEditQuiz.value = quiz
-  isEditingQuiz.value = true
+  router.push({ name: 'teacher-quiz-edit', params: { quizId: quiz.id } })
 }
 
-const handleQuizCreationCancel = () => {
-    isCreatingQuiz.value = false
-    isEditingQuiz.value = false
-    selectedEditQuiz.value = null
-}
-
-const handleQuizCreatedOrUpdated = () => {
-    isCreatingQuiz.value = false
-    isEditingQuiz.value = false
-    selectedEditQuiz.value = null
-    quizStore.fetchQuizzes()
-}
 
 const router = useRouter()
 
@@ -810,7 +784,7 @@ const filteredQuizzes = computed(() => {
   }
   if (filterStudent.value !== 'any') {
     list = list.filter(quiz => 
-      quiz.assignments.some(a => a.student_id === filterStudent.value || (!a.student_id && !a.classroom_id))
+      (quiz.assignments || []).some(a => a.student_id === filterStudent.value || (!a.student_id && !a.classroom_id))
     )
   }
   return list
@@ -818,25 +792,28 @@ const filteredQuizzes = computed(() => {
 
 const activeQuizzes = computed(() => {
   return filteredQuizzes.value.filter(quiz => {
-    if (quiz.assignments.length === 0) return false
-    return quiz.assignments.some(a => !a.end_at || new Date(a.end_at) > new Date())
+    const assignments = quiz.assignments || []
+    if (assignments.length === 0) return false
+    return assignments.some(a => !a.end_at || new Date(a.end_at) > new Date())
   })
 })
 
 const draftQuizzes = computed(() => {
-  return filteredQuizzes.value.filter(quiz => quiz.assignments.length === 0)
+  return filteredQuizzes.value.filter(quiz => (quiz.assignments || []).length === 0)
 })
 
 const pastQuizzes = computed(() => {
   return filteredQuizzes.value.filter(quiz => {
-    if (quiz.assignments.length === 0) return false
-    return quiz.assignments.every(a => a.end_at && new Date(a.end_at) <= new Date())
+    const assignments = quiz.assignments || []
+    if (assignments.length === 0) return false
+    return assignments.every(a => a.end_at && new Date(a.end_at) <= new Date())
   })
 })
 
 const getCompletionStats = (quiz: QuizResponse) => {
   let total = students.value.length || 2
-  const assignment = quiz.assignments[0]
+  const assignments = quiz.assignments || []
+  const assignment = assignments[0]
   if (assignment && assignment.student_id) {
     total = 1
   }
@@ -883,8 +860,9 @@ const formatAssignedStudents = (assignment?: QuizAssignmentResponse) => {
 }
 
 const getPeriodDates = (quiz: QuizResponse) => {
-  if (!quiz.assignments.length) return ''
-  const first = quiz.assignments[0]
+  const assignments = quiz.assignments || []
+  if (!assignments.length) return ''
+  const first = assignments[0]
   const start = formatDateShort(first.created_at)
   const end = first.end_at ? formatDateShort(first.end_at) : 'Present'
   const date = new Date(first.end_at || first.created_at)
@@ -893,7 +871,8 @@ const getPeriodDates = (quiz: QuizResponse) => {
 }
 
 const endQuiz = async (quiz: QuizResponse) => {
-  const activeAssignment = quiz.assignments.find((a: QuizAssignmentResponse) => !a.end_at || new Date(a.end_at) > new Date())
+  const assignments = quiz.assignments || []
+  const activeAssignment = assignments.find((a: QuizAssignmentResponse) => !a.end_at || new Date(a.end_at) > new Date())
   if (!activeAssignment) return
   if (confirm(`End quiz "${quiz.name}" now?`)) {
     try {
@@ -1138,6 +1117,7 @@ const stopLivePolling = () => {
 
 // Start/stop polling when tools tab is active
 watch(activeTab, (tab) => {
+
   if (tab === 'tools') {
     startLivePolling()
     stopGlancePolling()

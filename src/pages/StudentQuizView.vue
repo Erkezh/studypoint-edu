@@ -35,13 +35,9 @@
         
         <!-- Mobile stats bar -->
         <div class="mb-4 flex overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:hidden shrink-0">
-          <div class="border-r border-gray-200 flex-1 px-4 py-2 text-center">
-            <div class="text-[11px] font-medium text-gray-500 uppercase">Жауап берілді</div>
-            <div class="mt-1 text-xl font-bold text-orange-500">{{ currentIndex }}</div>
-          </div>
           <div class="flex-1 px-4 py-2 text-center">
-            <div class="text-[11px] font-medium text-gray-500 uppercase">Уақыт</div>
-            <div class="mt-1 text-base font-bold font-mono text-blue-500">{{ formatTimeCompact(currentTime) }}</div>
+            <div class="text-[11px] font-medium text-gray-500 uppercase">Жауап берілді</div>
+            <div class="mt-1 text-xl font-bold text-orange-500">{{ currentIndex }} / {{ sortedQuestions.length }}</div>
           </div>
         </div>
 
@@ -147,42 +143,7 @@
               Жауап берілді
             </div>
             <div class="bg-white text-center py-8">
-              <span class="text-5xl font-bold text-gray-800">{{ currentIndex }}</span>
-            </div>
-          </div>
-
-          <!-- Уақыт -->
-          <div class="rounded-xl overflow-hidden shadow-md">
-            <div class="bg-blue-500 text-white text-center py-2 px-4 uppercase tracking-wider text-xs font-semibold">
-              Уақыт
-            </div>
-            <div class="bg-white text-center py-6">
-              <div class="flex justify-center gap-1 text-gray-800">
-                <div class="text-center">
-                  <div class="text-3xl font-bold font-mono">{{ formatTimeHours(currentTime) }}</div>
-                  <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Сағ</div>
-                </div>
-                <span class="text-3xl font-bold text-gray-300 -mt-1">:</span>
-                <div class="text-center">
-                  <div class="text-3xl font-bold font-mono">{{ formatTimeMinutes(currentTime) }}</div>
-                  <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Мин</div>
-                </div>
-                <span class="text-3xl font-bold text-gray-300 -mt-1">:</span>
-                <div class="text-center">
-                  <div class="text-3xl font-bold font-mono">{{ formatTimeSeconds(currentTime) }}</div>
-                  <div class="text-[10px] text-gray-400 font-bold uppercase mt-1">Сек</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- SmartScore -->
-          <div class="rounded-xl overflow-hidden shadow-md">
-             <div class="bg-green-500 text-white text-center py-2 px-4 uppercase tracking-wider text-xs font-semibold">
-              SmartScore
-            </div>
-            <div class="bg-white text-center py-8">
-              <span class="text-5xl font-bold font-mono" :class="{'text-green-600': currentSmartScore > 0, 'text-gray-400': currentSmartScore === 0}">{{ currentSmartScore }}</span>
+              <span class="text-4xl font-bold text-gray-800">{{ currentIndex }} / {{ sortedQuestions.length }}</span>
             </div>
           </div>
         </div>
@@ -190,7 +151,7 @@
       </div>
 
       <!-- Finished state -->
-      <div v-else-if="isFinished" class="flex-1 flex flex-col items-center justify-center">
+      <div v-else-if="isFinished" class="flex-1 flex flex-col items-center justify-center py-8">
         <div class="bg-white p-8 sm:p-12 rounded-2xl shadow-xl text-center max-w-2xl w-full border border-gray-100 relative overflow-hidden">
           <div class="absolute top-0 left-0 w-full h-3 bg-green-500"></div>
           
@@ -203,24 +164,76 @@
           <h2 class="text-3xl font-bold text-gray-800 mb-4">Керемет жұмыс!</h2>
           <p class="text-gray-600 mb-8 text-lg">Сіз барлық сұрақтарды аяқтадыңыз.</p>
           
-          <div class="grid grid-cols-2 gap-4 max-w-sm mx-auto mb-8">
+          <div class="grid gap-4 max-w-md mx-auto mb-8" :class="activeVisibilitySetting !== 'HIDDEN' ? 'grid-cols-3' : 'grid-cols-2'">
              <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-               <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Сұрақтар</div>
-               <div class="text-2xl font-bold text-gray-800">{{ sortedQuestions.length }}</div>
+                <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Сұрақтар</div>
+                <div class="text-2xl font-bold text-gray-800">{{ sortedQuestions.length }}</div>
              </div>
              <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-               <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Уақыт</div>
-               <div class="text-2xl font-bold text-gray-800 font-mono">{{ formatTimeCompact(currentTime) }}</div>
+                <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Уақыт</div>
+                <div class="text-2xl font-bold text-gray-800 font-mono">{{ formatTimeCompact(currentTime) }}</div>
+             </div>
+             <div v-if="activeVisibilitySetting !== 'HIDDEN'" class="bg-gray-50 border border-gray-200 p-4 rounded-xl">
+                <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Ұпай</div>
+                <div class="text-2xl font-bold text-green-600 font-mono">{{ currentAssignment?.score ?? 100 }}%</div>
              </div>
           </div>
 
+          <!-- Detailed review of questions -->
+          <div v-if="activeVisibilitySetting === 'ALWAYS' && currentAssignment?.question_results" class="mt-8 text-left border-t border-gray-100 pt-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Жауаптарды шолу:</h3>
+            <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+              <div 
+                v-for="q in sortedQuestions" 
+                :key="q.id" 
+                class="p-4 rounded-xl border flex gap-3 text-left"
+                :class="q.question?.id && currentAssignment?.question_results?.[String(q.question.id)] ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'"
+              >
+                <div class="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 mt-0.5 text-xs font-bold"
+                  :class="q.question?.id && currentAssignment?.question_results?.[String(q.question.id)] ? 'bg-green-500' : 'bg-red-500'"
+                >
+                  {{ q.question?.id && currentAssignment?.question_results?.[String(q.question.id)] ? '✓' : '✗' }}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-medium text-gray-800 text-sm" v-html="formatPrompt(q.question?.prompt || '')"></p>
+                  <p class="text-xs text-gray-500 mt-1">
+                    Сіздің жауабыңыз: <span class="font-semibold text-gray-700">{{ getStudentSubmittedAnswerText(q.question?.id) }}</span>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <button @click="$router.push('/my-cabinet')" 
-            class="px-8 py-3 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 transition-colors w-full sm:w-auto">
+            class="px-8 py-3 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 transition-colors w-full sm:w-auto mt-8">
             Жалғастыру
           </button>
         </div>
       </div>
     </main>
+
+    <!-- Confirmation Modal -->
+    <Modal :is-open="showConfirmSubmitModal" title="Жұмысты аяқтау" :show-close="true" @close="showConfirmSubmitModal = false">
+      <template #content>
+        <div class="p-6 text-center">
+          <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Квизді аяқтауды растайсыз ба?</h3>
+          <p class="text-gray-500 mb-6">Жауаптарыңыз тексеруге жіберіледі. Осыдан кейін жауаптарды өзгерту мүмкін болмайды.</p>
+          <div class="flex gap-4 justify-center">
+            <button @click="showConfirmSubmitModal = false" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all">
+              Кейінге қалдыру
+            </button>
+            <button @click="confirmSubmitQuiz" class="px-6 py-2.5 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-all shadow-md shadow-green-500/20">
+              Жіберу
+            </button>
+          </div>
+        </div>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -228,6 +241,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
+import Modal from '@/components/ui/Modal.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
 
 const authStore = useAuthStore()
@@ -256,9 +270,28 @@ const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
 const pluginIframeSrc = ref('')
 const pluginHeight = ref(500)
 
+import type { QuizAssignmentResponse } from '@/api/quiz'
+
+const shuffledQuestions = ref<QuizResponse['questions']>([])
+const questionAnswers = ref<{ question_id: string; submitted_answer: unknown }[]>([])
+const currentAssignment = ref<QuizAssignmentResponse | null>(null)
+
 const sortedQuestions = computed(() => {
-  if (!currentQuiz.value?.questions) return []
-  return [...currentQuiz.value.questions].sort((a, b) => a.position - b.position)
+  return shuffledQuestions.value
+})
+
+const isQuizEnded = computed(() => {
+  if (!currentAssignment.value?.end_at) return false
+  return new Date(currentAssignment.value.end_at) <= new Date()
+})
+
+const activeVisibilitySetting = computed(() => {
+  if (!currentQuiz.value) return 'HIDDEN'
+  if (isQuizEnded.value) {
+    return currentQuiz.value.ended_result_visibility || 'ALWAYS'
+  } else {
+    return currentQuiz.value.result_visibility || 'ALWAYS'
+  }
 })
 
 const currentQuestion = computed(() => {
@@ -335,10 +368,7 @@ watch(currentIndex, () => {
   }
 })
 
-const currentSmartScore = computed(() => {
-  if (!sortedQuestions.value.length) return 0
-  return Math.round((currentIndex.value / sortedQuestions.value.length) * 100)
-})
+// Watch question changes to reload plugin
 
 const formatPrompt = (text: string): string => {
   if (!text) return ''
@@ -354,29 +384,86 @@ const getOptions = (data: unknown) => {
   return d.choices || d.options || []
 }
 
-const submitAnswer = (answer: string) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+const showConfirmSubmitModal = ref(false)
+const pendingFinalAnswer = ref('')
+
+const submitAnswer = (answer: string) => {
   // Clear input
   textAnswer.value = ''
 
-  // Scroll to top
-  window.scrollTo({ top: 0, behavior: 'smooth' })
+  if (currentQuestion.value) {
+    const qId = String(currentQuestion.value.question?.id)
+    const idx = questionAnswers.value.findIndex(a => a.question_id === qId)
+    if (idx !== -1) {
+      questionAnswers.value[idx].submitted_answer = answer
+    } else {
+      questionAnswers.value.push({
+        question_id: qId,
+        submitted_answer: answer
+      })
+    }
+  }
 
-  // Since there is no backend API to validate or score, we immediately proceed.
   if (currentIndex.value < sortedQuestions.value.length - 1) {
     currentIndex.value++
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   } else {
-    // Record completion in local storage
-    currentIndex.value++ // bump to max
-    isFinished.value = true
-    stopTimer()
-    
-    try {
-      localStorage.setItem(`quiz_result_${props.quizId}`, JSON.stringify({
-        completedAt: new Date().toISOString(),
-        score: 100
-      }))
-    } catch { }
+    // Show confirmation modal on last question instead of immediate finish
+    pendingFinalAnswer.value = answer
+    showConfirmSubmitModal.value = true
   }
+}
+
+const confirmSubmitQuiz = async () => {
+  showConfirmSubmitModal.value = false
+
+  // Save the pending final answer
+  if (currentQuestion.value) {
+    const qId = String(currentQuestion.value.question?.id)
+    const idx = questionAnswers.value.findIndex(a => a.question_id === qId)
+    if (idx !== -1) {
+      questionAnswers.value[idx].submitted_answer = pendingFinalAnswer.value
+    } else {
+      questionAnswers.value.push({
+        question_id: qId,
+        submitted_answer: pendingFinalAnswer.value
+      })
+    }
+  }
+
+  // Submit to API
+  if (currentAssignment.value) {
+    try {
+      await quizApi.submitQuizAssignment(currentAssignment.value.id, {
+        score: 100, // calculated securely on server
+        time_spent_seconds: currentTime.value,
+        question_results: questionAnswers.value
+      })
+    } catch (err) {
+      console.error('Failed to submit quiz assignment to server:', err)
+    }
+  }
+
+  currentIndex.value++ // bump to max
+  isFinished.value = true
+  stopTimer()
+  
+  try {
+    localStorage.setItem(`quiz_result_${props.quizId}`, JSON.stringify({
+      completedAt: new Date().toISOString(),
+      score: 100,
+      finalAnswer: pendingFinalAnswer.value
+    }))
+  } catch { }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+const getStudentSubmittedAnswerText = (qId: string | number | undefined) => {
+  if (qId === undefined) return '—'
+  const ansObj = questionAnswers.value.find(a => String(a.question_id) === String(qId))
+  if (!ansObj) return '—'
+  return String(ansObj.submitted_answer)
 }
 
 // Timer Functions
@@ -394,9 +481,7 @@ const stopTimer = () => {
   }
 }
 
-const formatTimeHours = (s: number) => Math.floor(s / 3600).toString().padStart(2, '0')
-const formatTimeMinutes = (s: number) => Math.floor((s % 3600) / 60).toString().padStart(2, '0')
-const formatTimeSeconds = (s: number) => (s % 60).toString().padStart(2, '0')
+// Timer Functions
 const formatTimeCompact = (s: number) => {
   const h = Math.floor(s / 3600)
   const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0')
@@ -416,14 +501,34 @@ const fetchQuiz = async () => {
     if (foundQuiz) {
       currentQuiz.value = foundQuiz
       
-      const resultStr = localStorage.getItem(`quiz_result_${props.quizId}`)
-      if (resultStr) {
+      const assignment = foundQuiz.assignments?.find(a => a.student_id === authStore.user?.id)
+      currentAssignment.value = assignment || null
+
+      if (assignment?.completed_at) {
         isFinished.value = true
         currentIndex.value = foundQuiz.questions.length
       } else {
-        startTimer()
-        // Load plugin iframe if the first question is a plugin
-        await loadCurrentPlugin()
+        const resultStr = localStorage.getItem(`quiz_result_${props.quizId}`)
+        if (resultStr) {
+          isFinished.value = true
+          currentIndex.value = foundQuiz.questions.length
+        } else {
+          // Prepare question ordering
+          const questionsList = [...foundQuiz.questions]
+          if (foundQuiz.question_order === 'RANDOMIZED') {
+            for (let i = questionsList.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [questionsList[i], questionsList[j]] = [questionsList[j], questionsList[i]];
+            }
+          } else {
+            questionsList.sort((a, b) => a.position - b.position)
+          }
+          shuffledQuestions.value = questionsList
+
+          startTimer()
+          // Load plugin iframe if the first question is a plugin
+          await loadCurrentPlugin()
+        }
       }
     } else {
       error.value = 'Викторина табылмады немесе қолжетімсіз.'
