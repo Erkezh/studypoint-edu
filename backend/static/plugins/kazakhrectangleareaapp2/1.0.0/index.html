@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kazakh Rectangle Area App (1)</title>
+    <title>Kazakh Rectangle Area App (2)</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -87,7 +87,7 @@ const KazakhRectangleAreaApp = () => {
   const [isCorrect, setIsCorrect] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const getFactorPairs = (area) => {
     const pairs = [];
     for (let i = 1; i <= Math.sqrt(area); i++) {
@@ -191,13 +191,13 @@ const KazakhRectangleAreaApp = () => {
     return cells;
   };
   const handleMouseDown = (row, col) => {
-    if (showAnswer || isFrozen || isReview || submitted) return;
+    if (showAnswer || isFrozen || isReview || isSubmitted) return;
     setIsDragging(true);
     setDragStart({ row, col });
     setSelectedCells(/* @__PURE__ */ new Set([`${row}-${col}`]));
   };
   const handleMouseEnter = (row, col) => {
-    if (!isDragging || !dragStart || showAnswer || isFrozen || isReview || submitted) return;
+    if (!isDragging || !dragStart || showAnswer || isFrozen || isReview || isSubmitted) return;
     const rectangleCells = getRectangleCells(dragStart.row, dragStart.col, row, col);
     setSelectedCells(rectangleCells);
   };
@@ -239,7 +239,7 @@ const KazakhRectangleAreaApp = () => {
     return true;
   };
   const handleSubmit = () => {
-    if (isReview || isFrozen || !problem || selectedCells.size === 0 || submitted) return;
+    if (isReview || isFrozen || !problem || selectedCells.size === 0 || isSubmitted) return;
     const correct = selectedCells.size === problem.targetArea && isValidRectangle();
     const bestCorrect = problem.correctAnswers[0];
     window.parent.postMessage(
@@ -276,7 +276,7 @@ const KazakhRectangleAreaApp = () => {
       "*"
     );
     if (isQuiz) {
-      setSubmitted(true);
+      setIsSubmitted(true);
       return;
     }
     setIsCorrect(correct);
@@ -290,10 +290,10 @@ const KazakhRectangleAreaApp = () => {
     setIsCorrect(null);
     setIsDragging(false);
     setDragStart(null);
-    setSubmitted(false);
+    setIsSubmitted(false);
   };
   const resetGrid = () => {
-    if (isFrozen || isReview || submitted) return;
+    if (isFrozen || isReview || isSubmitted) return;
     setSelectedCells(/* @__PURE__ */ new Set());
     setShowAnswer(false);
     setIsCorrect(null);
@@ -305,7 +305,8 @@ const KazakhRectangleAreaApp = () => {
     "div",
     {
       ref: containerRef,
-      className: "max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen"
+      className: "max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen",
+      style: isFrozen ? { pointerEvents: "none" } : {}
     },
     /* @__PURE__ */ React.createElement("div", { className: "text-center mb-8" }, /* @__PURE__ */ React.createElement("h1", { className: "text-3xl font-bold text-indigo-800 mb-2" }, "\u0411\u0435\u0440\u0456\u043B\u0433\u0435\u043D \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0431\u043E\u044F\u0443")),
     /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-lg p-6 shadow-lg mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("h2", { className: "text-xl font-semibold text-gray-800 mb-2" }, /* @__PURE__ */ React.createElement("span", { className: "text-2xl font-bold text-blue-600" }, problem.targetArea), " \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A."), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600" }, "\u0422\u044B\u0448\u049B\u0430\u043D\u0434\u044B \u0431\u0430\u0441\u044B\u043F \u04B1\u0441\u0442\u0430\u043F, \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448 \u0441\u044B\u0437\u044B\u04A3\u044B\u0437"))),
@@ -314,7 +315,7 @@ const KazakhRectangleAreaApp = () => {
       {
         className: "inline-block border-2 border-gray-400 bg-white rounded-lg p-4 select-none",
         onMouseLeave: () => setIsDragging(false),
-        style: isFrozen || submitted ? { pointerEvents: "none", opacity: 0.85 } : {}
+        style: isFrozen || isSubmitted ? { pointerEvents: "none", opacity: 0.85 } : {}
       },
       /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-10 gap-1" }, Array.from(
         { length: gridSize },
@@ -357,18 +358,18 @@ const KazakhRectangleAreaApp = () => {
       {
         onClick: resetGrid,
         className: "px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50",
-        disabled: showAnswer || isFrozen || submitted
+        disabled: showAnswer || isFrozen || isSubmitted
       },
       "\u0422\u0430\u0437\u0430\u043B\u0430\u0443"
-    ), !isFrozen && /* @__PURE__ */ React.createElement(
+    ), !isFrozen && !isSubmitted && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: handleSubmit,
         className: "px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50",
-        disabled: showAnswer || selectedCells.size === 0 || submitted
+        disabled: showAnswer || selectedCells.size === 0
       },
-      submitted ? "\u0416\u0430\u0443\u0430\u043F \u049B\u0430\u0431\u044B\u043B\u0434\u0430\u043D\u0434\u044B" : "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
-    ), showAnswer && !isFrozen && /* @__PURE__ */ React.createElement(
+      "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+    ), isQuiz && isSubmitted && /* @__PURE__ */ React.createElement("p", { className: "flex items-center font-semibold text-emerald-600" }, "\u2713 \u0416\u0430\u0443\u0430\u043F \u049B\u0430\u0431\u044B\u043B\u0434\u0430\u043D\u0434\u044B"), showAnswer && !isFrozen && /* @__PURE__ */ React.createElement(
       "button",
       {
         onClick: handleNext,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Sequence
 
 from fastapi import Depends
@@ -295,7 +295,10 @@ class QuizService:
             select(QuizAssignment)
             .where(QuizAssignment.student_id == student_uuid)
             .options(
-                joinedload(QuizAssignment.quiz).selectinload(Quiz.questions).joinedload(QuizQuestion.question)
+                joinedload(QuizAssignment.quiz).options(
+                    selectinload(Quiz.questions).joinedload(QuizQuestion.question),
+                    selectinload(Quiz.assignments)
+                )
             )
             .order_by(QuizAssignment.created_at.desc())
         )
@@ -390,13 +393,14 @@ class QuizService:
             if not q:
                 continue
                 
-            q_id_str = str(q.id)
+            q_id_str = str(qq.id)
             submitted_ans = answers_map.get(q_id_str)
 
             # Normalize if submitted_ans is a dict
-            if isinstance(submitted_ans, dict):
+            if isinstance(submitted_ans, dict) and q.type.value not in ("PLUGIN", "INTERACTIVE"):
                 submitted_ans = (
-                    submitted_ans.get("value") 
+                    submitted_ans.get("id")
+                    or submitted_ans.get("value") 
                     or submitted_ans.get("label") 
                     or submitted_ans.get("text") 
                     or submitted_ans
@@ -415,19 +419,84 @@ class QuizService:
                 else:
                     submitted_payload = {"answer": submitted_ans, "value": submitted_ans, "text": submitted_ans, "choice": submitted_ans}
                     
-            is_correct = _is_correct(q.type, q.data, q.correct_answer, submitted_payload)
+            is_correct = False
+            if q.type.value in ("PLUGIN", "INTERACTIVE"):
+                if isinstance(submitted_ans, dict):
+                    is_correct_val = (
+                        submitted_ans.get("isCorrect") 
+                        if submitted_ans.get("isCorrect") is not None 
+                        else submitted_ans.get("is_correct") 
+                        if submitted_ans.get("is_correct") is not None 
+                        else submitted_ans.get("correct")
+                    )
+                    if isinstance(is_correct_val, str):
+                        is_correct = is_correct_val.lower() in ("true", "1", "yes")
+                    elif is_correct_val is not None:
+                        is_correct = bool(is_correct_val)
+                
+                # Fallback to backend plugin service evaluation if not resolved/correct in the payload
+                if not is_correct:
+                    try:
+                        from app.plugins.service import PluginService
+                        plugin_id = (q.data or {}).get("plugin_id")
+                        if plugin_id:
+                            plugin_svc = PluginService(self.session)
+                            result = await plugin_svc.evaluate_answer(
+                                plugin_id=plugin_id,
+                                task_id=str(assignment_uuid),
+                                user_answer=submitted_payload,
+                            )
+                            if isinstance(result, dict):
+                                is_correct_val = (
+                                    result.get("correct") 
+                                    if result.get("correct") is not None 
+                                    else result.get("is_correct") 
+                                    if result.get("is_correct") is not None 
+                                    else result.get("isCorrect")
+                                )
+                                if isinstance(is_correct_val, str):
+                                    is_correct = is_correct_val.lower() in ("true", "1", "yes")
+                                elif is_correct_val is not None:
+                                    is_correct = bool(is_correct_val)
+                    except Exception as e:
+                        import logging
+                        logging.getLogger(__name__).error(f"Failed to evaluate plugin answer in quiz: {e}", exc_info=True)
+            else:
+                is_correct = _is_correct(q.type, q.data, q.correct_answer, submitted_payload)
+
             if is_correct:
                 correct_count += 1
-            graded_results[q_id_str] = is_correct
+            graded_results[q_id_str] = {
+                "correct": is_correct,
+                "submitted_answer": submitted_payload if q.type.value in ("PLUGIN", "INTERACTIVE") else submitted_ans,
+                "correct_answer": q.correct_answer,
+                "question": submitted_payload.get("question") if isinstance(submitted_payload, dict) else None
+            }
 
         computed_score = 0
         if total_count > 0:
             computed_score = round((correct_count / total_count) * 100)
 
-        assignment.completed_at = datetime.utcnow()
+        assignment.completed_at = datetime.now(timezone.utc)
         assignment.score = computed_score
         assignment.time_spent_seconds = time_spent_seconds
         assignment.question_results = graded_results
         
         await self.session.commit()
+        return assignment
+
+    async def start_quiz_assignment(self, student_id: uuid.UUID | str, assignment_id: uuid.UUID | str) -> QuizAssignment | None:
+        student_uuid = uuid.UUID(str(student_id))
+        assignment_uuid = uuid.UUID(str(assignment_id))
+        stmt = select(QuizAssignment).where(
+            QuizAssignment.id == assignment_uuid,
+            QuizAssignment.student_id == student_uuid
+        )
+        res = await self.session.execute(stmt)
+        assignment = res.scalar_one_or_none()
+        if not assignment:
+            return None
+        if not assignment.started_at:
+            assignment.started_at = datetime.now(timezone.utc)
+            await self.session.commit()
         return assignment

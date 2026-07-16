@@ -1,16 +1,17 @@
 @import "tailwindcss";
 
-/* ===== GLOBAL FONT ===== */
+/* ===== GLOBAL FONT (Inter loaded via <link> in index.html) ===== */
 body,
 button,
 input,
 select,
 textarea {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 /* ===== GLOBAL PRINT STYLES ===== */
 @media print {
+
   /* Hide site header and footer */
   header,
   footer,
@@ -41,9 +42,146 @@ textarea {
 
 /* ===== UTILITIES ===== */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
+
 .scrollbar-hide::-webkit-scrollbar {
-  display: none; /* Chrome, Safari and Opera */
+  display: none;
+  /* Chrome, Safari and Opera */
+}
+
+/* ===== GLOBAL OVERRIDES FOR FLAT / WIDE / NO-SHADOW / MINIMAL-RADIUS DESIGN ===== */
+
+/* 1. Background of the whole site - single solid color */
+html,
+body,
+#app,
+.min-h-screen,
+.analytics-page,
+.bg-gray-50,
+.bg-slate-50,
+.bg-gray-100 {
+  background-color: #f8fafc !important;
+  background-image: none !important;
+}
+
+/* 2. Containers wider horizontally */
+.container,
+.max-w-7xl,
+.max-w-6xl,
+.max-w-5xl,
+.max-w-4xl,
+.max-w-3xl {
+  max-width: 96% !important;
+  width: 96% !important;
+}
+
+/* 3. Containers without shadow */
+*,
+*::before,
+*::after {
+  box-shadow: none !important;
+}
+
+/* 4. Complete flat design (0px border-radius) only for large layouts, cards, panels, and tables */
+.container,
+.max-w-7xl,
+.max-w-6xl,
+.max-w-5xl,
+.max-w-4xl,
+.max-w-3xl,
+.analytics-page,
+.quizzes-report-container,
+.dashboard-card,
+.card,
+.panel,
+table,
+thead,
+tbody,
+tr,
+th,
+td,
+.results-table,
+.results-table-wrapper {
+  border-radius: 0px !important;
+}
+
+/* 5. Progress bars: outer container is rounded pill, inner segments are flat in the middle */
+.quiz-progress-bar {
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+}
+.quiz-progress-bar * {
+  border-radius: 0px !important;
+}
+
+/* 6. Collapse all table borders */
+table {
+  border-collapse: collapse !important;
+  border-spacing: 0 !important;
+}
+
+/* 7. Restore rounded corners on small UI elements that need them */
+
+/* Default rounding for interactive elements — no !important so Tailwind classes can override */
+button,
+[role="button"],
+input,
+select,
+textarea {
+  border-radius: 0.5rem;
+}
+
+/* Tabs: remove rounded corners for tab headers so bottom border looks clean */
+.tab-item,
+.tab-btn,
+.quiz-tabs-nav button {
+  border-radius: 0px !important;
+}
+
+/* Tailwind rounded classes — with !important to override the flat rule #4 */
+.rounded {
+  border-radius: 0.25rem !important;
+}
+.rounded-lg {
+  border-radius: 0.5rem !important;
+}
+.rounded-xl {
+  border-radius: 0.75rem !important;
+}
+.rounded-2xl {
+  border-radius: 1rem !important;
+}
+.rounded-full {
+  border-radius: 9999px !important;
+}
+
+/* Directional rounding for sidebar grade tabs (right-rounded, left-square) */
+.rounded-r-full {
+  border-top-right-radius: 9999px !important;
+  border-bottom-right-radius: 9999px !important;
+}
+.rounded-l-none {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+}
+.rounded-l-full {
+  border-top-left-radius: 9999px !important;
+  border-bottom-left-radius: 9999px !important;
+}
+.rounded-r-none {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+}
+
+/* Header — restore shadow and keep inner elements rounded */
+header {
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+}
+header *::before,
+header *::after {
+  box-shadow: none !important;
 }

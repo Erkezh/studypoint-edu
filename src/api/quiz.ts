@@ -39,10 +39,11 @@ export interface QuizAssignmentResponse {
     due_at?: string | null
     end_at?: string | null
     created_at: string
+    started_at?: string | null
     completed_at?: string | null
     score?: number | null
     time_spent_seconds?: number | null
-    question_results?: Record<string, boolean> | null
+    question_results?: Record<string, unknown> | null
 }
 
 export interface QuizResponse {
@@ -66,6 +67,7 @@ export interface QuizResponse {
             data?: Record<string, unknown>
             correct_answer?: Record<string, unknown>
             level?: number
+            skill_id?: number
         }
     }>
     assignments: QuizAssignmentResponse[]
@@ -86,6 +88,7 @@ export interface StudentQuizAssignmentResponse {
     due_at: string | null
     end_at: string | null
     created_at: string
+    started_at?: string | null
     completed_at?: string | null
     score?: number | null
     time_spent_seconds?: number | null
@@ -119,6 +122,10 @@ export const quizApi = {
 
     listStudentAssignedQuizzes() {
         return apiClient.get<{ data: QuizResponse[] }>('/student/quizzes/all')
+    },
+
+    startQuizAssignment(assignmentId: string) {
+        return apiClient.post<{ data: QuizAssignmentResponse }>(`/student/quizzes/assignments/${assignmentId}/start`)
     },
 
     submitQuizAssignment(assignmentId: string, payload: { score: number; time_spent_seconds: number; question_results: Array<{ question_id: string; submitted_answer: unknown }> }) {

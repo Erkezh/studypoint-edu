@@ -107,6 +107,70 @@ const isFrozen = urlParams.get('frozen') === '1';
 
 ---
 
+## 📝 QUIZ РЕЖИМ (ОБЯЗАТЕЛЬНО!)
+
+При прохождении квиза ученик **НЕ должен** видеть, правильно ли он ответил на вопрос, до завершения всего квиза.
+
+URL будет содержать параметр `?mode=quiz`. Если этот параметр установлен:
+
+### Поведение после отправки ответа:
+1. При клике на кнопку отправки ответа ("Тексеру" / "Submit") плагин отправляет результат родителю через `postMessage`, но **НЕ показывает** правильный/неправильный ответ (`setShowResult(true)` вызываться не должно).
+2. **После отправки плагин ПОЛНОСТЬЮ БЛОКИРУЕТ свой UI** — все кнопки disabled, все input disabled, pointer-events: none. Ученик видит свой ответ, но не может его менять.
+3. **Кнопка "Тексеру" / "Submit" скрывается или становится disabled** после первого клика.
+4. **НЕ показывайте кнопку "Келесі сұрақ"** — навигацию контролирует родительское приложение.
+
+### Сброс состояния (смена ответа):
+- Если ученик хочет изменить свой ответ, **родительское приложение перезагружает iframe** (заново устанавливает src). Плагин получает новый чистый запуск с тем же seed.
+- **Плагин НЕ должен сам реализовывать кнопку "Жауапты өзгерту"** — это делает родительское приложение.
+- Поэтому при инициализации плагин ВСЕГДА начинает в чистом состоянии (пустой ввод, не заблокированный UI).
+
+```tsx
+// ⚠️ Quiz mode (режим квиза)
+const isQuiz = urlParams.get('mode') === 'quiz';
+const [isSubmitted, setIsSubmitted] = useState(false);
+
+const handleSubmit = () => {
+  if (isReview || isFrozen || isSubmitted || !userAnswer || !problem) return;
+  const isCorrect = userAnswer === problem.correctAnswer;
+  
+  window.parent.postMessage({
+    type: 'exercise-result',
+    isCorrect,
+    question: problem.question,
+    userAnswer,
+    correctAnswer: problem.correctAnswer,
+    questionData: problem.visualData,
+  }, '*');
+  
+  if (isQuiz) {
+    // В режиме квиза: блокируем UI, НЕ показываем правильный ответ
+    setIsSubmitted(true);
+    return;
+  }
+  
+  setShowResult(true);
+};
+
+// В рендере — блокируем все input и кнопки после отправки:
+<input 
+  disabled={isReview || isFrozen || isSubmitted}
+  value={userAnswer}
+  onChange={e => setUserAnswer(e.target.value)}
+/>
+{!isFrozen && !isSubmitted && (
+  <button onClick={handleSubmit} disabled={!userAnswer}>
+    Тексеру
+  </button>
+)}
+{isSubmitted && (
+  <p style={{ color: '#059669', fontWeight: 600 }}>
+    ✓ Жауап қабылданды
+  </p>
+)}
+```
+
+---
+
 ## 1. СТРУКТУРА
 
 ```tsx
@@ -123,6 +187,7 @@ const Component: React.FC = () => {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);  // ⚠️ Блокировка после отправки в quiz mode
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ⚠️ URL параметры
@@ -130,6 +195,7 @@ const Component: React.FC = () => {
   const seedParam = urlParams.get('seed');
   const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
   const isFrozen = urlParams.get('frozen') === '1';
+  const isQuiz = urlParams.get('mode') === 'quiz';  // ⚠️ Quiz mode
 
   // ⚠️ Режим просмотра ошибок (аналитика для учителя/ученика)
   const reviewMode = (window as any).reviewMode || null;
@@ -174,10 +240,10 @@ const Component: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => { sendHeight(); setTimeout(sendHeight, 100); }, [problem, showResult]);
+  useEffect(() => { sendHeight(); setTimeout(sendHeight, 100); }, [problem, showResult, isSubmitted]);
 
   const handleSubmit = () => {
-    if (isReview || isFrozen || !userAnswer || !problem) return;
+    if (isReview || isFrozen || isSubmitted || !userAnswer || !problem) return;
     const isCorrect = userAnswer === problem.correctAnswer;
     
     window.parent.postMessage({
@@ -189,11 +255,19 @@ const Component: React.FC = () => {
       questionData: problem.visualData,  // ⚠️ Передаём картинку!
     }, '*');
     
+    if (isQuiz) {
+      // ⚠️ В quiz mode: блокируем UI, НЕ показываем правильный ответ
+      // Родительское приложение покажет "Жауап берілді" и кнопку "Жауапты өзгерту"
+      // Если ученик хочет изменить ответ — родитель перезагрузит iframe
+      setIsSubmitted(true);
+      return;
+    }
+    
     setShowResult(true);
   };
 
   const handleNext = () => {
-    if (isFrozen) return;  // ⚠️ В frozen режиме "Келесі сұрақ" не работает
+    if (isFrozen || isQuiz) return;  // ⚠️ В frozen и quiz режимах "Келесі сұрақ" не работает
     setProblem(generateProblem());
     setUserAnswer('');
     setShowResult(false);
@@ -201,9 +275,9 @@ const Component: React.FC = () => {
 
   return (
     <div ref={containerRef} className="p-4 bg-white rounded-xl">
-      {/* ⚠️ В режиме isReview ИЛИ isFrozen отключайте любые клики и ввод */}
-      {/* disabled={isReview || isFrozen} */}
-      {/* ⚠️ В frozen режиме скрывайте кнопки "Тексеру" и "Келесі сұрақ" */}
+      {/* ⚠️ В режиме isReview, isFrozen или isSubmitted отключайте любые клики и ввод */}
+      {/* disabled={isReview || isFrozen || isSubmitted} */}
+      {/* ⚠️ В frozen и quiz(submitted) режимах скрывайте кнопки "Тексеру" и "Келесі сұрақ" */}
       {/* ⚠️ При неверном ответе в isReview покажите верное решение зеленым, а неверное - красным */}
     </div>
   );

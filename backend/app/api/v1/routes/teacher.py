@@ -58,6 +58,12 @@ async def get_students(
     svc: TeacherService = Depends(),
 ):
     # Use explicit LEFT JOINs to avoid async lazy-loading issues
+    scoped_students = await list_teacher_scoped_students(svc.session, teacher_id=user.id)
+    student_ids = [student.id for student in scoped_students]
+
+    if not student_ids:
+        return ApiResponse(data=[])
+
     stmt = (
         select(
             User.id,
@@ -69,7 +75,7 @@ async def get_students(
         .select_from(
             outerjoin(User, StudentProfile, User.id == StudentProfile.user_id)
         )
-        .where(User.teacher_id == user.id)
+        .where(User.id.in_(student_ids))
         .order_by(User.full_name)
     )
     rows = (await svc.session.execute(stmt)).all()

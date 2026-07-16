@@ -69,6 +69,7 @@ class QuizAssignmentCreate(QuizAssignmentBase):
 class QuizAssignmentResponse(QuizAssignmentBase):
     id: uuid.UUID
     created_at: datetime
+    started_at: datetime | None = None
     completed_at: datetime | None = None
     score: int | None = None
     time_spent_seconds: int | None = None
@@ -85,6 +86,7 @@ class StudentQuizAssignmentResponse(BaseModel):
     due_at: datetime | None = None
     end_at: datetime | None = None
     created_at: datetime
+    started_at: datetime | None = None
     completed_at: datetime | None = None
     score: int | None = None
     time_spent_seconds: int | None = None

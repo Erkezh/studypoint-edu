@@ -17,7 +17,7 @@ router = APIRouter()
 class QuizSubmitRequest(BaseModel):
     score: int
     time_spent_seconds: int
-    question_results: list[bool] | dict
+    question_results: list[dict] | dict
 
 
 @router.get("/all", response_model=ApiResponse[list[QuizResponse]])
@@ -29,10 +29,11 @@ async def list_all_quizzes_for_student(
     assignments = await svc.list_assigned_quizzes(user.id)
     quizzes = []
     for a in assignments:
-        if a.quiz:
-            quiz = a.quiz
-            quiz.assignments = [a]
-            quizzes.append(quiz)
+        if a.quiz is not None:
+            # Safely serialize using Pydantic to avoid mutating ORM objects
+            quiz_resp = QuizResponse.model_validate(a.quiz)
+            quiz_resp.assignments = [QuizAssignmentResponse.model_validate(a)]
+            quizzes.append(quiz_resp)
     return ApiResponse(data=quizzes)
 
 
@@ -50,6 +51,19 @@ async def submit_student_quiz(
         time_spent_seconds=body.time_spent_seconds,
         question_results=body.question_results
     )
+    if not assignment:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Assignment not found or unauthorized")
+    return ApiResponse(data=assignment)
+
+
+@router.post("/assignments/{assignment_id}/start", response_model=ApiResponse[QuizAssignmentResponse])
+async def start_student_quiz(
+    assignment_id: uuid.UUID,
+    user=Depends(get_current_user),
+    svc: QuizService = Depends(),
+):
+    assignment = await svc.start_quiz_assignment(user.id, assignment_id)
     if not assignment:
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Assignment not found or unauthorized")

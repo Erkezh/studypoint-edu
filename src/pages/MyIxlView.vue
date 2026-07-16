@@ -223,6 +223,47 @@
         </div>
       </div>
 
+      <!-- Past Quizzes -->
+      <div class="quizzes-section mt-8">
+        <h2 class="section-title">Өткен квиздер</h2>
+
+        <div v-if="completedQuizzes.length === 0" class="quizzes-empty">
+          <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          <p>Аяқталған квиз жоқ</p>
+        </div>
+
+        <div v-else class="past-quizzes-table-wrapper bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+          <table class="past-quizzes-table">
+            <thead>
+              <tr>
+                <th>Атауы</th>
+                <th>Тапсырылған күні</th>
+                <th>Нәтиже</th>
+                <th>Әрекет</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="quiz in completedQuizzes" :key="quiz.id">
+                <td class="font-semibold text-gray-800">{{ quiz.name }}</td>
+                <td>{{ formatDateFull(getQuizCompletedDate(quiz.id) || quiz.created_at) }}</td>
+                <td class="font-bold text-green-600">
+                  <span v-if="getQuizScore(quiz.id) !== null">{{ getQuizScore(quiz.id) }}%</span>
+                  <span v-else>Аяқталды</span>
+                </td>
+                <td>
+                  <button @click="startQuiz(quiz.id)" class="px-3 py-1 bg-cyan-50 text-cyan-600 font-semibold rounded-lg hover:bg-cyan-100 transition whitespace-nowrap text-xs cursor-pointer">
+                    Нәтижелерді көру
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </template>
@@ -293,6 +334,32 @@ const isQuizCompleted = (quizId: string) => {
 const activeQuizzes = computed(() => {
   return assignedQuizzes.value.filter(q => !isQuizCompleted(q.id))
 })
+
+const completedQuizzes = computed(() => {
+  return assignedQuizzes.value.filter(q => isQuizCompleted(q.id))
+})
+
+const getQuizCompletedDate = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  if (assignment?.completed_at) {
+    return assignment.completed_at
+  }
+  try {
+    const data = localStorage.getItem(`quiz_result_${quizId}`)
+    if (data) {
+      const parsed = JSON.parse(data)
+      return parsed.completedAt
+    }
+  } catch {}
+  return null
+}
+
+const getQuizScore = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  return assignment?.score ?? null
+}
 
 
 const loadRecentSessions = () => {

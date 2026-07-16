@@ -74,6 +74,7 @@ class QuizAssignment(Base, TimestampMixin):
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)

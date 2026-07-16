@@ -441,12 +441,16 @@
                         <span class="info-text">{{ formatEndTime(quiz.assignments?.[0]?.end_at) }}</span>
                       </div>
                       <div class="info-row">
+                        <span class="info-icon">#</span>
+                        <span class="info-text">{{ quiz.questions?.length || 0 }} сұрақ</span>
+                      </div>
+                      <div class="info-row">
                         <span class="info-icon">♙</span>
                         <span class="info-text flex-1">
-                          {{ formatAssignedStudents(quiz.assignments?.[0]) }}
+                          {{ formatAssignedStudents(quiz.assignments) }}
                         </span>
                         <span class="completion-badge-count">
-                          ✓ {{ getCompletionStats(quiz).completed }} / {{ getCompletionStats(quiz).total }}
+                          ✓ {{ getCompletionStats(quiz).completed }} / {{ getCompletionStats(quiz).total }} оқушы
                         </span>
                       </div>
 
@@ -500,7 +504,7 @@
                       <div class="info-row">
                         <span class="info-icon">♙</span>
                         <span class="info-text">
-                          {{ formatAssignedStudents(quiz.assignments?.[0]) }}
+                          {{ formatAssignedStudents(quiz.assignments) }}
                         </span>
                       </div>
                     </div>
@@ -526,6 +530,7 @@
                       <tr>
                         <th>Атауы</th>
                         <th>Кімге берілді</th>
+                        <th>Сұрақтар саны</th>
                         <th>Күндері</th>
                         <th>Орташа ұпай</th>
                         <th class="no-sort"></th>
@@ -534,8 +539,13 @@
                     </thead>
                     <tbody>
                       <tr v-for="quiz in pastQuizzes" :key="quiz.id">
-                        <td class="quiz-name-cell">{{ quiz.name }}</td>
-                        <td>{{ formatAssignedStudents(quiz.assignments?.[0]) }}</td>
+                        <td class="quiz-name-cell">
+                          <button @click="viewQuizReport(quiz)" class="hover:underline text-[#159be8] text-left font-semibold cursor-pointer">
+                            {{ quiz.name }}
+                          </button>
+                        </td>
+                        <td>{{ formatAssignedStudents(quiz.assignments) }}</td>
+                        <td>{{ quiz.questions?.length || 0 }} сұрақ</td>
                         <td>{{ getPeriodDates(quiz) }}</td>
                         <td class="average-score-cell">{{ getAverageScoreText(quiz) }}</td>
                         <td class="report-action-cell">
@@ -832,7 +842,7 @@ const getAverageScoreText = (quiz: QuizResponse) => {
   if (completedAssignments.length === 0) return '0%'
   const sumScore = completedAssignments.reduce((acc, curr) => acc + (curr.score || 0), 0)
   const average = Math.round(sumScore / completedAssignments.length)
-  return `${average}% (${completed}/${total})`
+  return `${average}% (${completed}/${total} оқушы)`
 }
 
 const KAZAKH_MONTHS = [
@@ -860,16 +870,17 @@ const formatEndTime = (dateStr?: string | null) => {
   return `${day} ${month}, ${hours}:${minutes}`
 }
 
-const formatAssignedStudents = (assignment?: QuizAssignmentResponse) => {
-  if (!assignment) return 'Оқушылар таңдалмаған'
-  if (!assignment.student_id && !assignment.classroom_id) {
+const formatAssignedStudents = (assignments?: QuizAssignmentResponse[]) => {
+  if (!assignments || assignments.length === 0) return 'Оқушылар таңдалмаған'
+  if (students.value.length > 0 && assignments.length === students.value.length) {
     return 'Барлық оқушылар'
   }
-  if (assignment.student_id) {
-    const student = students.value.find(s => s.id === assignment.student_id)
+  if (assignments.length === 1) {
+    const studentId = assignments[0].student_id
+    const student = students.value.find(s => s.id === studentId)
     return student ? student.full_name : '1 оқушы'
   }
-  return 'Сынып оқушылары'
+  return `${assignments.length} оқушы`
 }
 
 const getPeriodDates = (quiz: QuizResponse) => {
@@ -885,11 +896,13 @@ const getPeriodDates = (quiz: QuizResponse) => {
 
 const endQuiz = async (quiz: QuizResponse) => {
   const assignments = quiz.assignments || []
-  const activeAssignment = assignments.find((a: QuizAssignmentResponse) => !a.end_at || new Date(a.end_at) > new Date())
-  if (!activeAssignment) return
+  const activeAssignments = assignments.filter((a: QuizAssignmentResponse) => !a.end_at || new Date(a.end_at) > new Date())
+  if (activeAssignments.length === 0) return
   if (confirm(`"${quiz.name}" квизін қазір аяқтауды растайсыз ба?`)) {
     try {
-      await quizStore.endQuizAssignment(activeAssignment.id)
+      await Promise.all(
+        activeAssignments.map(a => quizStore.endQuizAssignment(a.id))
+      )
       alert('Квиз сәтті аяқталды!')
     } catch (err) {
       console.error(err)
@@ -2508,7 +2521,7 @@ const confirmDelete = async (student: StudentInfo) => {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   padding: 4px 0;
-  z-index: 50;
+  z-index: 9999;
 }
 .dropdown-menu-item {
   width: 100%;
@@ -2632,7 +2645,7 @@ const confirmDelete = async (student: StudentInfo) => {
   background: white;
   border: none;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 1px 3px rgba(33, 77, 88, 0.06);
   width: 100%;
 }
@@ -2640,15 +2653,15 @@ const confirmDelete = async (student: StudentInfo) => {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
-  font-size: 17px;
+  font-size: 14px;
 }
 .past-quizzes-table th {
   background: transparent;
   color: #0878c9;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 13px;
   text-transform: none;
-  padding: 13px 42px;
+  padding: 10px 16px;
   border-bottom: 2px solid #149fee;
   cursor: pointer;
   white-space: nowrap;
@@ -2659,7 +2672,7 @@ const confirmDelete = async (student: StudentInfo) => {
   color: #b0bec5;
 }
 .past-quizzes-table td {
-  padding: 13px 42px;
+  padding: 10px 16px;
   border-bottom: none;
   color: #555;
   vertical-align: middle;

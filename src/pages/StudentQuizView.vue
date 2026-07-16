@@ -31,95 +31,157 @@
       </div>
 
       <!-- Main content active state -->
-      <div v-else-if="currentQuiz && !isFinished" class="flex flex-col lg:flex-row gap-6 w-full max-w-6xl mx-auto flex-1">
+      <div v-else-if="currentQuiz && !isFinished" class="flex flex-col w-full max-w-4xl mx-auto flex-1">
         
-        <!-- Mobile stats bar -->
-        <div class="mb-4 flex overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm lg:hidden shrink-0">
-          <div class="flex-1 px-4 py-2 text-center">
-            <div class="text-[11px] font-medium text-gray-500 uppercase">Жауап берілді</div>
-            <div class="mt-1 text-xl font-bold text-orange-500">{{ currentIndex }} / {{ sortedQuestions.length }}</div>
-          </div>
-        </div>
-
-        <!-- Left Column: Question Area -->
-        <div class="flex-1 lg:w-3/4 flex flex-col">
+        <!-- Question Area -->
+        <div class="w-full flex flex-col flex-1">
           <div class="bg-white rounded-xl shadow-lg p-5 sm:p-8 relative flex-1 flex flex-col">
             
-            <div v-if="currentQuestion" class="flex-1 flex flex-col justify-center">
-              <!-- Question prompt (hidden for plugins since iframe shows it) -->
-              <p v-if="!isCurrentQuestionPlugin" class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
-                v-html="formatPrompt(currentQuestion.question?.prompt || '')">
-              </p>
-
-              <div class="w-full max-w-2xl">
-                <!-- MCQ -->
-                <div v-if="currentQuestion.question?.type === 'MCQ'" class="space-y-4">
-                  <button
-                    v-for="(option, index) in getOptions(currentQuestion.question?.data)"
-                    :key="index"
-                    @click="submitAnswer(option)"
-                    class="w-full text-left p-4 sm:p-5 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 focus:border-green-500 focus:bg-green-50 transition-all text-base sm:text-lg"
+            <!-- Question Navigation at the top -->
+            <div v-if="sortedQuestions.length > 0" class="mb-8 border-b border-gray-100 pb-5">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Сұрақтар</span>
+                <span class="text-xs font-semibold text-gray-500">Жауап берілді: <span class="text-green-600 font-bold">{{ answeredCount }}</span> / {{ sortedQuestions.length }}</span>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  v-for="(q, idx) in sortedQuestions"
+                  :key="q.id"
+                  @click="jumpToQuestion(idx)"
+                  class="relative min-w-[40px] h-10 px-2 rounded-xl flex items-center justify-center font-bold text-sm transition-all border-2 duration-200 cursor-pointer"
+                  :class="[
+                    currentIndex === idx
+                      ? 'bg-cyan-600 border-cyan-600 text-white shadow-md shadow-cyan-600/20'
+                      : hasAnswered(q.id)
+                        ? 'bg-emerald-50 border-emerald-500 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-600'
+                        : 'bg-white border-gray-200 text-gray-600 hover:border-cyan-500 hover:text-cyan-600 hover:bg-cyan-50/30'
+                  ]"
+                >
+                  <span>{{ idx + 1 }}</span>
+                  <!-- Small Checkmark or Dot for answered state when not active -->
+                  <span
+                    v-if="hasAnswered(q.id) && currentIndex !== idx"
+                    class="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center"
                   >
-                    <span v-html="formatPrompt(typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option))"></span>
-                  </button>
+                    <svg class="w-1.5 h-1.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                </button>
+              </div>
+            </div>
+            
+            <div v-if="currentQuestion" class="flex-1 flex flex-col justify-center">
+
+              <!-- ===== ANSWERED STATE: show submitted answer ===== -->
+              <div v-if="isCurrentQuestionAnswered" class="w-full max-w-2xl">
+                <!-- Question prompt (always visible in answered state) -->
+                <p class="text-lg sm:text-2xl text-gray-800 mb-6 leading-relaxed font-medium"
+                  v-html="formatPrompt(getQuestionPrompt(currentQuestion))">
+                </p>
+
+                <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5 sm:p-6">
+                  <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shrink-0">
+                      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span class="text-sm font-bold text-emerald-700 uppercase tracking-wider">Жауап берілді</span>
+                  </div>
+                  <div class="text-lg sm:text-xl font-semibold text-gray-800 pl-11">
+                    {{ getStudentSubmittedAnswerText(currentQuestion.id) }}
+                  </div>
                 </div>
 
-                <!-- NUMERIC -->
-                <div v-else-if="currentQuestion.question?.type === 'NUMERIC'" class="space-y-6">
-                  <div class="flex items-center gap-3">
-                    <input v-model="textAnswer" type="number" step="any" placeholder="Жауап"
-                      class="w-48 sm:w-64 p-4 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none text-lg sm:text-xl"
+                <button
+                  @click="clearCurrentAnswer"
+                  class="mt-5 flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all text-sm"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Жауапты өзгерту
+                </button>
+              </div>
+
+              <!-- ===== UNANSWERED STATE: show question form ===== -->
+              <div v-else>
+                <!-- Question prompt (hidden for plugins since iframe shows it) -->
+                <p v-if="!isCurrentQuestionPlugin" class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
+                  v-html="formatPrompt(currentQuestion.question?.prompt || '')">
+                </p>
+
+                <div class="w-full max-w-2xl">
+                  <!-- MCQ -->
+                  <div v-if="currentQuestion.question?.type === 'MCQ'" class="space-y-4">
+                    <button
+                      v-for="(option, index) in getOptions(currentQuestion.question?.data)"
+                      :key="index"
+                      @click="submitAnswer(option)"
+                      class="w-full text-left p-4 sm:p-5 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 focus:border-green-500 focus:bg-green-50 transition-all text-base sm:text-lg"
+                    >
+                      <span v-html="formatPrompt(typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option))"></span>
+                    </button>
+                  </div>
+
+                  <!-- NUMERIC -->
+                  <div v-else-if="currentQuestion.question?.type === 'NUMERIC'" class="space-y-6">
+                    <div class="flex items-center gap-3">
+                      <input v-model="textAnswer" type="number" step="any" placeholder="Жауап"
+                        class="w-48 sm:w-64 p-4 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none text-lg sm:text-xl"
+                        @keyup.enter="submitAnswer(textAnswer)" />
+                      <span v-if="currentQuestion.question?.data?.unit" class="text-gray-600 text-lg">{{ currentQuestion.question.data.unit }}</span>
+                    </div>
+                    <button @click="submitAnswer(textAnswer)"
+                      :disabled="!textAnswer"
+                      class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
+                      Жіберу
+                    </button>
+                  </div>
+
+                  <!-- TEXT -->
+                  <div v-else-if="currentQuestion.question?.type === 'TEXT'" class="space-y-6">
+                    <input v-model="textAnswer" type="text" placeholder="Жауапты енгізіңіз"
+                      class="w-full p-4 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none text-lg sm:text-xl"
                       @keyup.enter="submitAnswer(textAnswer)" />
-                    <span v-if="currentQuestion.question?.data?.unit" class="text-gray-600 text-lg">{{ currentQuestion.question.data.unit }}</span>
+                    <button @click="submitAnswer(textAnswer)"
+                      :disabled="!textAnswer"
+                      class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
+                      Жіберу
+                    </button>
                   </div>
-                  <button @click="submitAnswer(textAnswer)"
-                    :disabled="!textAnswer"
-                    class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
-                    Жіберу
-                  </button>
-                </div>
 
-                <!-- TEXT -->
-                <div v-else-if="currentQuestion.question?.type === 'TEXT'" class="space-y-6">
-                  <input v-model="textAnswer" type="text" placeholder="Жауапты енгізіңіз"
-                    class="w-full p-4 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none text-lg sm:text-xl"
-                    @keyup.enter="submitAnswer(textAnswer)" />
-                  <button @click="submitAnswer(textAnswer)"
-                    :disabled="!textAnswer"
-                    class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
-                    Жіберу
-                  </button>
-                </div>
-
-                <!-- PLUGIN / INTERACTIVE -->
-                <div v-else-if="isCurrentQuestionPlugin" class="space-y-4">
-                  <iframe
-                    v-if="pluginIframeSrc"
-                    ref="pluginIframeRef"
-                    :src="pluginIframeSrc"
-                    :style="{ width: '100%', height: pluginHeight + 'px', border: 'none', borderRadius: '12px' }"
-                    sandbox="allow-scripts allow-same-origin"
-                    scrolling="no"
-                    class="rounded-xl"
-                  ></iframe>
-                  <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-700 text-sm">
-                    Плагин жүктелуде...
+                  <!-- PLUGIN / INTERACTIVE -->
+                  <div v-else-if="isCurrentQuestionPlugin" class="space-y-4">
+                    <iframe
+                      v-if="pluginIframeSrc"
+                      ref="pluginIframeRef"
+                      :src="pluginIframeSrc"
+                      :style="{ width: '100%', height: pluginHeight + 'px', border: 'none', borderRadius: '12px' }"
+                      sandbox="allow-scripts allow-same-origin"
+                      scrolling="no"
+                      class="rounded-xl"
+                    ></iframe>
+                    <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-700 text-sm">
+                      Плагин жүктелуде...
+                    </div>
                   </div>
-                </div>
 
-                <!-- Other types (fallback) -->
-                <div v-else class="space-y-6">
-                  <p class="text-red-500 font-medium mb-4 flex items-center gap-2">
-                     Бұл сұрақ түрі интерфейсте толық қолдау таппаған. Жауабыңызды төменге енгізіңіз.
-                  </p>
-                  <input v-model="textAnswer" type="text" placeholder="Мәтіндік жауап енгізіңіз"
-                    class="w-full p-4 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none text-lg sm:text-xl"
-                    @keyup.enter="submitAnswer(textAnswer)" />
-                  <button @click="submitAnswer(textAnswer)"
-                    :disabled="!textAnswer"
-                    class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
-                    Жіберу
-                  </button>
+                  <!-- Other types (fallback) -->
+                  <div v-else class="space-y-6">
+                    <p class="text-red-500 font-medium mb-4 flex items-center gap-2">
+                       Бұл сұрақ түрі интерфейсте толық қолдау таппаған. Жауабыңызды төменге енгізіңіз.
+                    </p>
+                    <input v-model="textAnswer" type="text" placeholder="Мәтіндік жауап енгізіңіз"
+                      class="w-full p-4 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:outline-none text-lg sm:text-xl"
+                      @keyup.enter="submitAnswer(textAnswer)" />
+                    <button @click="submitAnswer(textAnswer)"
+                      :disabled="!textAnswer"
+                      class="px-8 sm:px-12 py-3 sm:py-4 bg-green-500 hover:bg-green-600 text-white font-bold text-lg rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md hover:shadow-lg">
+                      Жіберу
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -130,20 +192,16 @@
             
             <div class="mt-12 pt-6 border-t border-gray-100 flex justify-between items-center text-sm text-gray-500">
               <span>Сұрақ: {{ currentIndex + 1 }} / {{ sortedQuestions.length }}</span>
-              <button @click="$router.push('/my-cabinet')" class="hover:text-gray-800 transition-colors">Алдын ала шығу</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Right Column: Stats (Desktop) -->
-        <div class="hidden lg:flex lg:w-64 flex-col space-y-5">
-          <!-- Жауап берілді -->
-          <div class="rounded-xl overflow-hidden shadow-md">
-            <div class="bg-orange-500 text-white text-center py-2 px-4 uppercase tracking-wider text-xs font-semibold">
-              Жауап берілді
-            </div>
-            <div class="bg-white text-center py-8">
-              <span class="text-4xl font-bold text-gray-800">{{ currentIndex }} / {{ sortedQuestions.length }}</span>
+              <div class="flex items-center gap-3">
+                <button @click="$router.push('/my-cabinet')" class="hover:text-gray-800 transition-colors">Алдын ала шығу</button>
+                <button 
+                  v-if="answeredCount > 0"
+                  @click="showConfirmSubmitModal = true"
+                  class="px-5 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-xl transition-colors text-sm shadow-sm"
+                >
+                  Жауаптарды жіберу
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -187,17 +245,20 @@
                 v-for="q in sortedQuestions" 
                 :key="q.id" 
                 class="p-4 rounded-xl border flex gap-3 text-left"
-                :class="q.question?.id && currentAssignment?.question_results?.[String(q.question.id)] ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'"
+                :class="q.id && isQuestionCorrect(q.id) ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'"
               >
                 <div class="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 mt-0.5 text-xs font-bold"
-                  :class="q.question?.id && currentAssignment?.question_results?.[String(q.question.id)] ? 'bg-green-500' : 'bg-red-500'"
+                  :class="q.id && isQuestionCorrect(q.id) ? 'bg-green-500' : 'bg-red-500'"
                 >
-                  {{ q.question?.id && currentAssignment?.question_results?.[String(q.question.id)] ? '✓' : '✗' }}
+                  {{ q.id && isQuestionCorrect(q.id) ? '✓' : '✗' }}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <p class="font-medium text-gray-800 text-sm" v-html="formatPrompt(q.question?.prompt || '')"></p>
+                  <p class="font-medium text-gray-800 text-sm" v-html="formatPrompt(getQuestionPrompt(q))"></p>
                   <p class="text-xs text-gray-500 mt-1">
-                    Сіздің жауабыңыз: <span class="font-semibold text-gray-700">{{ getStudentSubmittedAnswerText(q.question?.id) }}</span>
+                    Сіздің жауабыңыз: <span class="font-semibold text-gray-700">{{ getStudentSubmittedAnswerText(q.id) }}</span>
+                  </p>
+                  <p v-if="q.id && !isQuestionCorrect(q.id)" class="text-xs text-green-600 mt-1">
+                    Дұрыс жауап: <span class="font-semibold">{{ getCorrectAnswerText(q) }}</span>
                   </p>
                 </div>
               </div>
@@ -222,7 +283,35 @@
             </svg>
           </div>
           <h3 class="text-xl font-bold text-gray-900 mb-2">Квизді аяқтауды растайсыз ба?</h3>
-          <p class="text-gray-500 mb-6">Жауаптарыңыз тексеруге жіберіледі. Осыдан кейін жауаптарды өзгерту мүмкін болмайды.</p>
+          <p class="text-gray-500 mb-4">Жауаптарыңыз тексеруге жіберіледі. Осыдан кейін жауаптарды өзгерту мүмкін болмайды.</p>
+
+          <!-- Review and change answers list -->
+          <div class="mb-6 text-left max-h-[240px] overflow-y-auto border border-gray-200 rounded-xl p-3 bg-gray-50/50 space-y-2">
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Жауаптарды шолу:</h4>
+            <div 
+              v-for="(q, idx) in sortedQuestions" 
+              :key="q.id" 
+              class="p-3 rounded-lg border bg-white flex justify-between items-center transition hover:border-blue-300"
+            >
+              <div class="min-w-0 flex-1 pr-3">
+                <p class="text-xs font-bold text-gray-500">Сұрақ {{ idx + 1 }}</p>
+                <p class="text-sm text-gray-800 font-medium truncate" v-html="formatPrompt(getQuestionPrompt(q))"></p>
+                <p class="text-xs mt-1">
+                  <span v-if="hasAnswered(q.id)" class="text-green-600 font-semibold">
+                    Жауап берілді: {{ getStudentSubmittedAnswerText(q.id) }}
+                  </span>
+                  <span v-else class="text-red-500 font-semibold">Жауап берілмеді</span>
+                </p>
+              </div>
+              <button 
+                @click="jumpToQuestion(idx)" 
+                class="px-3 py-1 text-xs bg-blue-50 text-blue-600 font-semibold rounded-lg hover:bg-blue-100 transition whitespace-nowrap"
+              >
+                Өзгерту
+              </button>
+            </div>
+          </div>
+
           <div class="flex gap-4 justify-center">
             <button @click="showConfirmSubmitModal = false" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-all">
               Кейінге қалдыру
@@ -238,7 +327,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, isRef } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -278,6 +367,10 @@ const currentAssignment = ref<QuizAssignmentResponse | null>(null)
 
 const sortedQuestions = computed(() => {
   return shuffledQuestions.value
+})
+
+const answeredCount = computed(() => {
+  return sortedQuestions.value.filter(q => hasAnswered(q.id)).length
 })
 
 const isQuizEnded = computed(() => {
@@ -321,6 +414,25 @@ const isCurrentQuestionPlugin = computed(() => {
   return isQuestionPlugin(currentQuestion.value.question as Record<string, unknown> | undefined)
 })
 
+const isCurrentQuestionAnswered = computed(() => {
+  if (!currentQuestion.value) return false
+  return hasAnswered(currentQuestion.value.id)
+})
+
+const clearCurrentAnswer = () => {
+  if (!currentQuestion.value) return
+  const qId = String(currentQuestion.value.id)
+  const idx = questionAnswers.value.findIndex(a => a.question_id === qId)
+  if (idx !== -1) {
+    questionAnswers.value.splice(idx, 1)
+  }
+  textAnswer.value = ''
+  // For plugin questions: reload the iframe to reset the plugin state
+  if (isCurrentQuestionPlugin.value) {
+    loadCurrentPlugin()
+  }
+}
+
 // Load plugin iframe when question changes
 const loadCurrentPlugin = async () => {
   pluginIframeSrc.value = ''
@@ -333,7 +445,7 @@ const loadCurrentPlugin = async () => {
   if (!base) return
   // Use seed from quiz question to ensure deterministic question generation
   const seed = currentQuestion.value.seed
-  pluginIframeSrc.value = seed ? `${base}?embed=1&seed=${seed}` : `${base}?embed=1`
+  pluginIframeSrc.value = seed ? `${base}?embed=1&mode=quiz&seed=${seed}` : `${base}?embed=1&mode=quiz`
 }
 
 // Listen for exercise-result messages from plugin iframes
@@ -355,20 +467,52 @@ const handlePluginMessage = (event: MessageEvent) => {
     if (!isCurrentQuestionPlugin.value) return
 
     // The plugin submitted its result — move to the next question
-    submitAnswer(d.userAnswer ?? d.studentAnswer ?? d.answer ?? 'plugin-answer')
+    const isCorrect = d.isCorrect ?? d.correct ?? d.is_correct
+    const userAnswer = d.userAnswer ?? d.user_answer ?? d.studentAnswer ?? d.answer ?? d.value
+    const correctAnswer = d.correctAnswer ?? d.correct_answer ?? d.expectedAnswer ?? d.expected_answer
+    const question = d.question ?? d.prompt ?? d.equation ?? d.problem ?? d.questionText ?? null
+    const questionData = d.questionData ?? null
+    const answerData = d.answerData ?? null
+
+    submitAnswer({
+      isCorrect,
+      userAnswer,
+      correctAnswer,
+      question,
+      questionData,
+      answerData,
+    })
   } catch (err) {
     console.error('Plugin message error:', err)
   }
 }
 
-// Watch question changes to reload plugin
+// Watch question changes to reload plugin and prefill answers if previously submitted
 watch(currentIndex, () => {
   if (isCurrentQuestionPlugin.value) {
     loadCurrentPlugin()
   }
+
+  // Pre-fill textAnswer with previously submitted answer if it exists
+  if (currentQuestion.value) {
+    const qId = String(currentQuestion.value.id)
+    const prevAnswer = questionAnswers.value.find(a => a.question_id === qId)
+    if (prevAnswer) {
+      if (typeof prevAnswer.submitted_answer === 'object' && prevAnswer.submitted_answer !== null) {
+        const obj = prevAnswer.submitted_answer as Record<string, unknown>
+        textAnswer.value = String(obj.userAnswer ?? obj.user_answer ?? obj.value ?? obj.text ?? '')
+      } else {
+        textAnswer.value = String(prevAnswer.submitted_answer ?? '')
+      }
+    } else {
+      textAnswer.value = ''
+    }
+  } else {
+    textAnswer.value = ''
+  }
 })
 
-// Watch question changes to reload plugin
+
 
 const formatPrompt = (text: string): string => {
   if (!text) return ''
@@ -385,51 +529,41 @@ const getOptions = (data: unknown) => {
 }
 
 const showConfirmSubmitModal = ref(false)
-const pendingFinalAnswer = ref('')
+const pendingFinalAnswer = ref<unknown>('')
 
-const submitAnswer = (answer: string) => {
-  // Clear input
-  textAnswer.value = ''
+const submitAnswer = (answer: unknown) => {
+  let finalAnswer = answer
+  if (isRef(answer)) {
+    finalAnswer = answer.value
+  }
 
   if (currentQuestion.value) {
-    const qId = String(currentQuestion.value.question?.id)
+    const qId = String(currentQuestion.value.id)
     const idx = questionAnswers.value.findIndex(a => a.question_id === qId)
     if (idx !== -1) {
-      questionAnswers.value[idx].submitted_answer = answer
+      questionAnswers.value[idx].submitted_answer = finalAnswer
     } else {
       questionAnswers.value.push({
         question_id: qId,
-        submitted_answer: answer
+        submitted_answer: finalAnswer
       })
     }
   }
 
-  if (currentIndex.value < sortedQuestions.value.length - 1) {
-    currentIndex.value++
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  } else {
-    // Show confirmation modal on last question instead of immediate finish
-    pendingFinalAnswer.value = answer
+  // Clear input AFTER saving finalAnswer
+  textAnswer.value = ''
+
+  // Stay on current question — the template will show the "answered" state.
+  // If all questions are answered, show the submit modal.
+  const allAnswered = sortedQuestions.value.every(q => hasAnswered(q.id))
+  if (allAnswered) {
+    pendingFinalAnswer.value = finalAnswer
     showConfirmSubmitModal.value = true
   }
 }
 
 const confirmSubmitQuiz = async () => {
   showConfirmSubmitModal.value = false
-
-  // Save the pending final answer
-  if (currentQuestion.value) {
-    const qId = String(currentQuestion.value.question?.id)
-    const idx = questionAnswers.value.findIndex(a => a.question_id === qId)
-    if (idx !== -1) {
-      questionAnswers.value[idx].submitted_answer = pendingFinalAnswer.value
-    } else {
-      questionAnswers.value.push({
-        question_id: qId,
-        submitted_answer: pendingFinalAnswer.value
-      })
-    }
-  }
 
   // Submit to API
   if (currentAssignment.value) {
@@ -466,7 +600,29 @@ const confirmSubmitQuiz = async () => {
 const formatSubmittedAnswerText = (answer: unknown): string => {
   if (!answer) return '—'
   if (typeof answer === 'object' && answer !== null) {
-    return ((answer as Record<string, unknown>).value || (answer as Record<string, unknown>).label || (answer as Record<string, unknown>).text || JSON.stringify(answer)) as string
+    const obj = answer as Record<string, unknown>
+    if ('userAnswer' in obj) {
+      return String(obj.userAnswer ?? '—')
+    }
+    if ('user_answer' in obj) {
+      return String(obj.user_answer ?? '—')
+    }
+    if ('choice' in obj) {
+      return String(obj.choice ?? '—')
+    }
+    if ('value' in obj) {
+      return String(obj.value ?? '—')
+    }
+    if ('text' in obj) {
+      return String(obj.text ?? '—')
+    }
+    if ('correctAnswer' in obj) {
+      return String(obj.correctAnswer ?? '—')
+    }
+    if ('correct_answer' in obj) {
+      return String(obj.correct_answer ?? '—')
+    }
+    return (obj.value || obj.label || obj.text || JSON.stringify(answer)) as string
   }
   return String(answer)
 }
@@ -474,8 +630,112 @@ const formatSubmittedAnswerText = (answer: unknown): string => {
 const getStudentSubmittedAnswerText = (qId: string | number | undefined) => {
   if (qId === undefined) return '—'
   const ansObj = questionAnswers.value.find(a => String(a.question_id) === String(qId))
-  if (!ansObj) return '—'
-  return formatSubmittedAnswerText(ansObj.submitted_answer)
+  if (ansObj) {
+    return formatSubmittedAnswerText(ansObj.submitted_answer)
+  }
+  if (currentAssignment.value?.question_results) {
+    const res = currentAssignment.value.question_results[String(qId)]
+    if (res && typeof res === 'object') {
+      const resObj = res as Record<string, unknown>
+      if ('submitted_answer' in resObj) {
+        return formatSubmittedAnswerText(resObj.submitted_answer)
+      }
+    }
+  }
+  return '—'
+}
+
+const isQuestionCorrect = (qId: string | number | undefined): boolean => {
+  if (!qId || !currentAssignment.value?.question_results) return false
+  const res = currentAssignment.value.question_results[String(qId)]
+  if (res === true) return true
+  if (res && typeof res === 'object') {
+    const resObj = res as Record<string, unknown>
+    return resObj.correct === true
+  }
+  return false
+}
+
+const getQuestionPrompt = (
+  q: { id?: string | number; question?: { prompt?: string } }
+): string => {
+  const qId = q.id
+  if (!qId) return q.question?.prompt || ''
+  
+  // 1. Check current answers in memory first (if taking the quiz)
+  const ansObj = questionAnswers.value.find(a => String(a.question_id) === String(qId))
+  if (ansObj && ansObj.submitted_answer && typeof ansObj.submitted_answer === 'object') {
+    const sAns = ansObj.submitted_answer as Record<string, unknown>
+    if (sAns.question) {
+      return String(sAns.question)
+    }
+  }
+
+  // 2. Fallback to backend-saved assignment results (if finished)
+  if (currentAssignment.value?.question_results) {
+    const res = currentAssignment.value.question_results[String(qId)]
+    if (res && typeof res === 'object') {
+      const resObj = res as Record<string, unknown>
+      if (resObj.question) {
+        return String(resObj.question)
+      }
+    }
+  }
+  return q.question?.prompt || ''
+}
+
+const hasAnswered = (qId: string | number | undefined): boolean => {
+  if (qId === undefined) return false
+  const ansObj = questionAnswers.value.find(a => String(a.question_id) === String(qId))
+  return !!ansObj && ansObj.submitted_answer !== null && ansObj.submitted_answer !== undefined && ansObj.submitted_answer !== ''
+}
+
+const jumpToQuestion = (idx: number) => {
+  showConfirmSubmitModal.value = false
+  if (idx >= 0 && idx < sortedQuestions.value.length) {
+    currentIndex.value = idx
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+}
+
+const getCorrectAnswerText = (
+  q: { id?: string | number; question?: { type?: string; correct_answer?: Record<string, unknown> | null; data?: { choices?: unknown[]; options?: unknown[] } } }
+): string => {
+  const qId = q.id
+  if (qId && currentAssignment.value?.question_results) {
+    const res = currentAssignment.value.question_results[String(qId)]
+    if (res && typeof res === 'object') {
+      const resObj = res as Record<string, unknown>
+      if (resObj.correct_answer) {
+        return formatSubmittedAnswerText(resObj.correct_answer)
+      }
+    }
+  }
+  const question = q.question
+  if (!question) return '—'
+  const correct = question.correct_answer
+  if (!correct) return '—'
+  if (question.type === 'MCQ') {
+    const choices = (question.data?.choices || question.data?.options || []) as Array<Record<string, unknown> | string | number>
+    const correctChoiceId = String(correct.choice ?? '')
+    const found = choices.find((c) => {
+      if (c && typeof c === 'object') {
+        return String(c.id ?? '') === correctChoiceId
+      }
+      return String(c) === correctChoiceId
+    })
+    if (found) {
+      return typeof found === 'object' ? String(found.label || found.text || found.value || '') : String(found)
+    }
+    return correctChoiceId || '—'
+  }
+  if (question.type === 'NUMERIC') {
+    return String(correct.value ?? '—')
+  }
+  if (question.type === 'TEXT') {
+    return String(correct.text ?? '—')
+  }
+  return formatSubmittedAnswerText(correct)
 }
 
 // Timer Functions
@@ -520,6 +780,13 @@ const fetchQuiz = async () => {
         isFinished.value = true
         currentIndex.value = foundQuiz.questions.length
       } else {
+        if (assignment && !assignment.completed_at) {
+          // Mark as started in backend asynchronously
+          quizApi.startQuizAssignment(assignment.id).catch(err => {
+            console.warn('Failed to mark quiz as started:', err)
+          })
+        }
+
         const resultStr = localStorage.getItem(`quiz_result_${props.quizId}`)
         if (resultStr) {
           isFinished.value = true

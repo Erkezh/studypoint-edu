@@ -1190,15 +1190,17 @@ def _is_correct(qtype: QuestionType, data: dict[str, Any], correct: dict[str, An
             
             # Проверяем, может быть нужно сравнить значения вариантов напрямую
             for idx, choice in enumerate(choices):
+                choice_id = ""
                 if isinstance(choice, dict):
                     choice_str = str(choice.get("value") or choice.get("label") or choice.get("text") or "").strip()
+                    choice_id = str(choice.get("id") or "").strip()
                 else:
                     choice_str = str(choice).strip()
                 
-                # Если отправленный ответ совпадает с вариантом, проверяем, является ли этот вариант правильным
-                if sub_str == choice_str:
-                    # Правильный ответ может быть индексом или значением
-                    if str(idx) == cor_str or choice_str == cor_str:
+                # Если отправленный ответ совпадает с вариантом или его ID
+                if sub_str == choice_str or (choice_id and sub_str == choice_id):
+                    # Правильный ответ может быть индексом, значением или ID
+                    if str(idx) == cor_str or choice_str == cor_str or (choice_id and choice_id == cor_str):
                         return True
         
         # Если одно из значений None, возвращаем False
