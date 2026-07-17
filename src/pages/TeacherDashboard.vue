@@ -13,7 +13,7 @@
           @mouseleave="hoverTab = null"
         >
           <button
-            @click="tab.dropdown ? (hoverTab === tab.key ? hoverTab = null : hoverTab = tab.key) : (activeTab = tab.key)"
+            @click="tab.dropdown ? (activeTab = tab.dropdown[0].key, hoverTab = null) : (activeTab = tab.key)"
             class="tab-btn"
             :class="{ active: activeTab === tab.key || (tab.dropdown && tab.dropdown.some(d => d.key === activeTab)) }"
           >

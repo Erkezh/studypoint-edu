@@ -7,7 +7,7 @@
       <nav class="analytics-tabs scrollbar-hide">
         <div v-for="tab in tabs" :key="tab.id" class="tab-item-group"
              @mouseenter="hoverTab = tab.id" @mouseleave="hoverTab = null">
-          <button @click="tab.dropdown ? (hoverTab === tab.id ? hoverTab = null : hoverTab = tab.id) : (activeTab = tab.id)"
+          <button @click="tab.dropdown ? (activeTab = tab.dropdown[0].id, hoverTab = null) : (activeTab = tab.id)"
             :class="['tab-item', { active: activeTab === tab.id || (tab.dropdown && tab.dropdown.some(d => d.id === activeTab)) }]">
             <span class="tab-icon">
               <svg v-if="tab.id === 'summary' && !isTeacher" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
@@ -36,45 +36,47 @@
     </div>
 
     <div v-if="activeTab !== 'scores_grid' && activeTab !== 'scores_student' && activeTab !== 'scores_skill' && activeTab !== 'quizzes'" class="filters-bar">
-      <!-- Teacher: Student Picker -->
-      <!-- Teacher: Student Picker moved to content -->
-      <div class="filter-group grade-range-filter">
-        <label @click="toggleGradeDropdown" class="filter-label clickable">
-          СЫНЫП ДЕҢГЕЙІ: {{ gradeRangeLabel }}
-          <svg class="dropdown-arrow w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </label>
-        <div v-if="showGradeDropdown" class="grade-dropdown-popup">
-          <p class="dropdown-title">Осы сыныптардағы дағдыларды көрсету:</p>
-          <div class="grade-range-selectors">
-            <select v-model="gradeFrom" class="filter-select small">
-              <option :value="-1">Б-а</option>
-              <option :value="0">Б</option>
-              <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
-            </select>
-            <span class="range-separator">-</span>
-            <select v-model="gradeTo" class="filter-select small">
-              <option :value="-1">Б-а</option>
-              <option :value="0">Б</option>
-              <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
-            </select>
+      <div class="filters-bar-inner flex items-center gap-6">
+        <!-- Teacher: Student Picker -->
+        <!-- Teacher: Student Picker moved to content -->
+        <div class="filter-group grade-range-filter">
+          <label @click="toggleGradeDropdown" class="filter-label clickable">
+            СЫНЫП ДЕҢГЕЙІ: {{ gradeRangeLabel }}
+            <svg class="dropdown-arrow w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </label>
+          <div v-if="showGradeDropdown" class="grade-dropdown-popup">
+            <p class="dropdown-title">Осы сыныптардағы дағдыларды көрсету:</p>
+            <div class="grade-range-selectors">
+              <select v-model="gradeFrom" class="filter-select small">
+                <option :value="-1">Б-а</option>
+                <option :value="0">Б</option>
+                <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
+              </select>
+              <span class="range-separator">-</span>
+              <select v-model="gradeTo" class="filter-select small">
+                <option :value="-1">Б-а</option>
+                <option :value="0">Б</option>
+                <option v-for="n in 12" :key="n" :value="n">{{ n }}</option>
+              </select>
+            </div>
+            <button @click="applyGradeFilter" class="apply-btn">Дайын</button>
           </div>
-          <button @click="applyGradeFilter" class="apply-btn">Дайын</button>
         </div>
-      </div>
-      <div class="filter-group date-range-filter">
-        <label @click="toggleDateDropdown" class="filter-label clickable">
-          УАҚЫТ АРАЛЫҒЫ: {{ dateRangeLabel }}
-          <svg class="dropdown-arrow w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
-        </label>
-        <div v-if="showDateDropdown" class="date-dropdown-popup">
-          <button
-            v-for="option in dateOptions"
-            :key="option.id"
-            @click="selectDateRange(option.id)"
-            :class="['date-option', { active: selectedDateOption === option.id }]"
-          >
-            {{ option.label }}
-          </button>
+        <div class="filter-group date-range-filter">
+          <label @click="toggleDateDropdown" class="filter-label clickable">
+            УАҚЫТ АРАЛЫҒЫ: {{ dateRangeLabel }}
+            <svg class="dropdown-arrow w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+          </label>
+          <div v-if="showDateDropdown" class="date-dropdown-popup">
+            <button
+              v-for="option in dateOptions"
+              :key="option.id"
+              @click="selectDateRange(option.id)"
+              :class="['date-option', { active: selectedDateOption === option.id }]"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

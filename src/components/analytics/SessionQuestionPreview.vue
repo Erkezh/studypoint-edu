@@ -42,8 +42,9 @@
                 ref="iframeRef"
                 :src="pluginIframeSrc"
                 class="w-full border-0"
-                :style="{ height: '400px' }"
+                :style="{ height: `${iframeHeight}px`, overflow: 'hidden' }"
                 sandbox="allow-scripts allow-same-origin"
+                scrolling="no"
                 @load="onIframeLoad"
               ></iframe>
                <div v-else class="flex items-center justify-center h-64 bg-gray-50 text-gray-500">
@@ -59,7 +60,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 
 const props = defineProps<{
   question: {
@@ -81,6 +82,31 @@ const props = defineProps<{
 
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 const pluginIframeSrc = ref('')
+const iframeHeight = ref(420)
+
+const setIframeHeight = (height: unknown) => {
+  if (typeof height !== 'number' || !Number.isFinite(height) || height <= 0) return
+  iframeHeight.value = Math.max(420, Math.min(Math.ceil(height) + 24, 3000))
+}
+
+const measureIframeContent = () => {
+  window.setTimeout(() => {
+    try {
+      const doc = iframeRef.value?.contentDocument
+      if (!doc) return
+      const body = doc.body
+      const html = doc.documentElement
+      setIframeHeight(Math.max(
+        body?.scrollHeight || 0,
+        body?.offsetHeight || 0,
+        html?.scrollHeight || 0,
+        html?.offsetHeight || 0,
+      ))
+    } catch {
+      // Cross-origin or sandbox restrictions: rely on postMessage resize events.
+    }
+  }, 100)
+}
 
 // Helpers for formatted display
 const formatContent = (text: string) => {
@@ -114,6 +140,7 @@ const getMCQClass = (option: unknown, index: number | string) => {
 // Plugin Logic (simplified from PracticeSession)
 const loadPlugin = async () => {
   pluginIframeSrc.value = ''
+  iframeHeight.value = 420
 
   if (props.question.type !== 'PLUGIN' && props.question.type !== 'INTERACTIVE') return
 
@@ -121,14 +148,18 @@ const loadPlugin = async () => {
   if (!qData) return
 
   // Common review data structure injected into plugins
-  const rawUserAns = props.question.userAnswer as Record<string, unknown> | null
+  const rawUserAns = normalizePayload(props.question.userAnswer) as Record<string, unknown> | null
   const questionData = (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.questionData : null
   const answerData = (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.answerData : null
 
   const reviewData = {
     mode: 'review',
-    studentAnswer: (rawUserAns && typeof rawUserAns === 'object') ? (rawUserAns.studentAnswer ?? rawUserAns.userAnswer) : props.question.userAnswer,
-    correctAnswer: (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.correctAnswer : props.question.correctAnswer,
+    studentAnswer: (rawUserAns && typeof rawUserAns === 'object')
+      ? (rawUserAns.studentAnswer ?? rawUserAns.student_answer ?? rawUserAns.userAnswer ?? rawUserAns.user_answer ?? rawUserAns.answer ?? rawUserAns.value)
+      : props.question.userAnswer,
+    correctAnswer: (rawUserAns && typeof rawUserAns === 'object')
+      ? (rawUserAns.correctAnswer ?? rawUserAns.correct_answer ?? rawUserAns.expectedAnswer ?? rawUserAns.expected_answer ?? props.question.correctAnswer)
+      : props.question.correctAnswer,
     isCorrect: props.question.isCorrect,
     questionData,
     answerData
@@ -152,7 +183,30 @@ const loadPlugin = async () => {
   }
 }
 
+const normalizePayload = (payload: unknown): unknown => {
+  if (typeof payload !== 'string') return payload
+  const trimmed = payload.trim()
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return payload
+  try {
+    return JSON.parse(trimmed)
+  } catch {
+    return payload
+  }
+}
+
+const handleIframeMessage = (event: MessageEvent) => {
+  if (!iframeRef.value?.contentWindow || event.source !== iframeRef.value.contentWindow) return
+  const data = typeof event.data === 'string' ? normalizePayload(event.data) : event.data
+  if (!data || typeof data !== 'object') return
+
+  const payload = data as Record<string, unknown>
+  if (payload.type === 'resize' || payload.type === 'RESIZE' || payload.type === 'content-height') {
+    setIframeHeight(payload.height ?? payload.contentHeight ?? payload.scrollHeight)
+  }
+}
+
 const onIframeLoad = () => {
+    measureIframeContent()
     // Optional: Send message to iframe as a fallback mechanism
     try {
       iframeRef.value?.contentWindow?.postMessage({
@@ -168,13 +222,19 @@ const onIframeLoad = () => {
         type: 'SHOW_ANSWER',
         value: true
       }, '*')
+      measureIframeContent()
     } catch (err) {
       console.warn('Failed postMessage to iframe in review mode:', err)
     }
 }
 
 onMounted(() => {
+  window.addEventListener('message', handleIframeMessage)
   loadPlugin()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('message', handleIframeMessage)
 })
 
 watch(() => props.question, () => {

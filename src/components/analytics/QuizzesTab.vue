@@ -1,14 +1,14 @@
 <template>
-  <div class="quizzes-report-container p-6 bg-[#f3f7fc] min-h-screen">
+  <div class="quizzes-report-container p-2 md:p-4 bg-[#f3f7fc] min-h-screen">
     <!-- Тақырып жолы -->
     <div class="flex items-center gap-2 mb-6">
-      <h1 class="text-3xl font-extrabold text-gray-800 tracking-tight">КВИЗ ТАЛДАУЫ</h1>
+      <h1 class="text-3xl font-bold text-gray-800 tracking-tight">КВИЗ ТАЛДАУЫ</h1>
       <!-- Кесте белгішесі -->
       <svg class="w-6 h-6 text-gray-400 hover:text-cyan-600 transition cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
       </svg>
       <!-- Анықтама белгішесі -->
-      <span class="w-5 h-5 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-xs font-bold hover:text-gray-600 cursor-pointer" title="Көмек">?</span>
+      <span class="w-5 h-5 rounded-full border border-gray-300 text-gray-400 flex items-center justify-center text-xs font-medium hover:text-gray-600 cursor-pointer" title="Көмек">?</span>
     </div>
 
     <!-- Сүзгілер және басқару панелі -->
@@ -16,10 +16,10 @@
       <div class="flex flex-wrap items-center gap-3">
         <!-- Квиз таңдау -->
         <div class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          <span class="text-xs font-bold text-gray-400 uppercase mr-2 tracking-wider">Квиз:</span>
+          <span class="text-xs font-semibold text-gray-400 uppercase mr-2 tracking-wider">Квиз:</span>
           <select 
             v-model="selectedQuizId" 
-            class="bg-transparent font-bold text-gray-700 focus:outline-none text-sm min-w-[200px]"
+            class="bg-transparent font-semibold text-gray-700 focus:outline-none text-sm min-w-[200px]"
           >
             <option value="">-- Квизді таңдаңыз --</option>
             <option v-for="quiz in allQuizzes" :key="quiz.id" :value="quiz.id">
@@ -30,10 +30,10 @@
 
         <!-- Оқушыны таңдау -->
         <div v-if="selectedQuiz" class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
-          <span class="text-xs font-bold text-gray-400 uppercase mr-2 tracking-wider">Оқушы:</span>
+          <span class="text-xs font-semibold text-gray-400 uppercase mr-2 tracking-wider">Оқушы:</span>
           <select 
             v-model="selectedStudentFilter" 
-            class="bg-transparent font-bold text-gray-700 focus:outline-none text-sm min-w-[160px]"
+            class="bg-transparent font-semibold text-gray-700 focus:outline-none text-sm min-w-[160px]"
           >
             <option value="all">Барлық оқушылар</option>
             <option v-for="student in reportStudents" :key="student.id" :value="student.id">
@@ -46,7 +46,7 @@
       <!-- Ұпай түрін ауыстырып-қосқыш -->
       <div v-if="selectedQuiz" class="flex items-center gap-3">
         <span 
-          class="text-xs font-bold uppercase transition-colors cursor-pointer select-none"
+          class="text-xs font-semibold uppercase transition-colors cursor-pointer select-none"
           :class="scoreType === 'percent' ? 'text-cyan-600' : 'text-gray-400'"
           @click="scoreType = 'percent'"
         >
@@ -63,7 +63,7 @@
           ></span>
         </button>
         <span 
-          class="text-xs font-bold uppercase transition-colors cursor-pointer select-none"
+          class="text-xs font-semibold uppercase transition-colors cursor-pointer select-none"
           :class="scoreType === 'questions' ? 'text-cyan-600' : 'text-gray-400'"
           @click="scoreType = 'questions'"
         >
@@ -90,20 +90,20 @@
     </div>
 
     <!-- Квиз талдауының толық көрінісі -->
-    <div v-else class="quiz-report-view max-w-5xl mx-auto space-y-6">
+    <div v-else class="quiz-report-view max-w-full w-full space-y-6">
       
       <!-- Қосымша беттердің навигациясы -->
       <div class="flex border-b border-gray-200 bg-transparent quiz-tabs-nav">
         <button 
           @click="activeSubTab = 'overview'" 
-          class="px-6 py-3 font-bold text-sm transition-all focus:outline-none border-b-2 -mb-[2px] tracking-wide" 
+          class="px-6 py-3 font-semibold text-sm transition-all focus:outline-none border-b-2 -mb-[2px] tracking-wide" 
           :class="activeSubTab === 'overview' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
         >
           Жалпы шолу
         </button>
         <button 
           @click="activeSubTab = 'responses'" 
-          class="px-6 py-3 font-bold text-sm transition-all focus:outline-none border-b-2 -mb-[2px] tracking-wide" 
+          class="px-6 py-3 font-semibold text-sm transition-all focus:outline-none border-b-2 -mb-[2px] tracking-wide" 
           :class="activeSubTab === 'responses' ? 'border-cyan-500 text-cyan-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
         >
           Оқушылардың жауаптары
@@ -127,10 +127,10 @@
               </div>
               <div>
                 <div class="flex items-baseline gap-1.5">
-                  <span class="text-4xl font-black text-gray-800">{{ getCompletionStats(selectedQuiz).completed }}</span>
-                  <span class="text-sm text-gray-400 font-semibold">({{ getCompletionStats(selectedQuiz).total }} оқушының ішінен)</span>
+                  <span class="text-4xl font-bold text-gray-800">{{ getCompletionStats(selectedQuiz).completed }}</span>
+                  <span class="text-sm text-gray-400 font-medium">({{ getCompletionStats(selectedQuiz).total }} оқушының ішінен)</span>
                 </div>
-                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">Тапсырылды</div>
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Тапсырылды</div>
               </div>
             </div>
 
@@ -142,17 +142,17 @@
                 </svg>
               </div>
               <div>
-                <div class="text-4xl font-black text-gray-800">
+                <div class="text-4xl font-bold text-gray-800">
                   {{ getAverageScoreDisplay(selectedQuiz) }}
                 </div>
-                <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">Сыныптың орташа көрсеткіші</div>
+                <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Сыныптың орташа көрсеткіші</div>
               </div>
             </div>
           </div>
 
           <!-- Оң жақтағы бағандық диаграмма -->
           <div class="flex flex-col">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-6">Оқушылардың үлгерімі</h3>
+            <h3 class="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-6">Оқушылардың үлгерімі</h3>
             
             <div class="flex flex-1 items-end justify-between gap-2 h-44 pb-6 border-b border-gray-200 px-4">
               <!-- Диаграмма бағандары -->
@@ -212,13 +212,13 @@
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
           <div class="relative flex justify-between items-center mb-6">
             <div class="absolute left-1/2 transform -translate-x-1/2">
-              <h3 class="text-lg font-bold text-gray-700">Оқушылардың ұпайлары</h3>
+              <h3 class="text-lg font-semibold text-gray-700">Оқушылардың ұпайлары</h3>
             </div>
             <div class="ml-auto flex items-center gap-2">
-              <span class="text-xs font-bold text-gray-400 uppercase">Сұрыптау:</span>
+              <span class="text-xs font-semibold text-gray-400 uppercase">Сұрыптау:</span>
               <select 
                 v-model="sortBy" 
-                class="border border-gray-200 rounded-lg px-3 py-1 bg-gray-50 text-gray-700 font-bold focus:outline-none text-xs"
+                class="border border-gray-200 rounded-lg px-3 py-1 bg-gray-50 text-gray-700 font-semibold focus:outline-none text-xs"
               >
                 <option value="score">Ұпай бойынша</option>
                 <option value="name">Әліпби бойынша</option>
@@ -249,8 +249,8 @@
                   :key="student.id"
                   class="flex items-center gap-2"
                 >
-                  <span class="font-semibold text-gray-700 text-sm">{{ student.full_name }}</span>
-                  <span class="font-extrabold text-gray-400 text-sm">
+                  <span class="font-normal text-gray-700 text-sm">{{ student.full_name }}</span>
+                  <span class="font-semibold text-gray-400 text-sm">
                     <span v-if="scoreType === 'questions'">{{ student.correctAnswers }} / {{ selectedQuiz.questions.length }}</span>
                     <span v-else>{{ student.score }}%</span>
                   </span>
@@ -270,13 +270,13 @@
                   :key="student.id"
                   class="flex items-center gap-2"
                 >
-                  <span class="font-semibold text-gray-700 text-sm">{{ student.full_name }}</span>
-                  <span class="text-xs font-bold text-yellow-600 px-2 py-0.5 bg-yellow-50 rounded-md">Орындалмаған</span>
+                  <span class="font-normal text-gray-700 text-sm">{{ student.full_name }}</span>
+                  <span class="text-xs font-semibold text-yellow-600 px-2 py-0.5 bg-yellow-50 rounded-md">Орындалмаған</span>
                 </div>
               </div>
             </div>
 
-            <!-- Басталмаған оқушылар -->
+            <!-- Bagystalmagan students -->
             <div 
               v-if="notStartedStudents.length > 0"
               class="flex items-center p-3 rounded-xl border border-gray-100 bg-white shadow-sm"
@@ -288,8 +288,8 @@
                   :key="student.id"
                   class="flex items-center gap-2"
                 >
-                  <span class="font-semibold text-gray-700 text-sm">{{ student.full_name }}</span>
-                  <span class="text-xs font-bold text-gray-500 px-2 py-0.5 bg-gray-100 rounded-md">Басталмаған</span>
+                  <span class="font-normal text-gray-700 text-sm">{{ student.full_name }}</span>
+                  <span class="text-xs font-semibold text-gray-500 px-2 py-0.5 bg-gray-100 rounded-md">Басталмаған</span>
                 </div>
               </div>
             </div>
@@ -298,15 +298,15 @@
 
         <!-- Жауаптарды талдау (Скриншот 2) -->
         <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
-          <h3 class="text-lg font-bold text-gray-800 mb-6">Жауаптарды талдау (Response review)</h3>
+          <h3 class="text-lg font-bold text-gray-800 mb-6">Жауаптарды талдау</h3>
           
           <div class="overflow-x-auto">
             <table class="w-full min-w-[700px] border-collapse">
               <thead>
                 <tr class="bg-[#00b0ff] text-white text-xs font-bold uppercase tracking-wider">
-                  <th class="px-4 py-3 text-left">Сұрақ (Question)</th>
-                  <th class="px-4 py-3 text-left">Оқушы нәтижелері (Student results)</th>
-                  <th class="px-4 py-3 text-left">Дағды (Skill)</th>
+                  <th class="px-4 py-3 text-left">Сұрақ</th>
+                  <th class="px-4 py-3 text-left">Оқушы нәтижелері</th>
+                  <th class="px-4 py-3 text-left">Дағды</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
@@ -453,7 +453,7 @@
                 {{ getQuestionSkillInfo(selectedQuiz.questions[selectedQuestionIndex]?.question?.skill_id).code.slice(0, 3) }}
               </span>
               <span class="px-2 py-1 bg-cyan-50 text-cyan-600 font-bold rounded text-xs uppercase">
-                Деңгей (Level) {{ selectedQuiz.questions[selectedQuestionIndex]?.question?.level || 2 }}
+                Деңгей {{ selectedQuiz.questions[selectedQuestionIndex]?.question?.level || 2 }}
               </span>
             </div>
           </div>
@@ -485,7 +485,7 @@
           <!-- Оқушылардың жауаптарын талдау -->
           <div class="space-y-4">
             <div class="flex items-center justify-between">
-              <h3 class="text-base font-bold text-gray-800">Оқушылардың жауаптары (Student responses)</h3>
+              <h3 class="text-base font-bold text-gray-800">Оқушылардың жауаптары</h3>
               
               <!-- Оқушылардың барлығын көрсету ауыстырып-қосқышы -->
               <div class="flex items-center gap-2">
@@ -569,12 +569,14 @@ import { useRoute } from 'vue-router'
 import { useQuizStore } from '@/stores/quiz'
 import { useTeacherStore } from '@/stores/teacher'
 import { useAnalyticsStore } from '@/stores/analytics'
+import { useCatalogStore } from '@/stores/catalog'
 import { storeToRefs } from 'pinia'
 import type { QuizResponse } from '@/api/quiz'
 
 const quizStore = useQuizStore()
 const teacherStore = useTeacherStore()
 const analyticsStore = useAnalyticsStore()
+const catalogStore = useCatalogStore()
 
 const { quizzes: allQuizzes, loading, error } = storeToRefs(quizStore)
 const { students: teacherStudents } = storeToRefs(teacherStore)
@@ -590,6 +592,45 @@ const selectedQuiz = computed<QuizResponse | null>(() => {
   if (!selectedQuizId.value) return null
   return allQuizzes.value.find(q => q.id === selectedQuizId.value) || null
 })
+
+const loadedSkills = ref<Map<number, { code: string; title: string }>>(new Map())
+
+const uniqueSkillIds = computed(() => {
+  if (!selectedQuiz.value) return []
+  const ids = new Set<number>()
+  selectedQuiz.value.questions.forEach(q => {
+    if (q.question?.skill_id) {
+      ids.add(q.question.skill_id)
+    }
+  })
+  return Array.from(ids)
+})
+
+watch(
+  uniqueSkillIds,
+  async (ids) => {
+    if (!ids || ids.length === 0) return
+    // Load each unique skill details sequentially or in parallel
+    await Promise.all(
+      ids.map(async (id) => {
+        if (!loadedSkills.value.has(id)) {
+          try {
+            const skill = await catalogStore.getSkill(id)
+            if (skill) {
+              loadedSkills.value.set(id, {
+                code: skill.code || '',
+                title: skill.title || ''
+              })
+            }
+          } catch (err) {
+            console.warn(`Failed to load skill details for #${id}:`, err)
+          }
+        }
+      })
+    )
+  },
+  { immediate: true }
+)
 
 onMounted(async () => {
   await Promise.all([
@@ -949,6 +990,10 @@ const getQuestionStats = (qIndex: number) => {
 const getQuestionSkillInfo = (skillId?: number) => {
   if (!skillId) {
     return { code: '', name: 'Жалпы дайындық (General practice)' }
+  }
+  const loaded = loadedSkills.value.get(skillId)
+  if (loaded) {
+    return { code: loaded.code, name: loaded.title }
   }
   const skill = analyticsStore.skills.find(s => Number(s.skill_id) === Number(skillId))
   if (skill) {

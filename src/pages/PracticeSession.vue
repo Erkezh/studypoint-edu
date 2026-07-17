@@ -422,7 +422,7 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
 import { useTrialQuestions } from '@/composables/useTrialQuestions'
@@ -492,6 +492,8 @@ const textAnswer = ref('')
 const lastResult = ref<PracticeSubmitResponse | null>(null)
 const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
 const questionStartTime = ref(Date.now())
+const accumulatedQuestionTimeMs = ref(0)
+const activeQuestionStartedAt = ref<number | null>(Date.now())
 const showingResult = ref(false) // Показывать ли результат вместо вопроса
 const userAnswer = ref<unknown>(null) // Сохраненный ответ пользователя
 const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
@@ -500,6 +502,7 @@ const lastAnswerData = ref<any>(null) // Визуальные данные ОТ�
 const loadingNext = ref(false) // Загрузка следующего вопроса
 const currentTime = ref(0) // Текущее время сессии в секундах
 let timeInterval: number | null = null // Интервал для обновления времени
+const isComponentMounted = ref(false)
 const error = ref<string | null>(null) // Ошибка для отображения
 
 // Для всех авторизованных пользователей ограничения не применяются
@@ -628,6 +631,30 @@ const stopTimer = () => {
     clearInterval(timeInterval)
     timeInterval = null
   }
+}
+
+const startQuestionTimer = () => {
+  if (activeQuestionStartedAt.value === null) {
+    activeQuestionStartedAt.value = Date.now()
+  }
+}
+
+const pauseQuestionTimer = () => {
+  if (activeQuestionStartedAt.value !== null) {
+    accumulatedQuestionTimeMs.value += Date.now() - activeQuestionStartedAt.value
+    activeQuestionStartedAt.value = null
+  }
+}
+
+const resetQuestionTimer = () => {
+  questionStartTime.value = Date.now()
+  accumulatedQuestionTimeMs.value = 0
+  activeQuestionStartedAt.value = Date.now()
+}
+
+const getActiveQuestionTimeSec = () => {
+  const currentActiveMs = activeQuestionStartedAt.value === null ? 0 : Date.now() - activeQuestionStartedAt.value
+  return Math.max(0, Math.min(3600, Math.floor((accumulatedQuestionTimeMs.value + currentActiveMs) / 1000)))
 }
 
 // Функция для форматирования дробей в красивом виде
@@ -1013,7 +1040,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
   let submittedAnswer: Record<string, any> | null = null
 
   try {
-    const timeSpent = Math.max(0, Math.min(3600, Math.floor((Date.now() - questionStartTime.value) / 1000)))
+    const timeSpent = getActiveQuestionTimeSec()
 
     // Формируем submitted_answer - API ожидает объект Record<string, any>
     // Для MCQ API ожидает { choice: "..." } - ОБЯЗАТЕЛЬНО строка
@@ -1113,19 +1140,30 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       time_spent_sec: timeSpent,
     }
 
+    const answeredPluginQuestion = qType === 'PLUGIN' && currentQuestion.value ? { ...currentQuestion.value } : null
+    const pluginWindow = qType === 'PLUGIN' ? pluginIframeRef.value?.contentWindow : null
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
 
     if (response) {
-      // Сохраняем результат и показываем его
-      lastResult.value = response
-      showingResult.value = true
+      // Для PLUGIN не показываем внешний экран результата:
+      // iframe сам отвечает за отображение правильного/неправильного ответа.
+      const shouldShowExternalResult = qType !== 'PLUGIN'
+
+      lastResult.value = shouldShowExternalResult ? response : null
+      showingResult.value = shouldShowExternalResult
+      if (qType === 'PLUGIN' && answeredPluginQuestion && !practiceStore.currentQuestion) {
+        practiceStore.currentQuestion = answeredPluginQuestion
+        if (practiceStore.currentSession) {
+          practiceStore.currentSession.current_question = answeredPluginQuestion
+        }
+      }
       saveToRecentSessions()
       userAnswer.value = answer
 
       // Отправляем результат в iframe для PLUGIN
-      if (qType === 'PLUGIN' && pluginIframeRef.value?.contentWindow) {
+      if (qType === 'PLUGIN' && pluginWindow) {
         try {
-          pluginIframeRef.value.contentWindow.postMessage(
+          pluginWindow.postMessage(
             {
               type: 'SERVER_RESULT',
               correct: response.is_correct,
@@ -1148,6 +1186,9 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       const sessionAny = response.session as any
       const currentSmartScore = sessionAny?.current_smartscore || sessionAny?.smartscore || 0
       if (currentSmartScore >= 100 && !response.finished) {
+        if (qType === 'PLUGIN') {
+          return
+        }
         try {
           await practiceStore.finishSession(practiceStore.currentSession!.id)
         } catch (err) {
@@ -1166,7 +1207,9 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 
       // Сессия завершена
       if (response.finished) {
-        stopTimer()
+        if (qType !== 'PLUGIN') {
+          stopTimer()
+        }
         if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
           showTrialEndedModal.value = true
         }
@@ -1186,7 +1229,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           lastQuestion.value = null
           lastQuestionData.value = null
           lastAnswerData.value = null
-          questionStartTime.value = Date.now()
+          resetQuestionTimer()
           submitting.value = false
           return
         }
@@ -1236,7 +1279,7 @@ const loadNextQuestion = async () => {
     if (!practiceStore.currentQuestion) {
       await practiceStore.getNextQuestion(practiceStore.currentSession.id)
     }
-    questionStartTime.value = Date.now()
+    resetQuestionTimer()
   } catch (err: any) {
     const status = err.response?.status
 
@@ -1368,10 +1411,30 @@ const saveToRecentSessions = () => {
   }
 }
 
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    stopTimer()
+    pauseQuestionTimer()
+    practiceStore.stopHeartbeat()
+  } else {
+    if (practiceStore.currentSession && !practiceStore.currentSession.finished_at) {
+      startTimer()
+      startQuestionTimer()
+      practiceStore.startHeartbeat(practiceStore.currentSession.id)
+    }
+  }
+}
+
 onMounted(async () => {
+  isComponentMounted.value = true
   window.addEventListener('message', pluginMessageHandler)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   try {
     const session = await practiceStore.getSession(props.sessionId)
+    if (!isComponentMounted.value) {
+      practiceStore.resetSession()
+      return
+    }
 
     // Загружаем статистику навыка для отображения предыдущего результата
     if (session?.skill_id) {
@@ -1402,15 +1465,35 @@ onMounted(async () => {
       await practiceStore.getNextQuestion(props.sessionId)
     }
 
-    questionStartTime.value = Date.now()
+    if (!isComponentMounted.value) {
+      practiceStore.resetSession()
+      return
+    }
+
+    resetQuestionTimer()
     startTimer()
+    if (practiceStore.currentSession?.id) {
+      practiceStore.startHeartbeat(practiceStore.currentSession.id)
+    }
   } catch (err: any) {
     console.error('Failed to load session:', err)
   }
 })
 
+onBeforeRouteLeave(() => {
+  stopTimer()
+  pauseQuestionTimer()
+  practiceStore.stopHeartbeat()
+  practiceStore.resetSession()
+})
+
 onUnmounted(() => {
+  isComponentMounted.value = false
   window.removeEventListener('message', pluginMessageHandler)
   stopTimer()
+  pauseQuestionTimer()
+  practiceStore.stopHeartbeat()
+  practiceStore.resetSession()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>

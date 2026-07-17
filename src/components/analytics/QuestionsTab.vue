@@ -138,7 +138,7 @@
                   />
                 </div>
 
-                <div class="q-answers">
+                <div v-if="q.questionType !== 'PLUGIN' && q.questionType !== 'INTERACTIVE'" class="q-answers">
                   <div class="q-answer-block">
                     <div class="q-section-label">Дұрыс жауап</div>
                     <div class="q-answer correct-ans">{{ formatAnswer(q.correctAnswer) }}</div>
@@ -407,21 +407,35 @@ const sessions = computed(() => {
 
       // Helper to extract question text for PLUGIN questions
       const getPluginPrompt = (q: Record<string, unknown>): string => {
-        const ua = q.user_answer as Record<string, unknown> | null
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
         if (!ua) return (q.question_prompt as string) || ''
         return (ua.question ?? ua.prompt ?? ua.equation ?? ua.problem ?? ua.questionText ?? q.question_prompt ?? '') as string
       }
       const getPluginCorrectAnswer = (q: Record<string, unknown>): unknown => {
-        const ua = q.user_answer as Record<string, unknown> | null
-        if (!ua) return q.correct_answer
-        return ua.correctAnswer ?? ua.correct_answer ?? ua.expectedAnswer ?? q.correct_answer ?? ''
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
+        if (!ua) return q.correct_answer || '—'
+        return (
+          ua.correctAnswer ??
+          ua.correct_answer ??
+          ua.expectedAnswer ??
+          ua.expected_answer ??
+          ua.answerData ??
+          q.correct_answer ??
+          '—'
+        )
       }
       const getPluginUserAnswer = (q: Record<string, unknown>): unknown => {
-        const ua = q.user_answer as Record<string, unknown> | null
-        if (!ua) return ''
-        if (typeof ua.userAnswer === 'string' || typeof ua.userAnswer === 'number') return ua.userAnswer
-        if (typeof ua.answer === 'string' || typeof ua.answer === 'number') return ua.answer
-        return ua.userAnswer ?? ua.answer ?? ua.value ?? ''
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
+        if (!ua) return q.user_answer || '—'
+        return (
+          ua.userAnswer ??
+          ua.user_answer ??
+          ua.studentAnswer ??
+          ua.student_answer ??
+          ua.answer ??
+          ua.value ??
+          '—'
+        )
       }
       const isPlugin = (q: Record<string, unknown>) =>
         (q.question_type as string) === 'PLUGIN' || (q.question_type as string) === 'INTERACTIVE'
@@ -455,6 +469,11 @@ const tryParseJson = (str: unknown): unknown => {
   return str
 }
 
+const normalizeAnswerPayload = (answer: unknown): unknown => {
+  const parsed = tryParseJson(answer)
+  return parsed && typeof parsed === 'object' ? parsed : answer
+}
+
 const formatAnswer = (answer: unknown): string => {
   if (answer === null || answer === undefined) return '—'
   if (typeof answer === 'boolean') return answer ? 'Иә' : 'Жоқ'
@@ -466,7 +485,23 @@ const formatAnswer = (answer: unknown): string => {
   }
   if (typeof answer === 'object') {
     const obj = answer as Record<string, unknown>
+    if (obj.correctDisplay && typeof obj.correctDisplay === 'object') {
+      const display = obj.correctDisplay as Record<string, unknown>
+      if (display.text !== undefined) return String(display.text)
+    }
+    if (obj.userDisplay && typeof obj.userDisplay === 'object') {
+      const display = obj.userDisplay as Record<string, unknown>
+      if (display.text !== undefined) return String(display.text)
+    }
+    if (obj.studentAnswer !== undefined) return String(obj.studentAnswer)
+    if (obj.student_answer !== undefined) return String(obj.student_answer)
     if (obj.userAnswer !== undefined) return String(obj.userAnswer)
+    if (obj.user_answer !== undefined) return String(obj.user_answer)
+    if (obj.correctAnswer !== undefined) return String(obj.correctAnswer)
+    if (obj.correct_answer !== undefined) return String(obj.correct_answer)
+    if (obj.expectedAnswer !== undefined) return String(obj.expectedAnswer)
+    if (obj.expected_answer !== undefined) return String(obj.expected_answer)
+    if (obj.answer !== undefined) return String(obj.answer)
     if (obj.value !== undefined) return String(obj.value)
     if (obj.text !== undefined) return String(obj.text)
     return JSON.stringify(answer)

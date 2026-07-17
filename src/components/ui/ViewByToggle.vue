@@ -1,37 +1,39 @@
 <template>
-  <div class="flex items-center bg-white border-b border-gray-200 px-4 select-none">
-    <span class="text-gray-600 mr-4 font-medium">View by:</span>
+  <div class="bg-white border-b border-gray-200 select-none view-by-toggle-bar">
+    <div class="flex items-center mx-auto max-w-[88%] w-[88%] py-1">
+      <span class="text-gray-600 mr-4 font-medium">View by:</span>
 
-    <div class="flex">
-      <!-- Grades Tab -->
-      <router-link :to="{ name: 'class', params: { gradeId: currentGradeId || 6 } }"
-        custom v-slot="{ navigate }">
-        <div @click="navigate"
-             class="relative px-6 py-2 cursor-pointer transition-colors"
-             :class="isGradesActive ? 'bg-sky-400 text-white font-bold' : 'text-sky-500 hover:text-sky-600 font-medium'">
-          Grades
-          <!-- Arrow Down for Active State -->
-          <div v-if="isGradesActive" class="absolute top-full left-0 right-0 flex justify-center overflow-hidden h-2.5 z-10 w-full">
-             <div class="w-5 h-5 bg-sky-400 rotate-45 -mt-3.5 transform origin-center shadow-sm"></div>
+      <div class="flex">
+        <!-- Grades Tab -->
+        <router-link :to="{ name: 'class', params: { gradeId: currentGradeId || 6 } }"
+          custom v-slot="{ navigate }">
+          <div @click="navigate"
+               class="relative px-6 py-2 cursor-pointer transition-colors"
+               :class="isGradesActive ? 'bg-sky-400 text-white font-bold' : 'text-sky-500 hover:text-sky-600 font-medium'">
+            Grades
+            <!-- Arrow Down for Active State -->
+            <div v-if="isGradesActive" class="absolute top-full left-0 right-0 flex justify-center overflow-hidden h-2.5 z-10 w-full">
+               <div class="w-5 h-5 bg-sky-400 rotate-45 -mt-3.5 transform origin-center shadow-sm"></div>
+            </div>
           </div>
-        </div>
-      </router-link>
+        </router-link>
 
-      <!-- Topics Tab -->
-      <router-link :to="{ name: 'topics' }"
-        custom v-slot="{ navigate, isActive }">
-        <div @click="navigate"
-             class="relative px-6 py-2 cursor-pointer transition-colors"
-             :class="isActive ? 'bg-sky-400 text-white font-bold' : 'text-sky-500 hover:text-sky-600 font-medium'">
-          Topics
-          <!-- Arrow Down for Active State -->
-          <div v-if="isActive" class="absolute top-full left-0 right-0 flex justify-center overflow-hidden h-2.5 z-10 w-full">
-             <div class="w-5 h-5 bg-sky-400 rotate-45 -mt-3.5 transform origin-center shadow-sm"></div>
+        <!-- Topics Tab -->
+        <router-link :to="{ name: 'topics' }"
+          custom v-slot="{ navigate, isActive }">
+          <div @click="navigate"
+               class="relative px-6 py-2 cursor-pointer transition-colors"
+               :class="isActive ? 'bg-sky-400 text-white font-bold' : 'text-sky-500 hover:text-sky-600 font-medium'">
+            Topics
+            <!-- Arrow Down for Active State -->
+            <div v-if="isActive" class="absolute top-full left-0 right-0 flex justify-center overflow-hidden h-2.5 z-10 w-full">
+               <div class="w-5 h-5 bg-sky-400 rotate-45 -mt-3.5 transform origin-center shadow-sm"></div>
+            </div>
           </div>
-        </div>
-      </router-link>
+        </router-link>
 
-      <!-- Placeholders Removed -->
+        <!-- Placeholders Removed -->
+      </div>
     </div>
   </div>
 </template>

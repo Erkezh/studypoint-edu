@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kazakh Multiplication App</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect, useRef } = React;
+const { RefreshCw, Check, X, BookOpen } = window.lucideReact;
+const COLORS = {
+  green: "#38B000",
+  sky: "#0ea5e9",
+  teal: "#00ACC1",
+  orange: "#f97316",
+  lightGray: "#f8f9fa",
+  success: "#10B981",
+  successBg: "#ECFDF5",
+  error: "#EF4444",
+  errorBg: "#FEF2F2"
+};
+const emptyAnswers = {
+  topLeft: "",
+  topRight: "",
+  bottomLeft: "",
+  bottomRight: "",
+  total: ""
+};
+const buildFromAreaModel = (am) => {
+  const partialProducts = {
+    topLeft: am.tens1 * am.tens2,
+    topRight: am.tens1 * am.ones2,
+    bottomLeft: am.ones1 * am.tens2,
+    bottomRight: am.ones1 * am.ones2
+  };
+  const total = am.num1 * am.num2;
+  return { partialProducts, total };
+};
+const KazakhMultiplicationApp = () => {
+  const [problem, setProblem] = useState(null);
+  const [userAnswers, setUserAnswers] = useState(emptyAnswers);
+  const [showResult, setShowResult] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const containerRef = useRef(null);
+  const urlParams = new URLSearchParams(window.location.search);
+  const seedParam = urlParams.get("seed");
+  const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
+  const isFrozen = urlParams.get("frozen") === "1";
+  const isQuiz = urlParams.get("mode") === "quiz";
+  const reviewMode = window.reviewMode || null;
+  const isReview = !!reviewMode;
+  function createSeededRandom(s) {
+    let state = s;
+    return () => {
+      state = state * 1664525 + 1013904223 & 2147483647;
+      return state / 2147483647;
+    };
+  }
+  const random = createSeededRandom(seed);
+  const generateTwoDigitNumber = () => {
+    return Math.floor(random() * 90) + 10;
+  };
+  const generateProblem = () => {
+    const num12 = generateTwoDigitNumber();
+    const num22 = generateTwoDigitNumber();
+    const tens12 = Math.floor(num12 / 10) * 10;
+    const ones12 = num12 % 10;
+    const tens22 = Math.floor(num22 / 10) * 10;
+    const ones22 = num22 % 10;
+    const { partialProducts: partialProducts2, total: total2 } = buildFromAreaModel({ num1: num12, num2: num22, tens1: tens12, ones1: ones12, tens2: tens22, ones2: ones22 });
+    const correctAnswer = JSON.stringify({
+      topLeft: partialProducts2.topLeft,
+      topRight: partialProducts2.topRight,
+      bottomLeft: partialProducts2.bottomLeft,
+      bottomRight: partialProducts2.bottomRight,
+      total: total2
+    });
+    return {
+      id: seed,
+      question: `\u04AE\u043B\u0433\u0456\u043D\u0456 \u043F\u0430\u0439\u0434\u0430\u043B\u0430\u043D\u044B\u043F \u0442\u0430\u0431\u044B\u04A3\u044B\u0437: ${num12} \xD7 ${num22}`,
+      num1: num12,
+      num2: num22,
+      tens1: tens12,
+      ones1: ones12,
+      tens2: tens22,
+      ones2: ones22,
+      partialProducts: partialProducts2,
+      total: total2,
+      correctAnswer,
+      visualData: {
+        type: "areamodel",
+        areaModel: { num1: num12, num2: num22, tens1: tens12, ones1: ones12, tens2: tens22, ones2: ones22 }
+      }
+    };
+  };
+  const sendHeight = () => {
+    if (window.parent !== window && containerRef.current) {
+      window.parent.postMessage(
+        { type: "resize", height: containerRef.current.scrollHeight + 20 },
+        "*"
+      );
+    }
+  };
+  useEffect(() => {
+    if (isReview) {
+      const qd = reviewMode.questionData?.areaModel;
+      const am = qd || generateProblem().visualData.areaModel;
+      const { partialProducts: partialProducts2, total: total2 } = buildFromAreaModel(am);
+      let parsedStudent = emptyAnswers;
+      try {
+        parsedStudent = JSON.parse(reviewMode.studentAnswer);
+      } catch {
+        parsedStudent = emptyAnswers;
+      }
+      setProblem({
+        id: seed,
+        question: `\u04AE\u043B\u0433\u0456\u043D\u0456 \u043F\u0430\u0439\u0434\u0430\u043B\u0430\u043D\u044B\u043F \u0442\u0430\u0431\u044B\u04A3\u044B\u0437: ${am.num1} \xD7 ${am.num2}`,
+        num1: am.num1,
+        num2: am.num2,
+        tens1: am.tens1,
+        ones1: am.ones1,
+        tens2: am.tens2,
+        ones2: am.ones2,
+        partialProducts: partialProducts2,
+        total: total2,
+        correctAnswer: reviewMode.correctAnswer,
+        visualData: reviewMode.questionData || { type: "areamodel", areaModel: am }
+      });
+      setUserAnswers(parsedStudent);
+      setShowResult(true);
+      setSubmitted(true);
+    } else {
+      setProblem(generateProblem());
+    }
+  }, []);
+  useEffect(() => {
+    sendHeight();
+    setTimeout(sendHeight, 100);
+  }, [problem, showResult, submitted]);
+  const handleInputChange = (field, value) => {
+    if (isFrozen || isReview || submitted) return;
+    if (value === "" || /^\d+$/.test(value)) {
+      setUserAnswers((prev) => ({ ...prev, [field]: value }));
+    }
+  };
+  const handleSubmit = () => {
+    if (isReview || isFrozen || submitted || !problem) return;
+    const correct = {
+      topLeft: parseInt(userAnswers.topLeft) === problem.partialProducts.topLeft,
+      topRight: parseInt(userAnswers.topRight) === problem.partialProducts.topRight,
+      bottomLeft: parseInt(userAnswers.bottomLeft) === problem.partialProducts.bottomLeft,
+      bottomRight: parseInt(userAnswers.bottomRight) === problem.partialProducts.bottomRight,
+      total: parseInt(userAnswers.total) === problem.total
+    };
+    const isCorrect = Object.values(correct).every(Boolean);
+    window.parent.postMessage(
+      {
+        type: "exercise-result",
+        isCorrect,
+        question: problem.question,
+        userAnswer: JSON.stringify(userAnswers),
+        correctAnswer: problem.correctAnswer,
+        questionData: problem.visualData
+        // ⚠️ Аналитика үшін толық картина деректері
+      },
+      "*"
+    );
+    if (isQuiz) {
+      setSubmitted(true);
+      return;
+    }
+    setSubmitted(true);
+    setFeedback(isCorrect ? "\u0414\u04B1\u0440\u044B\u0441! \u04E8\u0442\u0435 \u0436\u0430\u049B\u0441\u044B!" : "\u049A\u0430\u0442\u0435 \u0431\u0430\u0440. \u049A\u0430\u0439\u0442\u0430 \u043A\u04E9\u0440\u0456\u04A3\u0456\u0437.");
+    setShowResult(true);
+    if (isCorrect) {
+      setTimeout(() => {
+        handleNext();
+      }, 2e3);
+    }
+  };
+  const handleNext = () => {
+    if (isFrozen || isQuiz) return;
+    setProblem(generateProblem());
+    setUserAnswers(emptyAnswers);
+    setShowResult(false);
+    setSubmitted(false);
+    setFeedback("");
+  };
+  if (!problem) return /* @__PURE__ */ React.createElement("div", null, "\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435...");
+  const { num1, num2, tens1, ones1, tens2, ones2, partialProducts, total } = problem;
+  const fieldClass = (field, correctValue) => {
+    let base = "w-full text-center border-2 rounded-md p-2 text-lg font-semibold ";
+    base += "border-gray-300 ";
+    return base;
+  };
+  const disableInputs = isFrozen || isReview || submitted;
+  const renderInteractiveGrid = () => /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-2 max-w-md" }, /* @__PURE__ */ React.createElement("div", null), /* @__PURE__ */ React.createElement("div", { className: "bg-blue-100 p-3 text-center font-bold rounded-lg border-2 border-blue-300" }, tens2), /* @__PURE__ */ React.createElement("div", { className: "bg-blue-100 p-3 text-center font-bold rounded-lg border-2 border-blue-300" }, ones2), /* @__PURE__ */ React.createElement("div", { className: "bg-green-100 p-3 text-center font-bold rounded-lg border-2 border-green-300" }, tens1), /* @__PURE__ */ React.createElement("div", { className: "bg-yellow-100 p-4 rounded-lg border-2 border-yellow-300" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswers.topLeft,
+      onChange: (e) => handleInputChange("topLeft", e.target.value),
+      className: fieldClass("topLeft", partialProducts.topLeft),
+      disabled: disableInputs
+    }
+  ), showResult && /* @__PURE__ */ React.createElement("div", { className: "text-sm mt-1 text-gray-600" }, tens1, " \xD7 ", tens2, " = ", partialProducts.topLeft)), /* @__PURE__ */ React.createElement("div", { className: "bg-yellow-100 p-4 rounded-lg border-2 border-yellow-300" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswers.topRight,
+      onChange: (e) => handleInputChange("topRight", e.target.value),
+      className: fieldClass("topRight", partialProducts.topRight),
+      disabled: disableInputs
+    }
+  ), showResult && /* @__PURE__ */ React.createElement("div", { className: "text-sm mt-1 text-gray-600" }, tens1, " \xD7 ", ones2, " = ", partialProducts.topRight)), /* @__PURE__ */ React.createElement("div", { className: "bg-green-100 p-3 text-center font-bold rounded-lg border-2 border-green-300" }, ones1), /* @__PURE__ */ React.createElement("div", { className: "bg-yellow-100 p-4 rounded-lg border-2 border-yellow-300" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswers.bottomLeft,
+      onChange: (e) => handleInputChange("bottomLeft", e.target.value),
+      className: fieldClass("bottomLeft", partialProducts.bottomLeft),
+      disabled: disableInputs
+    }
+  ), showResult && /* @__PURE__ */ React.createElement("div", { className: "text-sm mt-1 text-gray-600" }, ones1, " \xD7 ", tens2, " = ", partialProducts.bottomLeft)), /* @__PURE__ */ React.createElement("div", { className: "bg-yellow-100 p-4 rounded-lg border-2 border-yellow-300" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswers.bottomRight,
+      onChange: (e) => handleInputChange("bottomRight", e.target.value),
+      className: fieldClass("bottomRight", partialProducts.bottomRight),
+      disabled: disableInputs
+    }
+  ), showResult && /* @__PURE__ */ React.createElement("div", { className: "text-sm mt-1 text-gray-600" }, ones1, " \xD7 ", ones2, " = ", partialProducts.bottomRight))));
+  const renderInteractiveTotal = () => /* @__PURE__ */ React.createElement("div", { className: "text-center mb-6" }, /* @__PURE__ */ React.createElement("p", { className: "text-lg font-semibold mb-3 text-gray-700" }, "\u0421\u043E\u0434\u0430\u043D \u043A\u0435\u0439\u0456\u043D \u0436\u0430\u043B\u043F\u044B \u0430\u0443\u0434\u0430\u043D\u0434\u044B \u0442\u0430\u0431\u044B\u04A3\u044B\u0437:"), /* @__PURE__ */ React.createElement("div", { className: "bg-purple-50 rounded-lg p-4 inline-block border-2 border-purple-200" }, /* @__PURE__ */ React.createElement("div", { className: "text-xl font-bold mb-2 flex items-center justify-center gap-2" }, num1, " \xD7 ", num2, " =", /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswers.total,
+      onChange: (e) => handleInputChange("total", e.target.value),
+      className: "w-24 text-center border-2 rounded-md p-2 text-xl font-bold border-gray-300",
+      disabled: disableInputs
+    }
+  )), showResult && /* @__PURE__ */ React.createElement("div", { className: "text-sm text-gray-600" }, partialProducts.topLeft, " + ", partialProducts.topRight, " + ", partialProducts.bottomLeft, " + ", partialProducts.bottomRight, " = ", total)));
+  const fieldsMeta = [
+    { field: "topLeft", correctVal: partialProducts.topLeft, label: `${tens1} \xD7 ${tens2}` },
+    { field: "topRight", correctVal: partialProducts.topRight, label: `${tens1} \xD7 ${ones2}` },
+    { field: "bottomLeft", correctVal: partialProducts.bottomLeft, label: `${ones1} \xD7 ${tens2}` },
+    { field: "bottomRight", correctVal: partialProducts.bottomRight, label: `${ones1} \xD7 ${ones2}` }
+  ];
+  const renderReviewCell = (fm, mode) => {
+    if (mode === "blank") {
+      return /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          key: fm.field,
+          className: "p-4 rounded-lg border-2 text-center",
+          style: { backgroundColor: COLORS.lightGray, borderColor: "#e5e7eb" }
+        },
+        /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold text-gray-400" }, "?")
+      );
+    }
+    const value = mode === "correct" ? String(fm.correctVal) : userAnswers[fm.field] || "\u2014";
+    const isCorrect = mode === "correct" ? true : parseInt(userAnswers[fm.field]) === fm.correctVal;
+    return /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        key: fm.field,
+        className: "p-4 rounded-lg border-2 text-center",
+        style: {
+          backgroundColor: isCorrect ? COLORS.successBg : COLORS.errorBg,
+          borderColor: isCorrect ? COLORS.success : COLORS.error
+        }
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "text-lg font-semibold", style: { color: isCorrect ? COLORS.success : COLORS.error } }, value),
+      /* @__PURE__ */ React.createElement("div", { className: "text-xs mt-1 text-gray-600" }, fm.label)
+    );
+  };
+  const renderReviewGrid = (mode) => /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-3 gap-2 max-w-md mx-auto" }, /* @__PURE__ */ React.createElement("div", null), /* @__PURE__ */ React.createElement("div", { className: "p-3 text-center font-bold rounded-lg border-2", style: { backgroundColor: "#E0F2FE", borderColor: COLORS.sky } }, tens2), /* @__PURE__ */ React.createElement("div", { className: "p-3 text-center font-bold rounded-lg border-2", style: { backgroundColor: "#E0F2FE", borderColor: COLORS.sky } }, ones2), /* @__PURE__ */ React.createElement("div", { className: "p-3 text-center font-bold rounded-lg border-2", style: { backgroundColor: COLORS.successBg, borderColor: COLORS.green } }, tens1), renderReviewCell(fieldsMeta[0], mode), renderReviewCell(fieldsMeta[1], mode), /* @__PURE__ */ React.createElement("div", { className: "p-3 text-center font-bold rounded-lg border-2", style: { backgroundColor: COLORS.successBg, borderColor: COLORS.green } }, ones1), renderReviewCell(fieldsMeta[2], mode), renderReviewCell(fieldsMeta[3], mode));
+  const renderReviewTotal = (mode) => {
+    if (mode === "blank") {
+      return /* @__PURE__ */ React.createElement("div", { className: "text-center mt-4" }, /* @__PURE__ */ React.createElement("div", { className: "inline-block rounded-lg p-4 border-2", style: { backgroundColor: COLORS.lightGray, borderColor: "#e5e7eb" } }, /* @__PURE__ */ React.createElement("div", { className: "text-xl font-bold flex items-center justify-center gap-2 text-gray-400" }, num1, " \xD7 ", num2, " = ?")));
+    }
+    const value = mode === "correct" ? String(total) : userAnswers.total || "\u2014";
+    const isCorrect = mode === "correct" ? true : parseInt(userAnswers.total) === total;
+    return /* @__PURE__ */ React.createElement("div", { className: "text-center mt-4" }, /* @__PURE__ */ React.createElement("div", { className: "inline-block rounded-lg p-4 border-2", style: { backgroundColor: COLORS.lightGray, borderColor: COLORS.teal } }, /* @__PURE__ */ React.createElement("div", { className: "text-xl font-bold flex items-center justify-center gap-2" }, num1, " \xD7 ", num2, " =", /* @__PURE__ */ React.createElement(
+      "span",
+      {
+        className: "inline-block min-w-[4rem] text-center rounded-md p-2 text-xl font-bold border-2",
+        style: {
+          backgroundColor: isCorrect ? COLORS.successBg : COLORS.errorBg,
+          borderColor: isCorrect ? COLORS.success : COLORS.error,
+          color: isCorrect ? COLORS.success : COLORS.error
+        }
+      },
+      value
+    ))));
+  };
+  if (isReview) {
+    return /* @__PURE__ */ React.createElement("div", { ref: containerRef, className: "max-w-4xl mx-auto p-6 bg-white" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-6" }, /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-xl border-2 p-6", style: { borderColor: "#e5e7eb" } }, /* @__PURE__ */ React.createElement("h3", { className: "text-center font-bold text-gray-700 mb-4" }, "\u0415\u0441\u0435\u043F: ", num1, " \xD7 ", num2), renderReviewGrid("blank"), renderReviewTotal("blank")), /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-xl border-2 p-6", style: { borderColor: "#e5e7eb" } }, /* @__PURE__ */ React.createElement("h3", { className: "text-center font-bold text-gray-700 mb-4" }, "\u041E\u049B\u0443\u0448\u044B\u043D\u044B\u04A3 \u0436\u0430\u0443\u0430\u0431\u044B"), renderReviewGrid("user"), renderReviewTotal("user")), /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-xl border-2 p-6", style: { borderColor: "#e5e7eb" } }, /* @__PURE__ */ React.createElement("h3", { className: "text-center font-bold text-gray-700 mb-4" }, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F"), renderReviewGrid("correct"), renderReviewTotal("correct"))));
+  }
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      ref: containerRef,
+      className: "max-w-4xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-purple-50",
+      style: isFrozen ? { pointerEvents: "none" } : {}
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "text-center mb-8" }, /* @__PURE__ */ React.createElement("h1", { className: "text-3xl font-bold text-blue-800 mb-2 flex items-center justify-center gap-3" }, /* @__PURE__ */ React.createElement(BookOpen, { className: "text-blue-600" }), "2-\u0442\u0430\u04A3\u0431\u0430\u043B\u044B \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u04E9\u0431\u0435\u0439\u0442\u0443 \u04AF\u043B\u0433\u0456\u0441\u0456")),
+    /* @__PURE__ */ React.createElement("div", { className: "bg-white rounded-xl shadow-lg p-8 mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-6" }, /* @__PURE__ */ React.createElement("h2", { className: "text-2xl font-bold text-gray-800 mb-2" }, "\u04AE\u043B\u0433\u0456\u043D\u0456 \u043F\u0430\u0439\u0434\u0430\u043B\u0430\u043D\u044B\u043F \u0442\u0430\u0431\u044B\u04A3\u044B\u0437: ", num1, " \xD7 ", num2), /* @__PURE__ */ React.createElement("p", { className: "text-gray-600" }, "\u0410\u043B\u0434\u044B\u043C\u0435\u043D \u04D9\u0440 \u0442\u0456\u043A\u0442\u04E9\u0440\u0442\u0431\u04B1\u0440\u044B\u0448\u0442\u044B\u04A3 \u0430\u0443\u0434\u0430\u043D\u044B\u043D \u0442\u0430\u0431\u044B\u04A3\u044B\u0437")), renderInteractiveGrid(), renderInteractiveTotal(), !isFrozen && /* @__PURE__ */ React.createElement("div", { className: "flex justify-center gap-4 mb-4" }, !submitted ? /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleSubmit,
+        className: "text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2 disabled:opacity-50",
+        style: { backgroundColor: COLORS.green },
+        disabled: !userAnswers.topLeft || !userAnswers.topRight || !userAnswers.bottomLeft || !userAnswers.bottomRight || !userAnswers.total
+      },
+      /* @__PURE__ */ React.createElement(Check, { size: 20 }),
+      "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+    ) : !isQuiz && feedback.includes("\u049A\u0430\u0442\u0435") && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleNext,
+        className: "text-white px-6 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2",
+        style: { backgroundColor: COLORS.teal }
+      },
+      /* @__PURE__ */ React.createElement(RefreshCw, { size: 20 }),
+      "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B"
+    ), isQuiz && submitted && /* @__PURE__ */ React.createElement("p", { style: { color: COLORS.success, fontWeight: 600 }, className: "flex items-center gap-2" }, /* @__PURE__ */ React.createElement(Check, { size: 20 }), " \u0416\u0430\u0443\u0430\u043F \u049B\u0430\u0431\u044B\u043B\u0434\u0430\u043D\u0434\u044B")), !isQuiz && feedback && /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "text-center p-3 rounded-lg font-semibold border-2",
+        style: feedback.includes("\u0414\u04B1\u0440\u044B\u0441") ? { backgroundColor: COLORS.successBg, color: COLORS.success, borderColor: COLORS.success } : { backgroundColor: COLORS.errorBg, color: COLORS.error, borderColor: COLORS.error }
+      },
+      feedback.includes("\u0414\u04B1\u0440\u044B\u0441") ? /* @__PURE__ */ React.createElement(Check, { className: "inline mr-2", size: 20 }) : /* @__PURE__ */ React.createElement(X, { className: "inline mr-2", size: 20 }),
+      feedback
+    )),
+    !isFrozen && /* @__PURE__ */ React.createElement("div", { className: "mt-6 bg-blue-50 rounded-xl p-6 border-2 border-blue-200" }, /* @__PURE__ */ React.createElement("h3", { className: "text-lg font-bold text-blue-800 mb-3" }, "\u041D\u04B1\u0441\u049B\u0430\u0443\u043B\u044B\u049B:"), /* @__PURE__ */ React.createElement("ul", { className: "text-blue-700 space-y-2" }, /* @__PURE__ */ React.createElement("li", null, "\u2022 \u0415\u043A\u0456 \u0441\u0430\u043D\u0434\u044B \u043E\u043B\u0430\u0440\u0434\u044B \u043E\u043D\u0434\u044B\u049B\u0442\u0430\u0440 \u043C\u0435\u043D \u0431\u0456\u0440\u043B\u0456\u043A\u043A\u0435 \u0431\u04E9\u043B\u0443 \u0430\u0440\u049B\u044B\u043B\u044B \u043A\u04E9\u0431\u0435\u0439\u0442\u0456\u04A3\u0456\u0437"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u04D8\u0440 \u0442\u0456\u043A\u0442\u04E9\u0440\u0442\u0431\u04B1\u0440\u044B\u0448\u0442\u044B\u04A3 \u0430\u0443\u0434\u0430\u043D\u044B\u043D \u0442\u0430\u0431\u044B\u04A3\u044B\u0437 (\u04B1\u0437\u044B\u043D\u0434\u044B\u0493\u044B \xD7 \u0435\u043D\u0456)"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u0411\u0430\u0440\u043B\u044B\u049B \u0430\u0443\u0434\u0430\u043D\u0434\u044B \u049B\u043E\u0441\u044B\u043F, \u0436\u0430\u0443\u0430\u043F\u0442\u044B \u0442\u0430\u0431\u044B\u04A3\u044B\u0437"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u041C\u044B\u0441\u0430\u043B: 23 \xD7 45 = (20\xD740) + (20\xD75) + (3\xD740) + (3\xD75)")))
+  );
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(KazakhMultiplicationApp));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

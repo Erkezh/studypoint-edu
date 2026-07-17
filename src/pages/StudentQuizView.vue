@@ -74,7 +74,7 @@
             <div v-if="currentQuestion" class="flex-1 flex flex-col justify-center">
 
               <!-- ===== ANSWERED STATE: show submitted answer ===== -->
-              <div v-if="isCurrentQuestionAnswered" class="w-full max-w-2xl">
+              <div v-if="isCurrentQuestionAnswered && !isCurrentQuestionPlugin" class="w-full max-w-2xl">
                 <!-- Question prompt (always visible in answered state) -->
                 <p class="text-lg sm:text-2xl text-gray-800 mb-6 leading-relaxed font-medium"
                   v-html="formatPrompt(getQuestionPrompt(currentQuestion))">
@@ -166,6 +166,18 @@
                     <div v-else class="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-700 text-sm">
                       Плагин жүктелуде...
                     </div>
+
+                    <!-- Change answer button under iframe if already answered -->
+                    <button
+                      v-if="isCurrentQuestionAnswered"
+                      @click="clearCurrentAnswer"
+                      class="mt-5 flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all text-sm"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                      Жауапты өзгерту
+                    </button>
                   </div>
 
                   <!-- Other types (fallback) -->
@@ -332,6 +344,7 @@ import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
+import router from '@/router'
 
 const authStore = useAuthStore()
 const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
@@ -352,7 +365,10 @@ const textAnswer = ref('')
 
 // Timer
 const currentTime = ref(0)
-let timeInterval: number | null = null
+const isComponentMounted = ref(false)
+
+// Use window-level storage for the interval ID so HMR can't orphan it
+const QUIZ_TIMER_KEY = '__quiz_timer_interval__'
 
 // Plugin state
 const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
@@ -443,9 +459,38 @@ const loadCurrentPlugin = async () => {
 
   const base = getRegularPluginSrc(q)
   if (!base) return
-  // Use seed from quiz question to ensure deterministic question generation
+  
   const seed = currentQuestion.value.seed
-  pluginIframeSrc.value = seed ? `${base}?embed=1&mode=quiz&seed=${seed}` : `${base}?embed=1&mode=quiz`
+  
+  // Check if this question is already answered in the active session
+  const qId = String(currentQuestion.value.id)
+  const ansObj = questionAnswers.value.find(a => String(a.question_id) === qId)
+  
+  if (ansObj && ansObj.submitted_answer) {
+    // Already answered: load in review mode!
+    const ans = ansObj.submitted_answer as Record<string, unknown>
+    const studentAnswer = typeof ans.userAnswer === 'object' ? JSON.stringify(ans.userAnswer) : String(ans.userAnswer || '')
+    const correctAnswer = typeof ans.correctAnswer === 'object' ? JSON.stringify(ans.correctAnswer) : String(ans.correctAnswer || '')
+    const isCorrect = String(ans.isCorrect || false)
+    const questionData = ans.questionData ? JSON.stringify(ans.questionData) : ''
+    const answerData = ans.answerData ? JSON.stringify(ans.answerData) : ''
+    
+    const params = new URLSearchParams({
+      embed: '1',
+      mode: 'review',
+      seed: String(seed || ''),
+      studentAnswer,
+      correctAnswer,
+      isCorrect,
+      questionData,
+      answerData
+    })
+    
+    pluginIframeSrc.value = `${base}?${params.toString()}`
+  } else {
+    // Unanswered: load in quiz mode
+    pluginIframeSrc.value = seed ? `${base}?embed=1&mode=quiz&seed=${seed}` : `${base}?embed=1&mode=quiz`
+  }
 }
 
 // Listen for exercise-result messages from plugin iframes
@@ -565,6 +610,11 @@ const submitAnswer = (answer: unknown) => {
 const confirmSubmitQuiz = async () => {
   showConfirmSubmitModal.value = false
 
+  // Clear progress storage since quiz is finished
+  try {
+    localStorage.removeItem(`quiz_progress_${props.quizId}`)
+  } catch {}
+
   // Submit to API
   if (currentAssignment.value) {
     try {
@@ -596,6 +646,20 @@ const confirmSubmitQuiz = async () => {
 
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
+
+// Watch and save progress to localStorage
+watch([currentTime, questionAnswers], () => {
+  if (currentQuiz.value && !isFinished.value) {
+    try {
+      localStorage.setItem(`quiz_progress_${props.quizId}`, JSON.stringify({
+        currentTime: currentTime.value,
+        answers: questionAnswers.value
+      }))
+    } catch (err) {
+      console.warn('Failed to save quiz progress to localStorage:', err)
+    }
+  }
+}, { deep: true })
 
 const formatSubmittedAnswerText = (answer: unknown): string => {
   if (!answer) return '—'
@@ -739,18 +803,32 @@ const getCorrectAnswerText = (
 }
 
 // Timer Functions
-const startTimer = () => {
-  stopTimer()
-  timeInterval = setInterval(() => {
-    currentTime.value++
-  }, 1000) as unknown as number
+const stopTimer = () => {
+  // Clear from window-level storage (handles HMR and orphaned intervals)
+  const existingId = (window as any)[QUIZ_TIMER_KEY] as number | undefined
+  if (existingId) {
+    console.log('[QuizTimer] STOP timer (window), intervalId =', existingId, ', currentTime =', currentTime.value)
+    clearInterval(existingId)
+    ;(window as any)[QUIZ_TIMER_KEY] = null
+  }
 }
 
-const stopTimer = () => {
-  if (timeInterval !== null) {
-    clearInterval(timeInterval)
-    timeInterval = null
+const startTimer = () => {
+  stopTimer()
+  if (!isComponentMounted.value) {
+    console.log('[QuizTimer] START refused — component not mounted')
+    return
   }
+  console.log('[QuizTimer] START timer, currentTime =', currentTime.value)
+  const id = window.setInterval(() => {
+    if (!isComponentMounted.value) {
+      console.log('[QuizTimer] interval fired after unmount — auto-stopping')
+      stopTimer()
+      return
+    }
+    currentTime.value++
+  }, 1000)
+  ;(window as any)[QUIZ_TIMER_KEY] = id
 }
 
 // Timer Functions
@@ -767,6 +845,7 @@ const fetchQuiz = async () => {
   
   try {
     const listResp = await quizApi.listStudentAssignedQuizzes()
+    if (!isComponentMounted.value) return
     const quizzes = listResp.data.data || []
     
     const foundQuiz = quizzes.find(q => q.id === props.quizId)
@@ -792,6 +871,20 @@ const fetchQuiz = async () => {
           isFinished.value = true
           currentIndex.value = foundQuiz.questions.length
         } else {
+          // Restore progress from localStorage if it exists
+          const progressStr = localStorage.getItem(`quiz_progress_${props.quizId}`)
+          if (progressStr) {
+            try {
+              const progress = JSON.parse(progressStr)
+              if (progress && typeof progress === 'object') {
+                currentTime.value = Number(progress.currentTime || 0)
+                questionAnswers.value = Array.isArray(progress.answers) ? progress.answers : []
+              }
+            } catch (err) {
+              console.warn('Failed to parse quiz progress:', err)
+            }
+          }
+
           // Prepare question ordering
           const questionsList = [...foundQuiz.questions]
           if (foundQuiz.question_order === 'RANDOMIZED') {
@@ -804,6 +897,7 @@ const fetchQuiz = async () => {
           }
           shuffledQuestions.value = questionsList
 
+          if (!isComponentMounted.value) return
           startTimer()
           // Load plugin iframe if the first question is a plugin
           await loadCurrentPlugin()
@@ -820,14 +914,49 @@ const fetchQuiz = async () => {
   }
 }
 
+import { onBeforeRouteLeave } from 'vue-router'
+
+const handleVisibilityChange = () => {
+  if (!isComponentMounted.value) return
+  if (document.hidden) {
+    stopTimer()
+  } else {
+    if (currentQuiz.value && !isFinished.value && !loading.value) {
+      startTimer()
+    }
+  }
+}
+
+onBeforeRouteLeave(() => {
+  console.log('[QuizTimer] onBeforeRouteLeave — stopping timer')
+  isComponentMounted.value = false
+  stopTimer()
+})
+
+// Global safety net: kill quiz timer when navigating away from any quiz route
+const unregisterGuard = router.beforeEach((to) => {
+  if (to.name !== 'student-quiz') {
+    stopTimer()
+  }
+})
+
 onMounted(() => {
+  // Kill any orphaned timer from a previous instance (e.g., HMR)
+  stopTimer()
+  isComponentMounted.value = true
+  console.log('[QuizTimer] onMounted')
   fetchQuiz()
   window.addEventListener('message', handlePluginMessage)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
+  console.log('[QuizTimer] onUnmounted — stopping timer')
+  isComponentMounted.value = false
   stopTimer()
+  unregisterGuard() // Remove the global guard to avoid leaking it
   window.removeEventListener('message', handlePluginMessage)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 

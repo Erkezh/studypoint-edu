@@ -4,7 +4,7 @@
     <div class="bg-white border-b border-gray-200">
       <ViewByToggle />
     </div>
-    <main class="flex flex-row">
+    <main class="flex flex-row class-view-main">
       <!-- Боковая панель с классами (IXL style - Vertical on all devices) -->
       <aside class="relative shrink-0 w-10 md:w-12 z-30 pt-4 select-none">
         <nav class="flex flex-col gap-1 w-full items-center px-0 pb-10 overflow-y-auto md:overflow-visible scrollbar-hide h-[calc(100vh-120px)] md:h-auto sticky top-24">
