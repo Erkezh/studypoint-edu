@@ -99,13 +99,13 @@
       </div>
 
       <!-- Loading State -->
-      <div v-if="analyticsStore.loading && !analyticsStore.overview" class="loading-state">
+      <div v-if="activeTab !== 'quizzes' && analyticsStore.loading && !analyticsStore.overview" class="loading-state">
         <div class="spinner"></div>
         <p>Жүктелуде...</p>
       </div>
 
       <!-- Error State -->
-      <div v-else-if="analyticsStore.error && !analyticsStore.overview" class="error-state">
+      <div v-else-if="activeTab !== 'quizzes' && analyticsStore.error && !analyticsStore.overview" class="error-state">
         <p class="error-title">Талдауды жүктеу қатесі:</p>
         <p>{{ analyticsStore.error }}</p>
       </div>
@@ -630,6 +630,7 @@ const tabs = computed<TabItem[]>(() => {
     { id: 'scores_student', label: 'Ұпайлар' },
     { id: 'questions', label: 'Сұрақтар' },
     { id: 'progress', label: 'Прогресс' },
+    { id: 'quizzes', label: 'Квиздер' },
   ]
 })
 

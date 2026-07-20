@@ -109,22 +109,24 @@ const isFrozen = urlParams.get('frozen') === '1';
 
 ## 📝 QUIZ РЕЖИМ (ОБЯЗАТЕЛЬНО!)
 
-При прохождении квиза/теста (параметр `?mode=quiz`) плагин **должен самостоятельно проверять ответ**, показывать правильный/неправильный ответ ученику и **выводить объяснение решения** (если ответ неверный).
+При прохождении квиза/теста (параметр `?mode=quiz`) плагин **просто сохраняет ответ** и отправляет его родителю. Он **НЕ должен показывать** правильный/неправильный ответ ученику или выводить объяснение решения (ответы накапливаются для последующей оценки).
 
 URL будет содержать параметр `?mode=quiz`. Если этот параметр установлен:
 
 ### Поведение после отправки ответа:
-1. При клике на кнопку отправки ответа («Тексеру» / «Submit») плагин проверяет ответ, отправляет результат родителю через `postMessage` и **сразу показывает правильный/неправильный ответ, а также объяснение решения** (если ответ неверный) с помощью `setShowResult(true)`.
-2. **После отправки плагин ПОЛНОСТЬЮ БЛОКИРУЕТ свой UI** — все кнопки (`disabled`), все `input` (`disabled`), `pointer-events: none`. Ученик видит свой ответ, результат и объяснение решения, но не может изменить выбор.
-3. **Кнопка «Келесі сұрақ» в режиме квиза скрывается** (так как навигацию между вопросами в квизе контролирует само родительское приложение с помощью кнопок снаружи iframe).
+1. При клике на кнопку отправки ответа («Тексеру» / «Submit») плагин проверяет ответ, отправляет результат родителю через `postMessage` и **блокирует свой UI** (ставит `isSubmitted = true`), но **НЕ показывает результат/объяснение** (т.е. `showResult` остается `false`).
+2. **После отправки плагин ПОЛНОСТЬЮ БЛОКИРУЕТ свой UI** — все кнопки (`disabled`), все `input` (`disabled`), `pointer-events: none`. Ученик видит свой ответ в застывшем виде, но не видит правильность ответа и не может изменить его в самом iframe.
+3. Если во время прохождения квиза передается параметр `studentAnswer` (например, при повторном открытии ранее отвеченного вопроса), плагин **должен автоматически восстановить ответ** из параметра `studentAnswer`, установить UI в застывшее состояние (`isSubmitted = true`) и не показывать правильность ответа.
+4. **Кнопка «Келесі сұрақ» в режиме квиза скрывается** (так как навигацию между вопросами в квизе контролирует само родительское приложение с помощью кнопок снаружи iframe).
 
 ### Сброс состояния:
-- Если ученик переключается между вопросами или сбрасывает ответ, родительское приложение перезагружает iframe. Плагин всегда инициализируется в чистом состоянии (пустой ввод, разблокированный UI).
+- Если ученик переключается между вопросами или сбрасывает ответ, родительское приложение перезагружает iframe. Плагин всегда инициализируется в чистом состоянии (пустой ввод, разблокированный UI) или с сохраненным ответом, если передан параметр `studentAnswer`.
 
 ```tsx
 // ⚠️ Quiz mode (режим квиза)
 const isQuiz = urlParams.get('mode') === 'quiz';
-const [isSubmitted, setIsSubmitted] = useState(false);
+const initialStudentAnswer = parseJsonParam(urlParams.get('studentAnswer'));
+const [isSubmitted, setIsSubmitted] = useState(!!initialStudentAnswer);
 
 const handleSubmit = () => {
   if (isReview || isFrozen || isSubmitted || !userAnswer || !problem) return;
@@ -139,8 +141,12 @@ const handleSubmit = () => {
     questionData: problem.visualData,
   }, '*');
   
-  // В режиме квиза: блокируем UI и сразу ПОКАЗЫВАЕМ результат и объяснение
-  setIsSubmitted(true);
+  if (isQuiz) {
+    // ⚠️ В quiz mode: блокируем UI, НЕ показываем правильный ответ
+    setIsSubmitted(true);
+    return;
+  }
+  
   setShowResult(true);
 };
 
@@ -188,7 +194,6 @@ const Component: React.FC = () => {
   const [problem, setProblem] = useState<Problem | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [showResult, setShowResult] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);  // ⚠️ Блокировка после отправки в quiz mode
   const containerRef = useRef<HTMLDivElement>(null);
 
   // ⚠️ URL параметры
@@ -198,9 +203,23 @@ const Component: React.FC = () => {
   const isFrozen = urlParams.get('frozen') === '1';
   const isQuiz = urlParams.get('mode') === 'quiz';  // ⚠️ Quiz mode
 
+  const parseJsonParam = (param: string | null) => {
+    if (!param) return null;
+    try { return JSON.parse(param); } catch { return param; }
+  };
+  const initialStudentAnswer = parseJsonParam(urlParams.get('studentAnswer'));
+  const [isSubmitted, setIsSubmitted] = useState(!!initialStudentAnswer);  // ⚠️ Блокировка после отправки в quiz mode или при загрузке сохраненного ответа
+
   // ⚠️ Режим просмотра ошибок (аналитика для учителя/ученика)
-  const reviewMode = (window as any).reviewMode || null;
-  const isReview = !!reviewMode;
+  const isReviewModeUrl = urlParams.get('mode') === 'review';
+  const reviewMode = (window as any).reviewMode || (isReviewModeUrl ? {
+    studentAnswer: parseJsonParam(urlParams.get('studentAnswer')),
+    correctAnswer: parseJsonParam(urlParams.get('correctAnswer')),
+    isCorrect: urlParams.get('isCorrect') === 'true',
+    questionData: parseJsonParam(urlParams.get('questionData')),
+    answerData: parseJsonParam(urlParams.get('answerData'))
+  } : null);
+  const isReview = !!reviewMode || urlParams.get('frozen') === '1';
 
   // ⚠️ Детерминированный PRNG
   function createSeededRandom(s: number): () => number {
@@ -238,6 +257,9 @@ const Component: React.FC = () => {
       setShowResult(true);
     } else {
       setProblem(generateProblem());
+      if (isQuiz && initialStudentAnswer) {
+        setUserAnswer(initialStudentAnswer);
+      }
     }
   }, []);
 
@@ -258,8 +280,7 @@ const Component: React.FC = () => {
     
     if (isQuiz) {
       // ⚠️ В quiz mode: блокируем UI, НЕ показываем правильный ответ
-      // Родительское приложение покажет "Жауап берілді" и кнопку "Жауапты өзгерту"
-      // Если ученик хочет изменить ответ — родитель перезагрузит iframe
+      // Если ученик хочет изменить ответ — родительское приложение сбросит и перезагрузит iframe
       setIsSubmitted(true);
       return;
     }
@@ -430,6 +451,9 @@ if (isReview) {
   }
 }
 ```
+
+### 5. Поведение при отсутствии ответа ученика в `isReview`:
+Если в плагин передается `mode=review` с `isCorrect=true`, но `studentAnswer` отсутствует (или равен значению `correctAnswer`), плагин должен отобразить только визуализацию правильного ответа (без сравнений или ошибок). Это используется в аналитике для отображения карточки "Правильный ответ", когда никто из учеников не ответил верно.
 
 ---
 

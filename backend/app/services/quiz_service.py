@@ -48,11 +48,9 @@ class QuizService:
         if not req.is_draft:
             student_ids = req.student_ids
             if not student_ids:
-                from app.models.user import User
-                from app.models.enums import UserRole
-                student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
-                student_res = await self.session.execute(student_stmt)
-                student_ids = list(student_res.scalars().all())
+                from app.services.teacher_scope import list_teacher_scoped_students
+                scoped = await list_teacher_scoped_students(self.session, teacher_id=teacher_uuid)
+                student_ids = [s.id for s in scoped]
 
             for student_id in student_ids:
                 assignment = QuizAssignment(
@@ -135,11 +133,9 @@ class QuizService:
         if not req.is_draft:
             student_ids = req.student_ids
             if not student_ids:
-                from app.models.user import User
-                from app.models.enums import UserRole
-                student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
-                student_res = await self.session.execute(student_stmt)
-                student_ids = list(student_res.scalars().all())
+                from app.services.teacher_scope import list_teacher_scoped_students
+                scoped = await list_teacher_scoped_students(self.session, teacher_id=teacher_uuid)
+                student_ids = [s.id for s in scoped]
 
             for student_id in student_ids:
                 assignment = QuizAssignment(
@@ -226,11 +222,18 @@ class QuizService:
                 classroom_res = await self.session.execute(classroom_stmt)
                 student_ids = list(classroom_res.scalars().all())
             else:
-                from app.models.user import User
-                from app.models.enums import UserRole
-                student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
-                student_res = await self.session.execute(student_stmt)
-                student_ids = list(student_res.scalars().all())
+                quiz = await self.get_quiz(req.quiz_id)
+                teacher_id = quiz.teacher_id if quiz else None
+                if teacher_id:
+                    from app.services.teacher_scope import list_teacher_scoped_students
+                    scoped = await list_teacher_scoped_students(self.session, teacher_id=teacher_id)
+                    student_ids = [s.id for s in scoped]
+                else:
+                    from app.models.user import User
+                    from app.models.enums import UserRole
+                    student_stmt = select(User.id).where(User.role == UserRole.STUDENT)
+                    student_res = await self.session.execute(student_stmt)
+                    student_ids = list(student_res.scalars().all())
                 
         first_assignment = None
         for s_id in student_ids:

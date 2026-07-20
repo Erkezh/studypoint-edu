@@ -137,7 +137,7 @@
                       :data-card-id="q.id"
                       :style="{ height: (q.height || 500) + 'px' }"
                       class="w-full border-0"
-                      sandbox="allow-scripts allow-same-origin"
+                      sandbox="allow-scripts"
                       scrolling="no"
                     ></iframe>
                   </div>
@@ -359,7 +359,7 @@
                       data-preview-iframe="true"
                       :style="{ height: previewIframeHeight + 'px' }"
                       class="w-full border-0"
-                      sandbox="allow-scripts allow-same-origin"
+                      sandbox="allow-scripts"
                       scrolling="no"
                     ></iframe>
                   </div>
@@ -485,8 +485,8 @@
             <div class="form-group flex flex-col gap-2">
               <label class="text-sm font-semibold text-slate-700">Оқушы тапсырғаннан кейінгі нәтиже</label>
               <select v-model="settings.result_visibility" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500">
-                <option value="ALWAYS">Ұпайлар мен дұрыс жауаптарды көрсету</option>
-                <option value="SCORE_ONLY">Тек ұпайларды көрсету</option>
+                <option value="ALWAYS" :disabled="settings.ended_result_visibility === 'SCORE_ONLY' || settings.ended_result_visibility === 'HIDDEN'">Ұпайлар мен дұрыс жауаптарды көрсету</option>
+                <option value="SCORE_ONLY" :disabled="settings.ended_result_visibility === 'HIDDEN'">Тек ұпайларды көрсету</option>
                 <option value="HIDDEN">Нәтижелерді көрсетпеу</option>
               </select>
             </div>
@@ -496,8 +496,8 @@
               <label class="text-sm font-semibold text-slate-700">Мұғалім квизді аяқтағаннан кейінгі нәтиже</label>
               <select v-model="settings.ended_result_visibility" class="px-4 py-2.5 border border-slate-200 rounded-lg text-sm bg-white focus:outline-none focus:border-emerald-500">
                 <option value="ALWAYS">Ұпайлар мен дұрыс жауаптарды көрсету</option>
-                <option value="SCORE_ONLY">Тек ұпайларды көрсету</option>
-                <option value="HIDDEN">Нәтижелерді көрсетпеу</option>
+                <option value="SCORE_ONLY" :disabled="settings.result_visibility === 'ALWAYS'">Тек ұпайларды көрсету</option>
+                <option value="HIDDEN" :disabled="settings.result_visibility === 'ALWAYS' || settings.result_visibility === 'SCORE_ONLY'">Нәтижелерді көрсетпеу</option>
               </select>
             </div>
           </div>
@@ -796,6 +796,34 @@ watch(selectAllStudents, (val) => {
     assignedStudentIds.value = []
   }
 })
+
+const visibilityLevels: Record<QuizResultVisibility, number> = {
+  [QuizResultVisibility.ALWAYS]: 3,
+  [QuizResultVisibility.SCORE_ONLY]: 2,
+  [QuizResultVisibility.HIDDEN]: 1
+}
+
+watch(
+  () => settings.value.result_visibility,
+  (newVal) => {
+    const curLevel = visibilityLevels[newVal]
+    const endedLevel = visibilityLevels[settings.value.ended_result_visibility]
+    if (endedLevel < curLevel) {
+      settings.value.ended_result_visibility = newVal
+    }
+  }
+)
+
+watch(
+  () => settings.value.ended_result_visibility,
+  (newVal) => {
+    const curLevel = visibilityLevels[newVal]
+    const resultLevel = visibilityLevels[settings.value.result_visibility]
+    if (curLevel < resultLevel) {
+      settings.value.result_visibility = newVal
+    }
+  }
+)
 
 // Catalog event handlers
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

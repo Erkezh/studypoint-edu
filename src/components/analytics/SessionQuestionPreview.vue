@@ -2,7 +2,7 @@
   <div class="session-question-preview">
     <!-- Header: Prompt -->
     <div class="mb-4">
-      <div v-if="question.type !== 'PLUGIN'" class="text-lg text-gray-800 mb-4 leading-relaxed font-medium"
+      <div v-if="!isPlugin" class="text-lg text-gray-800 mb-4 leading-relaxed font-medium"
         v-html="formatContent(question.prompt)">
       </div>
     </div>
@@ -10,7 +10,7 @@
     <!-- Question Content -->
     <div class="mb-6">
       <!-- MCQ -->
-      <div v-if="question.type === 'MCQ'" class="space-y-2">
+      <div v-if="isMCQ" class="space-y-2">
         <div
           v-for="(option, index) in (question.data?.choices || question.data?.options || [])"
           :key="index"
@@ -22,37 +22,39 @@
       </div>
 
       <!-- NUMERIC -->
-      <div v-else-if="question.type === 'NUMERIC'" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-else-if="isNumeric" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
         <div class="flex items-center gap-3">
           <span v-if="question.data?.unit" class="text-gray-600">{{ question.data.unit }}</span>
         </div>
       </div>
 
       <!-- TEXT -->
-      <div v-else-if="question.type === 'TEXT'" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-else-if="isText" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
         <!-- Text question preview only -->
       </div>
 
       <!-- PLUGIN / INTERACTIVE -->
-      <div v-if="question.type === 'PLUGIN' || question.type === 'INTERACTIVE'" class="space-y-4">
+      <div v-if="isPlugin" class="space-y-4">
         <!-- Iframe container -->
-        <div class="relative w-full overflow-hidden rounded-xl border border-gray-200 bg-white">
-             <iframe
+        <div class="relative w-full overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[200px]">
+             <!-- Loading Overlay -->
+             <div v-if="iframeLoading" class="absolute inset-0 flex items-center justify-center bg-white/95 z-10 min-h-[200px]">
+                <div class="text-center">
+                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-100 border-t-cyan-500 mb-2"></div>
+                  <p class="text-sm font-semibold text-gray-500">Жүктелуде...</p>
+                </div>
+              </div>
+
+              <iframe
                 v-if="pluginIframeSrc"
                 ref="iframeRef"
                 :src="pluginIframeSrc"
-                class="w-full border-0"
-                :style="{ height: `${iframeHeight}px`, overflow: 'hidden' }"
-                sandbox="allow-scripts allow-same-origin"
+                class="w-full border-0 select-none"
+                :style="{ height: `${iframeHeight}px`, overflow: 'hidden', pointerEvents: 'none' }"
+                sandbox="allow-scripts"
                 scrolling="no"
                 @load="onIframeLoad"
               ></iframe>
-               <div v-else class="flex items-center justify-center h-64 bg-gray-50 text-gray-500">
-                <div class="text-center">
-                  <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-400 mb-2"></div>
-                  <p class="text-sm">Жүктелуде...</p>
-                </div>
-              </div>
         </div>
       </div>
     </div>
@@ -60,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 
 const props = defineProps<{
   question: {
@@ -77,35 +79,67 @@ const props = defineProps<{
     userAnswer: unknown
     isCorrect: boolean
     correctAnswer: unknown
+    seed?: number | string | null
   }
 }>()
 
+const qType = computed(() => String(props.question.type || '').toUpperCase())
+const isPlugin = computed(() => qType.value === 'PLUGIN' || qType.value === 'INTERACTIVE')
+const isMCQ = computed(() => qType.value === 'MCQ')
+const isNumeric = computed(() => qType.value === 'NUMERIC')
+const isText = computed(() => qType.value === 'TEXT')
+
 const iframeRef = ref<HTMLIFrameElement | null>(null)
 const pluginIframeSrc = ref('')
-const iframeHeight = ref(420)
+const iframeLoading = ref(true)
+
+const getDefaultHeight = () => {
+  const data = props.question.data
+  if (data && typeof data.height === 'number') {
+    return Math.min(1400, Math.max(450, data.height))
+  }
+  if (data && typeof data.height === 'string') {
+    const val = parseInt(data.height, 10)
+    if (!isNaN(val)) return Math.min(1400, Math.max(450, val))
+  }
+  return 650
+}
+
+const iframeHeight = ref(getDefaultHeight())
 
 const setIframeHeight = (height: unknown) => {
-  if (typeof height !== 'number' || !Number.isFinite(height) || height <= 0) return
-  iframeHeight.value = Math.max(420, Math.min(Math.ceil(height) + 24, 3000))
+  if (height === null || height === undefined) return
+  let parsedHeight = 0
+  if (typeof height === 'number') {
+    parsedHeight = height
+  } else if (typeof height === 'string') {
+    parsedHeight = parseFloat(height)
+  }
+  if (isNaN(parsedHeight) || parsedHeight <= 0) return
+  iframeHeight.value = Math.max(450, Math.min(Math.ceil(parsedHeight) + 32, 3000))
 }
 
 const measureIframeContent = () => {
-  window.setTimeout(() => {
-    try {
-      const doc = iframeRef.value?.contentDocument
-      if (!doc) return
-      const body = doc.body
-      const html = doc.documentElement
-      setIframeHeight(Math.max(
-        body?.scrollHeight || 0,
-        body?.offsetHeight || 0,
-        html?.scrollHeight || 0,
-        html?.offsetHeight || 0,
-      ))
-    } catch {
-      // Cross-origin or sandbox restrictions: rely on postMessage resize events.
-    }
-  }, 100)
+  // Staggered measurements to handle dynamic rendering / load latency
+  const timeouts = [100, 300, 800, 1500]
+  timeouts.forEach(delay => {
+    window.setTimeout(() => {
+      try {
+        const doc = iframeRef.value?.contentDocument
+        if (!doc) return
+        const body = doc.body
+        const html = doc.documentElement
+        setIframeHeight(Math.max(
+          body?.scrollHeight || 0,
+          body?.offsetHeight || 0,
+          html?.scrollHeight || 0,
+          html?.offsetHeight || 0,
+        ))
+      } catch {
+        // Cross-origin or sandbox restrictions
+      }
+    }, delay)
+  })
 }
 
 // Helpers for formatted display
@@ -140,24 +174,60 @@ const getMCQClass = (option: unknown, index: number | string) => {
 // Plugin Logic (simplified from PracticeSession)
 const loadPlugin = async () => {
   pluginIframeSrc.value = ''
-  iframeHeight.value = 420
+  iframeLoading.value = true
+  iframeHeight.value = getDefaultHeight()
 
-  if (props.question.type !== 'PLUGIN' && props.question.type !== 'INTERACTIVE') return
+  if (!isPlugin.value) return
 
   const qData = props.question.data
   if (!qData) return
 
-  // Common review data structure injected into plugins
+  // Ordinary plugin (HTML/JS)
+  const id = qData.plugin_id as string | undefined
+  const ver = qData.plugin_version as string | undefined
+  const entry = qData.entry as string | undefined
+  if (!id || !ver || !entry) return
+
+  const hasUserAnswer = props.question.userAnswer !== null && props.question.userAnswer !== undefined
+
+  if (!hasUserAnswer) {
+    // Question-only preview: load in quiz+frozen mode to just show the question
+    const params = new URLSearchParams({
+      embed: '1',
+      mode: 'quiz',
+      frozen: '1',
+      questionData: qData ? JSON.stringify(qData) : '',
+      seed: props.question.seed ? String(props.question.seed) : ''
+    })
+    pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
+    return
+  }
+
+  // Review mode: show student answer + correct answer
   const rawUserAns = normalizePayload(props.question.userAnswer) as Record<string, unknown> | null
-  const questionData = (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.questionData : null
-  const answerData = (rawUserAns && typeof rawUserAns === 'object') ? rawUserAns.answerData : null
+  
+  const isWrapper = rawUserAns && typeof rawUserAns === 'object' && !Array.isArray(rawUserAns) && (
+    'studentAnswer' in rawUserAns ||
+    'student_answer' in rawUserAns ||
+    'userAnswer' in rawUserAns ||
+    'user_answer' in rawUserAns ||
+    'correctAnswer' in rawUserAns ||
+    'correct_answer' in rawUserAns ||
+    'expectedAnswer' in rawUserAns ||
+    'expected_answer' in rawUserAns ||
+    'answerData' in rawUserAns ||
+    'questionData' in rawUserAns
+  )
+
+  const questionData = isWrapper ? (rawUserAns.questionData || rawUserAns.visualData) : props.question.data
+  const answerData = isWrapper ? rawUserAns.answerData : null
 
   const reviewData = {
     mode: 'review',
-    studentAnswer: (rawUserAns && typeof rawUserAns === 'object')
+    studentAnswer: isWrapper
       ? (rawUserAns.studentAnswer ?? rawUserAns.student_answer ?? rawUserAns.userAnswer ?? rawUserAns.user_answer ?? rawUserAns.answer ?? rawUserAns.value)
       : props.question.userAnswer,
-    correctAnswer: (rawUserAns && typeof rawUserAns === 'object')
+    correctAnswer: isWrapper
       ? (rawUserAns.correctAnswer ?? rawUserAns.correct_answer ?? rawUserAns.expectedAnswer ?? rawUserAns.expected_answer ?? props.question.correctAnswer)
       : props.question.correctAnswer,
     isCorrect: props.question.isCorrect,
@@ -165,22 +235,18 @@ const loadPlugin = async () => {
     answerData
   }
 
-  // Ordinary plugin (HTML/JS)
-  const id = qData.plugin_id as string | undefined
-  const ver = qData.plugin_version as string | undefined
-  const entry = qData.entry as string | undefined
-  if (id && ver && entry) {
-    const params = new URLSearchParams({
-      embed: '1',
-      mode: 'review',
-      studentAnswer: typeof reviewData.studentAnswer === 'object' ? JSON.stringify(reviewData.studentAnswer) : String(reviewData.studentAnswer || ''),
-      correctAnswer: typeof reviewData.correctAnswer === 'object' ? JSON.stringify(reviewData.correctAnswer) : String(reviewData.correctAnswer || ''),
-      isCorrect: String(reviewData.isCorrect || false),
-      questionData: questionData ? JSON.stringify(questionData) : '',
-      answerData: answerData ? JSON.stringify(answerData) : ''
-    })
-    pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
-  }
+  const params = new URLSearchParams({
+    embed: '1',
+    mode: 'review',
+    frozen: '1',
+    studentAnswer: typeof reviewData.studentAnswer === 'object' ? JSON.stringify(reviewData.studentAnswer) : String(reviewData.studentAnswer || ''),
+    correctAnswer: typeof reviewData.correctAnswer === 'object' ? JSON.stringify(reviewData.correctAnswer) : String(reviewData.correctAnswer || ''),
+    isCorrect: String(reviewData.isCorrect || false),
+    questionData: questionData ? JSON.stringify(questionData) : '',
+    answerData: answerData ? JSON.stringify(answerData) : '',
+    seed: props.question.seed ? String(props.question.seed) : ''
+  })
+  pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
 }
 
 const normalizePayload = (payload: unknown): unknown => {
@@ -206,6 +272,7 @@ const handleIframeMessage = (event: MessageEvent) => {
 }
 
 const onIframeLoad = () => {
+    iframeLoading.value = false
     measureIframeContent()
     // Optional: Send message to iframe as a fallback mechanism
     try {
@@ -243,5 +310,11 @@ watch(() => props.question, () => {
 </script>
 
 <style scoped>
-/* Add any specific styles here */
+iframe {
+  overflow: hidden;
+  scrollbar-width: none;
+}
+iframe::-webkit-scrollbar {
+  display: none;
+}
 </style>

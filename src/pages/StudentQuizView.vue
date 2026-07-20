@@ -72,41 +72,7 @@
             </div>
             
             <div v-if="currentQuestion" class="flex-1 flex flex-col justify-center">
-
-              <!-- ===== ANSWERED STATE: show submitted answer ===== -->
-              <div v-if="isCurrentQuestionAnswered && !isCurrentQuestionPlugin" class="w-full max-w-2xl">
-                <!-- Question prompt (always visible in answered state) -->
-                <p class="text-lg sm:text-2xl text-gray-800 mb-6 leading-relaxed font-medium"
-                  v-html="formatPrompt(getQuestionPrompt(currentQuestion))">
-                </p>
-
-                <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5 sm:p-6">
-                  <div class="flex items-center gap-3 mb-3">
-                    <div class="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shrink-0">
-                      <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span class="text-sm font-bold text-emerald-700 uppercase tracking-wider">Жауап берілді</span>
-                  </div>
-                  <div class="text-lg sm:text-xl font-semibold text-gray-800 pl-11">
-                    {{ getStudentSubmittedAnswerText(currentQuestion.id) }}
-                  </div>
-                </div>
-
-                <button
-                  @click="clearCurrentAnswer"
-                  class="mt-5 flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all text-sm"
-                >
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  Жауапты өзгерту
-                </button>
-              </div>
-
-              <!-- ===== UNANSWERED STATE: show question form ===== -->
-              <div v-else>
+              <div>
                 <!-- Question prompt (hidden for plugins since iframe shows it) -->
                 <p v-if="!isCurrentQuestionPlugin" class="text-lg sm:text-2xl text-gray-800 mb-8 sm:mb-10 leading-relaxed font-medium"
                   v-html="formatPrompt(currentQuestion.question?.prompt || '')">
@@ -119,7 +85,12 @@
                       v-for="(option, index) in getOptions(currentQuestion.question?.data)"
                       :key="index"
                       @click="submitAnswer(option)"
-                      class="w-full text-left p-4 sm:p-5 border-2 border-gray-200 rounded-xl hover:border-green-400 hover:bg-green-50 focus:border-green-500 focus:bg-green-50 transition-all text-base sm:text-lg"
+                      class="w-full text-left p-4 sm:p-5 border-2 rounded-xl text-base sm:text-lg transition-all"
+                      :class="[
+                        isOptionSelected(option)
+                          ? 'border-cyan-500 bg-[#e3f2fd]/40 font-semibold text-cyan-700'
+                          : 'border-gray-200 hover:border-green-400 hover:bg-green-50 focus:border-green-500 focus:bg-green-50 text-gray-700'
+                      ]"
                     >
                       <span v-html="formatPrompt(typeof option === 'object' && option !== null ? ((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || String(option)) as string : String(option))"></span>
                     </button>
@@ -159,7 +130,7 @@
                       ref="pluginIframeRef"
                       :src="pluginIframeSrc"
                       :style="{ width: '100%', height: pluginHeight + 'px', border: 'none', borderRadius: '12px' }"
-                      sandbox="allow-scripts allow-same-origin"
+                      sandbox="allow-scripts"
                       scrolling="no"
                       class="rounded-xl"
                     ></iframe>
@@ -167,9 +138,9 @@
                       Плагин жүктелуде...
                     </div>
 
-                    <!-- Change answer button under iframe if already answered -->
+                    <!-- If already answered during active quiz, show a button to change it -->
                     <button
-                      v-if="isCurrentQuestionAnswered"
+                      v-if="isCurrentQuestionAnswered && !isFinished"
                       @click="clearCurrentAnswer"
                       class="mt-5 flex items-center gap-2 px-6 py-3 bg-white border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:border-orange-400 hover:text-orange-600 hover:bg-orange-50 transition-all text-sm"
                     >
@@ -221,67 +192,181 @@
       </div>
 
       <!-- Finished state -->
-      <div v-else-if="isFinished" class="flex-1 flex flex-col items-center justify-center py-8">
-        <div class="bg-white p-8 sm:p-12 rounded-2xl shadow-xl text-center max-w-2xl w-full border border-gray-100 relative overflow-hidden">
-          <div class="absolute top-0 left-0 w-full h-3 bg-green-500"></div>
-          
-          <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-            </svg>
+      <div v-else-if="isFinished" class="w-full max-w-7xl mx-auto px-4 py-8 space-y-8 flex-1">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between border-b border-gray-200 pb-4">
+          <div class="flex items-center gap-3">
+            <h1 class="text-3xl font-extrabold text-gray-700 tracking-tight uppercase">Квиз нәтижелері</h1>
           </div>
-          
-          <h2 class="text-3xl font-bold text-gray-800 mb-4">Керемет жұмыс!</h2>
-          <p class="text-gray-600 mb-8 text-lg">Сіз барлық сұрақтарды аяқтадыңыз.</p>
-          
-          <div class="grid gap-4 max-w-md mx-auto mb-8" :class="activeVisibilitySetting !== 'HIDDEN' ? 'grid-cols-3' : 'grid-cols-2'">
-             <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Сұрақтар</div>
-                <div class="text-2xl font-bold text-gray-800">{{ sortedQuestions.length }}</div>
-             </div>
-             <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Уақыт</div>
-                <div class="text-2xl font-bold text-gray-800 font-mono">{{ formatTimeCompact(currentTime) }}</div>
-             </div>
-             <div v-if="activeVisibilitySetting !== 'HIDDEN'" class="bg-gray-50 border border-gray-200 p-4 rounded-xl">
-                <div class="text-sm text-gray-500 uppercase font-semibold mb-1">Ұпай</div>
-                <div class="text-2xl font-bold text-green-600 font-mono">{{ currentAssignment?.score ?? 100 }}%</div>
-             </div>
-          </div>
+          <button @click="triggerPrint()" class="text-gray-400 hover:text-gray-600 transition p-2 rounded-lg hover:bg-gray-100 hidden sm:inline-flex items-center gap-2 font-semibold text-sm">
+            🖨️ Басып шығару
+          </button>
+        </div>
 
-          <!-- Detailed review of questions -->
-          <div v-if="activeVisibilitySetting === 'ALWAYS' && currentAssignment?.question_results" class="mt-8 text-left border-t border-gray-100 pt-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Жауаптарды шолу:</h3>
-            <div class="space-y-4 max-h-[300px] overflow-y-auto pr-2">
-              <div 
-                v-for="q in sortedQuestions" 
-                :key="q.id" 
-                class="p-4 rounded-xl border flex gap-3 text-left"
-                :class="q.id && isQuestionCorrect(q.id) ? 'bg-green-50/50 border-green-100' : 'bg-red-50/50 border-red-100'"
-              >
-                <div class="w-6 h-6 rounded-full flex items-center justify-center text-white shrink-0 mt-0.5 text-xs font-bold"
-                  :class="q.id && isQuestionCorrect(q.id) ? 'bg-green-500' : 'bg-red-500'"
-                >
-                  {{ q.id && isQuestionCorrect(q.id) ? '✓' : '✗' }}
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="font-medium text-gray-800 text-sm" v-html="formatPrompt(getQuestionPrompt(q))"></p>
-                  <p class="text-xs text-gray-500 mt-1">
-                    Сіздің жауабыңыз: <span class="font-semibold text-gray-700">{{ getStudentSubmittedAnswerText(q.id) }}</span>
-                  </p>
-                  <p v-if="q.id && !isQuestionCorrect(q.id)" class="text-xs text-green-600 mt-1">
-                    Дұрыс жауап: <span class="font-semibold">{{ getCorrectAnswerText(q) }}</span>
-                  </p>
-                </div>
+        <!-- Stats Cards Grid -->
+        <div 
+          class="grid gap-6 mb-6"
+          :class="{
+            'grid-cols-1 md:grid-cols-3': activeVisibilitySetting !== 'HIDDEN',
+            'grid-cols-1 max-w-md mx-auto': activeVisibilitySetting === 'HIDDEN'
+          }"
+        >
+          <!-- Correct Answers -->
+          <div v-if="activeVisibilitySetting !== 'HIDDEN'" class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex items-center gap-5">
+            <div class="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center text-green-500 shrink-0 text-xl font-bold">
+              ✓
+            </div>
+            <div>
+              <div class="text-2xl font-black text-gray-800 font-mono">
+                {{ sortedQuestions.filter(q => q.id && isQuestionCorrect(q.id)).length }} <span class="text-gray-400 font-normal text-sm">/ {{ sortedQuestions.length }}</span>
               </div>
+              <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Дұрыс жауаптар</div>
             </div>
           </div>
 
-          <button @click="$router.push('/my-cabinet')" 
-            class="px-8 py-3 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 transition-colors w-full sm:w-auto mt-8">
-            Жалғастыру
+          <!-- Score -->
+          <div v-if="activeVisibilitySetting !== 'HIDDEN'" class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex items-center gap-5">
+            <div class="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 shrink-0 text-xl font-bold">
+              %
+            </div>
+            <div>
+              <div class="text-2xl font-black text-blue-600 font-mono">
+                {{ currentAssignment?.score ?? 100 }}%
+              </div>
+              <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Квиз ұпайы</div>
+            </div>
+          </div>
+
+          <!-- Time Spent -->
+          <div class="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm flex items-center gap-5">
+            <div class="w-14 h-14 bg-cyan-50 rounded-full flex items-center justify-center text-cyan-500 shrink-0 text-xl font-bold">
+              ⏱
+            </div>
+            <div>
+              <div class="text-2xl font-black text-gray-800 font-mono">
+                {{ formatTimeCompact(currentAssignment?.time_spent_seconds || currentTime) }}
+              </div>
+              <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mt-1">Жұмсалған уақыт</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info boxes for restricted visibility -->
+        <div v-if="activeVisibilitySetting === 'SCORE_ONLY'" class="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-blue-700 text-center font-semibold text-sm shadow-sm flex flex-col items-center gap-2 mb-6">
+          <span class="text-xl">ℹ️</span>
+          <span>Жұмысыңыз сәтті қабылданды! Сұрақтар мен қателерді талдау квиз толық аяқталғаннан кейін қолжетімді болады.</span>
+        </div>
+
+        <div v-if="activeVisibilitySetting === 'HIDDEN'" class="bg-blue-50 border border-blue-100 rounded-2xl p-6 text-blue-700 text-center font-semibold text-sm shadow-sm flex flex-col items-center gap-2 mb-6">
+          <span class="text-xl">ℹ️</span>
+          <span>Жұмысыңыз сәтті қабылданды! Квиз нәтижелері мен дұрыс жауаптарын мұғалім кейінірек жариялайды.</span>
+        </div>
+
+        <!-- Question Review Container -->
+        <div v-if="activeVisibilitySetting === 'ALWAYS' && currentAssignment?.question_results" class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+          <div class="bg-cyan-600 px-6 py-4 flex items-center justify-between">
+            <h3 class="text-lg font-bold text-white">Сұрақтарды талдау</h3>
+          </div>
+
+          <div class="divide-y divide-gray-150">
+            <div 
+              v-for="(q, idx) in sortedQuestions" 
+              :key="q.id"
+              class="flex border-b border-gray-100 last:border-b-0 bg-white"
+            >
+              <!-- Left border indicator -->
+              <div 
+                class="w-1.5 shrink-0" 
+                :class="q.id && isQuestionCorrect(q.id) ? 'bg-green-500' : 'bg-red-500'"
+              ></div>
+
+              <div class="flex-1 flex gap-4 p-6 text-left">
+                <!-- Number + icon -->
+                <div class="flex flex-col items-center gap-1 shrink-0 w-14">
+                  <span class="text-[11px] text-gray-400 text-center font-bold">
+                    {{ idx + 1 }} / {{ sortedQuestions.length }}
+                  </span>
+                  <span 
+                    class="text-lg font-black"
+                    :class="q.id && isQuestionCorrect(q.id) ? 'text-green-600' : 'text-red-500'"
+                  >
+                    {{ q.id && isQuestionCorrect(q.id) ? '✓' : '✗' }}
+                  </span>
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0 space-y-6">
+                  <!-- Header info -->
+                  <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <div>
+                      <h4 class="text-sm font-bold text-gray-800">Сұрақ {{ idx + 1 }}</h4>
+                      <p class="text-[10px] text-gray-400 font-bold mt-0.5">
+                        Деңгей {{ q?.question?.level || 2 }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Question Iframe/Prompt Preview -->
+                  <div class="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                    <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Сұрақ:</div>
+                    <SessionQuestionPreview 
+                      :question="buildQuestionReview(q)"
+                    />
+                  </div>
+
+                  <!-- Student and Correct Answers -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Student's submitted answer -->
+                    <div class="space-y-2">
+                      <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Сіздің жауабыңыз:</div>
+                      
+                      <!-- Plugin visual answer -->
+                      <div v-if="isQuestionPluginType(q) && buildStudentReviewPreview(q, isQuestionCorrect(q.id))" class="rounded-xl border p-2 overflow-hidden bg-white shadow-sm" :class="q.id && isQuestionCorrect(q.id) ? 'border-green-200' : 'border-red-200'">
+                        <SessionQuestionPreview :question="buildStudentReviewPreview(q, isQuestionCorrect(q.id))!" />
+                      </div>
+
+                      <!-- Textual fallback -->
+                      <div 
+                        v-else
+                        class="border rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm"
+                        :class="q.id && isQuestionCorrect(q.id) ? 'border-green-200 text-green-700 bg-green-50/20' : 'border-red-200 text-red-700 bg-red-50/20'"
+                      >
+                        {{ getStudentSubmittedAnswerText(q.id) }}
+                      </div>
+                    </div>
+
+                    <!-- Correct answer (only shown if student's answer was incorrect) -->
+                    <div v-if="q.id && !isQuestionCorrect(q.id)" class="space-y-2">
+                      <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Дұрыс жауап:</div>
+
+                      <!-- Plugin visual correct answer -->
+                      <div v-if="isQuestionPluginType(q) && buildCorrectReviewPreview(q)" class="rounded-xl border border-green-200 p-2 overflow-hidden bg-white bg-green-50/10 shadow-sm">
+                        <SessionQuestionPreview :question="buildCorrectReviewPreview(q)!" />
+                      </div>
+
+                      <!-- Textual fallback -->
+                      <div 
+                        v-else
+                        class="border border-green-200 rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm text-green-700 bg-green-50/20"
+                      >
+                        {{ getCorrectAnswerText(q) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-center pt-4">
+          <button @click="$router.push('/my-cabinet')" class="px-8 py-3.5 bg-cyan-600 hover:bg-cyan-700 text-white font-bold rounded-xl transition-all shadow-md shadow-cyan-600/20 text-md cursor-pointer">
+            Кабинетке қайту
           </button>
         </div>
+
       </div>
     </main>
 
@@ -343,6 +428,7 @@ import { ref, computed, onMounted, onUnmounted, watch, isRef } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
+import SessionQuestionPreview from '@/components/analytics/SessionQuestionPreview.vue'
 import { quizApi, type QuizResponse } from '@/api/quiz'
 import router from '@/router'
 
@@ -402,6 +488,93 @@ const activeVisibilitySetting = computed(() => {
     return currentQuiz.value.result_visibility || 'ALWAYS'
   }
 })
+
+type QuizQuestion = QuizResponse['questions'][number]
+
+const buildQuestionReview = (q: QuizQuestion) => {
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: null,
+    isCorrect: false,
+    correctAnswer: getCorrectAnswerText(q),
+    seed: q.seed || null
+  }
+}
+
+const isQuestionPluginType = (q: QuizQuestion): boolean => {
+  const qType = String(q.question?.type || '').toUpperCase()
+  return qType === 'PLUGIN' || qType === 'INTERACTIVE'
+}
+
+const getStudentRawSubmission = (qId: string | number | undefined) => {
+  if (qId === undefined) return null
+  if (currentAssignment.value?.question_results) {
+    const res = currentAssignment.value.question_results[String(qId)]
+    if (res && typeof res === 'object') {
+      const resObj = res as Record<string, unknown>
+      return resObj.submitted_answer || null
+    }
+  }
+  return null
+}
+
+const getCorrectAnswerPayload = (qId: string | number | undefined) => {
+  if (qId === undefined) return null
+  if (currentAssignment.value?.question_results) {
+    const res = currentAssignment.value.question_results[String(qId)]
+    if (res && typeof res === 'object') {
+      const resObj = res as Record<string, unknown>
+      return resObj.correct_answer || null
+    }
+  }
+  const q = sortedQuestions.value.find(x => String(x.id) === String(qId))
+  return q?.question?.correct_answer || null
+}
+
+const buildStudentReviewPreview = (q: QuizQuestion, isCorrect: boolean) => {
+  const rawAnswer = getStudentRawSubmission(q.id)
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: rawAnswer,
+    isCorrect,
+    correctAnswer: q.question?.correct_answer || null,
+    seed: q.seed || null
+  }
+}
+
+const buildCorrectReviewPreview = (q: QuizQuestion) => {
+  const rawCorrectAnswer = getCorrectAnswerPayload(q.id)
+  const rawSubmitted = getStudentRawSubmission(q.id) as Record<string, unknown> | null
+  const studentQData = rawSubmitted ? (rawSubmitted.questionData || rawSubmitted.visualData) : null
+  const studentAnsData = rawSubmitted ? rawSubmitted.answerData : null
+
+  const mockCorrectPayload = {
+    isCorrect: true,
+    userAnswer: rawCorrectAnswer,
+    studentAnswer: rawCorrectAnswer,
+    correctAnswer: rawCorrectAnswer,
+    questionData: studentQData || q.question?.data || null,
+    answerData: studentAnsData
+  }
+
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: mockCorrectPayload,
+    isCorrect: true,
+    correctAnswer: rawCorrectAnswer,
+    seed: q.seed || null
+  }
+}
+
+const triggerPrint = () => {
+  window.print()
+}
 
 const currentQuestion = computed(() => {
   if (!sortedQuestions.value.length || currentIndex.value >= sortedQuestions.value.length) return null
@@ -467,26 +640,39 @@ const loadCurrentPlugin = async () => {
   const ansObj = questionAnswers.value.find(a => String(a.question_id) === qId)
   
   if (ansObj && ansObj.submitted_answer) {
-    // Already answered: load in review mode!
     const ans = ansObj.submitted_answer as Record<string, unknown>
     const studentAnswer = typeof ans.userAnswer === 'object' ? JSON.stringify(ans.userAnswer) : String(ans.userAnswer || '')
-    const correctAnswer = typeof ans.correctAnswer === 'object' ? JSON.stringify(ans.correctAnswer) : String(ans.correctAnswer || '')
-    const isCorrect = String(ans.isCorrect || false)
     const questionData = ans.questionData ? JSON.stringify(ans.questionData) : ''
     const answerData = ans.answerData ? JSON.stringify(ans.answerData) : ''
-    
-    const params = new URLSearchParams({
-      embed: '1',
-      mode: 'review',
-      seed: String(seed || ''),
-      studentAnswer,
-      correctAnswer,
-      isCorrect,
-      questionData,
-      answerData
-    })
-    
-    pluginIframeSrc.value = `${base}?${params.toString()}`
+
+    if (isFinished.value) {
+      // Already answered and quiz finished: load in review mode!
+      const correctAnswer = typeof ans.correctAnswer === 'object' ? JSON.stringify(ans.correctAnswer) : String(ans.correctAnswer || '')
+      const isCorrect = String(ans.isCorrect || false)
+
+      const params = new URLSearchParams({
+        embed: '1',
+        mode: 'review',
+        seed: String(seed || ''),
+        studentAnswer,
+        correctAnswer,
+        isCorrect,
+        questionData,
+        answerData
+      })
+      pluginIframeSrc.value = `${base}?${params.toString()}`
+    } else {
+      // Still taking the quiz: load in quiz mode with studentAnswer to display it frozen
+      const params = new URLSearchParams({
+        embed: '1',
+        mode: 'quiz',
+        seed: String(seed || ''),
+        studentAnswer,
+        questionData,
+        answerData
+      })
+      pluginIframeSrc.value = `${base}?${params.toString()}`
+    }
   } else {
     // Unanswered: load in quiz mode
     pluginIframeSrc.value = seed ? `${base}?embed=1&mode=quiz&seed=${seed}` : `${base}?embed=1&mode=quiz`
@@ -573,6 +759,20 @@ const getOptions = (data: unknown) => {
   return d.choices || d.options || []
 }
 
+const isOptionSelected = (option: unknown) => {
+  if (!currentQuestion.value) return false
+  const qId = String(currentQuestion.value.id)
+  const prevAnswer = questionAnswers.value.find(a => String(a.question_id) === qId)
+  if (!prevAnswer) return false
+
+  const prevAnswerText = formatSubmittedAnswerText(prevAnswer.submitted_answer)
+  const optionText = typeof option === 'object' && option !== null
+    ? String((option as Record<string, unknown>).label || (option as Record<string, unknown>).text || (option as Record<string, unknown>).value || '')
+    : String(option)
+
+  return prevAnswerText === optionText
+}
+
 const showConfirmSubmitModal = ref(false)
 const pendingFinalAnswer = ref<unknown>('')
 
@@ -598,21 +798,26 @@ const submitAnswer = (answer: unknown) => {
   // Clear input AFTER saving finalAnswer
   textAnswer.value = ''
 
-  // Stay on current question — the template will show the "answered" state.
-  // If all questions are answered, show the submit modal.
-  const allAnswered = sortedQuestions.value.every(q => hasAnswered(q.id))
-  if (allAnswered) {
-    pendingFinalAnswer.value = finalAnswer
-    showConfirmSubmitModal.value = true
+  // Immediately transition to next question if not the last one
+  if (currentIndex.value < sortedQuestions.value.length - 1) {
+    currentIndex.value++
+  } else {
+    // If all questions are answered, show the submit modal.
+    const allAnswered = sortedQuestions.value.every(q => hasAnswered(q.id))
+    if (allAnswered) {
+      pendingFinalAnswer.value = finalAnswer
+      showConfirmSubmitModal.value = true
+    }
   }
 }
 
 const confirmSubmitQuiz = async () => {
   showConfirmSubmitModal.value = false
 
+  const userId = authStore.user?.id || ''
   // Clear progress storage since quiz is finished
   try {
-    localStorage.removeItem(`quiz_progress_${props.quizId}`)
+    localStorage.removeItem(`quiz_progress_${userId}_${props.quizId}`)
   } catch {}
 
   // Submit to API
@@ -637,7 +842,7 @@ const confirmSubmitQuiz = async () => {
   
   try {
     const finalScore = currentAssignment.value?.score ?? 100
-    localStorage.setItem(`quiz_result_${props.quizId}`, JSON.stringify({
+    localStorage.setItem(`quiz_result_${userId}_${props.quizId}`, JSON.stringify({
       completedAt: new Date().toISOString(),
       score: finalScore,
       finalAnswer: pendingFinalAnswer.value
@@ -651,7 +856,8 @@ const confirmSubmitQuiz = async () => {
 watch([currentTime, questionAnswers], () => {
   if (currentQuiz.value && !isFinished.value) {
     try {
-      localStorage.setItem(`quiz_progress_${props.quizId}`, JSON.stringify({
+      const userId = authStore.user?.id || ''
+      localStorage.setItem(`quiz_progress_${userId}_${props.quizId}`, JSON.stringify({
         currentTime: currentTime.value,
         answers: questionAnswers.value
       }))
@@ -805,11 +1011,12 @@ const getCorrectAnswerText = (
 // Timer Functions
 const stopTimer = () => {
   // Clear from window-level storage (handles HMR and orphaned intervals)
-  const existingId = (window as any)[QUIZ_TIMER_KEY] as number | undefined
+  const win = window as unknown as Record<string, number | null>
+  const existingId = win[QUIZ_TIMER_KEY]
   if (existingId) {
     console.log('[QuizTimer] STOP timer (window), intervalId =', existingId, ', currentTime =', currentTime.value)
     clearInterval(existingId)
-    ;(window as any)[QUIZ_TIMER_KEY] = null
+    win[QUIZ_TIMER_KEY] = null
   }
 }
 
@@ -828,7 +1035,8 @@ const startTimer = () => {
     }
     currentTime.value++
   }, 1000)
-  ;(window as any)[QUIZ_TIMER_KEY] = id
+  const win = window as unknown as Record<string, number | null>
+  win[QUIZ_TIMER_KEY] = id
 }
 
 // Timer Functions
@@ -858,6 +1066,9 @@ const fetchQuiz = async () => {
       if (assignment?.completed_at) {
         isFinished.value = true
         currentIndex.value = foundQuiz.questions.length
+        const questionsList = [...foundQuiz.questions]
+        questionsList.sort((a, b) => a.position - b.position)
+        shuffledQuestions.value = questionsList
       } else {
         if (assignment && !assignment.completed_at) {
           // Mark as started in backend asynchronously
@@ -866,13 +1077,17 @@ const fetchQuiz = async () => {
           })
         }
 
-        const resultStr = localStorage.getItem(`quiz_result_${props.quizId}`)
+        const userId = authStore.user?.id || ''
+        const resultStr = localStorage.getItem(`quiz_result_${userId}_${props.quizId}`)
         if (resultStr) {
           isFinished.value = true
           currentIndex.value = foundQuiz.questions.length
+          const questionsList = [...foundQuiz.questions]
+          questionsList.sort((a, b) => a.position - b.position)
+          shuffledQuestions.value = questionsList
         } else {
           // Restore progress from localStorage if it exists
-          const progressStr = localStorage.getItem(`quiz_progress_${props.quizId}`)
+          const progressStr = localStorage.getItem(`quiz_progress_${userId}_${props.quizId}`)
           if (progressStr) {
             try {
               const progress = JSON.parse(progressStr)

@@ -173,17 +173,37 @@ const KazakhRectangleAreaApp = () => {
   };
   useEffect(() => {
     if (isReview) {
-      const targetArea = parseInt(reviewMode.correctAnswer, 10);
-      const restoredProblem = {
-        id: seed,
-        question: `\u0411\u0435\u0440\u0456\u043B\u0433\u0435\u043D \u0430\u0443\u0434\u0430\u043D\u044B ${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0431\u043E\u044F\u04A3\u044B\u0437`,
-        correctAnswer: reviewMode.correctAnswer,
-        targetArea,
-        correctAnswers: generateCorrectAnswers(targetArea)
-      };
+      let targetArea = parseInt(reviewMode.correctAnswer, 10);
+      let restoredProblem;
+      if (isNaN(targetArea)) {
+        const generated = generateProblem();
+        targetArea = generated.targetArea;
+        restoredProblem = {
+          id: seed,
+          question: generated.question,
+          correctAnswer: String(generated.correctAnswer),
+          targetArea,
+          correctAnswers: generated.correctAnswers
+        };
+      } else {
+        restoredProblem = {
+          id: seed,
+          question: `\u0411\u0435\u0440\u0456\u043B\u0433\u0435\u043D \u0430\u0443\u0434\u0430\u043D\u044B ${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0431\u043E\u044F\u04A3\u044B\u0437`,
+          correctAnswer: reviewMode.correctAnswer,
+          targetArea,
+          correctAnswers: generateCorrectAnswers(targetArea)
+        };
+      }
       setProblem(restoredProblem);
       const userGrid = reviewMode.answerData?.userDisplay?.grids?.[0];
-      const restoredCells = new Set(userGrid?.filled || []);
+      const noStudentAnswer = !userGrid || !userGrid.filled || userGrid.filled.length === 0;
+      let restoredCells;
+      if (noStudentAnswer) {
+        const correctAnsObj = restoredProblem.correctAnswers[0];
+        restoredCells = new Set(correctAnsObj ? Array.from(correctAnsObj.cells) : []);
+      } else {
+        restoredCells = new Set(userGrid?.filled || []);
+      }
       setSelectedCells(restoredCells);
       const correctGrid = reviewMode.answerData?.correctDisplay?.grids?.[0];
       const correctCells = correctGrid?.filled ? new Set(correctGrid.filled) : restoredProblem.correctAnswers[0]?.cells || /* @__PURE__ */ new Set();

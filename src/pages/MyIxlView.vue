@@ -250,12 +250,12 @@
                 <td class="font-semibold text-gray-800">{{ quiz.name }}</td>
                 <td>{{ formatDateFull(getQuizCompletedDate(quiz.id) || quiz.created_at) }}</td>
                 <td class="font-bold text-green-600">
-                  <span v-if="getQuizScore(quiz.id) !== null">{{ getQuizScore(quiz.id) }}%</span>
+                  <span v-if="shouldShowQuizScore(quiz) && getQuizScore(quiz.id) !== null">{{ getQuizScore(quiz.id) }}%</span>
                   <span v-else>Аяқталды</span>
                 </td>
                 <td>
                   <button @click="startQuiz(quiz.id)" class="px-3 py-1 bg-cyan-50 text-cyan-600 font-semibold rounded-lg hover:bg-cyan-100 transition whitespace-nowrap text-xs cursor-pointer">
-                    Нәтижелерді көру
+                    {{ shouldShowQuizResults(quiz) ? 'Нәтижелерді көру' : 'Нәтижені көру' }}
                   </button>
                 </td>
               </tr>
@@ -323,7 +323,8 @@ const isQuizCompleted = (quizId: string) => {
     return true
   }
   try {
-    return !!localStorage.getItem(`quiz_result_${quizId}`)
+    const userId = authStore.user?.id || ''
+    return !!localStorage.getItem(`quiz_result_${userId}_${quizId}`)
   } catch {
     return false
   }
@@ -346,7 +347,8 @@ const getQuizCompletedDate = (quizId: string) => {
     return assignment.completed_at
   }
   try {
-    const data = localStorage.getItem(`quiz_result_${quizId}`)
+    const userId = authStore.user?.id || ''
+    const data = localStorage.getItem(`quiz_result_${userId}_${quizId}`)
     if (data) {
       const parsed = JSON.parse(data)
       return parsed.completedAt
@@ -359,6 +361,30 @@ const getQuizScore = (quizId: string) => {
   const quiz = assignedQuizzes.value.find(q => q.id === quizId)
   const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
   return assignment?.score ?? null
+}
+
+const isQuizEnded = (quiz: QuizResponse) => {
+  const assignment = quiz.assignments?.find(a => a.student_id === authStore.user?.id)
+  if (!assignment?.end_at) return false
+  return new Date(assignment.end_at) <= new Date()
+}
+
+const getQuizVisibilitySetting = (quiz: QuizResponse) => {
+  if (isQuizEnded(quiz)) {
+    return quiz.ended_result_visibility || 'ALWAYS'
+  } else {
+    return quiz.result_visibility || 'ALWAYS'
+  }
+}
+
+const shouldShowQuizScore = (quiz: QuizResponse) => {
+  const visibility = getQuizVisibilitySetting(quiz)
+  return visibility === 'ALWAYS' || visibility === 'SCORE_ONLY'
+}
+
+const shouldShowQuizResults = (quiz: QuizResponse) => {
+  const visibility = getQuizVisibilitySetting(quiz)
+  return visibility === 'ALWAYS'
 }
 
 
@@ -481,15 +507,18 @@ onMounted(async () => {
 }
 
 .subtab-container {
-  max-width: 900px;
+  width: 88%;
+  max-width: 100%;
   margin: 0 auto;
   display: flex;
   gap: 0;
 }
 
 .subtab-btn {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 16px 28px;
   font-size: 15px;
@@ -500,6 +529,17 @@ onMounted(async () => {
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: all 0.2s;
+  position: relative;
+}
+
+.subtab-btn + .subtab-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background: #e5e7eb;
 }
 
 .subtab-btn:hover {
@@ -524,9 +564,10 @@ onMounted(async () => {
 }
 
 .wave-inner {
-  max-width: 1000px;
+  width: 88%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 40px 0 60px;
 }
 
 /* ===== GREETING ===== */
@@ -885,9 +926,10 @@ onMounted(async () => {
 
 /* ===== QUIZZES TAB ===== */
 .quizzes-content {
-  max-width: 900px;
+  width: 88%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 40px 0 60px;
 }
 
 .quizzes-header {

@@ -124,29 +124,77 @@
                   <span v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="q-plugin-badge">Plugin</span>
                 </div>
                 
-                <!-- Full Interactive / Visual Preview -->
-                <div class="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
+                <!-- 1. Question (Сұрақ) Iframe Preview (always rendered first with userAnswer: null) -->
+                <div class="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6 shadow-sm">
                   <SessionQuestionPreview
                     :question="{
                       prompt: q.prompt || '',
                       type: q.questionType || '',
                       data: (q.data || {}) as Record<string, unknown>,
-                      userAnswer: q.rawUserAnswer,
-                      isCorrect: q.isCorrect,
-                      correctAnswer: q.correctAnswer
+                      userAnswer: null,
+                      isCorrect: false,
+                      correctAnswer: q.correctAnswer,
+                      seed: q.seed
                     }"
                   />
                 </div>
 
-                <div v-if="q.questionType !== 'PLUGIN' && q.questionType !== 'INTERACTIVE'" class="q-answers">
-                  <div class="q-answer-block">
-                    <div class="q-section-label">Дұрыс жауап</div>
-                    <div class="q-answer correct-ans">{{ formatAnswer(q.correctAnswer) }}</div>
-                  </div>
-                  <div class="q-answer-block">
-                    <div class="q-section-label">Пайдаланушы жауабы</div>
-                    <div class="q-answer user-ans" :class="q.isCorrect ? 'ans-correct' : 'ans-incorrect'">
+                <!-- 2. Answers Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Student's Answer (Пайдаланушы жауабы) -->
+                  <div class="space-y-2">
+                    <div class="q-section-label flex items-center gap-2">
+                      <span>Пайдаланушы жауабы</span>
+                      <span 
+                        class="px-2 py-0.5 text-[10px] font-bold rounded-full"
+                        :class="q.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                      >
+                        {{ q.isCorrect ? 'Дұрыс' : 'Қате' }}
+                      </span>
+                    </div>
+
+                    <!-- Plugin visual answer -->
+                    <div v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="rounded-xl border p-2 overflow-hidden bg-white shadow-sm" :class="q.isCorrect ? 'border-green-200' : 'border-red-200'">
+                      <SessionQuestionPreview
+                        :question="{
+                          prompt: q.prompt || '',
+                          type: q.questionType || '',
+                          data: (q.data || {}) as Record<string, unknown>,
+                          userAnswer: q.rawUserAnswer,
+                          isCorrect: q.isCorrect,
+                          correctAnswer: q.correctAnswer,
+                          seed: q.seed
+                        }"
+                      />
+                    </div>
+
+                    <!-- Standard text answer -->
+                    <div 
+                      v-else
+                      class="border rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm"
+                      :class="q.isCorrect ? 'border-green-200 text-green-700 bg-green-50/20' : 'border-red-200 text-red-700 bg-red-50/20'"
+                    >
                       {{ formatAnswer(q.userAnswer) }}
+                    </div>
+                  </div>
+
+                  <!-- Correct Answer (Дұрыс жауап) - shown only if student answered incorrectly -->
+                  <div v-if="!q.isCorrect" class="space-y-2">
+                    <div class="q-section-label">Дұрыс жауап</div>
+
+                    <!-- Plugin visual correct answer -->
+                    <div v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="rounded-xl border border-green-200 p-2 overflow-hidden bg-white bg-green-50/10 shadow-sm">
+                      <SessionQuestionPreview
+                        :question="buildCorrectReviewPayload(q)"
+                      />
+                    </div>
+
+                    <!-- Standard text correct answer -->
+                    <div 
+                      v-else
+                      class="border border-green-200 rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm text-green-700 bg-green-50/20"
+                    >
+                      {{ formatAnswer(q.correctAnswer) }}
                     </div>
                   </div>
                 </div>
@@ -192,6 +240,44 @@ const analyticsStore = useAnalyticsStore()
 // allQuestions is loaded by the parent AnalyticsView (either user's own or student's)
 
 const printReport = () => window.print()
+
+interface MappedQuestion {
+  index: number
+  isCorrect: boolean
+  questionType: string
+  prompt: string
+  correctAnswer: unknown
+  userAnswer: unknown
+  rawUserAnswer: unknown
+  data: Record<string, any>
+  seed: number | string | null
+}
+
+const buildCorrectReviewPayload = (q: MappedQuestion) => {
+  const rawCorrectAnswer = q.correctAnswer
+  const rawSubmitted = q.rawUserAnswer as Record<string, unknown> | null
+  const studentQData = rawSubmitted ? (rawSubmitted.questionData || rawSubmitted.visualData) : null
+  const studentAnsData = rawSubmitted ? rawSubmitted.answerData : null
+
+  const mockCorrectPayload = {
+    isCorrect: true,
+    userAnswer: rawCorrectAnswer,
+    studentAnswer: rawCorrectAnswer,
+    correctAnswer: rawCorrectAnswer,
+    questionData: studentQData || q.data || null,
+    answerData: studentAnsData
+  }
+
+  return {
+    prompt: q.prompt || '',
+    type: q.questionType || '',
+    data: (q.data || {}) as Record<string, unknown>,
+    userAnswer: mockCorrectPayload,
+    isCorrect: true,
+    correctAnswer: rawCorrectAnswer,
+    seed: q.seed
+  }
+}
 
 // ─── Filters ───────────────────────────────────────────────────────────────
 const selectedGrade = ref<number | null>(null)
@@ -437,8 +523,10 @@ const sessions = computed(() => {
           '—'
         )
       }
-      const isPlugin = (q: Record<string, unknown>) =>
-        (q.question_type as string) === 'PLUGIN' || (q.question_type as string) === 'INTERACTIVE'
+      const isPlugin = (q: Record<string, unknown>) => {
+        const type = String(q.question_type || '').toUpperCase()
+        return type === 'PLUGIN' || type === 'INTERACTIVE'
+      }
 
       const questions = dayQs.map(q => {
         globalIndex++
@@ -452,6 +540,7 @@ const sessions = computed(() => {
           userAnswer: pluginQ ? getPluginUserAnswer(q) : q.user_answer,
           rawUserAnswer: q.user_answer,
           data: q.question_data || {},
+          seed: q.seed as number | string | null,
         }
       }).reverse()
 

@@ -89,7 +89,7 @@ header .container,
 .tabs-inner,
 .filters-bar-inner,
 main:not(.class-view-main),
-.quiz-report-view {
+.quizzes-report-inner {
   max-width: 88% !important;
   width: 88% !important;
   margin-left: auto !important;

@@ -1,6 +1,7 @@
 <template>
   <div class="quizzes-report-container p-2 md:p-4 bg-[#f3f7fc] min-h-screen">
-    <!-- Тақырып жолы -->
+    <div class="quizzes-report-inner">
+      <!-- Тақырып жолы -->
     <div class="flex items-center gap-2 mb-6">
       <h1 class="text-3xl font-bold text-gray-800 tracking-tight">КВИЗ ТАЛДАУЫ</h1>
       <!-- Кесте белгішесі -->
@@ -29,7 +30,7 @@
         </div>
 
         <!-- Оқушыны таңдау -->
-        <div v-if="selectedQuiz" class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+        <div v-if="selectedQuiz && isTeacher" class="flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
           <span class="text-xs font-semibold text-gray-400 uppercase mr-2 tracking-wider">Оқушы:</span>
           <select 
             v-model="selectedStudentFilter" 
@@ -92,8 +93,9 @@
     <!-- Квиз талдауының толық көрінісі -->
     <div v-else class="quiz-report-view max-w-full w-full space-y-6">
       
-      <!-- Қосымша беттердің навигациясы -->
-      <div class="flex border-b border-gray-200 bg-transparent quiz-tabs-nav">
+      <template v-if="selectedStudentFilter === 'all'">
+        <!-- Қосымша беттердің навигациясы -->
+        <div class="flex border-b border-gray-200 bg-transparent quiz-tabs-nav">
         <button 
           @click="activeSubTab = 'overview'" 
           class="px-6 py-3 font-semibold text-sm transition-all focus:outline-none border-b-2 -mb-[2px] tracking-wide" 
@@ -313,7 +315,8 @@
                 <tr 
                   v-for="(q, idx) in selectedQuiz.questions" 
                   :key="q.id"
-                  class="hover:bg-gray-50/50 transition"
+                  @click="goToResponses(idx)"
+                  class="hover:bg-gray-50/50 transition cursor-pointer"
                 >
                   <!-- Сұрақ бағаны (Иконкамен) -->
                   <td class="px-4 py-4 whitespace-nowrap">
@@ -367,7 +370,7 @@
                       
                       <!-- Сілтеме -->
                       <button 
-                        @click="activeSubTab = 'responses'" 
+                        @click.stop="goToResponses(idx)" 
                         class="text-cyan-600 hover:text-cyan-700 font-bold text-xs flex items-center gap-1 transition whitespace-nowrap cursor-pointer"
                       >
                         Оқушылардың жауаптарын көру &rarr;
@@ -458,28 +461,12 @@
             </div>
           </div>
 
-          <!-- Сұрақтың тапсырмасы (Prompt) -->
+          <!-- Сұрақтың тапсырмасы (Prompt & Visual/Iframe Preview) -->
           <div class="bg-gray-50 border border-gray-100 rounded-xl p-6">
-            <div class="text-gray-800 font-medium text-base mb-4 whitespace-pre-wrap">
-              {{ selectedQuiz.questions[selectedQuestionIndex]?.question?.prompt }}
-            </div>
-            
-            <!-- MCQ сұрақ нұсқалары -->
-            <div 
-              v-if="selectedQuiz.questions[selectedQuestionIndex]?.question?.type === 'MCQ'" 
-              class="space-y-2 mt-4"
-            >
-              <div 
-                v-for="(choice, cIdx) in getChoicesForQuestion(selectedQuiz.questions[selectedQuestionIndex])" 
-                :key="cIdx"
-                class="flex items-center gap-2 text-sm text-gray-700 bg-white border border-gray-100 rounded-lg p-2.5"
-              >
-                <span class="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-[10px] font-bold text-gray-400">
-                  {{ String.fromCharCode(65 + cIdx) }}
-                </span>
-                <span>{{ choice }}</span>
-              </div>
-            </div>
+            <SessionQuestionPreview 
+              v-if="selectedQuestionPreview" 
+              :question="selectedQuestionPreview" 
+            />
           </div>
 
           <!-- Оқушылардың жауаптарын талдау -->
@@ -511,7 +498,13 @@
                 class="p-4 rounded-xl border transition-all"
                 :class="group.isCorrect ? 'bg-[#f8fcf5] border-green-100' : 'bg-[#fdf8f8] border-red-100'"
               >
+                <!-- Plugin question: render answer as iframe -->
+                <div v-if="isSelectedQuestionPlugin && group.rawAnswer" class="mb-2 rounded-lg border bg-white p-2 overflow-hidden" :class="group.isCorrect ? 'border-green-200' : 'border-red-200'">
+                  <SessionQuestionPreview :question="buildResponsePreview(group.rawAnswer, group.isCorrect)!" />
+                </div>
+                <!-- Non-plugin question: render answer as text -->
                 <div 
+                  v-else
                   class="border rounded-lg bg-white px-4 py-3 font-semibold text-lg w-full max-w-sm mb-2 shadow-sm"
                   :class="group.isCorrect ? 'border-green-200 text-green-700' : 'border-red-200 text-red-700'"
                 >
@@ -522,7 +515,7 @@
                   :class="group.isCorrect ? 'text-[#7cb342]' : 'text-[#ff8a80]'"
                 >
                   <span v-if="group.isCorrect">✓ Дұрыс жауап: {{ group.students.length }} оқушы тапсырды</span>
-                  <span v-else>✗ {{ group.students.length }} оқушы тапсырды</span>
+                  <span v-else>✗ Қате жауап: {{ group.students.length }} оқушы тапсырды</span>
                 </div>
               </div>
             </div>
@@ -559,6 +552,185 @@
 
       </div>
 
+    </template>
+
+    <!-- If a specific student is selected, show their individual quiz results review -->
+    <template v-else>
+      
+      <!-- Оқушы статистикасы & Сұрақтарды талдау -->
+      <div>
+        
+        <!-- Оқушы статистикасы -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <!-- Дұрыс жауаптар саны -->
+          <div class="bg-white border border-gray-100 rounded-xl p-6 shadow-sm flex items-center gap-5">
+            <div class="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center text-green-500 shrink-0 text-xl font-bold">
+              ✓
+            </div>
+            <div>
+              <div class="text-2xl font-black text-gray-800 font-mono">
+                <template v-if="currentStudentReport?.completed">
+                  {{ currentStudentReport.correctAnswers }} <span class="text-gray-400 font-normal text-sm">/ {{ selectedQuiz.questions.length }}</span>
+                </template>
+                <template v-else>
+                  - <span class="text-gray-400 font-normal text-sm">/ {{ selectedQuiz.questions.length }}</span>
+                </template>
+              </div>
+              <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Дұрыс жауаптар</div>
+            </div>
+          </div>
+
+          <!-- Ұпайы -->
+          <div class="bg-white border border-gray-100 rounded-xl p-6 shadow-sm flex items-center gap-5">
+            <div class="w-14 h-14 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 shrink-0 text-xl font-bold">
+              %
+            </div>
+            <div>
+              <div class="text-2xl font-black text-blue-600 font-mono">
+                <template v-if="currentStudentReport?.completed">
+                  {{ currentStudentReport.score }}%
+                </template>
+                <template v-else>
+                  -
+                </template>
+              </div>
+              <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Ұпайы</div>
+            </div>
+          </div>
+
+          <!-- Жұмсалған уақыт -->
+          <div class="bg-white border border-gray-100 rounded-xl p-6 shadow-sm flex items-center gap-5">
+            <div class="w-14 h-14 bg-cyan-50 rounded-full flex items-center justify-center text-cyan-500 shrink-0 text-xl font-bold">
+              ⏱
+            </div>
+            <div>
+              <div class="text-2xl font-black text-gray-800 font-mono">
+                <template v-if="currentStudentReport?.completed">
+                  {{ currentStudentReport.timeSpent }}
+                </template>
+                <template v-else>
+                  -
+                </template>
+              </div>
+              <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mt-0.5">Жұмсалған уақыт</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Сұрақтарды талдау блогы -->
+        <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
+          <div class="bg-cyan-600 px-6 py-4">
+            <h3 class="text-lg font-bold text-white">Сұрақтарды талдау</h3>
+          </div>
+
+          <div class="divide-y divide-gray-150">
+            <div 
+              v-for="(q, idx) in selectedQuiz.questions" 
+              :key="q.id"
+              class="flex border-b border-gray-100 last:border-b-0 bg-white"
+            >
+              <!-- Left border indicator -->
+              <div 
+                class="w-1.5 shrink-0" 
+                :class="(currentStudentReport?.completed && currentStudentReport.questionResults[idx]) ? 'bg-green-500' : 'bg-red-500'"
+              ></div>
+
+              <div class="flex-1 flex gap-4 p-6 text-left">
+                <!-- Number + icon -->
+                <div class="flex flex-col items-center gap-1 shrink-0 w-14">
+                  <span class="text-[11px] text-gray-400 text-center font-bold">
+                    {{ idx + 1 }} / {{ selectedQuiz.questions.length }}
+                  </span>
+                  <span 
+                    class="text-lg font-black"
+                    :class="(currentStudentReport?.completed && currentStudentReport.questionResults[idx]) ? 'text-green-600' : 'text-red-500'"
+                  >
+                    {{ (currentStudentReport?.completed && currentStudentReport.questionResults[idx]) ? '✓' : '✗' }}
+                  </span>
+                </div>
+
+                <!-- Content -->
+                <div class="flex-1 min-w-0 space-y-6">
+                  <!-- Header info -->
+                  <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <div>
+                      <h4 class="text-sm font-bold text-gray-800">Сұрақ {{ idx + 1 }}</h4>
+                      <p class="text-[10px] text-gray-400 font-bold mt-0.5">
+                        Деңгей {{ q?.question?.level || 2 }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- Question Iframe/Prompt Preview -->
+                  <div class="bg-gray-50 border border-gray-100 rounded-xl p-5">
+                    <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Сұрақ:</div>
+                    <SessionQuestionPreview 
+                      :question="buildQuestionReview(q)"
+                    />
+                  </div>
+
+                  <!-- Student and Correct Answers -->
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Student's submitted answer -->
+                    <div class="space-y-2">
+                      <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                        {{ currentStudentReport ? currentStudentReport.full_name : 'Оқушы' }} жауабы:
+                      </div>
+                      
+                      <template v-if="currentStudentReport?.completed">
+                        <!-- Plugin visual answer -->
+                        <div v-if="isQuestionPluginType(q) && buildStudentResponseReview(q, currentStudentReport.questionDetails[idx]?.rawSubmitted, currentStudentReport.questionResults[idx])" class="rounded-xl border p-2 overflow-hidden bg-white shadow-sm" :class="currentStudentReport.questionResults[idx] ? 'border-green-200' : 'border-red-200'">
+                          <SessionQuestionPreview :question="buildStudentResponseReview(q, currentStudentReport.questionDetails[idx]?.rawSubmitted, currentStudentReport.questionResults[idx])!" />
+                        </div>
+
+                        <!-- Textual fallback -->
+                        <div 
+                          v-else
+                          class="border rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm"
+                          :class="currentStudentReport.questionResults[idx] ? 'border-green-200 text-green-700 bg-green-50/20' : 'border-red-200 text-red-700 bg-red-50/20'"
+                        >
+                          {{ currentStudentReport.questionDetails[idx]?.submitted || '—' }}
+                        </div>
+                      </template>
+
+                      <!-- If quiz was not completed / not answered -->
+                      <template v-else>
+                        <div class="border border-red-200 text-red-700 bg-red-50/20 rounded-xl bg-white px-5 py-4 font-semibold text-sm shadow-sm">
+                          ⚠️ {{ currentStudentReport ? currentStudentReport.full_name : 'Оқушы' }} бұл сұраққа жауап бермеді
+                        </div>
+                      </template>
+                    </div>
+
+                    <!-- Correct answer (only shown if student's answer was incorrect or quiz not completed) -->
+                    <div v-if="!currentStudentReport?.completed || !currentStudentReport.questionResults[idx]" class="space-y-2">
+                      <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Дұрыс жауап:</div>
+
+                      <!-- Plugin visual correct answer -->
+                      <div v-if="isQuestionPluginType(q) && buildCorrectReviewPayloadForIdx(q, idx)" class="rounded-xl border border-green-200 p-2 overflow-hidden bg-white bg-green-50/10 shadow-sm">
+                        <SessionQuestionPreview :question="buildCorrectReviewPayloadForIdx(q, idx)!" />
+                      </div>
+
+                      <!-- Textual fallback -->
+                      <div 
+                        v-else
+                        class="border border-green-200 rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm text-green-700 bg-green-50/20"
+                      >
+                        {{ currentStudentReport?.questionDetails[idx]?.correctAnswer || getCorrectText(q, null) }}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </template>
+
+    </div>
     </div>
   </div>
 </template>
@@ -570,27 +742,62 @@ import { useQuizStore } from '@/stores/quiz'
 import { useTeacherStore } from '@/stores/teacher'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useCatalogStore } from '@/stores/catalog'
+import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 import type { QuizResponse } from '@/api/quiz'
+import SessionQuestionPreview from './SessionQuestionPreview.vue'
+
+interface QuizQuestion {
+  id?: string | number
+  seed?: number | string | null
+  question?: {
+    prompt?: string
+    type?: string
+    data?: Record<string, unknown> | null
+    correct_answer?: Record<string, unknown> | null
+    level?: number | string
+  }
+}
+
 
 const quizStore = useQuizStore()
 const teacherStore = useTeacherStore()
 const analyticsStore = useAnalyticsStore()
 const catalogStore = useCatalogStore()
+const authStore = useAuthStore()
+
+const isTeacher = computed(() => authStore.isTeacher)
 
 const { quizzes: allQuizzes, loading, error } = storeToRefs(quizStore)
 const { students: teacherStudents } = storeToRefs(teacherStore)
 
 const selectedQuizId = ref('')
-const selectedStudentFilter = ref('all')
+const selectedStudentFilter = ref(authStore.isTeacher ? 'all' : (authStore.user?.id || ''))
 const scoreType = ref<'questions' | 'percent'>('questions')
 const activeSubTab = ref<'overview' | 'responses'>('overview')
 const sortBy = ref<'score' | 'name'>('score')
 const route = useRoute()
 
+watch(
+  () => authStore.user,
+  (user) => {
+    if (user && !isTeacher.value) {
+      selectedStudentFilter.value = user.id
+    }
+  },
+  { immediate: true }
+)
+
 const selectedQuiz = computed<QuizResponse | null>(() => {
   if (!selectedQuizId.value) return null
-  return allQuizzes.value.find(q => q.id === selectedQuizId.value) || null
+  const quiz = allQuizzes.value.find(q => q.id === selectedQuizId.value) || null
+  if (quiz && quiz.questions) {
+    return {
+      ...quiz,
+      questions: [...quiz.questions].sort((a, b) => (a.position || 0) - (b.position || 0))
+    }
+  }
+  return quiz
 })
 
 const loadedSkills = ref<Map<number, { code: string; title: string }>>(new Map())
@@ -633,11 +840,14 @@ watch(
 )
 
 onMounted(async () => {
-  await Promise.all([
+  const promises: Promise<unknown>[] = [
     quizStore.fetchQuizzes(),
-    teacherStore.fetchStudents(),
     analyticsStore.getSkills(true)
-  ])
+  ]
+  if (isTeacher.value) {
+    promises.push(teacherStore.fetchStudents())
+  }
+  await Promise.all(promises)
 })
 
 watch(
@@ -705,7 +915,7 @@ const formatAnswer = (answer: unknown): string => {
 }
 
 const getCorrectText = (
-  q: { question?: { type?: string; correct_answer?: Record<string, unknown> | null; data?: { choices?: unknown[]; options?: unknown[] } } },
+  q: QuizQuestion,
   savedCorrectAnswer: unknown
 ): string => {
   if (savedCorrectAnswer) {
@@ -741,11 +951,20 @@ const getCorrectText = (
 const reportStudents = computed(() => {
   if (!selectedQuiz.value) return []
   const quiz = selectedQuiz.value
-  const assignments = quiz.assignments || []
+  let assignments = quiz.assignments || []
+
+  if (!isTeacher.value) {
+    assignments = assignments.filter(a => String(a.student_id) === String(authStore.user?.id))
+  }
 
   return assignments.map(assignment => {
-    const student = teacherStudents.value.find(s => s.id === assignment.student_id)
-    const fullName = student?.full_name || `Оқушы (${assignment.student_id?.slice(0, 8) || 'Белгісіз'})`
+    let fullName = `Оқушы (${assignment.student_id?.slice(0, 8) || 'Белгісіз'})`
+    if (!isTeacher.value && String(assignment.student_id) === String(authStore.user?.id)) {
+      fullName = authStore.user?.full_name || 'Мен'
+    } else {
+      const student = teacherStudents.value.find(s => s.id === assignment.student_id)
+      if (student) fullName = student.full_name
+    }
 
     const isCompleted = assignment.completed_at !== null
     const score = assignment.score || 0
@@ -760,7 +979,7 @@ const reportStudents = computed(() => {
     const totalQuestions = quiz.questions.length || 5
     let correctAnswers = 0
     let questionResults: boolean[] = []
-    let questionDetails: Array<{ correct: boolean; submitted: string; correctAnswer: string }> = []
+    let questionDetails: Array<{ correct: boolean; submitted: string; correctAnswer: string; rawSubmitted: unknown; rawCorrectAnswer: unknown }> = []
 
     if (isCompleted) {
       const sortedQs = [...quiz.questions].sort((a, b) => a.position - b.position)
@@ -773,6 +992,8 @@ const reportStudents = computed(() => {
         let correct = false
         let submitted = '—'
         let correctAnswer = '—'
+        let rawSubmitted: unknown = null
+        let rawCorrectAnswer: unknown = null
 
         if (res !== undefined) {
           if (res === true || res === false) {
@@ -782,6 +1003,8 @@ const reportStudents = computed(() => {
             correct = resObj.correct === true
             submitted = formatAnswer(resObj.submitted_answer)
             correctAnswer = getCorrectText(q, resObj.correct_answer)
+            rawSubmitted = resObj.submitted_answer
+            rawCorrectAnswer = resObj.correct_answer
           }
         }
 
@@ -794,11 +1017,18 @@ const reportStudents = computed(() => {
 
         if (correct) correctAnswers++
         questionResults.push(correct)
-        questionDetails.push({ correct, submitted, correctAnswer })
+        questionDetails.push({ correct, submitted, correctAnswer, rawSubmitted, rawCorrectAnswer })
       }
     } else {
       questionResults = Array(totalQuestions).fill(false)
-      questionDetails = Array(totalQuestions).fill({ correct: false, submitted: '—', correctAnswer: '—' })
+      const sortedQs = [...quiz.questions].sort((a, b) => (a.position || 0) - (b.position || 0))
+      questionDetails = sortedQs.map(q => ({
+        correct: false,
+        submitted: '—',
+        correctAnswer: getCorrectText(q, null),
+        rawSubmitted: null,
+        rawCorrectAnswer: q.question?.correct_answer || null
+      }))
     }
 
     return { 
@@ -1011,17 +1241,107 @@ const getQuestionSkillInfo = (skillId?: number) => {
 const selectedQuestionIndex = ref(0)
 const showAllStudents = ref(false)
 
-const getChoicesForQuestion = (q: { question?: { data?: Record<string, unknown> } }) => {
-  const question = q?.question
-  if (!question) return []
-  const choices = (question.data?.choices || question.data?.options || []) as Array<unknown>
-  return choices.map(c => {
-    if (c && typeof c === 'object') {
-      const obj = c as Record<string, unknown>
-      return String(obj.label || obj.text || obj.value || '')
-    }
-    return String(c)
-  })
+const selectedQuestionPreview = computed(() => {
+  const quiz = selectedQuiz.value
+  if (!quiz) return null
+  const q = quiz.questions[selectedQuestionIndex.value]
+  if (!q) return null
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: null,
+    isCorrect: false,
+    correctAnswer: getCorrectText(q, null),
+    seed: q.seed || null
+  }
+})
+
+const isSelectedQuestionPlugin = computed(() => {
+  const quiz = selectedQuiz.value
+  if (!quiz) return false
+  const q = quiz.questions[selectedQuestionIndex.value]
+  if (!q) return false
+  const qType = String(q.question?.type || '').toUpperCase()
+  return qType === 'PLUGIN' || qType === 'INTERACTIVE'
+})
+
+const buildResponsePreview = (rawAnswer: unknown, isCorrect: boolean) => {
+  const quiz = selectedQuiz.value
+  if (!quiz) return null
+  const q = quiz.questions[selectedQuestionIndex.value]
+  if (!q) return null
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: rawAnswer,
+    isCorrect,
+    correctAnswer: q.question?.correct_answer || null,
+    seed: q.seed || null
+  }
+}
+
+const currentStudentReport = computed(() => {
+  return reportStudents.value.find(s => s.id === selectedStudentFilter.value) || null
+})
+
+
+
+const buildQuestionReview = (q: QuizQuestion) => {
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: null,
+    isCorrect: false,
+    correctAnswer: getCorrectText(q, null),
+    seed: q.seed || null
+  }
+}
+
+const isQuestionPluginType = (q: QuizQuestion): boolean => {
+  const qType = String(q.question?.type || '').toUpperCase()
+  return qType === 'PLUGIN' || qType === 'INTERACTIVE'
+}
+
+const buildStudentResponseReview = (q: QuizQuestion, rawAnswer: unknown, isCorrect: boolean) => {
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: rawAnswer,
+    isCorrect,
+    correctAnswer: q.question?.correct_answer || null,
+    seed: q.seed || null
+  }
+}
+
+const buildCorrectReviewPayloadForIdx = (q: QuizQuestion, qIndex: number) => {
+  const detail = currentStudentReport.value?.questionDetails[qIndex]
+  const rawCorrectAnswer = detail?.rawCorrectAnswer || q.question?.correct_answer || null
+  const rawSubmitted = detail?.rawSubmitted as Record<string, unknown> | null
+  const studentQData = rawSubmitted ? (rawSubmitted.questionData || rawSubmitted.visualData) : null
+  const studentAnsData = rawSubmitted ? rawSubmitted.answerData : null
+
+  const mockCorrectPayload = {
+    isCorrect: true,
+    userAnswer: rawCorrectAnswer,
+    studentAnswer: rawCorrectAnswer,
+    correctAnswer: rawCorrectAnswer,
+    questionData: studentQData || q.question?.data || null,
+    answerData: studentAnsData
+  }
+
+  return {
+    prompt: q.question?.prompt || '',
+    type: q.question?.type || '',
+    data: (q.question?.data as Record<string, unknown> | null) || null,
+    userAnswer: mockCorrectPayload,
+    isCorrect: true,
+    correctAnswer: rawCorrectAnswer,
+    seed: q.seed || null
+  }
 }
 
 const getGroupedResponsesForQuestion = (qIndex: number) => {
@@ -1031,15 +1351,7 @@ const getGroupedResponsesForQuestion = (qIndex: number) => {
   if (!question) return []
   
   const completedStudents = reportStudents.value.filter(s => s.completed)
-  const groupsMap = new Map<string, { answer: string, isCorrect: boolean, students: typeof reportStudents.value }>()
-  
-  const correctAnswer = formatAnswer(completedStudents[0]?.questionDetails[qIndex]?.correctAnswer || getCorrectText(question, null))
-  
-  groupsMap.set(correctAnswer, {
-    answer: correctAnswer,
-    isCorrect: true,
-    students: []
-  })
+  const groupsMap = new Map<string, { answer: string, isCorrect: boolean, rawAnswer: unknown, students: typeof reportStudents.value }>()
   
   for (const student of completedStudents) {
     const detail = student.questionDetails[qIndex]
@@ -1051,10 +1363,40 @@ const getGroupedResponsesForQuestion = (qIndex: number) => {
       groupsMap.set(ans, {
         answer: ans,
         isCorrect: correct,
+        rawAnswer: detail.rawSubmitted,
         students: []
       })
     }
     groupsMap.get(ans)!.students.push(student)
+  }
+  
+  // If no student answered correctly, add a standalone correct answer group so the teacher can see the right answer
+  const anyCorrect = Array.from(groupsMap.values()).some(g => g.isCorrect)
+  if (!anyCorrect) {
+    const studentDetail = completedStudents.find(s => s.questionDetails[qIndex]?.rawSubmitted)
+    const studentRaw = studentDetail ? (studentDetail.questionDetails[qIndex]?.rawSubmitted as Record<string, unknown>) : null
+    const studentQData = studentRaw ? (studentRaw.questionData || studentRaw.visualData) : null
+    const studentAnsData = studentRaw ? studentRaw.answerData : null
+
+    const rawCorrectAnswer = question.question?.correct_answer || completedStudents[0]?.questionDetails[qIndex]?.rawCorrectAnswer || null
+    const correctAnswer = formatAnswer(rawCorrectAnswer || completedStudents[0]?.questionDetails[qIndex]?.correctAnswer || getCorrectText(question, null))
+
+    // Construct a full wrapper payload for the correct answer to be passed to SessionQuestionPreview
+    const mockCorrectPayload = {
+      isCorrect: true,
+      userAnswer: rawCorrectAnswer,
+      studentAnswer: rawCorrectAnswer,
+      correctAnswer: rawCorrectAnswer,
+      questionData: studentQData || question.question?.data || null,
+      answerData: studentAnsData
+    }
+
+    groupsMap.set('__correct__', {
+      answer: correctAnswer,
+      isCorrect: true,
+      rawAnswer: mockCorrectPayload,
+      students: []
+    })
   }
   
   const groups = Array.from(groupsMap.values())
@@ -1065,6 +1407,11 @@ const getGroupedResponsesForQuestion = (qIndex: number) => {
   })
   
   return groups
+}
+
+const goToResponses = (index: number) => {
+  selectedQuestionIndex.value = index
+  activeSubTab.value = 'responses'
 }
 </script>
 

@@ -144,7 +144,7 @@
               <iframe
                 :src="previewUrl"
                 style="width: 100%; height: 450px; border: 1px solid #e5e7eb;"
-                sandbox="allow-scripts allow-same-origin"
+                sandbox="allow-scripts"
                 class="rounded"
               ></iframe>
             </div>

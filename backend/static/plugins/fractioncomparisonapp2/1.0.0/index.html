@@ -127,7 +127,7 @@
         
           useEffect(() => {
             if (isReview) {
-              if (!isOldAttempt && questionDataParam) {
+              if (questionDataParam && questionDataParam.frac1) {
                 setProblems([{
                   id: 0,
                   frac1: questionDataParam.frac1,
@@ -136,6 +136,20 @@
                 }]);
                 setCurrentIndex(0);
                 setUserAnswer(studentAnswerParam || null);
+                setShowResult(true);
+              } else {
+                // Fallback: generate a single random problem!
+                const frac1 = generateFraction();
+                const frac2 = generateFraction();
+                const correctAnswer = getCorrectAnswer(frac1, frac2);
+                setProblems([{
+                  id: 0,
+                  frac1,
+                  frac2,
+                  correctAnswer: correctAnswerParam || correctAnswer
+                }]);
+                setCurrentIndex(0);
+                setUserAnswer(correctAnswerParam || correctAnswer);
                 setShowResult(true);
               }
             } else {
