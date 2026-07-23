@@ -634,6 +634,7 @@ const loadCurrentPlugin = async () => {
   if (!base) return
   
   const seed = currentQuestion.value.seed
+  const level = (currentQuestion.value as Record<string, unknown>).level || (q as Record<string, unknown>).level || 1
   
   // Check if this question is already answered in the active session
   const qId = String(currentQuestion.value.id)
@@ -654,6 +655,7 @@ const loadCurrentPlugin = async () => {
         embed: '1',
         mode: 'review',
         seed: String(seed || ''),
+        level: String(level || 1),
         studentAnswer,
         correctAnswer,
         isCorrect,
@@ -667,6 +669,7 @@ const loadCurrentPlugin = async () => {
         embed: '1',
         mode: 'quiz',
         seed: String(seed || ''),
+        level: String(level || 1),
         studentAnswer,
         questionData,
         answerData
@@ -674,8 +677,16 @@ const loadCurrentPlugin = async () => {
       pluginIframeSrc.value = `${base}?${params.toString()}`
     }
   } else {
-    // Unanswered: load in quiz mode
-    pluginIframeSrc.value = seed ? `${base}?embed=1&mode=quiz&seed=${seed}` : `${base}?embed=1&mode=quiz`
+    // Unanswered: load in quiz mode with seed and level
+    const params = new URLSearchParams({
+      embed: '1',
+      mode: 'quiz',
+      level: String(level || 1)
+    })
+    if (seed !== null && seed !== undefined) {
+      params.set('seed', String(seed))
+    }
+    pluginIframeSrc.value = `${base}?${params.toString()}`
   }
 }
 
@@ -1112,9 +1123,19 @@ const fetchQuiz = async () => {
           }
           shuffledQuestions.value = questionsList
 
+          // Restore current index to first unanswered question
+          if (questionAnswers.value.length > 0) {
+            const firstUnansweredIndex = questionsList.findIndex(q => !hasAnswered(q.id))
+            if (firstUnansweredIndex !== -1) {
+              currentIndex.value = firstUnansweredIndex
+            } else {
+              currentIndex.value = Math.max(0, questionsList.length - 1)
+            }
+          }
+
           if (!isComponentMounted.value) return
           startTimer()
-          // Load plugin iframe if the first question is a plugin
+          // Load plugin iframe if the current question is a plugin
           await loadCurrentPlugin()
         }
       }

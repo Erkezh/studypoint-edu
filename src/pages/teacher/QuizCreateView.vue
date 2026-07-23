@@ -60,7 +60,7 @@ const onCreated = () => {
 <style scoped>
 .quiz-create-view-page {
   min-height: 100vh;
-  background-color: #f8fafc;
+  background-color: #dcf2ff;
 }
 .loading-container {
   display: flex;

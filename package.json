@@ -8,6 +8,7 @@
   },
   "scripts": {
     "check:node": "node scripts/check-node-version.cjs",
+    "check-plugin": "python3 scripts/check_plugin.py",
     "preinstall": "node scripts/check-node-version.cjs",
     "predev": "npm run check:node",
     "prebuild-only": "npm run check:node",

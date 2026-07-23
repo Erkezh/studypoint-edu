@@ -1,0 +1,12 @@
+{
+  "id": "elapsedtimegametextinput2",
+  "name": "ElapsedTimeGame TextInput (2)",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "api_version": "1",
+  "capabilities": {
+    "submit": true,
+    "explanation": true
+  },
+  "height": 400
+}

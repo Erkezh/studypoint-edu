@@ -513,15 +513,17 @@ const sessions = computed(() => {
       const getPluginUserAnswer = (q: Record<string, unknown>): unknown => {
         const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
         if (!ua) return q.user_answer || '—'
-        return (
+        const extracted =
           ua.userAnswer ??
           ua.user_answer ??
           ua.studentAnswer ??
           ua.student_answer ??
           ua.answer ??
           ua.value ??
-          '—'
-        )
+          ua.choice ??
+          ua.text
+        if (extracted !== undefined && extracted !== null) return extracted
+        return q.user_answer || '—'
       }
       const isPlugin = (q: Record<string, unknown>) => {
         const type = String(q.question_type || '').toUpperCase()
@@ -531,6 +533,18 @@ const sessions = computed(() => {
       const questions = dayQs.map(q => {
         globalIndex++
         const pluginQ = isPlugin(q)
+        // For plugin questions, extract the questionData from submitted answer
+        // so the iframe can render the EXACT question that was shown
+        let questionData = (q.question_data || {}) as Record<string, unknown>
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
+        if (pluginQ && ua) {
+          const qd = (ua.questionData || ua.visualData) as Record<string, unknown> | undefined
+          if (qd) {
+            questionData = { ...questionData, ...qd }
+          }
+        }
+        const seedVal = (q.seed ?? questionData.seed ?? (ua?.seed) ?? (ua?.questionData as Record<string, unknown> | undefined)?.seed ?? null) as string | number | null
+
         return {
           index: globalIndex,
           isCorrect: q.is_correct as boolean,
@@ -539,8 +553,8 @@ const sessions = computed(() => {
           correctAnswer: pluginQ ? getPluginCorrectAnswer(q) : q.correct_answer,
           userAnswer: pluginQ ? getPluginUserAnswer(q) : q.user_answer,
           rawUserAnswer: q.user_answer,
-          data: q.question_data || {},
-          seed: q.seed as number | string | null,
+          data: questionData,
+          seed: seedVal,
         }
       }).reverse()
 
@@ -574,10 +588,6 @@ const formatAnswer = (answer: unknown): string => {
   }
   if (typeof answer === 'object') {
     const obj = answer as Record<string, unknown>
-    if (obj.correctDisplay && typeof obj.correctDisplay === 'object') {
-      const display = obj.correctDisplay as Record<string, unknown>
-      if (display.text !== undefined) return String(display.text)
-    }
     if (obj.userDisplay && typeof obj.userDisplay === 'object') {
       const display = obj.userDisplay as Record<string, unknown>
       if (display.text !== undefined) return String(display.text)
@@ -586,13 +596,17 @@ const formatAnswer = (answer: unknown): string => {
     if (obj.student_answer !== undefined) return String(obj.student_answer)
     if (obj.userAnswer !== undefined) return String(obj.userAnswer)
     if (obj.user_answer !== undefined) return String(obj.user_answer)
+    if (obj.answer !== undefined) return String(obj.answer)
+    if (obj.value !== undefined) return String(obj.value)
+    if (obj.text !== undefined) return String(obj.text)
+    if (obj.correctDisplay && typeof obj.correctDisplay === 'object') {
+      const display = obj.correctDisplay as Record<string, unknown>
+      if (display.text !== undefined) return String(display.text)
+    }
     if (obj.correctAnswer !== undefined) return String(obj.correctAnswer)
     if (obj.correct_answer !== undefined) return String(obj.correct_answer)
     if (obj.expectedAnswer !== undefined) return String(obj.expectedAnswer)
     if (obj.expected_answer !== undefined) return String(obj.expected_answer)
-    if (obj.answer !== undefined) return String(obj.answer)
-    if (obj.value !== undefined) return String(obj.value)
-    if (obj.text !== undefined) return String(obj.text)
     return JSON.stringify(answer)
   }
   return String(answer)

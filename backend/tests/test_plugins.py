@@ -115,7 +115,7 @@ def test_security_scan_remote_script(tmp_path: Path):
         zf.writestr("index.html", '<script src="https://evil.com/script.js"></script>')
     
     # Должно вызвать ошибку
-    with pytest.raises(PluginSecurityError, match="опасный код"):
+    with pytest.raises(PluginSecurityError, match="небезопасный внешний скрипт"):
         scan_zip_contents(zip_path, max_size_mb=10)
 
 

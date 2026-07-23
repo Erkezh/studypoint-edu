@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Decimal Order Exercise (2)</title>
+    <title>Decimal Order Exercise (3)</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -63,17 +63,19 @@
             }
             
             const { useState, useEffect, useRef, useCallback } = React;
-const DIFFICULTY_LEVELS = [
-  { label: "\u0416\u0435\u04A3\u0456\u043B", count: [3, 4], decimals: 1, range: [0.1, 0.9] },
-  { label: "\u041E\u0440\u0442\u0430\u0448\u0430", count: [4, 5], decimals: 1, range: [1, 9.9] },
-  { label: "\u041A\u04AF\u0440\u0434\u0435\u043B\u0456", count: [4, 5], decimals: 2, range: [0.1, 9.99] },
-  { label: "\u049A\u0438\u044B\u043D", count: [4, 5], decimals: 2, range: [30, 99.99] }
+const LEVELS = [
+  { value: 1, label: "1-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u0411\u0430\u0441\u0442\u0430\u043F\u049B\u044B", count: [3, 3], decimals: 1, range: [0.1, 0.9] },
+  { value: 2, label: "2-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041E\u04A3\u0430\u0439", count: [3, 4], decimals: 1, range: [1, 9.9] },
+  { value: 3, label: "3-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041E\u0440\u0442\u0430\u0448\u0430", count: [4, 4], decimals: 2, range: [0.1, 9.99] },
+  { value: 4, label: "4-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041A\u04AF\u0440\u0434\u0435\u043B\u0456", count: [4, 5], decimals: 2, range: [10, 99.99] },
+  { value: 5, label: "5-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u0416\u043E\u0493\u0430\u0440\u044B", count: [5, 6], decimals: "mixed", range: [0.01, 999.99] }
 ];
 function createSeededRandom(s) {
-  let state = s;
+  let state = s % 2147483647;
+  if (state <= 0) state += 2147483646;
   return () => {
-    state = state * 1664525 + 1013904223 & 2147483647;
-    return state / 2147483647;
+    state = state * 16807 % 2147483647;
+    return (state - 1) / 2147483646;
   };
 }
 function randomInRange(min, max, decimals, random) {
@@ -84,7 +86,12 @@ function fmt(num) {
   return String(num).replace(".", ",");
 }
 function parseAnswerString(str) {
-  if (!str) return [];
+  if (str === null || str === void 0 || str === "") return [];
+  if (Array.isArray(str)) {
+    return str.map(
+      (v) => typeof v === "number" ? v : parseFloat(String(v).trim().replace(",", "."))
+    ).filter((n) => !Number.isNaN(n));
+  }
   return String(str).split(", ").map((s) => parseFloat(s.trim().replace(",", "."))).filter((n) => !Number.isNaN(n));
 }
 function shuffleArray(arr, random) {
@@ -101,14 +108,17 @@ function buildExplanation(problem) {
   const chain = correctOrder.map((n) => fmt(n)).join(" \u2192 ");
   return `\u041E\u043D\u0434\u044B\u049B \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u0441\u0430\u043B\u044B\u0441\u0442\u044B\u0440\u0493\u0430\u043D\u0434\u0430 \u0430\u043B\u0434\u044B\u043C\u0435\u043D \u0431\u04AF\u0442\u0456\u043D \u0431\u04E9\u043B\u0456\u0433\u0456\u043D, \u0430\u043B \u043E\u043B \u0442\u0435\u04A3 \u0431\u043E\u043B\u0441\u0430 \u04AF\u0442\u0456\u0440\u0434\u0435\u043D \u043A\u0435\u0439\u0456\u043D\u0433\u0456 \u0446\u0438\u0444\u0440\u043B\u0430\u0440\u0434\u044B \u0441\u043E\u043B \u0436\u0430\u049B\u0442\u0430\u043D \u043E\u04A3\u0493\u0430 \u049B\u0430\u0440\u0430\u0439 \u0431\u0456\u0440-\u0431\u0456\u0440\u043B\u0435\u043F \u0441\u0430\u043B\u044B\u0441\u0442\u044B\u0440\u0430\u043C\u044B\u0437. \u041E\u0441\u044B \u0435\u0440\u0435\u0436\u0435\u0433\u0435 \u0441\u0430\u0439 \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B ${direction} \u0440\u0435\u0442\u043A\u0435 \u043A\u0435\u043B\u0442\u0456\u0440\u0441\u0435\u043A: ${chain}.`;
 }
-function generateProblem(random) {
-  const level = DIFFICULTY_LEVELS[Math.floor(random() * DIFFICULTY_LEVELS.length)];
-  const count = level.count[0] + Math.floor(random() * (level.count[1] - level.count[0] + 1));
+function generateProblem(level, seed, depth = 0) {
+  const random = createSeededRandom(seed + depth * 10007);
+  const lvl = Math.min(5, Math.max(1, level));
+  const cfg = LEVELS[lvl - 1];
+  const count = cfg.count[0] + Math.floor(random() * (cfg.count[1] - cfg.count[0] + 1));
   const ascending = random() > 0.5;
   const nums = /* @__PURE__ */ new Set();
   let guard = 0;
   while (nums.size < count && guard < 500) {
-    nums.add(randomInRange(level.range[0], level.range[1], level.decimals, random));
+    const decimals = cfg.decimals === "mixed" ? random() > 0.5 ? 1 : 2 : cfg.decimals;
+    nums.add(randomInRange(cfg.range[0], cfg.range[1], decimals, random));
     guard++;
   }
   const sorted = [...nums].sort((a, b) => ascending ? a - b : b - a);
@@ -123,7 +133,8 @@ function generateProblem(random) {
     ascending,
     numbers: shuffled,
     correctOrder: sorted,
-    level: level.label
+    level: cfg.label,
+    levelValue: cfg.value
   };
   problem.explanation = buildExplanation(problem);
   return problem;
@@ -163,15 +174,27 @@ function DecimalOrderExercise() {
   );
   const seedParam = urlParams.get("seed");
   const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
+  const levelParam = urlParams.get("level");
+  const level = levelParam ? Math.min(5, Math.max(1, parseInt(levelParam, 10))) : 1;
   const isFrozen = urlParams.get("frozen") === "1";
   const isQuiz = urlParams.get("mode") === "quiz";
-  const randomRef = useRef(null);
-  if (randomRef.current === null) {
-    randomRef.current = createSeededRandom(seed);
-  }
-  const random = randomRef.current;
-  const isReviewModeUrl = urlParams.get("mode") === "review";
-  const initialStudentAnswer = isQuiz ? urlParams.get("studentAnswer") : null;
+  const [questionDepth, setQuestionDepth] = useState(0);
+  const isReviewModeUrl = urlParams.get("mode") === "review" || urlParams.get("showCorrectAnswer") === "1";
+  const studentAnsParam = urlParams.get("studentAnswer");
+  const parseStudentAnswerParam = (param) => {
+    let parsedAnswer = param;
+    try {
+      if (param && (param.startsWith("{") || param.startsWith("["))) {
+        const parsed = JSON.parse(param);
+        parsedAnswer = parsed.userAnswer ?? parsed.value ?? parsed.answer ?? parsed;
+      }
+    } catch (e) {
+      console.warn(e);
+    }
+    return parsedAnswer;
+  };
+  const initialStudentAnswer = isQuiz ? parseStudentAnswerParam(studentAnsParam) : null;
+  const qDataParam = urlParams.get("questionData");
   const parseJsonParam = (param) => {
     if (!param) return null;
     try {
@@ -181,65 +204,58 @@ function DecimalOrderExercise() {
     }
   };
   const reviewMode = typeof window !== "undefined" && window.reviewMode || (isReviewModeUrl ? {
-    studentAnswer: parseJsonParam(urlParams.get("studentAnswer")),
+    studentAnswer: parseStudentAnswerParam(studentAnsParam),
     correctAnswer: parseJsonParam(urlParams.get("correctAnswer")),
     isCorrect: urlParams.get("isCorrect") === "true",
-    questionData: parseJsonParam(urlParams.get("questionData")),
+    questionData: parseJsonParam(qDataParam),
     answerData: parseJsonParam(urlParams.get("answerData"))
   } : null);
   const isReview = !!reviewMode || isFrozen;
   const locked = isReview || isSubmitted;
   const sendHeight = useCallback(() => {
-    if (window.parent !== window && containerRef.current) {
+    if (window.parent !== window) {
       window.parent.postMessage(
-        { type: "resize", height: containerRef.current.scrollHeight + 40 },
+        {
+          type: "HEIGHT_CHANGE",
+          height: (containerRef.current ? containerRef.current.scrollHeight + 40 : 0) || document.body.scrollHeight
+        },
         "*"
       );
     }
   }, []);
   const startNewProblem = useCallback(() => {
     if (isFrozen || isQuiz) return;
-    const p = generateProblem(random);
-    setProblem(p);
-    setUserOrder([]);
-    setRemaining(p.numbers.map((n, i) => ({ value: n, id: `num-${i}-${n}` })));
-    setShowResult(false);
-    setIsCorrect(false);
-    setIsSubmitted(false);
-    setAnimateIn(false);
-    setTimeout(() => setAnimateIn(true), 50);
-  }, [isFrozen, isQuiz]);
+    setQuestionDepth((d) => {
+      const nextDepth = d + 1;
+      const p = generateProblem(level, seed, nextDepth);
+      setProblem(p);
+      setUserOrder([]);
+      setRemaining(p.numbers.map((n, i) => ({ value: n, id: `num-${i}-${n}` })));
+      setShowResult(false);
+      setIsCorrect(false);
+      setIsSubmitted(false);
+      setAnimateIn(false);
+      setTimeout(() => setAnimateIn(true), 50);
+      return nextDepth;
+    });
+  }, [isFrozen, isQuiz, level, seed]);
   useEffect(() => {
-    if (reviewMode) {
+    if (reviewMode && reviewMode.questionData && Array.isArray(reviewMode.questionData.numbers) && reviewMode.questionData.numbers.length > 0) {
       const qd = reviewMode.questionData || {};
-      let numbers = Array.isArray(qd.numbers) ? qd.numbers : [];
-      let ascending = qd.ascending !== void 0 ? qd.ascending : true;
-      let correctOrder = [];
-      let level = qd.level || "";
-      let explanation = qd.explanation || "";
-
-      if (numbers.length === 0) {
-        const p = generateProblem(random);
-        numbers = p.numbers;
-        ascending = p.ascending;
-        correctOrder = p.correctOrder;
-        level = p.level;
-        explanation = p.explanation;
-      } else {
-        correctOrder = [...numbers].sort((a, b) => ascending ? a - b : b - a);
-      }
-
+      const numbers = Array.isArray(qd.numbers) ? qd.numbers : [];
+      const ascending = qd.ascending !== void 0 ? qd.ascending : true;
+      const correctOrder = [...numbers].sort((a, b) => ascending ? a - b : b - a);
       const p = {
         id: 0,
         question: reviewMode.question || (ascending ? "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440" : "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440"),
         ascending,
         numbers,
         correctOrder,
-        level
+        level: qd.level || ""
       };
-      p.explanation = explanation || buildExplanation(p);
+      p.explanation = qd.explanation || buildExplanation(p);
       const studentAnswerRaw = reviewMode.studentAnswer;
-      const correctAnswerRaw = reviewMode.correctAnswer || correctOrder.map((n) => fmt(n)).join(", ");
+      const correctAnswerRaw = reviewMode.correctAnswer;
       const noStudentAnswer = studentAnswerRaw === null || studentAnswerRaw === void 0 || String(studentAnswerRaw).trim() === "";
       const studentEqualsCorrectAnswer = !noStudentAnswer && correctAnswerRaw != null && String(studentAnswerRaw).trim() === String(correctAnswerRaw).trim();
       const onlyCorrect = !!reviewMode.isCorrect && (noStudentAnswer || studentEqualsCorrectAnswer);
@@ -252,8 +268,20 @@ function DecimalOrderExercise() {
       setShowResult(true);
       setIsSubmitted(true);
       setAnimateIn(true);
+    } else if (reviewMode || isReviewModeUrl) {
+      const p = generateProblem(level, seed, 0);
+      const displayOrder = p.correctOrder.map((n, i) => ({ value: n, id: `correct-${i}-${n}` }));
+      setProblem(p);
+      setUserOrder(displayOrder);
+      setRemaining([]);
+      setIsCorrect(true);
+      setReviewOnlyCorrect(true);
+      setShowResult(true);
+      setIsSubmitted(true);
+      setAnimateIn(true);
     } else {
-      const p = generateProblem(random);
+      setQuestionDepth(0);
+      const p = generateProblem(level, seed, 0);
       setProblem(p);
       if (isQuiz && initialStudentAnswer) {
         const studentValues = parseAnswerString(initialStudentAnswer);
@@ -269,12 +297,37 @@ function DecimalOrderExercise() {
       setAnimateIn(false);
       setTimeout(() => setAnimateIn(true), 50);
     }
-  }, []);
+  }, [level, seed, qDataParam, studentAnsParam]);
   useEffect(() => {
     sendHeight();
     const timer = setTimeout(sendHeight, 150);
     return () => clearTimeout(timer);
   }, [problem, showResult, userOrder, isSubmitted, sendHeight]);
+  useEffect(() => {
+    const handleMessage = (event) => {
+      const data = event.data || {};
+      if (data.type === "SERVER_RESULT") {
+        if (typeof data.isCorrect === "boolean") {
+          setIsCorrect(data.isCorrect);
+        }
+        setIsSubmitted(true);
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+  useEffect(() => {
+    if (locked || !problem) return;
+    const currentAnswer = userOrder.map((x) => fmt(x.value)).join(", ");
+    window.parent.postMessage(
+      {
+        type: "STUDENT_ANSWER",
+        answer: { value: currentAnswer },
+        isComplete: userOrder.length === problem.numbers.length && userOrder.length > 0
+      },
+      "*"
+    );
+  }, [userOrder, locked, problem]);
   const handleChipClick = (item) => {
     if (locked || showResult) return;
     setRemaining((r) => r.filter((x) => x.id !== item.id));
@@ -765,7 +818,7 @@ function DecimalOrderExercise() {
           }
         },
         "\u0414\u0435\u04A3\u0433\u0435\u0439: ",
-        problem.level
+        problem.level || level
       )
     )
   );

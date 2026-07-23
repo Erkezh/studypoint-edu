@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElapsedTimeGame TextInput (2)</title>
+    <title>ElapsedTimeGame TextInput (1)</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -195,21 +195,7 @@ const normalizeTime = (raw) => {
   if (Number.isNaN(h) || Number.isNaN(m)) return cleaned;
   return timeStr(h, m);
 };
-const parseStudentAnswer = (studentAnsParam) => {
-  let parsedAnswer = studentAnsParam;
-  try {
-    if (studentAnsParam && (studentAnsParam.startsWith("{") || studentAnsParam.startsWith("["))) {
-      const parsed = JSON.parse(studentAnsParam);
-      parsedAnswer = parsed.userAnswer ?? parsed.value ?? parsed.answer ?? parsed;
-    }
-  } catch (e) {
-    console.warn(e);
-  }
-  if (parsedAnswer !== null && parsedAnswer !== void 0 && typeof parsedAnswer !== "string") {
-    parsedAnswer = String(parsedAnswer);
-  }
-  return parsedAnswer;
-};
+const checkAnswer = (raw, correctAnswer) => normalizeTime(raw) === correctAnswer;
 const TimeInputGame = () => {
   const [problem, setProblem] = useState(null);
   const [userAnswer, setUserAnswer] = useState("");
@@ -231,16 +217,7 @@ const TimeInputGame = () => {
   const isQuiz = urlParams.get("mode") === "quiz";
   const isShowAnswerUrl = urlParams.get("mode") === "review" || urlParams.get("showCorrectAnswer") === "1";
   const isShowAnswer = isShowAnswerUrl || externalShowAnswer;
-  const initialStudentAnswer = isQuiz ? parseStudentAnswer(urlParams.get("studentAnswer")) : null;
-  const qDataParam = urlParams.get("questionData");
-  let urlQuestionData = null;
-  try {
-    if (qDataParam) {
-      urlQuestionData = JSON.parse(qDataParam);
-    }
-  } catch (e) {
-    console.warn("Failed to parse questionData:", e);
-  }
+  const initialStudentAnswer = isQuiz ? urlParams.get("studentAnswer") : null;
   const locked = isFrozen || isShowAnswer || isSubmitted;
   const sendHeight = useCallback(() => {
     if (window.parent !== window) {
@@ -262,45 +239,30 @@ const TimeInputGame = () => {
     }
   }, []);
   useEffect(() => {
-    let p;
-    if (urlQuestionData && Object.keys(urlQuestionData).length > 0) {
-      const startTime = urlQuestionData.startTime || "12:00";
-      const duration = urlQuestionData.duration || 0;
-      const endTime = urlQuestionData.endTime || urlQuestionData.correctAnswer || "12:00";
-      p = {
-        id: seed,
-        taskTitle: urlQuestionData.taskTitle || "\u0410\u044F\u049B\u0442\u0430\u043B\u0443 \u0443\u0430\u049B\u044B\u0442\u044B\u043D \u0442\u0430\u0431\u044B\u04A3\u044B\u0437",
-        question: urlQuestionData.question || `\u0411\u0430\u0441\u0442\u0430\u043F\u049B\u044B \u0443\u0430\u049B\u044B\u0442\u044B: ${startTime}. \u04E8\u0442\u043A\u0435\u043D \u0443\u0430\u049B\u044B\u0442\u044B: ${durationText(duration)}. \u0410\u044F\u049B\u0442\u0430\u043B\u0443 \u0443\u0430\u049B\u044B\u0442\u044B \u043D\u0435\u0448\u0435?`,
-        correctAnswer: endTime,
-        startTime,
-        duration,
-        level: urlQuestionData.level || "",
-        visualData: urlQuestionData
-      };
-    } else {
-      p = generateProblem(level, seed);
-    }
+    const p = generateProblem(level, seed);
     setProblem(p);
     problemRef.current = p;
-    const studentAnsRaw = urlParams.get("studentAnswer");
-    const studentAnsFromUrl = parseStudentAnswer(studentAnsRaw);
+    const studentAnsFromUrl = urlParams.get("studentAnswer");
     if (isShowAnswerUrl) {
       if (studentAnsFromUrl !== null && studentAnsFromUrl !== void 0 && studentAnsFromUrl !== "") {
         setUserAnswer(studentAnsFromUrl);
-        const norm = normalizeTime(studentAnsFromUrl);
-        setIsCorrect(norm === p.correctAnswer);
+        setIsCorrect(checkAnswer(studentAnsFromUrl, p.correctAnswer));
       } else {
         setUserAnswer(p.correctAnswer);
         setIsCorrect(true);
       }
-      setShowResult(false);
+      setShowResult(true);
       setIsSubmitted(true);
     } else if (isQuiz && initialStudentAnswer) {
       setUserAnswer(initialStudentAnswer);
       setIsSubmitted(true);
       setShowResult(false);
+    } else {
+      setUserAnswer("");
+      setShowResult(false);
+      setIsSubmitted(false);
     }
-  }, [level, seed, qDataParam]);
+  }, [level, seed]);
   useEffect(() => {
     problemRef.current = problem;
   }, [problem]);
@@ -312,7 +274,7 @@ const TimeInputGame = () => {
         const answerToShow = correctAnswer != null ? String(correctAnswer) : problemRef.current ? problemRef.current.correctAnswer : "";
         setUserAnswer(answerToShow);
         setIsCorrect(true);
-        setShowResult(false);
+        setShowResult(true);
         setIsSubmitted(true);
         setExternalShowAnswer(true);
         return;
@@ -337,8 +299,7 @@ const TimeInputGame = () => {
   }, [problem, showResult, sendHeight]);
   const handleSubmit = () => {
     if (locked || !userAnswer.trim() || !problem || showResult) return;
-    const normalized = normalizeTime(userAnswer);
-    const correct = normalized === problem.correctAnswer;
+    const correct = checkAnswer(userAnswer, problem.correctAnswer);
     setIsCorrect(correct);
     sendStudentAnswer(userAnswer.trim());
     window.parent.postMessage(

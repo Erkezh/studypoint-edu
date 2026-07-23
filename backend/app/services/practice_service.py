@@ -253,11 +253,15 @@ class PracticeService:
         else:
             # Старый способ - получаем вопрос из БД
             if ps.last_question_id is not None:
-                already = await self.practice.has_attempt(session_id=ps.id, question_id=ps.last_question_id)
-                if not already:
-                    q = await self.questions.get(ps.last_question_id)
-                    if q is not None:
-                        return {"finished": False, "question": _to_question_public(q).model_dump(mode="json")}
+                last_q = await self.questions.get(ps.last_question_id)
+                # Для PLUGIN/INTERACTIVE всегда выбираем новый вопрос,
+                # т.к. плагин генерирует случайный контент каждый раз.
+                is_plugin_type = last_q and last_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE)
+                if not is_plugin_type:
+                    already = await self.practice.has_attempt(session_id=ps.id, question_id=ps.last_question_id)
+                    if not already:
+                        if last_q is not None:
+                            return {"finished": False, "question": _to_question_public(last_q).model_dump(mode="json")}
 
             q = await self._select_next_question(ps)
             ps.last_question_id = q.id
@@ -270,6 +274,31 @@ class PracticeService:
             q_public = q
         else:
             q_public = _to_question_public(q)
+
+        # Для PLUGIN/INTERACTIVE генерируем случайный seed и уровень на основе SmartScore
+        if q_public.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+            import random
+            seed = random.randint(1, 2147483647)
+            
+            score = ps.current_smartscore or 0
+            if score >= 90:
+                lvl = 5
+            elif score >= 75:
+                lvl = 4
+            elif score >= 55:
+                lvl = 3
+            elif score >= 30:
+                lvl = 2
+            else:
+                lvl = 1
+
+            ps.state["current_question_seed"] = seed
+            ps.state["current_question_level"] = lvl
+            
+            # Добавляем в data копию, чтобы отправить клиенту
+            q_public.data = {**(q_public.data or {}), "seed": seed, "level": lvl}
+            q_public.level = lvl
+
         return {"finished": False, "question": q_public.model_dump(mode="json")}
 
     async def submit(self, *, user_id, session_id: str, req: PracticeSubmitRequest, user_role: str | None = None) -> PracticeSubmitResponse:
@@ -418,6 +447,8 @@ class PracticeService:
             question_type = question.type
             question_data = question.data
             question_level = question.level
+            if question_type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                question_level = ps.state.get("current_question_level") or question.level
             explanation = question.explanation
 
             if question_type == QuestionType.PLUGIN:
@@ -677,25 +708,32 @@ class PracticeService:
             )
             logger.info(f"PracticeAttempt created for generator, adding to database")
         else:
-            assert question is not None
-            logger.info(f"Creating PracticeAttempt for regular question {question.id}")
-            # Для PLUGIN/INTERACTIVE разрешаем несколько попыток, не привязывая к question_id
-            is_plugin_like = question.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE)
+            active_seed = ps.state.get("current_question_seed")
+            if not active_seed and isinstance(req.submitted_answer, dict):
+                sub_dict = req.submitted_answer
+                active_seed = sub_dict.get("seed") or (sub_dict.get("questionData") if isinstance(sub_dict.get("questionData"), dict) else {}).get("seed")
+
+            q_payload_data = {**(question.data or {})}
+            if active_seed is not None:
+                q_payload_data["seed"] = active_seed
+            q_payload_data["level"] = question_level
+
             attempt = PracticeAttempt(
                 session_id=ps.id,
                 user_id=user_uuid,
                 skill_id=ps.skill_id,
-                question_id=None if is_plugin_like else question.id,
-                question_level=question.level,
+                question_id=question.id,
+                question_level=question_level,
                 question_payload={
                     "id": question.id,
                     "skill_id": question.skill_id,
                     "type": question.type.value,
                     "prompt": question.prompt,
-                    "data": question.data,
+                    "data": q_payload_data,
                     "correct_answer": question.correct_answer,
                     "explanation": explanation,
-                    "level": question.level,
+                    "level": question_level,
+                    "seed": active_seed,
                 },
                 submitted_answer=req.submitted_answer,
                 is_correct=is_correct,
@@ -749,6 +787,10 @@ class PracticeService:
         ps.correct_count = ps.total_correct
         ps.wrong_count = ps.total_incorrect
         ps.smartscore = ps.current_smartscore
+        # Accumulate actual active time spent on question (capped at 300s) instead of wall-clock idle time
+        if req.time_spent_sec and req.time_spent_sec > 0:
+            ps.active_time_seconds = (ps.active_time_seconds or 0) + min(req.time_spent_sec, 300)
+        ps.last_activity_at = now
         ps.time_elapsed_sec = ps.active_time_seconds
 
         if not is_parent_preview:
@@ -816,6 +858,24 @@ class PracticeService:
                     await self.session.flush()
                     next_q = _generated_to_question_public(q_data, question_id)
                     logger.info(f"Next question generated: {question_id}")
+                    if next_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                        import random
+                        seed = random.randint(1, 2147483647)
+                        score = ps.current_smartscore or 0
+                        if score >= 90:
+                            lvl = 5
+                        elif score >= 75:
+                            lvl = 4
+                        elif score >= 55:
+                            lvl = 3
+                        elif score >= 30:
+                            lvl = 2
+                        else:
+                            lvl = 1
+                        ps.state["current_question_seed"] = seed
+                        ps.state["current_question_level"] = lvl
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(ps, "state")
                 except Exception as e:
                     logger.error(f"Error generating next question: {e}", exc_info=True)
                     # Если генератор не работает, пытаемся использовать вопросы из БД
@@ -836,6 +896,26 @@ class PracticeService:
                     ps.last_question_id = next_q.id
                     ps.state["current_question_id"] = next_q.id
                     ps.state["recent_question_ids"] = _push_recent(ps.state.get("recent_question_ids", []), next_q.id)
+
+                    if next_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                        import random
+                        seed = random.randint(1, 2147483647)
+                        score = ps.current_smartscore or 0
+                        if score >= 90:
+                            lvl = 5
+                        elif score >= 75:
+                            lvl = 4
+                        elif score >= 55:
+                            lvl = 3
+                        elif score >= 30:
+                            lvl = 2
+                        else:
+                            lvl = 1
+                        ps.state["current_question_seed"] = seed
+                        ps.state["current_question_level"] = lvl
+
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(ps, "state")
 
         await self.session.flush()
 
@@ -862,7 +942,7 @@ class PracticeService:
             is_correct=is_correct,
             explanation=(None if is_correct else explanation),
             session=session_resp,
-            next_question=_to_question_public(next_q) if next_q is not None else None,
+            next_question=_to_question_public(next_q, ps) if next_q is not None else None,
             finished=finished,
         )
 
@@ -914,12 +994,47 @@ class PracticeService:
             q = current_question
         else:
             try:
-                q = _to_question_public(current_question)
+                q = _to_question_public(current_question, ps)
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Error converting question to public format: {e}", exc_info=True)
                 q = None
+
+        if q and q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+            # Получаем сохраненные seed и level из state сессии
+            seed = ps.state.get("current_question_seed")
+            lvl = ps.state.get("current_question_level")
+            
+            # Если сида или уровня нет (например, при самом первом старте сессии), генерируем их
+            need_save = False
+            if seed is None:
+                import random
+                seed = random.randint(1, 2147483647)
+                ps.state["current_question_seed"] = seed
+                need_save = True
+            if lvl is None:
+                score = ps.current_smartscore or 0
+                if score >= 90:
+                    lvl = 5
+                elif score >= 75:
+                    lvl = 4
+                elif score >= 55:
+                    lvl = 3
+                elif score >= 30:
+                    lvl = 2
+                else:
+                    lvl = 1
+                ps.state["current_question_level"] = lvl
+                need_save = True
+                
+            if need_save:
+                # Помечаем сессию как измененную для алхимии, т.к. мы обновили state
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(ps, "state")
+                
+            q.data = {**(q.data or {}), "seed": seed, "level": lvl}
+            q.level = lvl
         return PracticeSessionResponse(
             id=str(ps.id),
             skill_id=ps.skill_id,
@@ -1090,8 +1205,18 @@ def _level_search_order(difficulty: int) -> list[int]:
     return order
 
 
-def _to_question_public(q) -> QuestionPublic:
-    return QuestionPublic(id=q.id, skill_id=q.skill_id, type=q.type, prompt=q.prompt, data=q.data, level=q.level)
+def _to_question_public(q, session_obj=None) -> QuestionPublic:
+    q_data = {**(q.data or {})}
+    q_level = q.level
+    if session_obj and getattr(q, 'type', None) in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+        seed = session_obj.state.get("current_question_seed")
+        lvl = session_obj.state.get("current_question_level")
+        if seed is not None:
+            q_data["seed"] = seed
+        if lvl is not None:
+            q_data["level"] = lvl
+            q_level = lvl
+    return QuestionPublic(id=q.id, skill_id=q.skill_id, type=q.type, prompt=q.prompt, data=q_data, level=q_level)
 
 
 def _generated_to_question_public(q_data: dict[str, Any], question_id: str) -> QuestionPublic:

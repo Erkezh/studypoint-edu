@@ -1,48 +1,21 @@
 <template>
-  <div class="quiz-creator">
-    <div class="creator-header bg-white shadow-sm border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-      <button @click="handleBack" class="back-link flex items-center text-gray-500 hover:text-gray-700 transition-colors font-medium">
-        <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-        Артқа
-      </button>
-      <div class="step-indicator text-sm font-bold text-gray-400 tracking-wider uppercase">
-        {{ currentStep === 1 ? 'ҚАДАМ 1 / 2: Сұрақтарды қосу' : 'ҚАДАМ 2 / 2: Параметрлер мен Жинақтау' }}
-      </div>
-    </div>
-
+  <div class="quiz-creator min-h-screen bg-[#dcf2ff] py-8 px-4">
     <!-- STEP 1: ADD QUESTIONS -->
-    <div v-if="currentStep === 1" class="step-container p-6 bg-slate-50 min-h-screen">
-      <div class="bg-white rounded-2xl shadow-md border border-slate-100 p-6 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between sticky top-4 z-20">
-        <div class="flex-1 w-full">
-          <input 
-            v-model="quizName" 
-            type="text" 
-            placeholder="Квиз атауын енгізіңіз..." 
-            class="quiz-name-input w-full px-4 py-3 border border-slate-200 rounded-xl text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-          />
-        </div>
-        <button 
-          @click="nextStep" 
-          :disabled="!quizName.trim() || selectedQuestions.length === 0" 
-          class="next-btn px-6 py-3.5 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-xl font-semibold transition-all shadow-sm shadow-emerald-500/10 cursor-pointer disabled:cursor-not-allowed w-full md:w-auto text-center shrink-0"
-        >
-          Қарау және жариялау
-        </button>
-      </div>
-
-      <div class="grid grid-cols-1 xl:grid-cols-[80px_1fr] gap-6 items-start">
+    <div v-if="currentStep === 1" class="step-container max-w-[1215px] w-[82%] mx-auto">
+      
+      <div class="relative flex gap-6 items-start">
         
-        <!-- Left Question Navigator (Sidebar Index) -->
-        <div class="hidden xl:flex flex-col gap-2 sticky top-6 bg-white p-3 rounded-2xl border border-slate-100 shadow-sm items-center">
+        <!-- Left Question Navigator (Sidebar Index - Vertically Centered Pill) -->
+        <div class="hidden xl:flex flex-col gap-2.5 sticky top-[35vh] -left-16 bg-[#c6e8fa] p-3 rounded-3xl border border-cyan-200/50 items-center z-20 max-h-[calc(100vh-140px)] overflow-y-auto shrink-0 shadow-xs">
           <button 
             v-for="(q, idx) in selectedQuestions" 
             :key="q.id"
             @click="scrollToQuestion(idx)"
-            class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border transition-all"
+            class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border transition-all shrink-0 shadow-xs cursor-pointer"
             :class="[
               activeQuestionIndex === idx 
-                ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm' 
-                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                ? 'bg-[#00a5e5] border-[#00a5e5] text-white shadow-sm scale-105' 
+                : 'bg-white border-transparent text-[#00a5e5] hover:bg-cyan-50'
             ]"
             :title="`Сұрақ ${idx + 1}`"
           >
@@ -50,15 +23,53 @@
           </button>
           <button 
             @click="openGeneratorPanel"
-            class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-emerald-50 border border-dashed border-emerald-300 text-emerald-600 hover:bg-emerald-100 transition-all"
+            class="w-9 h-9 rounded-full flex items-center justify-center font-bold text-lg bg-white border border-transparent text-[#00a5e5] hover:bg-cyan-50 transition-all shrink-0 shadow-xs cursor-pointer"
             title="Жаңа сұрақ ұяшығын қосу"
           >
             +
           </button>
         </div>
 
-        <!-- Main Panel: Cards list of added questions -->
-        <div class="flex flex-col gap-6">
+        <!-- Main Content Column -->
+        <div class="flex-1 flex flex-col gap-6 min-w-0">
+
+          <!-- Quiz Name, Step Title & Exit Button (Combined Card Container) -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-4">
+            <!-- Top row inside card: STEP 1 OF 2 & Exit/Back button -->
+            <div class="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 pb-3">
+              <span>1-ҚАДАМ / 2: Сұрақтарды қосу</span>
+              <div class="flex items-center gap-3">
+                <span class="flex items-center gap-1.5 text-slate-400 font-normal lowercase normal-case text-xs">
+                  <svg class="w-3.5 h-3.5 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                  Өзгерістер автоматты түрде сақталады
+                </span>
+                <button @click="handleBack" class="text-slate-400 hover:text-slate-700 transition-colors p-1" title="Шығу / Артқа">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Input field -->
+            <div>
+              <input 
+                v-model="quizName" 
+                type="text" 
+                placeholder="Квиз атауын енгізіңіз..." 
+                class="w-full px-4 py-3.5 border border-slate-200 rounded-lg text-lg font-normal text-slate-700 placeholder-slate-400 focus:outline-none focus:border-[#00a5e5] focus:ring-1 focus:ring-[#00a5e5] transition-all bg-slate-50/20"
+              />
+            </div>
+
+            <!-- Review and publish button -->
+            <div>
+              <button 
+                @click="nextStep" 
+                :disabled="!quizName.trim() || selectedQuestions.length === 0" 
+                class="px-6 py-2.5 bg-[#00a5e5] hover:bg-[#0092cc] disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-lg font-bold text-sm transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                Қарап шығу және жариялау
+              </button>
+            </div>
+          </div>
 
           <!-- Empty placeholder when nothing added yet AND generator is closed -->
           <div v-if="selectedQuestions.length === 0 && !showGeneratorPanel" class="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-400 shadow-sm">
@@ -73,57 +84,206 @@
               v-for="(q, idx) in selectedQuestions" 
               :key="q.id" 
               :id="`question-card-${idx}`"
-              class="question-card bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden transition-all duration-200"
-              :class="{ 'ring-2 ring-emerald-500/20 border-emerald-500': activeQuestionIndex === idx }"
+              class="question-card bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden transition-all duration-200"
+              :class="{ 'ring-2 ring-[#00a5e5]/30 border-[#00a5e5]': activeQuestionIndex === idx }"
               @click="activeQuestionIndex = idx"
             >
-              <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-3.5 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <span class="font-bold text-emerald-600 text-sm">СҰРАҚ {{ idx + 1 }}</span>
-                  <span class="text-xs text-slate-400 font-medium">Дағды: {{ q.skill_title }}</span>
+              <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-3.5 space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-slate-400 font-bold text-base cursor-grab">≡</span>
+                    <span class="font-extrabold text-slate-700 text-xs tracking-wider uppercase">QUESTION {{ idx + 1 }}</span>
+                  </div>
+
+                  <button @click.stop="removeQuestionCard(idx)" class="text-slate-400 hover:text-rose-600 transition-colors p-1" title="Сұрақты өшіру">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
                 </div>
                 
-                <div class="flex items-center gap-3">
-                  <!-- Skill / Difficulty info badge -->
-                  <span class="text-xs font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md">Деңгей {{ q.level }}</span>
+                <div class="flex flex-wrap items-center justify-between gap-3 text-xs pt-1">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <!-- Skill Selector Button (Opens IXL Hierarchical Dropdown) -->
+                    <div class="relative dropdown-container-el flex items-center gap-1.5">
+                      <span class="text-slate-400 font-semibold text-xs">Дағды:</span>
+                      <button 
+                        @click.stop="toggleCardSkillDropdown(idx)" 
+                        class="flex items-center justify-between gap-2 px-3 py-1.5 bg-white border border-cyan-200 rounded-xl text-slate-700 font-semibold text-xs shadow-xs hover:border-cyan-300 transition-all cursor-pointer max-w-[280px]"
+                      >
+                        <span class="truncate text-slate-700">
+                          {{ q.skill_title ? `${q.skill_title}` : 'Дағдыны таңдаңыз' }}
+                        </span>
+                        <svg class="w-3.5 h-3.5 text-cyan-500 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': activeCardDropdownIdx === idx }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                      </button>
 
-                  <button @click.stop="removeQuestionCard(idx)" class="text-slate-400 hover:text-rose-600 transition-colors" title="Сұрақты өшіру">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      <!-- CUSTOM HIERARCHICAL DROPDOWN PANEL FOR CARD -->
+                      <div v-if="activeCardDropdownIdx === idx" class="absolute z-30 top-full left-0 mt-2 bg-white border border-slate-200/90 rounded-2xl shadow-2xl p-4 min-w-[340px] max-w-[360px] max-h-[440px] overflow-y-auto space-y-3 text-left">
+                        <!-- Search Input Bar -->
+                        <div class="relative mb-2">
+                          <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                          </div>
+                          <input 
+                            v-model="skillSearchQuery" 
+                            type="text" 
+                            placeholder="Дағды атауы бойынша іздеу..." 
+                            class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:italic placeholder-slate-400 focus:outline-none focus:border-[#00a5e5] focus:ring-1 focus:ring-[#00a5e5] transition-all bg-slate-50/50"
+                          />
+                        </div>
+
+                        <!-- Search Results (if searching) -->
+                        <div v-if="skillSearchQuery.trim()" class="divide-y divide-slate-100">
+                          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1 px-4">Нәтижелер</div>
+                          <div v-if="searchSkillsList.length === 0" class="py-4 text-center text-xs text-slate-400">
+                            Дағды табылмады.
+                          </div>
+                          <button 
+                            v-for="s in searchSkillsList" 
+                            :key="s.id as PropertyKey" 
+                            @click="selectDropdownSkill(s)"
+                            class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between group cursor-pointer"
+                          >
+                            <div class="flex flex-col gap-0.5">
+                              <span class="text-[10px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ s.code }}</span>
+                              <span>{{ s.title }}</span>
+                            </div>
+                            <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                          </button>
+                        </div>
+
+                        <!-- Browse Catalog Mode -->
+                        <template v-else>
+                          <div class="border-b border-slate-100 pb-2 space-y-1 px-1">
+                            <div class="text-[11px] italic text-slate-400">немесе төмендегі тізімнен таңдаңыз</div>
+                            <div class="flex items-center justify-between">
+                              <button 
+                                v-if="dropdownStep !== 'grade'" 
+                                @click="goBackDropdown" 
+                                class="text-xs font-bold text-slate-700 hover:text-[#00a5e5] flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                <span class="text-[#00a5e5] font-bold text-sm">‹</span> Сыныпты таңдау
+                              </button>
+                              <span v-else class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <span class="text-slate-400 font-bold text-sm">‹</span> Сыныпты таңдау
+                              </span>
+
+                              <span v-if="selectedGrade" class="text-xs font-semibold text-[#00a5e5] bg-cyan-50 px-2 py-0.5 rounded-md">
+                                {{ selectedGrade }} сынып
+                              </span>
+                            </div>
+                          </div>
+
+                          <!-- STEP 1: GRADE LIST -->
+                          <div v-if="dropdownStep === 'grade'" class="divide-y divide-slate-100 pt-1">
+                            <button 
+                              v-for="g in grades" 
+                              :key="g.id" 
+                              @click="selectDropdownGrade(g.number)"
+                              class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
+                            >
+                              <span>{{ g.number }}-сынып</span>
+                              <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                            </button>
+                          </div>
+
+                          <!-- STEP 2: CATALOG (THEMES & SKILLS) -->
+                          <div v-else-if="dropdownStep === 'catalog'" class="space-y-3 pt-1">
+                            <div v-if="catalogGroups.groups.length === 0 && catalogGroups.orphaned.length === 0" class="py-6 text-center text-xs text-slate-400">
+                              Дағдылар табылмады.
+                            </div>
+
+                            <div class="space-y-3">
+                              <div v-for="group in catalogGroups.groups" :key="group.theme.id" class="space-y-1">
+                                <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-2 uppercase tracking-wider px-2">
+                                  {{ group.theme.title }}
+                                </h5>
+                                
+                                <div v-if="group.directSkills.length > 0" class="divide-y divide-slate-100">
+                                  <button 
+                                    v-for="skill in group.directSkills" 
+                                    :key="skill.id" 
+                                    @click="selectDropdownSkill(skill)"
+                                    class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
+                                  >
+                                    <div class="flex flex-col gap-0.5">
+                                      <span class="text-[9px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ skill.code }}</span>
+                                      <span>{{ skill.title }}</span>
+                                    </div>
+                                    <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                                  </button>
+                                </div>
+
+                                <div v-for="sub in group.subthemes" :key="sub.subtheme.id" class="space-y-1">
+                                  <h6 class="text-[10px] font-bold text-slate-500 mt-2 mb-1 px-2">
+                                    {{ sub.subtheme.title }}
+                                  </h6>
+                                  
+                                  <div class="divide-y divide-slate-100">
+                                    <button 
+                                      v-for="skill in sub.skills" 
+                                      :key="skill.id" 
+                                      @click="selectDropdownSkill(skill)"
+                                      class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
+                                    >
+                                      <div class="flex flex-col gap-0.5">
+                                        <span class="text-[9px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ skill.code }}</span>
+                                        <span>{{ skill.title }}</span>
+                                      </div>
+                                      <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div v-if="catalogGroups.orphaned.length > 0" class="space-y-1">
+                                <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-2 uppercase tracking-wider px-2">
+                                  Басқа дағдылар
+                                </h5>
+                                <div class="divide-y divide-slate-100">
+                                  <button 
+                                    v-for="skill in catalogGroups.orphaned" 
+                                    :key="skill.id" 
+                                    @click="selectDropdownSkill(skill)"
+                                    class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
+                                  >
+                                    <div class="flex flex-col gap-0.5">
+                                      <span class="text-[9px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ skill.code }}</span>
+                                      <span>{{ skill.title }}</span>
+                                    </div>
+                                    <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </template>
+                      </div>
+                    </div>
+
+                    <!-- Level Selector Dropdown -->
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-slate-400 font-semibold text-xs">Деңгей:</span>
+                      <select 
+                        :value="q.level" 
+                        @change="changeCardLevel(idx, Number(($event.target as HTMLSelectElement).value))" 
+                        class="px-2.5 py-1.5 border border-slate-200 rounded-lg bg-white text-slate-700 font-bold text-xs focus:outline-none focus:border-[#00a5e5] shadow-xs cursor-pointer"
+                      >
+                        <option :value="1">1-деңгей 🏷️</option>
+                        <option :value="2">2-деңгей 🏷️</option>
+                        <option :value="3">3-деңгей 🏷️</option>
+                        <option :value="4">4-деңгей 🏷️</option>
+                        <option :value="5">5-деңгей 🏷️</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <button @click.stop="regenerateQuestionCard(idx)" class="text-xs text-[#00a5e5] hover:text-[#0082b5] font-semibold flex items-center gap-1 cursor-pointer">
+                    Жаңа сұрақ генерациялау ↻
                   </button>
                 </div>
               </div>
 
               <!-- Question Content & Custom Options -->
               <div class="p-6 space-y-4">
-                <div class="flex flex-col md:flex-row gap-4 items-center justify-between border-b border-slate-100 pb-4 mb-4">
-                  <!-- Change skill in Card -->
-                  <div class="flex items-center gap-2 text-xs w-full md:w-auto">
-                    <span class="text-slate-500">Дағдыны ауыстыру:</span>
-                    <select :value="q.skill_id" @change="changeCardSkill(idx, Number(($event.target as HTMLSelectElement).value))" class="px-2.5 py-1 border border-slate-200 rounded bg-white font-medium flex-1 md:flex-none">
-                      <option v-for="s in skillsList" :key="(s as Record<string, unknown>).id as PropertyKey" :value="(s as Record<string, unknown>).id">{{ (s as Record<string, unknown>).title }}</option>
-                    </select>
-                  </div>
-
-                  <div class="flex items-center gap-3 w-full md:w-auto justify-end">
-                    <!-- Change level in Card -->
-                    <div class="flex items-center gap-1.5 text-xs">
-                      <span class="text-slate-500">Деңгейі:</span>
-                      <select :value="q.level" @change="changeCardLevel(idx, Number(($event.target as HTMLSelectElement).value))" class="px-2 py-0.5 border border-slate-200 rounded bg-white">
-                        <option :value="1">Деңгей 1</option>
-                        <option :value="2">Деңгей 2</option>
-                        <option :value="3">Деңгей 3</option>
-                        <option :value="4">Деңгей 4</option>
-                      </select>
-                    </div>
-
-                    <!-- Regenerate specific question -->
-                    <button @click.stop="regenerateQuestionCard(idx)" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17m-.002 4l-.007-.04M16.5 12h.01" /></svg>
-                      Жаңа сұрақ генерациялау ↻
-                    </button>
-                  </div>
-                </div>
-
                 <!-- Prompt -->
                 <div v-if="!isQuestionPlugin(q)" class="text-sm font-semibold text-slate-800" v-html="q.prompt"></div>
 
@@ -141,16 +301,8 @@
                       scrolling="no"
                     ></iframe>
                   </div>
-                  <div v-if="q.showAnswer" class="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm space-y-1">
-                    <div class="flex items-center gap-1.5 font-bold text-emerald-700">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      Дұрыс жауабы:
-                    </div>
-                    <div class="font-semibold text-emerald-950 pl-5.5 text-base" v-html="q.correct_answer?.value || q.correct_answer?.choice || 'Көрсетілмеген'">
-                    </div>
-                    <div v-if="q.explanation" class="pl-5.5 text-xs text-slate-500 mt-2 border-t border-emerald-100/60 pt-1.5 leading-relaxed">
-                      <span class="font-semibold text-slate-600">Түсіндірме:</span> {{ q.explanation }}
-                    </div>
+                  <div v-if="q.showAnswer && q.explanation" class="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
+                    <span class="font-semibold text-slate-700">Түсіндірме:</span> {{ q.explanation }}
                   </div>
                 </div>
 
@@ -180,9 +332,15 @@
                 </div>
 
                 <!-- Card action bottom -->
-                <div class="flex justify-end pt-3 border-t border-slate-100">
-                  <button @click.stop="toggleCardAnswer(q)" class="text-xs text-slate-600 hover:text-slate-800 font-semibold flex items-center gap-1 border border-slate-300 rounded px-2.5 py-1.5 bg-white transition-colors">
-                    {{ q.showAnswer ? 'Жауапты жасыру' : 'Дұрыс жауабын көрсету' }}
+                <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                  <div v-if="q.showAnswer" class="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
+                    <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    <span>Дұрыс жауабы көрсетілді</span>
+                  </div>
+                  <div v-else></div>
+
+                  <button @click.stop="toggleCardAnswer(q)" class="text-xs font-semibold text-[#00a5e5] hover:text-[#0082b5] flex items-center gap-1 cursor-pointer">
+                    {{ q.showAnswer ? 'Жауапты жасыру ⊟' : 'Дұрыс жауабын көрсету ⊞' }}
                   </button>
                 </div>
 
@@ -190,236 +348,288 @@
             </div>
           </div>
 
-          <!-- ─── Generator Panel (shown when showGeneratorPanel = true) ─── -->
-          <div v-if="showGeneratorPanel" id="generator-panel" class="bg-white rounded-2xl border border-slate-100 shadow-sm">
-            <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4 rounded-t-2xl flex items-center justify-between">
-              <h3 class="font-bold text-slate-800 text-base">Сұрақтар генераторы</h3>
-              <button v-if="selectedQuestions.length > 0" @click="showGeneratorPanel = false" class="text-slate-400 hover:text-slate-600 text-xl font-bold leading-none">&times;</button>
-            </div>
+          <!-- ─── Generator Panel (White Container, 10% Narrower) ─── -->
+          <div v-if="showGeneratorPanel" id="generator-panel" class="bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs space-y-4 max-w-[765px] w-full mx-auto">
             
-            <div class="p-6">
-              <div class="relative w-full dropdown-container-el">
-                <label class="block text-xs font-semibold text-slate-500 mb-2 text-center">Квиз дағдысын таңдау (Дағдыны таңдаңыз)</label>
+            <!-- Top Controls Row: Skill Pill & Level Selector with Arrows -->
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              
+              <!-- Left: Skill Selector Dropdown Pill -->
+              <div class="relative dropdown-container-el flex-1 min-w-[280px]">
                 <button 
                   @click="showSkillDropdown = !showSkillDropdown" 
-                  class="w-full flex items-center justify-between px-4 py-3 border border-slate-200 rounded-xl bg-white text-slate-700 font-semibold shadow-sm hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm md:text-base cursor-pointer"
+                  class="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-cyan-200 rounded-xl text-slate-700 font-semibold text-sm shadow-xs hover:border-cyan-300 transition-all cursor-pointer"
                 >
-                  <span class="truncate">
-                    {{ selectedSkill ? `${selectedSkill.code} - ${selectedSkill.title}` : 'Дағдыны таңдау үшін басыңыз...' }}
+                  <span class="truncate text-slate-700">
+                    {{ selectedSkill ? `${selectedSkill.code} - ${selectedSkill.title}` : 'Дағдыны таңдаңыз' }}
                   </span>
-                  <svg class="w-5 h-5 text-slate-400 shrink-0 transition-transform duration-200" :class="{ 'rotate-180': showSkillDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                  <svg class="w-4 h-4 text-cyan-500 shrink-0 ml-2 transition-transform duration-200" :class="{ 'rotate-180': showSkillDropdown }" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
                 </button>
 
-                <!-- CUSTOM HIERARCHICAL DROPDOWN PANEL -->
-                <div v-if="showSkillDropdown" class="absolute z-20 top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl p-5 min-w-[320px] max-h-[420px] overflow-y-auto space-y-4">
-                  <!-- Header / Breadcrumb / Back button -->
-                  <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-2">
-                    <button v-if="dropdownStep !== 'grade'" @click="goBackDropdown" class="text-xs font-bold text-slate-500 hover:text-slate-800 flex items-center gap-1">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
-                      Артқа
-                    </button>
-                    <span v-else class="text-xs font-bold text-slate-400">Бастапқы бет</span>
-
-                    <!-- Breadcrumbs -->
-                    <span class="text-xs font-semibold text-slate-500 truncate max-w-[200px]">
-                      <span v-if="selectedGrade">{{ selectedGrade }} сынып</span>
-                    </span>
+                <!-- CUSTOM HIERARCHICAL DROPDOWN PANEL (IXL STYLE) -->
+                <div v-if="showSkillDropdown" class="absolute z-30 top-full left-0 right-0 mt-2 bg-white border border-slate-200/90 rounded-2xl shadow-2xl p-4 min-w-[340px] max-h-[460px] overflow-y-auto space-y-3">
+                  
+                  <!-- Search Input Bar -->
+                  <div class="relative mb-2">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                    <input 
+                      v-model="skillSearchQuery" 
+                      type="text" 
+                      placeholder="Дағды атауы бойынша іздеу..." 
+                      class="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs text-slate-700 placeholder:italic placeholder-slate-400 focus:outline-none focus:border-[#00a5e5] focus:ring-1 focus:ring-[#00a5e5] transition-all bg-slate-50/50"
+                    />
                   </div>
 
-                  <!-- STEP 1: GRADE SELECT -->
-                  <div v-if="dropdownStep === 'grade'" class="space-y-3">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Сыныпты таңдаңыз</h4>
-                    <div class="grid grid-cols-3 gap-2">
+                  <!-- Search Results (if searching) -->
+                  <div v-if="skillSearchQuery.trim()" class="divide-y divide-slate-100">
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider pb-1 px-4">Нәтижелер</div>
+                    <div v-if="searchSkillsList.length === 0" class="py-4 text-center text-xs text-slate-400">
+                      Дағды табылмады.
+                    </div>
+                    <button 
+                      v-for="s in searchSkillsList" 
+                      :key="s.id as PropertyKey" 
+                      @click="selectDropdownSkill(s); skillSearchQuery = ''"
+                      class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between group cursor-pointer"
+                    >
+                      <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ s.code }}</span>
+                        <span>{{ s.title }}</span>
+                      </div>
+                      <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                    </button>
+                  </div>
+
+                  <!-- Browse Catalog Mode (when not searching) -->
+                  <template v-else>
+                    <!-- Sub-header & Navigation -->
+                    <div class="border-b border-slate-100 pb-2 space-y-1 px-1">
+                      <div class="text-[11px] italic text-slate-400">немесе төмендегі тізімнен таңдаңыз</div>
+                      <div class="flex items-center justify-between">
+                        <button 
+                          v-if="dropdownStep !== 'grade'" 
+                          @click="goBackDropdown" 
+                          class="text-xs font-bold text-slate-700 hover:text-[#00a5e5] flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span class="text-[#00a5e5] font-bold text-sm">‹</span> Сыныпты таңдау
+                        </button>
+                        <span v-else class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                          <span class="text-slate-400 font-bold text-sm">‹</span> Сыныпты таңдау
+                        </span>
+
+                        <span v-if="selectedGrade" class="text-xs font-semibold text-[#00a5e5] bg-cyan-50 px-2 py-0.5 rounded-md">
+                          {{ selectedGrade }} сынып
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- STEP 1: GRADE LIST (Vertical list without rounding matching IXL) -->
+                    <div v-if="dropdownStep === 'grade'" class="divide-y divide-slate-100 pt-1">
                       <button 
                         v-for="g in grades" 
                         :key="g.id" 
                         @click="selectDropdownGrade(g.number)"
-                        class="px-3 py-2 text-xs border rounded-lg bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 font-semibold text-slate-700 transition-colors cursor-pointer"
+                        class="w-full text-left px-4 py-2.5 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
                       >
-                        {{ g.number }} сынып
+                        <span>{{ g.number }}-сынып</span>
+                        <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
                       </button>
                     </div>
-                  </div>
 
-                  <!-- STEP 2: COMPLETE INLINE HIERARCHICAL CATALOG -->
-                  <div v-else-if="dropdownStep === 'catalog'" class="space-y-4">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Тақырып пен дағдыны таңдаңыз</h4>
-                    
-                    <div v-if="catalogGroups.groups.length === 0 && catalogGroups.orphaned.length === 0" class="py-6 text-center text-xs text-slate-400">
-                      Дағдылар табылмады.
-                    </div>
+                    <!-- STEP 2: CATALOG (THEMES & SKILLS) -->
+                    <div v-else-if="dropdownStep === 'catalog'" class="space-y-3 pt-1">
+                      <div v-if="catalogGroups.groups.length === 0 && catalogGroups.orphaned.length === 0" class="py-6 text-center text-xs text-slate-400">
+                        Дағдылар табылмады.
+                      </div>
 
-                    <div class="space-y-4 max-h-[300px] overflow-y-auto pr-1">
-                      <!-- Grouped Themes & Subthemes -->
-                      <div v-for="group in catalogGroups.groups" :key="group.theme.id" class="space-y-2">
-                        <!-- Theme Header -->
-                        <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
-                          {{ group.theme.title }}
-                        </h5>
-                        
-                        <!-- Direct Skills under theme -->
-                        <div v-if="group.directSkills.length > 0" class="space-y-1 pl-2">
-                          <button 
-                            v-for="skill in group.directSkills" 
-                            :key="skill.id" 
-                            @click="selectDropdownSkill(skill)"
-                            class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-[11px] font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
-                          >
-                            <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
-                            <span>{{ skill.title }}</span>
-                          </button>
-                        </div>
-
-                        <!-- Subthemes and their skills -->
-                        <div v-for="sub in group.subthemes" :key="sub.subtheme.id" class="space-y-1 pl-2">
-                          <h6 class="text-[10px] font-bold text-slate-500 mt-2 mb-1">
-                            {{ sub.subtheme.title }}
-                          </h6>
+                      <div class="space-y-3">
+                        <!-- Grouped Themes -->
+                        <div v-for="group in catalogGroups.groups" :key="group.theme.id" class="space-y-1">
+                          <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-2 uppercase tracking-wider px-2">
+                            {{ group.theme.title }}
+                          </h5>
                           
-                          <div class="space-y-1 pl-2">
+                          <div v-if="group.directSkills.length > 0" class="divide-y divide-slate-100">
                             <button 
-                              v-for="skill in sub.skills" 
+                              v-for="skill in group.directSkills" 
                               :key="skill.id" 
                               @click="selectDropdownSkill(skill)"
-                              class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-[11px] font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
+                              class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
                             >
-                              <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
-                              <span>{{ skill.title }}</span>
+                              <div class="flex flex-col gap-0.5">
+                                <span class="text-[9px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ skill.code }}</span>
+                                <span>{{ skill.title }}</span>
+                              </div>
+                              <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                            </button>
+                          </div>
+
+                          <div v-for="sub in group.subthemes" :key="sub.subtheme.id" class="space-y-1">
+                            <h6 class="text-[10px] font-bold text-slate-500 mt-2 mb-1 px-2">
+                              {{ sub.subtheme.title }}
+                            </h6>
+                            
+                            <div class="divide-y divide-slate-100">
+                              <button 
+                                v-for="skill in sub.skills" 
+                                :key="skill.id" 
+                                @click="selectDropdownSkill(skill)"
+                                class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
+                              >
+                                <div class="flex flex-col gap-0.5">
+                                  <span class="text-[9px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ skill.code }}</span>
+                                  <span>{{ skill.title }}</span>
+                                </div>
+                                <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Orphaned Skills -->
+                        <div v-if="catalogGroups.orphaned.length > 0" class="space-y-1">
+                          <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-2 uppercase tracking-wider px-2">
+                            Басқа дағдылар
+                          </h5>
+                          <div class="divide-y divide-slate-100">
+                            <button 
+                              v-for="skill in catalogGroups.orphaned" 
+                              :key="skill.id" 
+                              @click="selectDropdownSkill(skill)"
+                              class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 hover:bg-[#00a5e5] hover:text-white transition-all flex items-center justify-between cursor-pointer group"
+                            >
+                              <div class="flex flex-col gap-0.5">
+                                <span class="text-[9px] font-bold text-[#00a5e5] group-hover:text-cyan-100 uppercase">{{ skill.code }}</span>
+                                <span>{{ skill.title }}</span>
+                              </div>
+                              <span class="opacity-0 group-hover:opacity-100 font-bold text-sm transition-opacity">›</span>
                             </button>
                           </div>
                         </div>
                       </div>
-
-                      <!-- Orphaned/Other Skills -->
-                      <div v-if="catalogGroups.orphaned.length > 0" class="space-y-2">
-                        <h5 class="text-[11px] font-bold text-slate-800 border-b border-slate-100 pb-1 mt-3 uppercase tracking-wider">
-                          Басқа дағдылар (Other Skills)
-                        </h5>
-                        <div class="space-y-1 pl-2">
-                          <button 
-                            v-for="skill in catalogGroups.orphaned" 
-                            :key="skill.id" 
-                            @click="selectDropdownSkill(skill)"
-                            class="w-full text-left px-3 py-1.5 rounded-lg hover:bg-emerald-50 text-[11px] font-medium text-slate-700 hover:text-emerald-950 transition-colors flex flex-col gap-0.5 cursor-pointer"
-                          >
-                            <span class="text-[9px] font-bold text-emerald-600 uppercase">{{ skill.code }}</span>
-                            <span>{{ skill.title }}</span>
-                          </button>
-                        </div>
-                      </div>
                     </div>
-                  </div>
+                  </template>
                 </div>
               </div>
-            </div>
 
-            <!-- Preview Card (renders dynamically when skill is loaded) -->
-            <div v-if="selectedSkill" class="px-6 pb-6 border-t border-slate-100 pt-6">
-              <div class="bg-slate-50 rounded-xl p-6 border border-slate-200">
-                <div class="flex items-center justify-between mb-4">
-                  <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-wider">Алдын ала қарау</span>
-                  
-                  <div class="flex items-center gap-3">
-                    <!-- Difficulty selector in Preview -->
-                    <div class="flex items-center gap-1.5">
-                      <span class="text-xs text-slate-500 font-medium">Деңгей:</span>
-                      <select v-model="previewDifficulty" @change="onPreviewDifficultyChange" class="px-2 py-1 text-xs border border-slate-200 rounded bg-white">
-                        <option :value="1">Деңгей 1</option>
-                        <option :value="2">Деңгей 2</option>
-                        <option :value="3">Деңгей 3</option>
-                        <option :value="4">Деңгей 4</option>
-                      </select>
-                    </div>
-
-                    <button @click="regeneratePreview" class="text-xs text-emerald-600 hover:text-emerald-700 font-semibold flex items-center gap-1">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H17m-.002 4l-.007-.04M16.5 12h.01" /></svg>
-                      Басқа сұрақ ↻
-                    </button>
-                  </div>
-                </div>
-
-                <div v-if="loadingQuestions" class="py-8 text-center text-slate-400 text-sm">
-                  Жүктелуде...
-                </div>
+              <!-- Right: Level selector with arrows -->
+              <div class="flex items-center gap-1.5 shrink-0">
+                <button 
+                  @click="previewDifficulty = Math.max(1, previewDifficulty - 1); onPreviewDifficultyChange()" 
+                  class="text-[#00a5e5] hover:text-[#0082b5] font-bold text-sm px-1 cursor-pointer"
+                  title="Алдыңғы деңгей"
+                >&lt;</button>
                 
-                <div v-else-if="!previewQuestion" class="py-8 text-center text-slate-400 text-sm">
-                  Бұл деңгей үшін сұрақ табылмады. Басқа деңгей таңдаңыз.
+                <select v-model="previewDifficulty" @change="onPreviewDifficultyChange" class="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#00a5e5] cursor-pointer">
+                  <option :value="1">1-деңгей 🏷️</option>
+                  <option :value="2">2-деңгей 🏷️</option>
+                  <option :value="3">3-деңгей 🏷️</option>
+                  <option :value="4">4-деңгей 🏷️</option>
+                  <option :value="5">5-деңгей 🏷️</option>
+                </select>
+
+                <button 
+                  @click="previewDifficulty = Math.min(5, previewDifficulty + 1); onPreviewDifficultyChange()" 
+                  class="text-[#00a5e5] hover:text-[#0082b5] font-bold text-sm px-1 cursor-pointer"
+                  title="Келесі деңгей"
+                >&gt;</button>
+              </div>
+
+            </div>
+
+            <!-- Center Box: Question Preview (or Empty State if no skill selected) -->
+            <div class="bg-slate-50/60 rounded-2xl p-6 min-h-[160px] flex items-center justify-center border border-slate-100/80">
+              <!-- Empty state: no skill selected -->
+              <div v-if="!selectedSkill" class="py-8 text-center text-slate-400 font-medium text-sm">
+                Бастау үшін дағдыны таңдап сұрақ қосыңыз!
+              </div>
+
+              <!-- Loading state -->
+              <div v-else-if="loadingQuestions" class="py-8 text-center text-slate-400 font-medium text-sm">
+                Жүктелуде...
+              </div>
+
+              <!-- No question for level -->
+              <div v-else-if="!previewQuestion" class="py-8 text-center text-slate-400 font-medium text-sm">
+                Бұл деңгей үшін сұрақ табылмады. Басқа деңгей таңдаңыз.
+              </div>
+
+              <!-- Preview Question Content -->
+              <div v-else class="w-full space-y-4">
+                <!-- Prompt -->
+                <div v-if="!isQuestionPlugin(previewQuestion)" class="text-sm font-semibold text-slate-800" v-html="previewQuestion.prompt"></div>
+
+                <!-- PLUGIN / INTERACTIVE -->
+                <div v-if="isQuestionPlugin(previewQuestion)" class="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white pointer-events-none select-none">
+                  <iframe
+                    v-if="previewIframeSrcdoc || previewIframeSrc"
+                    :srcdoc="previewIframeSrcdoc || undefined"
+                    :src="previewIframeSrcdoc ? undefined : previewIframeSrc"
+                    data-preview-iframe="true"
+                    :style="{ height: previewIframeHeight + 'px' }"
+                    class="w-full border-0"
+                    sandbox="allow-scripts"
+                    scrolling="no"
+                  ></iframe>
                 </div>
 
-                <div v-else class="space-y-4">
-                  <!-- Prompt -->
-                  <div v-if="!isQuestionPlugin(previewQuestion)" class="text-sm font-semibold text-slate-800" v-html="previewQuestion.prompt"></div>
-
-                  <!-- PLUGIN / INTERACTIVE -->
-                  <div v-if="isQuestionPlugin(previewQuestion)" class="relative w-full overflow-hidden rounded-xl border border-slate-200 bg-white">
-                    <iframe
-                      v-if="previewIframeSrcdoc || previewIframeSrc"
-                      :srcdoc="previewIframeSrcdoc || undefined"
-                      :src="previewIframeSrcdoc ? undefined : previewIframeSrc"
-                      data-preview-iframe="true"
-                      :style="{ height: previewIframeHeight + 'px' }"
-                      class="w-full border-0"
-                      sandbox="allow-scripts"
-                      scrolling="no"
-                    ></iframe>
+                <!-- MCQ Choices -->
+                <div v-else-if="previewQuestion.type === 'MCQ'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div 
+                    v-for="(option, index) in ((previewQuestion.data as Record<string, unknown>)?.choices as unknown[] || (previewQuestion.data as Record<string, unknown>)?.options as unknown[] || [])" 
+                    :key="index"
+                    class="p-3 border rounded-lg text-xs transition-all flex items-center justify-between"
+                    :class="[
+                      showPreviewAnswer && isOptionCorrect(previewQuestion, option, index)
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold'
+                        : 'border-slate-200 bg-white text-slate-700'
+                    ]"
+                  >
+                    <span v-html="formatMCQOption(option)"></span>
+                    <svg v-if="showPreviewAnswer && isOptionCorrect(previewQuestion, option, index)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                   </div>
+                </div>
 
-                  <!-- MCQ Choices -->
-                  <div v-else-if="previewQuestion.type === 'MCQ'" class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div 
-                      v-for="(option, index) in ((previewQuestion.data as Record<string, unknown>)?.choices as unknown[] || (previewQuestion.data as Record<string, unknown>)?.options as unknown[] || [])" 
-                      :key="index"
-                      class="p-3 border rounded-lg text-xs transition-all flex items-center justify-between"
-                      :class="[
-                        showPreviewAnswer && isOptionCorrect(previewQuestion, option, index)
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold'
-                          : 'border-slate-200 bg-white text-slate-700'
-                      ]"
-                    >
-                      <span v-html="formatMCQOption(option)"></span>
-                      <svg v-if="showPreviewAnswer && isOptionCorrect(previewQuestion, option, index)" class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                    </div>
-                  </div>
-
-                  <!-- NUMERIC/TEXT Answers -->
-                  <div v-else class="p-3 border border-slate-200 bg-white rounded-lg inline-flex items-center gap-2 text-xs">
-                    <span class="text-slate-400 font-medium">Жауап өрісі</span>
-                    <span v-if="showPreviewAnswer" class="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      Дұрыс мән: {{ (previewQuestion.correct_answer as Record<string, unknown>)?.value || (previewQuestion.correct_answer as Record<string, unknown>)?.choice || 'Көрсетілмеген' }}
-                    </span>
-                  </div>
-
-                  <!-- Preview control bottom -->
-                  <div class="flex items-center justify-between border-t border-slate-200/60 pt-4 mt-4">
-                    <div class="text-xs text-slate-500">
-                      Бұл санаттағы жалпы сұрақтар саны: <span class="font-bold text-slate-700">{{ filteredPoolQuestions.length }}</span>
-                    </div>
-
-                    <div class="flex items-center gap-4">
-                      <!-- Correct answer toggle -->
-                      <button @click="showPreviewAnswer = !showPreviewAnswer" class="text-xs text-slate-600 hover:text-slate-800 font-semibold flex items-center gap-1 border border-slate-300 rounded px-2.5 py-1.5 bg-white transition-colors">
-                        {{ showPreviewAnswer ? 'Жауапты жасыру' : 'Дұрыс жауабын көрсету' }}
-                      </button>
-
-                      <div class="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white">
-                        <button type="button" @click.prevent="previewCount = Math.max(1, previewCount - 1)" class="w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded text-slate-600 font-bold">-</button>
-                        <span class="w-6 text-center text-sm font-bold text-slate-700">{{ previewCount }}</span>
-                        <button type="button" @click.prevent="previewCount = Math.min(20, previewCount + 1)" class="w-7 h-7 bg-slate-50 hover:bg-slate-100 rounded text-slate-600 font-bold">+</button>
-                      </div>
-
-                      <button 
-                        @click="addGeneratedQuestions" 
-                        :disabled="!previewQuestion" 
-                        class="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-lg text-xs font-bold transition-colors cursor-pointer"
-                      >
-                        Сұрақтарды қосу
-                      </button>
-                    </div>
-                  </div>
-
+                <!-- NUMERIC/TEXT Answers -->
+                <div v-else class="p-3 border border-slate-200 bg-white rounded-lg inline-flex items-center gap-2 text-xs">
+                  <span class="text-slate-400 font-medium">Жауап өрісі</span>
+                  <span v-if="showPreviewAnswer" class="text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Дұрыс мән: {{ (previewQuestion.correct_answer as Record<string, unknown>)?.value || (previewQuestion.correct_answer as Record<string, unknown>)?.choice || 'Көрсетілмеген' }}
+                  </span>
                 </div>
               </div>
             </div>
+
+            <!-- Bottom Row: Stepper Counter & Add Questions Button -->
+            <div class="flex items-center justify-between pt-1">
+              <!-- Left: Number of questions stepper -->
+              <div class="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                <span>Сұрақтар саны:</span>
+                <button 
+                  type="button" 
+                  @click.prevent="previewCount = Math.max(1, previewCount - 1)" 
+                  class="w-7 h-7 bg-white hover:bg-cyan-50 rounded-full border border-cyan-200 text-[#00a5e5] font-bold flex items-center justify-center shadow-xs cursor-pointer"
+                >-</button>
+                <span class="w-6 text-center text-sm font-bold text-slate-700">{{ previewCount }}</span>
+                <button 
+                  type="button" 
+                  @click.prevent="previewCount = Math.min(20, previewCount + 1)" 
+                  class="w-7 h-7 bg-white hover:bg-cyan-50 rounded-full border border-cyan-200 text-[#00a5e5] font-bold flex items-center justify-center shadow-xs cursor-pointer"
+                >+</button>
+              </div>
+
+              <!-- Right: Add questions button -->
+              <button 
+                @click="addGeneratedQuestions" 
+                :disabled="!previewQuestion" 
+                class="px-6 py-2.5 bg-[#00a5e5] hover:bg-[#0092cc] disabled:bg-slate-200 text-white disabled:text-slate-400 font-bold rounded-xl text-sm transition-all shadow-xs cursor-pointer disabled:cursor-not-allowed"
+              >
+                Сұрақтарды қосу
+              </button>
+            </div>
+
           </div>
 
           <!-- ─── Add More Questions button (shown after questions are added and generator is hidden) ─── -->
@@ -439,8 +649,8 @@
     </div>
 
     <!-- STEP 2: SETTINGS & PUBLISH -->
-    <div v-else class="step-container p-6 bg-slate-50 min-h-screen">
-      <div class="max-w-5xl mx-auto space-y-6">
+    <div v-else class="step-container max-w-[1215px] w-[82%] mx-auto py-6">
+      <div class="w-full space-y-6">
         <!-- Back navigation step 2 -->
         <button @click="currentStep = 1" class="flex items-center text-sm font-semibold text-slate-600 hover:text-slate-800 transition-colors">
           <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
@@ -609,7 +819,64 @@ const selectedSkill = ref<Record<string, unknown> | null>(null)
 
 // Hierarchical Dropdown state
 const showSkillDropdown = ref(false)
+const activeCardDropdownIdx = ref<number | null>(null)
 const dropdownStep = ref<'grade' | 'catalog'>('grade')
+
+const toggleCardSkillDropdown = (idx: number) => {
+  if (activeCardDropdownIdx.value === idx) {
+    activeCardDropdownIdx.value = null
+  } else {
+    showSkillDropdown.value = false
+    activeCardDropdownIdx.value = idx
+    dropdownStep.value = 'grade'
+    skillSearchQuery.value = ''
+  }
+}
+
+const selectDropdownGrade = async (gradeNum: number) => {
+  selectedGrade.value = gradeNum
+  loadingQuestions.value = true
+  try {
+    await catalogStore.getSkills({ grade_number: gradeNum, page_size: 500 })
+    dropdownStep.value = 'catalog'
+  } catch (err) {
+    console.error('Failed to get skills for grade:', err)
+  } finally {
+    loadingQuestions.value = false
+  }
+}
+
+const selectDropdownSkill = async (skill: Record<string, unknown>) => {
+  if (activeCardDropdownIdx.value !== null) {
+    const cardIdx = activeCardDropdownIdx.value
+    activeCardDropdownIdx.value = null
+    skillSearchQuery.value = ''
+    await changeCardSkill(cardIdx, skill.id as number, skill)
+    return
+  }
+
+  selectedSkill.value = skill
+  showSkillDropdown.value = false
+  skillSearchQuery.value = ''
+  
+  // Randomize preview difficulty between 1 and 5
+  previewDifficulty.value = Math.floor(Math.random() * 5) + 1
+
+  loadingQuestions.value = true
+  poolQuestions.value = []
+  previewQuestion.value = null
+  showPreviewAnswer.value = false
+  
+  try {
+    const res = await teacherApi.getSkillQuestions(skill.id as number)
+    poolQuestions.value = res.data?.data || []
+    selectNextPreviewQuestion()
+  } catch (err) {
+    console.error('Failed to get questions:', err)
+  } finally {
+    loadingQuestions.value = false
+  }
+}
 
 // Compute nested catalog groups: Themes -> Subthemes -> Skills & direct skills
 const catalogGroups = computed(() => {
@@ -618,7 +885,7 @@ const catalogGroups = computed(() => {
   
   // Find top level themes (parent_id is null)
   const topThemes = allTopics.filter(t => !t.parent_id).sort((a, b) => a.order - b.order)
-  
+
   const groups: Array<{
     theme: ReturnType<typeof allTopics.filter>[number]
     subthemes: Array<{
@@ -668,42 +935,7 @@ const catalogGroups = computed(() => {
   }
 })
 
-const selectDropdownGrade = async (gradeNum: number) => {
-  selectedGrade.value = gradeNum
-  selectedSkill.value = null
-  poolQuestions.value = []
-  previewQuestion.value = null
-  
-  loadingQuestions.value = true
-  try {
-    await catalogStore.getSkills({ grade_number: gradeNum, page_size: 500 })
-    dropdownStep.value = 'catalog'
-  } catch (err) {
-    console.error('Failed to get skills for grade:', err)
-  } finally {
-    loadingQuestions.value = false
-  }
-}
 
-const selectDropdownSkill = async (skill: Record<string, unknown>) => {
-  selectedSkill.value = skill
-  showSkillDropdown.value = false
-  
-  loadingQuestions.value = true
-  poolQuestions.value = []
-  previewQuestion.value = null
-  showPreviewAnswer.value = false
-  
-  try {
-    const res = await teacherApi.getSkillQuestions(skill.id as number)
-    poolQuestions.value = res.data?.data || []
-    selectNextPreviewQuestion()
-  } catch (err) {
-    console.error('Failed to get questions:', err)
-  } finally {
-    loadingQuestions.value = false
-  }
-}
 
 const goBackDropdown = () => {
   if (dropdownStep.value === 'catalog') {
@@ -712,9 +944,18 @@ const goBackDropdown = () => {
 }
 
 const closeDropdownOnOutside = (e: MouseEvent) => {
-  const container = document.querySelector('.dropdown-container-el')
-  if (container && !container.contains(e.target as Node)) {
+  const target = e.target as Node | null
+  // If element was unmounted from DOM during click re-render, do not treat as outside click
+  if (!target || !document.body.contains(target)) return
+
+  const containers = document.querySelectorAll('.dropdown-container-el')
+  let isInside = false
+  containers.forEach(c => {
+    if (c.contains(target)) isInside = true
+  })
+  if (!isInside) {
     showSkillDropdown.value = false
+    activeCardDropdownIdx.value = null
   }
 }
 
@@ -737,6 +978,17 @@ type QuestionCard = {
   seed: number
 }
 const skillsList = ref<Record<string, unknown>[]>([])
+const skillSearchQuery = ref('')
+
+const searchSkillsList = computed(() => {
+  if (!skillSearchQuery.value.trim()) return []
+  const query = skillSearchQuery.value.toLowerCase().trim()
+  return skillsList.value.filter(s => {
+    const title = String(s.title || '').toLowerCase()
+    const code = String(s.code || '').toLowerCase()
+    return title.includes(query) || code.includes(query)
+  })
+})
 const poolQuestions = ref<Record<string, unknown>[]>([])
 const previewDifficulty = ref<number>(1)
 const previewCount = ref<number>(1)
@@ -768,6 +1020,9 @@ const settings = ref({
 
 const grades = computed(() => catalogStore.grades)
 const students = computed(() => teacherStore.students)
+const allSkills = computed(() => {
+  return catalogStore.skills.length > 0 ? catalogStore.skills : skillsList.value
+})
 
 // Extract parent themes (parent_id is null)
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -908,12 +1163,16 @@ const onPreviewDifficultyChange = () => {
 const selectNextPreviewQuestion = () => {
   const pool = filteredPoolQuestions.value
   if (pool.length > 0) {
-    // Select a random question from pool
     const randIdx = Math.floor(Math.random() * pool.length)
-    previewQuestion.value = pool[randIdx]
+    previewQuestion.value = { ...pool[randIdx], level: previewDifficulty.value }
+  } else if (poolQuestions.value.length > 0) {
+    // Fallback: take any question from pool and set level to previewDifficulty
+    previewQuestion.value = {
+      ...poolQuestions.value[0],
+      level: previewDifficulty.value
+    }
   } else {
-    // Fallback: take any question from the pool if exact level not found
-    previewQuestion.value = poolQuestions.value[0] || null
+    previewQuestion.value = null
   }
 
   if (previewQuestion.value) {
@@ -944,22 +1203,30 @@ const getRegularPluginSrc = (q: Record<string, unknown> | null | undefined): str
   return `/static/modules/${id}/${ver}/${entry}`
 }
 
-// Load plugin iframe for a preview question (no seed, no frozen — just preview)
+// Load plugin iframe for a preview question (frozen preview with level)
 const loadPreviewPlugin = async (q: Record<string, unknown>) => {
   previewIframeSrc.value = ''
   if (!isQuestionPlugin(q)) return
   const base = getRegularPluginSrc(q)
   if (!base) return
-  previewIframeSrc.value = `${base}?embed=1`
+  const level = previewDifficulty.value || 1
+  previewIframeSrc.value = `${base}?embed=1&level=${level}&frozen=1`
 }
 
-// Load plugin iframe for a card object (frozen preview with seed)
+// Load plugin iframe for a card object (frozen preview with seed and level, or review mode)
 const loadCardPlugin = async (card: QuestionCard) => {
   card.iframeSrc = ''
   if (!isQuestionPlugin(card)) return
   const base = getRegularPluginSrc(card)
   if (!base) return
-  card.iframeSrc = `${base}?embed=1&seed=${card.seed}&frozen=1`
+  const level = card.level || 1
+  if (card.showAnswer) {
+    const ca = card.correct_answer ? encodeURIComponent(JSON.stringify(card.correct_answer)) : ''
+    const qd = card.data ? encodeURIComponent(JSON.stringify(card.data)) : ''
+    card.iframeSrc = `${base}?embed=1&seed=${card.seed}&level=${level}&mode=review&showCorrectAnswer=1&correctAnswer=${ca}&questionData=${qd}`
+  } else {
+    card.iframeSrc = `${base}?embed=1&seed=${card.seed}&level=${level}&frozen=1`
+  }
 }
 
 // Add N questions to the list of selected questions
@@ -989,13 +1256,16 @@ const addGeneratedQuestions = async () => {
     // Generate a deterministic seed for this question
     const questionSeed = Math.floor(Math.random() * 2147483647)
     
+    // Randomize card level between 1 and 5
+    const cardLevel = Math.floor(Math.random() * 5) + 1
+
     // Add custom properties for cards
     const cardObj: QuestionCard = {
       id: uniqueCardId,
       question_id: q.id as number,
       skill_id: (selectedSkill.value as Record<string, unknown>).id as number,
       skill_title: (selectedSkill.value as Record<string, unknown>).title as string,
-      level: q.level as number,
+      level: cardLevel,
       prompt: q.prompt as string,
       type: q.type as string,
       data: (q.data as Record<string, unknown>) || {},
@@ -1065,10 +1335,8 @@ const removeQuestionCard = (idx: number) => {
 }
 
 // Change card specific skill
-const changeCardSkill = async (idx: number, skillId: number) => {
-  const skillObj = skillsList.value.find(s => (s as Record<string, unknown>).id === skillId) as Record<string, unknown> | undefined
-  if (!skillObj) return
-  
+const changeCardSkill = async (idx: number, skillId: number, skillObjParam?: Record<string, unknown>) => {
+  const card = selectedQuestions.value[idx]
   try {
     const res = await teacherApi.getSkillQuestions(skillId)
     const questionsPool = res.data?.data || []
@@ -1078,13 +1346,15 @@ const changeCardSkill = async (idx: number, skillId: number) => {
     const newQ = levelMatch[0] || questionsPool[0]
     
     if (newQ) {
+      const skillObj = skillObjParam || (allSkills.value.find(s => (s as Record<string, unknown>).id === skillId) as Record<string, unknown> | undefined)
       const randSuffix = Math.floor(Math.random() * 1000000)
+      const skillTitleStr = (skillObj?.title as string) || (card?.skill_title as string) || ''
       const cardObj: QuestionCard = {
         ...selectedQuestions.value[idx],
         id: `card-${newQ.id}-${Date.now()}-${randSuffix}`,
         question_id: newQ.id,
         skill_id: skillId,
-        skill_title: skillObj.title as string,
+        skill_title: skillTitleStr,
         prompt: newQ.prompt,
         type: newQ.type,
         data: (newQ.data as Record<string, unknown>) || {},
@@ -1112,28 +1382,26 @@ const changeCardLevel = async (idx: number, level: number) => {
     const questionsPool = res.data?.data || []
     
     const levelMatch = questionsPool.filter(q => q.level === level)
-    const newQ = levelMatch[0] || questionsPool[0]
+    const newQ = levelMatch[0] || questionsPool[0] || card
     
     if (newQ) {
       const randSuffix = Math.floor(Math.random() * 1000000)
       const cardObj: QuestionCard = {
         ...card,
-        id: `card-${newQ.id}-${Date.now()}-${randSuffix}`,
-        question_id: newQ.id,
-        level: newQ.level,
-        prompt: newQ.prompt,
-        type: newQ.type,
-        data: (newQ.data as Record<string, unknown>) || {},
-        correct_answer: (newQ.correct_answer as Record<string, unknown>) || {},
-        explanation: newQ.explanation,
+        id: `card-${newQ.id || card.question_id}-${Date.now()}-${randSuffix}`,
+        question_id: newQ.id || card.question_id,
+        level: level, // Explicitly set to selected level
+        prompt: newQ.prompt || card.prompt,
+        type: newQ.type || card.type,
+        data: (newQ.data as Record<string, unknown>) || card.data || {},
+        correct_answer: (newQ.correct_answer as Record<string, unknown>) || card.correct_answer || {},
+        explanation: newQ.explanation || card.explanation,
         iframeSrcdoc: '',
         iframeSrc: '',
         seed: Math.floor(Math.random() * 2147483647)
       }
       await loadCardPlugin(cardObj)
       selectedQuestions.value[idx] = cardObj
-    } else {
-      alert(`Таңдалған деңгей (${level}) үшін сұрақ табылмады.`);
     }
   } catch (err) {
     console.error('Failed to change card level:', err)
@@ -1178,31 +1446,16 @@ const regenerateQuestionCard = async (idx: number) => {
   }
 }
 
-const toggleCardAnswer = (q: QuestionCard) => {
-  q.showAnswer = !q.showAnswer
+const toggleCardAnswer = (targetCard: QuestionCard) => {
+  const nextState = !targetCard.showAnswer
   
-  if (q.showAnswer) {
-    // Post show-answer details to dynamic iframes
-    setTimeout(() => {
-      const iframe = document.querySelector(`iframe[data-card-id="${q.id}"]`) as HTMLIFrameElement
-      if (iframe?.contentWindow) {
-        try {
-          iframe.contentWindow.postMessage({
-            type: 'SERVER_RESULT',
-            correct: true,
-            score: 1,
-            explanation: q.explanation || ''
-          }, '*')
-          iframe.contentWindow.postMessage({
-            type: 'SHOW_ANSWER',
-            value: true
-          }, '*')
-        } catch (e) {
-          console.warn('Failed to send show-answer message to iframe:', e)
-        }
-      }
-    }, 50)
-  }
+  // Toggle answer visibility for ALL selected questions in the quiz
+  selectedQuestions.value.forEach((card) => {
+    card.showAnswer = nextState
+    if (isQuestionPlugin(card)) {
+      loadCardPlugin(card)
+    }
+  })
 }
 
 // Option formatting and correct answer matching
@@ -1266,7 +1519,8 @@ const buildPayload = (isPublishing: boolean) => {
     questions: selectedQuestions.value.map((q, i) => ({
       question_id: q.question_id,
       position: i,
-      seed: q.seed
+      seed: q.seed,
+      level: q.level
     })),
     is_draft: isDraft,
     student_ids: !isDraft ? (selectAllStudents.value || assignedStudentIds.value.length === 0 ? null : assignedStudentIds.value) : null,
@@ -1408,6 +1662,7 @@ onMounted(async () => {
   await Promise.all([
     catalogStore.getGrades(),
     catalogStore.getTopics(),
+    catalogStore.getSkills({ page_size: 1000 }),
     teacherStore.fetchStudents()
   ])
   
@@ -1467,7 +1722,7 @@ onMounted(async () => {
           question_id: q.question_id as number,
           skill_id: (question?.skill_id as number) || 0,
           skill_title: (skill?.title as string) || 'Енгізілген дағды',
-          level: (question?.level as number) || 1,
+          level: (q.level as number) || (question?.level as number) || 1,
           prompt: question ? (question.prompt as string) : 'Сұрақ мәтіні жүктелмеді',
           type: (question?.type as string) || 'MCQ',
           data: (question?.data as Record<string, unknown>) || {},

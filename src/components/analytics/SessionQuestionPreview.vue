@@ -36,9 +36,9 @@
       <!-- PLUGIN / INTERACTIVE -->
       <div v-if="isPlugin" class="space-y-4">
         <!-- Iframe container -->
-        <div class="relative w-full overflow-hidden rounded-xl border border-gray-200 bg-white min-h-[200px]">
+        <div class="relative w-full rounded-xl border border-gray-200 bg-white min-h-[300px]">
              <!-- Loading Overlay -->
-             <div v-if="iframeLoading" class="absolute inset-0 flex items-center justify-center bg-white/95 z-10 min-h-[200px]">
+             <div v-if="iframeLoading" class="absolute inset-0 flex items-center justify-center bg-white/95 z-10 min-h-[300px]">
                 <div class="text-center">
                   <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-gray-100 border-t-cyan-500 mb-2"></div>
                   <p class="text-sm font-semibold text-gray-500">Жүктелуде...</p>
@@ -49,10 +49,9 @@
                 v-if="pluginIframeSrc"
                 ref="iframeRef"
                 :src="pluginIframeSrc"
-                class="w-full border-0 select-none"
-                :style="{ height: `${iframeHeight}px`, overflow: 'hidden', pointerEvents: 'none' }"
+                class="w-full border-0 select-none rounded-xl"
+                :style="{ height: `${iframeHeight}px`, pointerEvents: 'none' }"
                 sandbox="allow-scripts"
-                scrolling="no"
                 @load="onIframeLoad"
               ></iframe>
         </div>
@@ -80,6 +79,7 @@ const props = defineProps<{
     isCorrect: boolean
     correctAnswer: unknown
     seed?: number | string | null
+    level?: number | string | null
   }
 }>()
 
@@ -95,14 +95,18 @@ const iframeLoading = ref(true)
 
 const getDefaultHeight = () => {
   const data = props.question.data
+  let baseHeight = 750
   if (data && typeof data.height === 'number') {
-    return Math.min(1400, Math.max(450, data.height))
-  }
-  if (data && typeof data.height === 'string') {
+    baseHeight = data.height
+  } else if (data && typeof data.height === 'string') {
     const val = parseInt(data.height, 10)
-    if (!isNaN(val)) return Math.min(1400, Math.max(450, val))
+    if (!isNaN(val)) baseHeight = val
   }
-  return 650
+  const hasUserAns = props.question.userAnswer !== null && props.question.userAnswer !== undefined
+  if (hasUserAns) {
+    baseHeight = Math.max(baseHeight, 850)
+  }
+  return Math.min(1800, Math.max(550, baseHeight))
 }
 
 const iframeHeight = ref(getDefaultHeight())
@@ -116,7 +120,7 @@ const setIframeHeight = (height: unknown) => {
     parsedHeight = parseFloat(height)
   }
   if (isNaN(parsedHeight) || parsedHeight <= 0) return
-  iframeHeight.value = Math.max(450, Math.min(Math.ceil(parsedHeight) + 32, 3000))
+  iframeHeight.value = Math.max(650, Math.min(Math.ceil(parsedHeight) + 100, 3000))
 }
 
 const measureIframeContent = () => {
@@ -171,6 +175,21 @@ const getMCQClass = (option: unknown, index: number | string) => {
   return 'bg-white border-gray-200 opacity-60' // Dim non-selected options
 }
 
+// Helpers to safely extract student answer and correct answer from wrapper or direct value
+const extractAns = (raw: Record<string, unknown> | null, fallback: unknown) => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback
+  const val = raw.studentAnswer ?? raw.student_answer ?? raw.userAnswer ?? raw.user_answer ?? raw.answer ?? raw.value ?? raw.choice ?? raw.text
+  if (val !== undefined && val !== null) return val
+  return fallback
+}
+
+const extractCorrectAns = (raw: Record<string, unknown> | null, fallback: unknown) => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback
+  const val = raw.correctAnswer ?? raw.correct_answer ?? raw.expectedAnswer ?? raw.expected_answer
+  if (val !== undefined && val !== null) return val
+  return fallback
+}
+
 // Plugin Logic (simplified from PracticeSession)
 const loadPlugin = async () => {
   pluginIframeSrc.value = ''
@@ -189,23 +208,9 @@ const loadPlugin = async () => {
   if (!id || !ver || !entry) return
 
   const hasUserAnswer = props.question.userAnswer !== null && props.question.userAnswer !== undefined
+  const level = props.question.level ?? (qData?.level as string | number | undefined) ?? 1
 
-  if (!hasUserAnswer) {
-    // Question-only preview: load in quiz+frozen mode to just show the question
-    const params = new URLSearchParams({
-      embed: '1',
-      mode: 'quiz',
-      frozen: '1',
-      questionData: qData ? JSON.stringify(qData) : '',
-      seed: props.question.seed ? String(props.question.seed) : ''
-    })
-    pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
-    return
-  }
-
-  // Review mode: show student answer + correct answer
   const rawUserAns = normalizePayload(props.question.userAnswer) as Record<string, unknown> | null
-  
   const isWrapper = rawUserAns && typeof rawUserAns === 'object' && !Array.isArray(rawUserAns) && (
     'studentAnswer' in rawUserAns ||
     'student_answer' in rawUserAns ||
@@ -216,22 +221,62 @@ const loadPlugin = async () => {
     'expectedAnswer' in rawUserAns ||
     'expected_answer' in rawUserAns ||
     'answerData' in rawUserAns ||
-    'questionData' in rawUserAns
+    'questionData' in rawUserAns ||
+    'visualData' in rawUserAns
   )
 
-  const questionData = isWrapper ? (rawUserAns.questionData || rawUserAns.visualData) : props.question.data
+  const extractedQData = isWrapper ? (rawUserAns.questionData || rawUserAns.visualData) : null
+  const mergedQData = extractedQData && typeof extractedQData === 'object'
+    ? { ...(qData || {}), ...(extractedQData as Record<string, unknown>) }
+    : (qData || {})
+
+  const getSeed = (): string => {
+    if (props.question.seed !== null && props.question.seed !== undefined && props.question.seed !== '') {
+      return String(props.question.seed)
+    }
+    if (mergedQData && mergedQData.seed !== null && mergedQData.seed !== undefined && mergedQData.seed !== '') {
+      return String(mergedQData.seed)
+    }
+    if (rawUserAns && typeof rawUserAns === 'object' && rawUserAns.seed !== null && rawUserAns.seed !== undefined && rawUserAns.seed !== '') {
+      return String(rawUserAns.seed)
+    }
+    // Fallback deterministic seed from prompt string or qData to guarantee matching seed between question and answer previews
+    const str = props.question.prompt || (qData ? JSON.stringify(qData) : '') || 'default-seed'
+    let hash = 0
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i)
+      hash |= 0
+    }
+    return String(Math.abs(hash) || 12345)
+  }
+
+  const effectiveSeed = getSeed()
+
+  if (!hasUserAnswer) {
+    // Question-only preview: load in quiz+frozen mode to just show the question
+    const params = new URLSearchParams({
+      embed: '1',
+      mode: 'quiz',
+      frozen: '1',
+      questionData: mergedQData ? JSON.stringify(mergedQData) : '',
+      seed: effectiveSeed,
+      level: String(level)
+    })
+    pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
+    return
+  }
+
+  // Review mode: show student answer + correct answer
   const answerData = isWrapper ? rawUserAns.answerData : null
+  const extractedStudentAns = isWrapper ? extractAns(rawUserAns, props.question.userAnswer) : props.question.userAnswer
+  const extractedCorrectAns = isWrapper ? extractCorrectAns(rawUserAns, props.question.correctAnswer) : props.question.correctAnswer
 
   const reviewData = {
     mode: 'review',
-    studentAnswer: isWrapper
-      ? (rawUserAns.studentAnswer ?? rawUserAns.student_answer ?? rawUserAns.userAnswer ?? rawUserAns.user_answer ?? rawUserAns.answer ?? rawUserAns.value)
-      : props.question.userAnswer,
-    correctAnswer: isWrapper
-      ? (rawUserAns.correctAnswer ?? rawUserAns.correct_answer ?? rawUserAns.expectedAnswer ?? rawUserAns.expected_answer ?? props.question.correctAnswer)
-      : props.question.correctAnswer,
+    studentAnswer: extractedStudentAns,
+    correctAnswer: extractedCorrectAns,
     isCorrect: props.question.isCorrect,
-    questionData,
+    questionData: mergedQData,
     answerData
   }
 
@@ -239,12 +284,14 @@ const loadPlugin = async () => {
     embed: '1',
     mode: 'review',
     frozen: '1',
-    studentAnswer: typeof reviewData.studentAnswer === 'object' ? JSON.stringify(reviewData.studentAnswer) : String(reviewData.studentAnswer || ''),
-    correctAnswer: typeof reviewData.correctAnswer === 'object' ? JSON.stringify(reviewData.correctAnswer) : String(reviewData.correctAnswer || ''),
+    studentAnswer: typeof reviewData.studentAnswer === 'object' ? JSON.stringify(reviewData.studentAnswer) : String(reviewData.studentAnswer ?? ''),
+    userAnswer: typeof reviewData.studentAnswer === 'object' ? JSON.stringify(reviewData.studentAnswer) : String(reviewData.studentAnswer ?? ''),
+    correctAnswer: typeof reviewData.correctAnswer === 'object' ? JSON.stringify(reviewData.correctAnswer) : String(reviewData.correctAnswer ?? ''),
     isCorrect: String(reviewData.isCorrect || false),
-    questionData: questionData ? JSON.stringify(questionData) : '',
+    questionData: mergedQData ? JSON.stringify(mergedQData) : '',
     answerData: answerData ? JSON.stringify(answerData) : '',
-    seed: props.question.seed ? String(props.question.seed) : ''
+    seed: effectiveSeed,
+    level: String(level)
   })
   pluginIframeSrc.value = `/static/modules/${id}/${ver}/${entry}?${params.toString()}`
 }
@@ -274,20 +321,20 @@ const handleIframeMessage = (event: MessageEvent) => {
 const onIframeLoad = () => {
     iframeLoading.value = false
     measureIframeContent()
-    // Optional: Send message to iframe as a fallback mechanism
     try {
+      const rawUserAns = normalizePayload(props.question.userAnswer) as Record<string, unknown> | null
+      const studentAns = extractAns(rawUserAns, props.question.userAnswer)
+      const correctAns = extractCorrectAns(rawUserAns, props.question.correctAnswer)
+
       iframeRef.value?.contentWindow?.postMessage({
         type: 'SERVER_RESULT',
         correct: props.question.isCorrect,
         score: props.question.isCorrect ? 1 : 0,
-        studentAnswer: props.question.userAnswer,
-        correctAnswer: props.question.correctAnswer,
+        studentAnswer: studentAns,
+        userAnswer: studentAns,
+        correctAnswer: correctAns,
         isCorrect: props.question.isCorrect,
         mode: 'review'
-      }, '*')
-      iframeRef.value?.contentWindow?.postMessage({
-        type: 'SHOW_ANSWER',
-        value: true
       }, '*')
       measureIframeContent()
     } catch (err) {

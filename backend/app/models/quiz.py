@@ -58,6 +58,7 @@ class QuizQuestion(Base):
     question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"), index=True, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    level: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     quiz: Mapped["Quiz"] = relationship(back_populates="questions")
     question: Mapped["Question"] = relationship()

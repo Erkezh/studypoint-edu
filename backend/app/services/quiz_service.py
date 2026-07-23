@@ -38,7 +38,8 @@ class QuizService:
                 quiz_id=quiz.id,
                 question_id=q_req.question_id,
                 position=q_req.position,
-                seed=q_req.seed
+                seed=q_req.seed,
+                level=q_req.level
             )
             self.session.add(quiz_q)
             
@@ -123,7 +124,8 @@ class QuizService:
                 quiz_id=quiz.id,
                 question_id=q_req.question_id,
                 position=q_req.position,
-                seed=q_req.seed
+                seed=q_req.seed,
+                level=q_req.level
             )
             self.session.add(quiz_q)
 
