@@ -450,35 +450,7 @@ const catalogStore = useCatalogStore()
 // Статистика навыка для отображения предыдущего результата
 const previousBestScore = ref<number | null>(null)
 
-const submitting = ref(false)
-const numericAnswer = ref<number | null>(null)
-const textAnswer = ref('')
-const lastResult = ref<PracticeSubmitResponse | null>(null)
-const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
-const questionStartTime = ref(Date.now())
-const accumulatedQuestionTimeMs = ref(0)
-const activeQuestionStartedAt = ref<number | null>(Date.now())
-const showingResult = ref(false) // Показывать ли результат вместо вопроса
-const userAnswer = ref<unknown>(null) // Сохраненный ответ пользователя
-const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
-const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
-const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
-const loadingNext = ref(false) // Загрузка следующего вопроса
-const currentTime = ref(0) // Текущее время сессии в секундах
-let timeInterval: number | null = null // Интервал для обновления времени
-const isComponentMounted = ref(false)
-const error = ref<string | null>(null) // Ошибка для отображения
-
-// Отображаемый вопрос в сессии (не меняется во время показа результата)
-const displayedQuestion = ref<QuestionPublic | null>(null)
-
-watch(() => practiceStore.currentQuestion, (newQ) => {
-  if (!showingResult.value && !submitting.value && newQ) {
-    displayedQuestion.value = { ...newQ }
-  }
-}, { immediate: true })
-
-const currentQuestion = computed(() => displayedQuestion.value)
+const currentQuestion = computed(() => practiceStore.currentQuestion)
 
 // URL для плагинов (src)
 const pluginIframeSrc = computed(() => {
@@ -489,10 +461,7 @@ const pluginIframeSrc = computed(() => {
   const ver = q.data.plugin_version as string | undefined
   const entry = q.data.entry as string | undefined
   if (!id || !ver || !entry) return ''
-
-  const seed = q.data.seed ?? ''
-  const level = q.data.level ?? 1
-  return `/static/modules/${id}/${ver}/${entry}?embed=1&seed=${seed}&level=${level}`
+  return `/static/modules/${id}/${ver}/${entry}?embed=1`
 })
 
 // Динамическая высота iframe от плагина
@@ -516,6 +485,25 @@ const pluginEmbedHeight = computed(() => {
   // Используем высоту из manifest или минимум 800, максимум 1400
   return Math.min(1400, Math.max(800, Number(q.data.height) || 900))
 })
+
+const submitting = ref(false)
+const numericAnswer = ref<number | null>(null)
+const textAnswer = ref('')
+const lastResult = ref<PracticeSubmitResponse | null>(null)
+const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
+const questionStartTime = ref(Date.now())
+const accumulatedQuestionTimeMs = ref(0)
+const activeQuestionStartedAt = ref<number | null>(Date.now())
+const showingResult = ref(false) // Показывать ли результат вместо вопроса
+const userAnswer = ref<unknown>(null) // Сохраненный ответ пользователя
+const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
+const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
+const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
+const loadingNext = ref(false) // Загрузка следующего вопроса
+const currentTime = ref(0) // Текущее время сессии в секундах
+let timeInterval: number | null = null // Интервал для обновления времени
+const isComponentMounted = ref(false)
+const error = ref<string | null>(null) // Ошибка для отображения
 
 // Для всех авторизованных пользователей ограничения не применяются
 // hasActiveSubscription используется для будущего функционала подписок
@@ -1152,19 +1140,25 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       time_spent_sec: timeSpent,
     }
 
-    const answeredQuestion = currentQuestion.value ? { ...currentQuestion.value } : null
+    const answeredPluginQuestion = qType === 'PLUGIN' && currentQuestion.value ? { ...currentQuestion.value } : null
     const pluginWindow = qType === 'PLUGIN' ? pluginIframeRef.value?.contentWindow : null
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
 
     if (response) {
-      lastResult.value = response
-      showingResult.value = true
+      // Для PLUGIN не показываем внешний экран результата:
+      // iframe сам отвечает за отображение правильного/неправильного ответа.
+      const shouldShowExternalResult = qType !== 'PLUGIN'
+
+      lastResult.value = shouldShowExternalResult ? response : null
+      showingResult.value = shouldShowExternalResult
+      if (qType === 'PLUGIN' && answeredPluginQuestion && !practiceStore.currentQuestion) {
+        practiceStore.currentQuestion = answeredPluginQuestion
+        if (practiceStore.currentSession) {
+          practiceStore.currentSession.current_question = answeredPluginQuestion
+        }
+      }
       saveToRecentSessions()
       userAnswer.value = answer
-
-      if (answeredQuestion) {
-        displayedQuestion.value = answeredQuestion
-      }
 
       // Отправляем результат в iframe для PLUGIN
       if (qType === 'PLUGIN' && pluginWindow) {
@@ -1281,14 +1275,10 @@ const loadNextQuestion = async () => {
     textAnswer.value = ''
 
     // Загружаем следующий вопрос
+    // lastResult.value уже null, поэтому всегда загружаем следующий вопрос
     if (!practiceStore.currentQuestion) {
       await practiceStore.getNextQuestion(practiceStore.currentSession.id)
     }
-
-    if (practiceStore.currentQuestion) {
-      displayedQuestion.value = { ...practiceStore.currentQuestion }
-    }
-
     resetQuestionTimer()
   } catch (err: any) {
     const status = err.response?.status
@@ -1358,9 +1348,6 @@ const pluginMessageHandler = (event: MessageEvent) => {
 
     if (d.type !== 'exercise-result') return
 
-    // ВАЖНО: Игнорируем сообщения, если решение уже обрабатывается или результат отображается!
-    if (submitting.value || showingResult.value) return
-
     const q = currentQuestion.value
     if (!q || q.type !== 'PLUGIN') return
 
@@ -1424,32 +1411,17 @@ const saveToRecentSessions = () => {
   }
 }
 
-const handleWindowBlur = () => {
-  // ВАЖНО: Если фокус перешел внутрь iframe плагина, не считаем это уходом со страницы!
-  if (document.activeElement && document.activeElement.tagName === 'IFRAME') {
-    return
-  }
-  stopTimer()
-  pauseQuestionTimer()
-  practiceStore.stopHeartbeat()
-}
-
-const handleWindowFocus = () => {
-  if (document.hidden) return
-  if (practiceStore.currentSession && !practiceStore.currentSession.finished_at && !showingResult.value) {
-    startTimer()
-    startQuestionTimer()
-    if (practiceStore.currentSession.id) {
-      practiceStore.startHeartbeat(practiceStore.currentSession.id)
-    }
-  }
-}
-
 const handleVisibilityChange = () => {
   if (document.hidden) {
-    handleWindowBlur()
+    stopTimer()
+    pauseQuestionTimer()
+    practiceStore.stopHeartbeat()
   } else {
-    handleWindowFocus()
+    if (practiceStore.currentSession && !practiceStore.currentSession.finished_at) {
+      startTimer()
+      startQuestionTimer()
+      practiceStore.startHeartbeat(practiceStore.currentSession.id)
+    }
   }
 }
 
@@ -1457,10 +1429,6 @@ onMounted(async () => {
   isComponentMounted.value = true
   window.addEventListener('message', pluginMessageHandler)
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  window.addEventListener('blur', handleWindowBlur)
-  window.addEventListener('focus', handleWindowFocus)
-  window.addEventListener('pagehide', handleWindowBlur)
-  window.addEventListener('beforeunload', handleWindowBlur)
   try {
     const session = await practiceStore.getSession(props.sessionId)
     if (!isComponentMounted.value) {
@@ -1522,14 +1490,10 @@ onBeforeRouteLeave(() => {
 onUnmounted(() => {
   isComponentMounted.value = false
   window.removeEventListener('message', pluginMessageHandler)
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-  window.removeEventListener('blur', handleWindowBlur)
-  window.removeEventListener('focus', handleWindowFocus)
-  window.removeEventListener('pagehide', handleWindowBlur)
-  window.removeEventListener('beforeunload', handleWindowBlur)
   stopTimer()
   pauseQuestionTimer()
   practiceStore.stopHeartbeat()
   practiceStore.resetSession()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
