@@ -104,11 +104,9 @@
                      </svg>
                      <span class="text-xs font-semibold">Ашылуда...</span>
                   </div>
-                  <div v-else-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
-                     <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
-                     <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
-                       {{ skillStats.get(skill.id)!.best_smartscore }}
-                     </span>
+                  <div v-else-if="getSkillEffectiveScore(skill.id) > 0" class="ml-auto shrink-0 pl-1 flex items-center gap-1 text-xs font-bold text-gray-500">
+                     <span v-if="getSkillEffectiveScore(skill.id) >= 90" title="Mastered">🏅</span>
+                     <span>{{ getSkillEffectiveScore(skill.id) }}</span>
                   </div>
                   <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-400 hover:text-blue-500 md:opacity-0 md:group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1 p-1" title="Edit Skill">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -146,11 +144,9 @@
                      </svg>
                      <span class="text-xs font-semibold">Ашылуда...</span>
                   </div>
-                  <div v-else-if="skillStats.has(skill.id)" class="ml-auto shrink-0 pl-1 flex items-center gap-1">
-                     <span v-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 90" title="Mastered" class="text-sm">🏅</span>
-                     <span v-else-if="(skillStats.get(skill.id)!.best_smartscore || 0) >= 70" title="Practiced" class="text-blue-500 text-xs font-bold">
-                       {{ skillStats.get(skill.id)!.best_smartscore }}
-                     </span>
+                  <div v-else-if="getSkillEffectiveScore(skill.id) > 0" class="ml-auto shrink-0 pl-1 flex items-center gap-1 text-xs font-bold text-gray-500">
+                     <span v-if="getSkillEffectiveScore(skill.id) >= 90" title="Mastered">🏅</span>
+                     <span>{{ getSkillEffectiveScore(skill.id) }}</span>
                   </div>
                   <button v-if="authStore.user?.role === 'ADMIN'" @click.stop="openEditModal(skill)" class="ml-auto text-gray-400 hover:text-blue-500 md:opacity-0 md:group-hover/skill:opacity-100 transition-opacity shrink-0 mr-1 p-1" title="Edit Skill">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -388,6 +384,12 @@ const goToLogin = () => {
 const goToHome = () => {
   showTrialEndedModal.value = false
   router.push({ name: 'home' })
+}
+
+const getSkillEffectiveScore = (skillId: number): number => {
+  const stat = skillStats.value.get(skillId)
+  if (!stat) return 0
+  return Math.max(stat.best_smartscore || 0, stat.last_smartscore || 0)
 }
 
 const applySkillStats = (skillId: number, stats: { best_smartscore?: number; last_smartscore?: number } | null | undefined) => {

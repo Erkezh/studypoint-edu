@@ -477,6 +477,7 @@ const currentTime = ref(0) // Текущее время сессии в секу
 let timeInterval: number | null = null // Интервал для обновления времени
 const isComponentMounted = ref(false)
 const error = ref<string | null>(null) // Ошибка для отображения
+const previousBestScore = ref(0)
 
 // Отображаемый вопрос в сессии (не меняется во время показа результата)
 const displayedQuestion = ref<QuestionPublic | null>(null)
@@ -1164,7 +1165,6 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       time_spent_sec: timeSpent,
     }
 
-    const answeredPluginQuestion = qType === 'PLUGIN' && currentQuestion.value ? { ...currentQuestion.value } : null
     const pluginWindow = qType === 'PLUGIN' ? pluginIframeRef.value?.contentWindow : null
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
 
@@ -1196,10 +1196,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         }
       }
 
-      // Синхронизируем время с сервером
-      if (response.session?.time_elapsed_sec !== undefined) {
-        currentTime.value = response.session.time_elapsed_sec
-      }
+      // Таймер продолжается непрерывно без скачков при ответе на вопросы
 
       // SmartScore 100: завершаем сессию
       const sessionAny = response.session as any

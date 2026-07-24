@@ -453,8 +453,9 @@ const textAnswer = ref('')
 const currentTime = ref(0)
 const isComponentMounted = ref(false)
 
-// Use window-level storage for the interval ID so HMR can't orphan it
-const QUIZ_TIMER_KEY = '__quiz_timer_interval__'
+// Timer interval handle (local variable, matching PracticeSession.vue)
+let timerInterval: ReturnType<typeof setInterval> | null = null
+let savedTime = 0  // Ground-truth timer value, only updated when student answers a question
 
 // Plugin state
 const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
@@ -797,6 +798,8 @@ const submitAnswer = (answer: unknown) => {
         submitted_answer: finalAnswer
       })
     }
+    savedTime = currentTime.value
+    saveProgress()
   }
 
   // Clear input AFTER saving finalAnswer
@@ -856,8 +859,7 @@ const confirmSubmitQuiz = async () => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// Watch and save progress to localStorage
-watch([currentTime, questionAnswers], () => {
+const saveProgress = () => {
   if (currentQuiz.value && !isFinished.value) {
     try {
       const userId = authStore.user?.id || ''
@@ -869,7 +871,10 @@ watch([currentTime, questionAnswers], () => {
       console.warn('Failed to save quiz progress to localStorage:', err)
     }
   }
-}, { deep: true })
+}
+
+// Progress is saved explicitly in submitAnswer() only — no reactive watcher.
+// This avoids Vue's async watch flush writing ticked-up currentTime to localStorage.
 
 const formatSubmittedAnswerText = (answer: unknown): string => {
   if (!answer) return '—'
@@ -1012,35 +1017,24 @@ const getCorrectAnswerText = (
   return formatSubmittedAnswerText(correct)
 }
 
-// Timer Functions
+// Timer Functions (matching PracticeSession.vue architecture)
 const stopTimer = () => {
-  // Clear from window-level storage (handles HMR and orphaned intervals)
-  const win = window as unknown as Record<string, number | null>
-  const existingId = win[QUIZ_TIMER_KEY]
-  if (existingId) {
-    console.log('[QuizTimer] STOP timer (window), intervalId =', existingId, ', currentTime =', currentTime.value)
-    clearInterval(existingId)
-    win[QUIZ_TIMER_KEY] = null
+  if (timerInterval !== null) {
+    clearInterval(timerInterval)
+    timerInterval = null
   }
 }
 
 const startTimer = () => {
   stopTimer()
-  if (!isComponentMounted.value) {
-    console.log('[QuizTimer] START refused — component not mounted')
+  if (!isComponentMounted.value || isFinished.value || loading.value) {
     return
   }
-  console.log('[QuizTimer] START timer, currentTime =', currentTime.value)
-  const id = window.setInterval(() => {
-    if (!isComponentMounted.value) {
-      console.log('[QuizTimer] interval fired after unmount — auto-stopping')
-      stopTimer()
-      return
-    }
+  // Always reset from the confirmed savedTime — this prevents creep
+  currentTime.value = savedTime
+  timerInterval = setInterval(() => {
     currentTime.value++
-  }, 1000)
-  const win = window as unknown as Record<string, number | null>
-  win[QUIZ_TIMER_KEY] = id
+  }, 1000) as unknown as ReturnType<typeof setInterval>
 }
 
 // Timer Functions
@@ -1096,7 +1090,8 @@ const fetchQuiz = async () => {
             try {
               const progress = JSON.parse(progressStr)
               if (progress && typeof progress === 'object') {
-                currentTime.value = Number(progress.currentTime || 0)
+                savedTime = Number(progress.currentTime || 0)
+                currentTime.value = savedTime
                 questionAnswers.value = Array.isArray(progress.answers) ? progress.answers : []
               }
             } catch (err) {
@@ -1127,7 +1122,6 @@ const fetchQuiz = async () => {
           }
 
           if (!isComponentMounted.value) return
-          startTimer()
           // Load plugin iframe if the current question is a plugin
           await loadCurrentPlugin()
         }
@@ -1140,6 +1134,9 @@ const fetchQuiz = async () => {
     error.value = 'Викторинаны жүктеу кезінде қателік орын алды.'
   } finally {
     loading.value = false
+    if (isComponentMounted.value && !isFinished.value && currentQuiz.value) {
+      startTimer()
+    }
   }
 }
 
@@ -1157,7 +1154,6 @@ const handleVisibilityChange = () => {
 }
 
 onBeforeRouteLeave(() => {
-  console.log('[QuizTimer] onBeforeRouteLeave — stopping timer')
   isComponentMounted.value = false
   stopTimer()
 })
@@ -1170,20 +1166,17 @@ const unregisterGuard = router.beforeEach((to) => {
 })
 
 onMounted(() => {
-  // Kill any orphaned timer from a previous instance (e.g., HMR)
   stopTimer()
   isComponentMounted.value = true
-  console.log('[QuizTimer] onMounted')
   fetchQuiz()
   window.addEventListener('message', handlePluginMessage)
   document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
-  console.log('[QuizTimer] onUnmounted — stopping timer')
   isComponentMounted.value = false
   stopTimer()
-  unregisterGuard() // Remove the global guard to avoid leaking it
+  unregisterGuard()
   window.removeEventListener('message', handlePluginMessage)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
