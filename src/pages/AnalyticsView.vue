@@ -228,9 +228,9 @@
                           </div>
                           <div class="smartscore-bar-container">
                             <div class="smartscore-bar-bg"></div>
-                            <div class="smartscore-bar-fill" :style="{ width: skill.last_smartscore + '%' }"></div>
+                            <div class="smartscore-bar-fill" :style="{ width: getSkillEffectiveScore(skill) + '%' }"></div>
                           </div>
-                          <span class="score-end" :class="smartScoreColorClass(skill.last_smartscore)">{{ skill.last_smartscore }}</span>
+                          <span class="score-end" :class="smartScoreColorClass(getSkillEffectiveScore(skill))">{{ getSkillEffectiveScore(skill) }}</span>
                         </div>
                       </div>
                     </td>
@@ -430,6 +430,11 @@ const formatLastPracticedQuickview = (dateStr: unknown): string => {
   if (diffDays === 0) return 'today'
   if (diffDays === 1) return 'yesterday'
   return `${diffDays} days ago`
+}
+
+const getSkillEffectiveScore = (skill: { best_smartscore?: number; last_smartscore?: number } | null | undefined): number => {
+  if (!skill) return 0
+  return Math.max(Number(skill.best_smartscore || 0), Number(skill.last_smartscore || 0))
 }
 
 const smartScoreColorClass = (score: unknown): string => {

@@ -519,12 +519,53 @@
                 >
                   {{ group.answer }}
                 </div>
-                <div 
-                  class="text-xs font-extrabold flex items-center gap-1"
-                  :class="group.isCorrect ? 'text-[#7cb342]' : 'text-[#ff8a80]'"
-                >
-                  <span v-if="group.isCorrect">✓ Дұрыс жауап: {{ group.students.length }} оқушы тапсырды</span>
-                  <span v-else>✗ Қате жауап: {{ group.students.length }} оқушы тапсырды</span>
+                <!-- Статистика белгішесі мен тінтуірді апарғанда ашылатын оқушылар тізімі -->
+                <div class="relative inline-block group mt-1">
+                  <div 
+                    class="text-xs font-extrabold inline-flex items-center gap-1.5 py-1 px-3 rounded-lg border transition-all cursor-pointer select-none"
+                    :class="group.isCorrect ? 'text-[#558b2f] bg-green-50/80 border-green-200 hover:bg-green-100/80' : 'text-[#c62828] bg-red-50/80 border-red-200 hover:bg-red-100/80'"
+                  >
+                    <span v-if="group.isCorrect">✓ Дұрыс жауап: {{ group.students.length }} оқушы тапсырды</span>
+                    <span v-else>✗ Қате жауап: {{ group.students.length }} оқушы тапсырды</span>
+                    
+                    <svg class="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity shrink-0 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+
+                  <!-- Поповер терезесі (Тінтуірді апарғанда көрінеді - Светлая тема) -->
+                  <div 
+                    class="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-64 p-3.5 bg-white text-gray-800 rounded-xl shadow-xl border border-gray-200/80 text-xs transition-all duration-200 pointer-events-none"
+                  >
+                    <!-- Стрелка -->
+                    <div class="absolute -bottom-1.5 left-6 w-3 h-3 bg-white rotate-45 border-r border-b border-gray-200/80"></div>
+
+                    <div class="font-bold text-gray-800 border-b border-gray-100 pb-2 mb-2 flex items-center justify-between">
+                      <span class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        Оқушылар тізімі
+                      </span>
+                      <span class="px-2 py-0.5 rounded-full text-[10px] bg-cyan-50 text-cyan-700 font-mono font-bold border border-cyan-100">{{ group.students.length }}</span>
+                    </div>
+
+                    <div v-if="group.students.length > 0" class="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      <div 
+                        v-for="st in group.students" 
+                        :key="st.id"
+                        class="flex items-center gap-2.5 text-gray-700 font-medium py-1 px-1.5 rounded-lg hover:bg-gray-50 transition"
+                      >
+                        <div class="w-6 h-6 rounded-full bg-cyan-50 text-cyan-600 border border-cyan-200 flex items-center justify-center text-[10px] font-bold shrink-0">
+                          {{ st.full_name ? st.full_name[0].toUpperCase() : 'S' }}
+                        </div>
+                        <span class="truncate text-xs font-semibold text-gray-800">{{ st.full_name }}</span>
+                      </div>
+                    </div>
+                    <div v-else class="text-gray-400 italic py-1 text-center">
+                      Бұл жауапты ешқандай оқушы белгілемеді
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

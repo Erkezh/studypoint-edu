@@ -163,8 +163,7 @@ class AnalyticsService:
         )
         total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
         total_attempts = int(total_attempts)
-        correct_attempts = int(correct_attempts)
-        avg_accuracy = int(round((correct_attempts / max(1, total_attempts)) * 100))
+        avg_accuracy = round((correct_attempts / max(1, total_attempts)) * 100)
 
         # Get total skills by grade
         # We need to import Skill and Grade inside the method to avoid circular imports if they are not already imported at top level
@@ -275,7 +274,7 @@ class AnalyticsService:
                 continue
             assert user is not None
             snap_stmt = select(func.coalesce(func.avg(ProgressSnapshot.best_smartscore), 0)).where(ProgressSnapshot.user_id == sid)
-            avg_best = int(round(float((await self.session.execute(snap_stmt)).scalar_one())))
+            avg_best = round(float((await self.session.execute(snap_stmt)).scalar_one()))
 
             assign_stmt = (
                 select(
@@ -301,7 +300,7 @@ class AnalyticsService:
                 }
             )
 
-        classroom_avg = int(round(sum(s["avg_best_smartscore"] for s in students) / max(1, len(students))))
+        classroom_avg = round(sum(s["avg_best_smartscore"] for s in students) / max(1, len(students)))
         return {
             "classroom_id": str(cid),
             "title": classroom.title,  # type: ignore
@@ -392,7 +391,7 @@ class AnalyticsService:
             .where(PracticeAttempt.user_id == sid, PracticeAttempt.skill_id == skill_id)
         )
         total_attempts, total_correct, total_time = (await self.session.execute(summary_stmt)).one()
-        accuracy = int(round((int(total_correct) / max(1, int(total_attempts))) * 100))
+        accuracy = round((int(total_correct) / max(1, int(total_attempts))) * 100)
 
         snap_stmt = select(ProgressSnapshot).where(ProgressSnapshot.user_id == sid, ProgressSnapshot.skill_id == skill_id)
         snap = (await self.session.execute(snap_stmt)).scalar_one_or_none()
@@ -467,7 +466,7 @@ class AnalyticsService:
         total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
         total_attempts = int(total_attempts)
         correct_attempts = int(correct_attempts)
-        avg_accuracy = int(round((correct_attempts / max(1, total_attempts)) * 100))
+        avg_accuracy = round((correct_attempts / max(1, total_attempts)) * 100)
 
         from app.models.catalog import Skill, Grade  # type: ignore
         skills_by_grade_stmt = (
@@ -602,10 +601,10 @@ class AnalyticsService:
             for sr in s_skill_rows:
                 if sr.last_practiced_at and (last_practiced is None or sr.last_practiced_at > last_practiced):
                     last_practiced = sr.last_practiced_at
-                score = sr.best_smartscore or 0
-                if score >= 100:
+                score = max(sr.best_smartscore or 0, sr.last_smartscore or 0)
+                if score >= 90:
                     mastered_count += 1  # type: ignore
-                elif score >= 80:
+                elif score >= 70:
                     proficient_count += 1  # type: ignore
                 elif score > 0:
                     practicing_count += 1  # type: ignore

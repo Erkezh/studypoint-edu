@@ -175,6 +175,7 @@ interface StudentAnalyticsData {
     grade_label?: string
     grade_number?: number
     best_smartscore?: number
+    last_smartscore?: number
     total_questions?: number
     last_practiced_at?: string | null
   }[]
@@ -274,7 +275,8 @@ const analyzedSkills = computed<SkillData[]>(() => {
     let troubleInThisSkill = false
     for (const st of props.allStudentsData) {
       const studentSkill = st.skills?.find((s) => s.skill_id.toString() === skill.skillId)
-      const groupData = { id: st.student_id, name: st.full_name, score: studentSkill?.best_smartscore || 0 }
+      const score = studentSkill ? Math.max(Number(studentSkill.best_smartscore || 0), Number(studentSkill.last_smartscore || 0)) : 0
+      const groupData = { id: st.student_id, name: st.full_name, score }
 
       let practicedInWindow = false
       if (studentSkill && studentSkill.last_practiced_at) {
