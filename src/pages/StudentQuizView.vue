@@ -475,18 +475,11 @@ const answeredCount = computed(() => {
   return sortedQuestions.value.filter(q => hasAnswered(q.id)).length
 })
 
-const isQuizEnded = computed(() => {
-  if (!currentAssignment.value?.end_at) return false
-  return new Date(currentAssignment.value.end_at) <= new Date()
-})
+import { getQuizEffectiveVisibility } from '@/utils/quizVisibility'
 
 const activeVisibilitySetting = computed(() => {
   if (!currentQuiz.value) return 'HIDDEN'
-  if (isQuizEnded.value) {
-    return currentQuiz.value.ended_result_visibility || 'ALWAYS'
-  } else {
-    return currentQuiz.value.result_visibility || 'ALWAYS'
-  }
+  return getQuizEffectiveVisibility(currentQuiz.value, authStore.user?.id)
 })
 
 type QuizQuestion = QuizResponse['questions'][number]

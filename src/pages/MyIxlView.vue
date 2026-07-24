@@ -251,12 +251,20 @@
                 <td>{{ formatDateFull(getQuizCompletedDate(quiz.id) || quiz.created_at) }}</td>
                 <td class="font-bold text-green-600">
                   <span v-if="shouldShowQuizScore(quiz) && getQuizScore(quiz.id) !== null">{{ getQuizScore(quiz.id) }}%</span>
-                  <span v-else>Аяқталды</span>
+                  <span v-else class="text-gray-400 font-normal">—</span>
                 </td>
                 <td>
-                  <button @click="startQuiz(quiz.id)" class="px-3 py-1 bg-cyan-50 text-cyan-600 font-semibold rounded-lg hover:bg-cyan-100 transition whitespace-nowrap text-xs cursor-pointer">
-                    {{ shouldShowQuizResults(quiz) ? 'Нәтижелерді көру' : 'Нәтижені көру' }}
+                  <button
+                    v-if="shouldShowQuizResults(quiz)"
+                    @click="goToQuizAnalytics(quiz.id)"
+                    class="px-3 py-1.5 bg-cyan-50 text-cyan-700 font-semibold rounded-lg hover:bg-cyan-100 transition whitespace-nowrap text-xs cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                  >
+                    <span>Есепті көру</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
                   </button>
+                  <span v-else class="text-gray-400 text-xs">—</span>
                 </td>
               </tr>
             </tbody>
@@ -273,6 +281,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { quizApi, type QuizResponse } from '@/api/quiz'
+import { getQuizEffectiveVisibility } from '@/utils/quizVisibility'
 import Header from '@/components/layout/Header.vue'
 
 defineOptions({ name: 'MyIxlView' })
@@ -363,18 +372,12 @@ const getQuizScore = (quizId: string) => {
   return assignment?.score ?? null
 }
 
-const isQuizEnded = (quiz: QuizResponse) => {
-  const assignment = quiz.assignments?.find(a => a.student_id === authStore.user?.id)
-  if (!assignment?.end_at) return false
-  return new Date(assignment.end_at) <= new Date()
+const goToQuizAnalytics = (quizId: string) => {
+  router.push({ path: '/analytics', query: { tab: 'quizzes', quizId } })
 }
 
 const getQuizVisibilitySetting = (quiz: QuizResponse) => {
-  if (isQuizEnded(quiz)) {
-    return quiz.ended_result_visibility || 'ALWAYS'
-  } else {
-    return quiz.result_visibility || 'ALWAYS'
-  }
+  return getQuizEffectiveVisibility(quiz, authStore.user?.id)
 }
 
 const shouldShowQuizScore = (quiz: QuizResponse) => {

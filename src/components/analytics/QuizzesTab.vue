@@ -23,7 +23,7 @@
             class="bg-transparent font-semibold text-gray-700 focus:outline-none text-sm min-w-[200px]"
           >
             <option value="">-- Квизді таңдаңыз --</option>
-            <option v-for="quiz in allQuizzes" :key="quiz.id" :value="quiz.id">
+            <option v-for="quiz in availableQuizzes" :key="quiz.id" :value="quiz.id">
               {{ quiz.name }}
             </option>
           </select>
@@ -88,6 +88,15 @@
       <div class="empty-icon text-4xl mb-4">📋</div>
       <h3 class="text-lg font-bold text-gray-800 mb-2">Квиз таңдалмады</h3>
       <p class="text-sm text-gray-500">Толық аналитикалық есепті көру үшін жоғарыдағы мәзірден квизді таңдаңыз.</p>
+    </div>
+
+    <!-- Квиз нәтижелері мұғалім тарапынан шектелген күй -->
+    <div v-else-if="!isTeacher && selectedQuizVisibility === 'HIDDEN'" class="report-empty bg-white p-12 rounded-xl border border-yellow-200 shadow-sm text-center">
+      <div class="empty-icon text-4xl mb-4 text-yellow-500">🔒</div>
+      <h3 class="text-lg font-bold text-gray-800 mb-2">Нәтижелер шектелген</h3>
+      <p class="text-sm text-gray-600 max-w-md mx-auto">
+        Мұғалім бұл квиздің нәтижелерін көрсетуді шектеген. Квиздің қорытынды нәтижелерін мұғаліміңізден сұрай аласыз.
+      </p>
     </div>
 
     <!-- Квиз талдауының толық көрінісі -->
@@ -618,7 +627,7 @@
         </div>
 
         <!-- Сұрақтарды талдау блогы -->
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
+        <div v-if="selectedQuizVisibility === 'ALWAYS'" class="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden mt-6">
           <div class="bg-cyan-600 px-6 py-4">
             <h3 class="text-lg font-bold text-white">Сұрақтарды талдау</h3>
           </div>
@@ -725,9 +734,16 @@
             </div>
           </div>
         </div>
-
+        <div v-else-if="selectedQuizVisibility === 'SCORE_ONLY'" class="bg-blue-50 border border-blue-200 rounded-xl p-6 text-blue-800 text-sm flex items-center gap-4 mt-6 shadow-sm">
+          <svg class="w-6 h-6 text-blue-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h4 class="font-bold text-base text-blue-900">Тек жалпы ұпай көрсетіледі</h4>
+            <p class="text-sm mt-0.5 text-blue-700">Мұғалім сұрақтар бойынша толық талдауды және дұрыс жауаптарды көрсетуді шектеген.</p>
+          </div>
+        </div>
       </div>
-
     </template>
 
     </div>
@@ -746,6 +762,8 @@ import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 import type { QuizResponse } from '@/api/quiz'
 import SessionQuestionPreview from './SessionQuestionPreview.vue'
+
+import { getQuizEffectiveVisibility } from '@/utils/quizVisibility'
 
 interface QuizQuestion {
   id?: string | number
@@ -771,6 +789,15 @@ const isTeacher = computed(() => authStore.isTeacher)
 const { quizzes: allQuizzes, loading, error } = storeToRefs(quizStore)
 const { students: teacherStudents } = storeToRefs(teacherStore)
 
+// Filter available quizzes based on student visibility
+const availableQuizzes = computed(() => {
+  if (isTeacher.value) return allQuizzes.value
+  return allQuizzes.value.filter(q => {
+    const vis = getQuizEffectiveVisibility(q, authStore.user?.id)
+    return vis !== 'HIDDEN'
+  })
+})
+
 const selectedQuizId = ref('')
 const selectedStudentFilter = ref(authStore.isTeacher ? 'all' : (authStore.user?.id || ''))
 const scoreType = ref<'questions' | 'percent'>('questions')
@@ -790,7 +817,7 @@ watch(
 
 const selectedQuiz = computed<QuizResponse | null>(() => {
   if (!selectedQuizId.value) return null
-  const quiz = allQuizzes.value.find(q => q.id === selectedQuizId.value) || null
+  const quiz = availableQuizzes.value.find(q => q.id === selectedQuizId.value) || allQuizzes.value.find(q => q.id === selectedQuizId.value) || null
   if (quiz && quiz.questions) {
     return {
       ...quiz,
@@ -798,6 +825,12 @@ const selectedQuiz = computed<QuizResponse | null>(() => {
     }
   }
   return quiz
+})
+
+const selectedQuizVisibility = computed(() => {
+  if (!selectedQuiz.value) return 'ALWAYS'
+  if (isTeacher.value) return 'ALWAYS'
+  return getQuizEffectiveVisibility(selectedQuiz.value, authStore.user?.id)
 })
 
 const loadedSkills = ref<Map<number, { code: string; title: string }>>(new Map())
