@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>linearequationapp</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script type="text/babel">
+        const embedMode = /[?&]embed=1/i.test(window.location.search);
+        if (embedMode) {
+            document.body.classList.add('embed');
+        }
+        
+        const { useState, useEffect } = React;
+const { Check, X } = window.lucideReact;
+
+
+  coefficient;
+  result;
+  correctAnswer;
+  equation;
+};
+
+const LinearEquationSolver = () => {
+  const [problems, setProblems] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [showResult, setShowResult] = useState(false);
+  const [score, setScore] = useState(0);
+
+  const generateProblem = (id)=> {
+    // Generate coefficient (2 to 10)
+    const coefficient = Math.floor(Math.random() * 9) + 2;
+    
+    // Generate x value (1 to 10)
+    const x = Math.floor(Math.random() * 10) + 1;
+    
+    // Calculate result
+    const result = coefficient * x;
+    
+    const equation = `${coefficient}x = ${result}`;
+    const correctAnswer = String(x);
+    
+    return { id, coefficient, result, correctAnswer, equation };
+  };
+
+  const generateProblems = () => {
+    const newProblems: Problem[] = [];
+    for (let i = 0; i < 8; i++) {
+      newProblems.push(generateProblem(i));
+    }
+    setProblems(newProblems);
+    setCurrentIndex(0);
+    setUserAnswer('');
+    setShowResult(false);
+    setScore(0);
+  };
+
+  useEffect(() => {
+    generateProblems();
+  }, []);
+
+  const handleAnswerChange = (e.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow only numbers and negative sign
+    if (value === '' || value === '-' || /^-?\d+$/.test(value)) {
+      setUserAnswer(value);
+    }
+  };
+
+  const handleSubmit = () => {
+    if (!userAnswer || userAnswer === '-') return;
+    
+    setShowResult(true);
+    // Отправляем результат в родительское окно (как в miniapp 2)
+    const embedMode = /[?&]embed=1/i.test(window.location.search);
+    if (embedMode && window.parent) {
+      const __correct = (userAnswer === problems[currentIndex]?.correctAnswer || userAnswer === currentProblem?.correctAnswer || userAnswer === problem?.correctAnswer);
+      const __correctAnswer = problems[currentIndex]?.correctAnswer || currentProblem?.correctAnswer || problem?.correctAnswer || "";
+      window.parent.postMessage({ 
+        type: "SUBMIT", 
+        taskId: "tsx-exercise-93842",
+        userAnswer: { 
+          isCorrect: __correct, 
+          userAnswer: userAnswer, 
+          correctAnswer: __correctAnswer
+        }
+      }, "*");
+    }
+    const correctAnswer = problems[currentIndex].correctAnswer;
+    const userAnswerStr = String(userAnswer);
+    const correctAnswerStr = String(correctAnswer);
+    const isCorrect = userAnswerStr === correctAnswerStr;
+    
+    if (isCorrect) {
+      setScore(score + 1);
+    }
+    
+    // Отправляем результат в родительское окно (PracticeSession)
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: 'exercise-result',
+          isCorrect,
+          userAnswer,
+          correctAnswer,
+          studentAnswer,
+          question: `Solve equation: ${problems[currentIndex].equation}`,
+        },
+        '*'
+      );
+    }
+  };
+
+  const handleNext = () => {
+    if (currentIndex < problems.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setUserAnswer('');
+      setShowResult(false);
+    } else {
+      // Quiz complete
+      setShowResult(true);
+    }
+  };
+
+  const handleKeyPress = (e.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !showResult && userAnswer && userAnswer !== '-') {
+      handleSubmit();
+    }
+  };
+
+  const currentProblem = problems[currentIndex];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-purple-900">
+              Solve for x
+            </h1>
+            <p className="text-gray-600 mt-2">Find the value of x in each equation
+          </div>
+
+          {problems.length > 0 && currentIndex < problems.length && (
+            <>
+              <div className="mb-4 text-sm text-gray-600">
+                Question {currentIndex + 1} of {problems.length}
+              </div>
+
+              <div className="border-2 border-gray-300 rounded-lg p-8 mb-8 bg-gradient-to-br from-white to-purple-50">
+                <div className="flex flex-col items-center gap-6">
+                  <div className="text-4xl font-bold text-purple-900">
+                    {currentProblem.equation}
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <label htmlFor="answer-input" className="text-2xl font-semibold text-gray-700">
+                      x =
+                    </label>
+                    <input
+                      id="answer-input"
+                      type="text"
+                      value={userAnswer}
+                      onChange={handleAnswerChange}
+                      onKeyPress={handleKeyPress}
+                      disabled={showResult}
+                      placeholder="?"
+                      className={`w-32 px-4 py-3 text-2xl font-semibold text-center border-2 rounded-lg 
+                        ${showResult 
+                          ? 'bg-gray-100 cursor-not-allowed' 
+                          : 'bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus-transparent'
+                        } border-gray-300`}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+
+                {showResult && (
+                  <div className="mt-6 text-center">
+                    {userAnswer === currentProblem.correctAnswer ? (
+                      <div className="flex items-center justify-center gap-2 text-green-600 text-xl font-semibold">
+                        <Check size={28} />
+                        Correct!
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-red-600 text-xl font-semibold">
+                        <div className="flex items-center gap-2">
+                          <X size={28} />
+                          Incorrect
+                        </div>
+                        <div className="text-gray-700">
+                          The correct answer is= {currentProblem.correctAnswer}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div className="text-lg font-semibold text-purple-900">
+                  Score/{problems.length}
+                </div>
+
+                <div className="flex gap-3">
+                  {!showResult && (
+                    <button
+                      onClick={handleSubmit}
+                      disabled={!userAnswer || userAnswer === '-'}
+                      className={`px-6 py-3 rounded-lg transition text-lg font-semibold ${
+                        userAnswer && userAnswer !== '-'
+                          ? 'bg-green-600 text-white hover-green-700 cursor-pointer'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      Submit
+                    </button>
+                  )}
+
+                  {showResult && currentIndex < problems.length - 1 && (
+                    <button
+                      onClick={handleNext}
+                      className="bg-purple-600 text-white px-6 py-3 rounded-lg hover-purple-700 transition text-lg font-semibold"
+                    >
+                      Next Question
+                    </button>
+                  )}
+
+                  {showResult && currentIndex === problems.length - 1 && (
+                    <button
+                      onClick={generateProblems}
+                      className="bg-green-600 text-white px-6 py-3 rounded-lg hover-green-700 transition text-lg font-semibold"
+                    >
+                      Try Again
+                    </button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+        
+        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(LinearEquationSolver));
+        
+        // Отправляем INIT сообщение
+        if (embedMode && window.parent) {
+            window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+        }
+    </script>
+</body>
+</html>

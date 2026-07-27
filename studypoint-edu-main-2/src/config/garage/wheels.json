@@ -1,0 +1,26 @@
+[
+  {
+    "id": "wheel4",
+    "name": "Turbo Star",
+    "model": "/assets/models/wheels/wheel4.glb",
+    "preview": "/assets/models/wheels/wheel4.glb",
+    "unlockLevel": 1,
+    "rarity": "rare"
+  },
+  {
+    "id": "neon-track",
+    "name": "Neon Track",
+    "model": "/assets/models/wheels/wheel4.glb",
+    "preview": "/assets/models/wheels/wheel4.glb",
+    "unlockLevel": 5,
+    "rarity": "epic"
+  },
+  {
+    "id": "moon-grip",
+    "name": "Moon Grip",
+    "model": "/assets/models/wheels/wheel4.glb",
+    "preview": "/assets/models/wheels/wheel4.glb",
+    "unlockLevel": 9,
+    "rarity": "legendary"
+  }
+]

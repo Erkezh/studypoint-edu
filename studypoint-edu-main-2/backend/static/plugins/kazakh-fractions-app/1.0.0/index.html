@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kazakh-fractions-app</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect, useRef } = React;
+const { CheckCircle, XCircle, Play } = window.lucideReact;
+const KazakhFractionsApp = () => {
+  const [problem, setProblem] = useState(null);
+  const [userAnswer, setUserAnswer] = useState("");
+  const [showResult, setShowResult] = useState(false);
+  const containerRef = useRef(null);
+  const kazakh = {
+    title: "\u0411\u04E9\u043B\u0448\u0435\u043A\u0442\u0435\u0440\u0434\u0456 \u04AF\u0439\u0440\u0435\u043D\u0443",
+    correct: "\u0414\u04B1\u0440\u044B\u0441!",
+    incorrect: "\u049A\u0430\u0442\u0435!",
+    nextQuestion: "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B",
+    numberLine: "\u0421\u0430\u043D \u0442\u04AF\u0437\u0443\u0456\u043D\u0434\u0435 \u043A\u04E9\u0440\u0441\u0435\u0442\u0456\u043B\u0433\u0435\u043D \u0431\u04E9\u043B\u0448\u0435\u043A \u049B\u0430\u043D\u0434\u0430\u0439?",
+    shapeFraction: "\u0411\u043E\u044F\u043B\u0493\u0430\u043D \u0431\u04E9\u043B\u0456\u0433\u0456 \u049B\u0430\u0439 \u0431\u04E9\u043B\u0448\u0435\u043A\u043A\u0435 \u0442\u0435\u04A3?",
+    shapeCount: "\u0424\u0438\u0433\u0443\u0440\u0430\u043B\u0430\u0440\u0434\u044B\u04A3 \u049B\u0430\u043D\u0434\u0430\u0439 \u0431\u04E9\u043B\u0448\u0435\u0433\u0456",
+    circles: "\u0434\u04E9\u04A3\u0433\u0435\u043B\u0435\u043A\u0442\u0435\u0440",
+    squares: "\u0442\u04E9\u0440\u0442\u0431\u04B1\u0440\u044B\u0448\u0442\u0430\u0440",
+    triangles: "\u04AF\u0448\u0431\u04B1\u0440\u044B\u0448\u0442\u0430\u0440",
+    stars: "\u0436\u04B1\u043B\u0434\u044B\u0437\u0434\u0430\u0440",
+    hexagons: "\u0430\u043B\u0442\u044B\u0431\u04B1\u0440\u044B\u0448\u0442\u0430\u0440",
+    instruction: "\u0411\u04E9\u043B\u0433\u0456\u0448 \u04AF\u0448\u0456\u043D / \u0431\u0435\u043B\u0433\u0456\u0441\u0456\u043D \u049B\u043E\u043B\u0434\u0430\u043D\u044B\u04A3\u044B\u0437 (\u043C\u044B\u0441\u0430\u043B\u044B: 1/2)",
+    check: "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+  };
+  const gcd = (a, b) => {
+    while (b !== 0) {
+      const temp = b;
+      b = a % b;
+      a = temp;
+    }
+    return a;
+  };
+  const simplifyFraction = (numerator, denominator) => {
+    const divisor = gcd(numerator, denominator);
+    return {
+      numerator: numerator / divisor,
+      denominator: denominator / divisor
+    };
+  };
+  const parseFraction = (fractionStr) => {
+    const parts = fractionStr.trim().split("/");
+    if (parts.length !== 2) return null;
+    const numerator = parseInt(parts[0]);
+    const denominator = parseInt(parts[1]);
+    if (isNaN(numerator) || isNaN(denominator) || denominator === 0) return null;
+    return { numerator, denominator };
+  };
+  const areFractionsEqual = (fraction1Str, fraction2Str) => {
+    const f1 = parseFraction(fraction1Str);
+    const f2 = parseFraction(fraction2Str);
+    if (!f1 || !f2) return false;
+    const simplified1 = simplifyFraction(f1.numerator, f1.denominator);
+    const simplified2 = simplifyFraction(f2.numerator, f2.denominator);
+    return simplified1.numerator === simplified2.numerator && simplified1.denominator === simplified2.denominator;
+  };
+  const generateNumberLineQuestion = () => {
+    const denominators = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const denominator = denominators[Math.floor(Math.random() * denominators.length)];
+    const numerator = Math.floor(Math.random() * (denominator - 1)) + 1;
+    return {
+      id: Date.now(),
+      type: "numberLine",
+      question: kazakh.numberLine,
+      correctAnswer: `${numerator}/${denominator}`,
+      visual: { numerator, denominator },
+      instruction: kazakh.instruction
+    };
+  };
+  const generateShapeCountQuestion = () => {
+    const shapeTypes = [
+      { name: kazakh.circles, color: "#3b82f6" },
+      { name: kazakh.squares, color: "#ef4444" },
+      { name: kazakh.triangles, color: "#22c55e" },
+      { name: kazakh.stars, color: "#f59e0b" },
+      { name: kazakh.hexagons, color: "#8b5cf6" }
+    ];
+    const totalShapes = Math.floor(Math.random() * 6) + 5;
+    const targetType = Math.floor(Math.random() * shapeTypes.length);
+    const targetCount = Math.floor(Math.random() * Math.min(4, totalShapes)) + 1;
+    const shapes = [];
+    for (let i = 0; i < targetCount; i++) {
+      shapes.push(targetType);
+    }
+    for (let i = targetCount; i < totalShapes; i++) {
+      let otherType;
+      do {
+        otherType = Math.floor(Math.random() * shapeTypes.length);
+      } while (otherType === targetType);
+      shapes.push(otherType);
+    }
+    for (let i = shapes.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shapes[i], shapes[j]] = [shapes[j], shapes[i]];
+    }
+    return {
+      id: Date.now(),
+      type: "shapeCount",
+      question: `${kazakh.shapeCount} ${shapeTypes[targetType].name}?`,
+      correctAnswer: `${targetCount}/${totalShapes}`,
+      visual: { shapes, shapeTypes, targetType, targetCount, totalShapes },
+      instruction: kazakh.instruction
+    };
+  };
+  const generateColoredShapeQuestion = () => {
+    const denominators = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const denominator = denominators[Math.floor(Math.random() * denominators.length)];
+    const numerator = Math.floor(Math.random() * denominator) + 1;
+    return {
+      id: Date.now(),
+      type: "coloredShape",
+      question: kazakh.shapeFraction,
+      correctAnswer: `${numerator}/${denominator}`,
+      visual: { numerator, denominator },
+      instruction: kazakh.instruction
+    };
+  };
+  const generateProblem = () => {
+    const generators = [generateNumberLineQuestion, generateShapeCountQuestion, generateColoredShapeQuestion];
+    const generator = generators[Math.floor(Math.random() * generators.length)];
+    return generator();
+  };
+  const sendHeight = () => {
+    if (window.parent && window.parent !== window && containerRef.current) {
+      const height = containerRef.current.scrollHeight;
+      window.parent.postMessage({ type: "resize", height: height + 20 }, "*");
+    }
+  };
+  const formatUserAnswer = (answer) => {
+    return answer || "\u0416\u0430\u0443\u0430\u043F \u0436\u043E\u049B";
+  };
+  const formatCorrectAnswer = (prob) => {
+    return prob.correctAnswer;
+  };
+  const buildQuestionData = (prob) => {
+    switch (prob.type) {
+      case "numberLine":
+        return {
+          type: "numberline",
+          numberline: {
+            min: 0,
+            max: 1,
+            divisions: prob.visual.denominator,
+            markedPosition: prob.visual.numerator
+          },
+          description: prob.question
+        };
+      case "coloredShape":
+        return {
+          type: "fractionbar",
+          fractionBar: {
+            total: prob.visual.denominator,
+            filled: prob.visual.numerator,
+            label: `${prob.visual.numerator}/${prob.visual.denominator}`
+          },
+          description: prob.question
+        };
+      case "shapeCount":
+        return {
+          type: "shapes",
+          shapes: {
+            items: prob.visual.shapes.map((typeIdx) => ({
+              type: prob.visual.shapeTypes[typeIdx].name,
+              color: prob.visual.shapeTypes[typeIdx].color
+            })),
+            targetType: prob.visual.shapeTypes[prob.visual.targetType].name,
+            targetCount: prob.visual.targetCount,
+            totalCount: prob.visual.totalShapes
+          },
+          description: prob.question
+        };
+      default:
+        return {
+          type: "text",
+          description: prob.question
+        };
+    }
+  };
+  const buildAnswerData = (prob, answer) => {
+    const userFraction = parseFraction(answer);
+    const correctFraction = parseFraction(prob.correctAnswer);
+    if (!userFraction || !correctFraction) {
+      return {
+        type: "text",
+        correctDisplay: {
+          text: prob.correctAnswer
+        },
+        userDisplay: {
+          text: answer || "\u0416\u0430\u0443\u0430\u043F \u0436\u043E\u049B"
+        }
+      };
+    }
+    switch (prob.type) {
+      case "numberLine":
+        return {
+          type: "numberline",
+          correctDisplay: {
+            numberline: {
+              min: 0,
+              max: 1,
+              divisions: prob.visual.denominator,
+              markedPosition: prob.visual.numerator
+            },
+            text: prob.correctAnswer
+          },
+          userDisplay: {
+            text: answer
+          }
+        };
+      case "coloredShape":
+        return {
+          type: "fractionbar",
+          correctDisplay: {
+            fractionBar: {
+              total: prob.visual.denominator,
+              filled: prob.visual.numerator
+            },
+            text: prob.correctAnswer
+          },
+          userDisplay: {
+            text: answer
+          }
+        };
+      default:
+        return {
+          type: "text",
+          correctDisplay: {
+            text: prob.correctAnswer
+          },
+          userDisplay: {
+            text: answer
+          }
+        };
+    }
+  };
+  const handleSubmit = () => {
+    if (!userAnswer.trim() || !problem) return;
+    const isCorrect2 = areFractionsEqual(userAnswer.trim(), problem.correctAnswer);
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: "exercise-result",
+        isCorrect: isCorrect2,
+        question: problem.question,
+        userAnswer: formatUserAnswer(userAnswer),
+        studentAnswer: formatUserAnswer(userAnswer),
+        correctAnswer: formatCorrectAnswer(problem),
+        // ВАЖНО: Визуальные данные для аналитики
+        questionData: buildQuestionData(problem),
+        answerData: buildAnswerData(problem, userAnswer)
+      }, "*");
+    }
+    setShowResult(true);
+    setTimeout(sendHeight, 50);
+    if (isCorrect2) {
+      setTimeout(() => {
+        handleNext();
+      }, 1500);
+    }
+  };
+  const handleNext = () => {
+    setProblem(generateProblem());
+    setUserAnswer("");
+    setShowResult(false);
+    setTimeout(sendHeight, 50);
+  };
+  useEffect(() => {
+    setProblem(generateProblem());
+  }, []);
+  useEffect(() => {
+    sendHeight();
+    const timer = setTimeout(sendHeight, 100);
+    return () => clearTimeout(timer);
+  }, [problem, showResult, userAnswer]);
+  const renderNumberLine = (numerator, denominator) => {
+    const position = numerator / denominator * 300 + 50;
+    return /* @__PURE__ */ React.createElement("div", { className: "my-8" }, /* @__PURE__ */ React.createElement("svg", { width: "400", height: "80", className: "mx-auto block" }, /* @__PURE__ */ React.createElement("line", { x1: "50", y1: "40", x2: "350", y2: "40", stroke: "#374151", strokeWidth: "2" }), Array.from({ length: denominator + 1 }).map((_, i) => {
+      const x = 50 + i * 300 / denominator;
+      return /* @__PURE__ */ React.createElement("line", { key: i, x1: x, y1: "35", x2: x, y2: "45", stroke: "#374151", strokeWidth: "1" });
+    }), /* @__PURE__ */ React.createElement("text", { x: "50", y: "60", textAnchor: "middle", className: "fill-gray-700 text-sm" }, "0"), /* @__PURE__ */ React.createElement("text", { x: "350", y: "60", textAnchor: "middle", className: "fill-gray-700 text-sm" }, "1"), /* @__PURE__ */ React.createElement("circle", { cx: position, cy: "40", r: "4", fill: "#ef4444" })));
+  };
+  const renderShapes = (shapes, shapeTypes) => {
+    const renderShape = (type, index) => {
+      const color = shapeTypes[type].color;
+      switch (type) {
+        case 0:
+          return /* @__PURE__ */ React.createElement("circle", { key: index, cx: "15", cy: "15", r: "12", fill: color, stroke: "#374151", strokeWidth: "1" });
+        case 1:
+          return /* @__PURE__ */ React.createElement("rect", { key: index, x: "3", y: "3", width: "24", height: "24", fill: color, stroke: "#374151", strokeWidth: "1" });
+        case 2:
+          return /* @__PURE__ */ React.createElement("polygon", { key: index, points: "15,3 27,24 3,24", fill: color, stroke: "#374151", strokeWidth: "1" });
+        case 3:
+          return /* @__PURE__ */ React.createElement("polygon", { key: index, points: "15,2 18,11 28,11 20,18 23,28 15,22 7,28 10,18 2,11 12,11", fill: color, stroke: "#374151", strokeWidth: "1" });
+        case 4:
+          return /* @__PURE__ */ React.createElement("polygon", { key: index, points: "15,3 25,9 25,21 15,27 5,21 5,9", fill: color, stroke: "#374151", strokeWidth: "1" });
+        default:
+          return null;
+      }
+    };
+    return /* @__PURE__ */ React.createElement("div", { className: "flex flex-wrap gap-3 justify-center my-6 p-4 border rounded-lg bg-gray-50" }, shapes.map((shapeType, index) => /* @__PURE__ */ React.createElement("svg", { key: index, width: "30", height: "30", className: "border rounded" }, renderShape(shapeType, index))));
+  };
+  const renderColoredCircle = (numerator, denominator) => {
+    const angleStep = 2 * Math.PI / denominator;
+    const centerX = 60;
+    const centerY = 60;
+    const radius = 50;
+    return /* @__PURE__ */ React.createElement("div", { className: "flex justify-center my-8" }, /* @__PURE__ */ React.createElement("svg", { width: "120", height: "120" }, /* @__PURE__ */ React.createElement("circle", { cx: centerX, cy: centerY, r: radius, fill: "white", stroke: "#374151", strokeWidth: "2" }), Array.from({ length: denominator }).map((_, i) => {
+      const angle = i * angleStep;
+      const x = centerX + Math.cos(angle) * radius;
+      const y = centerY + Math.sin(angle) * radius;
+      return /* @__PURE__ */ React.createElement(
+        "line",
+        {
+          key: i,
+          x1: centerX,
+          y1: centerY,
+          x2: x,
+          y2: y,
+          stroke: "#374151",
+          strokeWidth: "1"
+        }
+      );
+    }), Array.from({ length: numerator }).map((_, i) => {
+      const startAngle = i * angleStep - Math.PI / 2;
+      const endAngle = (i + 1) * angleStep - Math.PI / 2;
+      const x1 = centerX + Math.cos(startAngle) * radius;
+      const y1 = centerY + Math.sin(startAngle) * radius;
+      const x2 = centerX + Math.cos(endAngle) * radius;
+      const y2 = centerY + Math.sin(endAngle) * radius;
+      const largeArc = angleStep > Math.PI ? 1 : 0;
+      const pathData = [
+        `M ${centerX} ${centerY}`,
+        `L ${x1} ${y1}`,
+        `A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2}`,
+        "Z"
+      ].join(" ");
+      return /* @__PURE__ */ React.createElement(
+        "path",
+        {
+          key: i,
+          d: pathData,
+          fill: "#3b82f6",
+          stroke: "#374151",
+          strokeWidth: "1"
+        }
+      );
+    })));
+  };
+  if (!problem) return /* @__PURE__ */ React.createElement("div", null, "\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435...");
+  const isCorrect = showResult && areFractionsEqual(userAnswer.trim(), problem.correctAnswer);
+  return /* @__PURE__ */ React.createElement("div", { ref: containerRef, className: "p-4 bg-white" }, /* @__PURE__ */ React.createElement("div", { className: "text-center mb-6" }, /* @__PURE__ */ React.createElement("h1", { className: "text-3xl font-bold text-blue-600" }, kazakh.title)), /* @__PURE__ */ React.createElement("div", { className: "bg-gray-50 rounded-lg p-6" }, /* @__PURE__ */ React.createElement("p", { className: "text-lg mb-6" }, problem.question), problem.type === "numberLine" && renderNumberLine(
+    problem.visual.numerator,
+    problem.visual.denominator
+  ), problem.type === "shapeCount" && renderShapes(
+    problem.visual.shapes,
+    problem.visual.shapeTypes
+  ), problem.type === "coloredShape" && renderColoredCircle(
+    problem.visual.numerator,
+    problem.visual.denominator
+  ), /* @__PURE__ */ React.createElement("p", { className: "text-sm text-gray-600 mb-4" }, problem.instruction), /* @__PURE__ */ React.createElement("div", { className: "flex gap-4 items-center" }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswer,
+      onChange: (e) => setUserAnswer(e.target.value),
+      placeholder: "1/2",
+      className: "border border-gray-300 rounded px-4 py-2 text-lg w-32",
+      disabled: showResult,
+      onKeyPress: (e) => {
+        if (e.key === "Enter" && !showResult) {
+          handleSubmit();
+        }
+      }
+    }
+  ), !showResult ? /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleSubmit,
+      disabled: !userAnswer.trim(),
+      className: "bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2"
+    },
+    /* @__PURE__ */ React.createElement(CheckCircle, { size: 20 }),
+    kazakh.check
+  ) : !isCorrect && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleNext,
+      className: "bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+    },
+    /* @__PURE__ */ React.createElement(Play, { size: 20 }),
+    kazakh.nextQuestion
+  )), showResult && /* @__PURE__ */ React.createElement("div", { className: `mt-4 p-4 rounded-lg ${isCorrect ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}` }, /* @__PURE__ */ React.createElement("div", { className: "flex items-center gap-2" }, isCorrect ? /* @__PURE__ */ React.createElement(CheckCircle, { size: 20 }) : /* @__PURE__ */ React.createElement(XCircle, { size: 20 }), /* @__PURE__ */ React.createElement("span", { className: "font-semibold" }, isCorrect ? kazakh.correct : kazakh.incorrect)), !isCorrect && /* @__PURE__ */ React.createElement("p", { className: "mt-2" }, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F: ", /* @__PURE__ */ React.createElement("strong", null, problem.correctAnswer)))));
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(KazakhFractionsApp));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

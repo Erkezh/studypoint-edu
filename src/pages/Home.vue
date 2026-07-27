@@ -2,17 +2,33 @@
   <div class="min-h-screen bg-gray-50">
     <Header />
     <main class="container mx-auto px-4 py-8">
-      <GamificationBar />
-      <div class="flex flex-wrap justify-between items-center gap-4 mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Оқу жолы</h1>
-        <div class="flex flex-wrap items-center gap-3">
-          <router-link to="/garage" class="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-amber-200 transition-transform hover:-translate-y-1">
-            🚗 Гараж
-          </router-link>
-          <router-link to="/arena" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-full font-bold shadow-lg shadow-indigo-200 transition-transform hover:-translate-y-1">
-            ⚔️ Жарыс алаңы
-          </router-link>
-        </div>
+      <GamificationBar v-if="isStudent" />
+      <div class="mt-6 mb-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+        <section class="study-hero">
+          <div>
+            <p class="study-hero__eyebrow">StudyPoint University</p>
+            <h1>Оқу жолы</h1>
+            <p>Сыныбыңды таңдап, тапсырма орында. Дұрыс жауаптар XP береді, ал coin жинасаң гаражда жаңа көлік пен стиль аша аласың.</p>
+          </div>
+        </section>
+
+        <router-link v-if="isStudent" :to="gameRoute" class="garage-entry" :aria-label="gameTitle">
+          <span class="garage-entry__shine" aria-hidden="true"></span>
+          <span class="garage-entry__icon" aria-hidden="true">
+            <img v-if="gameSettings.isCarGame" src="/assets/garage-card-car.png" alt="" />
+            <span v-else class="text-6xl text-white" aria-hidden="true">◉</span>
+          </span>
+          <span class="garage-entry__content">
+            <small>Coin reward</small>
+            <strong>{{ gameTitle }}</strong>
+            <span>{{ gameSettings.isCarGame ? 'Жинаған coin арқылы көлігіңді ашып, безендір.' : 'Кейіпкеріңе шаш, киім және аксессуар таңда.' }}</span>
+          </span>
+          <span class="garage-entry__arrow" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="none">
+              <path d="M7 4.5 12.5 10 7 15.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </router-link>
       </div>
 
       <div v-if="catalogStore.loading" class="text-center py-12">
@@ -84,10 +100,12 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
 import { useGamificationStore } from '@/stores/gamification'
+import { useGameSettingsStore } from '@/stores/gameSettings'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import GamificationBar from '@/components/gamification/GamificationBar.vue'
@@ -95,11 +113,16 @@ import GamificationBar from '@/components/gamification/GamificationBar.vue'
 defineOptions({ name: 'HomePage' })
 
 const router = useRouter()
+const authStore = useAuthStore()
 const catalogStore = useCatalogStore()
 const gamificationStore = useGamificationStore()
+const gameSettings = useGameSettingsStore()
 
 const grades = ref(catalogStore.grades)
 const error = ref<string | null>(null)
+const isStudent = computed(() => authStore.user?.role === 'STUDENT')
+const gameRoute = computed(() => !gameSettings.hasSelectedGame ? '/game/select' : gameSettings.isCarGame ? '/garage' : '/character-customization')
+const gameTitle = computed(() => !gameSettings.hasSelectedGame ? 'Ойынды таңдау' : gameSettings.isCarGame ? 'Гараж' : 'Кейіпкер әлемі')
 
 const gradeCardPalette = [
   {
@@ -202,6 +225,7 @@ const navigateToClass = (gradeNumber: number) => {
 
 onMounted(async () => {
   gamificationStore.fetchProfile()
+  if (isStudent.value) gameSettings.fetchGameSettings().catch(() => {})
   try {
     const fetchedGrades = await catalogStore.getGrades()
     grades.value = fetchedGrades
@@ -212,3 +236,153 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.study-hero {
+  position: relative;
+  display: flex;
+  min-height: 190px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #2dd4bf;
+  color: #fff;
+  padding: clamp(24px, 4vw, 36px);
+  box-shadow: 0 24px 54px rgba(45, 212, 191, 0.2);
+}
+
+.study-hero h1 {
+  margin: 0;
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 950;
+  line-height: 0.95;
+}
+
+.study-hero p {
+  max-width: 680px;
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.study-hero__eyebrow {
+  margin: 0 0 10px;
+  color: rgba(236, 253, 245, 0.86);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.garage-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  min-height: 190px;
+  overflow: hidden;
+  border: 1px solid rgba(245, 158, 11, 0.34);
+  border-radius: 24px;
+  background: #fcd34d;
+  color: #1f2937;
+  padding: 22px;
+  box-shadow: 0 22px 48px rgba(217, 119, 6, 0.16);
+  transition:
+    transform 0.22s ease,
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+}
+
+.garage-entry:hover {
+  transform: translateY(-3px);
+  border-color: rgba(245, 158, 11, 0.7);
+  box-shadow: 0 28px 58px rgba(217, 119, 6, 0.24);
+}
+
+.garage-entry__shine {
+  position: absolute;
+  inset: -40% auto auto -30%;
+  width: 180px;
+  height: 300px;
+  background: rgba(255, 255, 255, 0.52);
+  transform: rotate(24deg);
+}
+
+.garage-entry__icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 22px;
+  color: #f59e0b;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.16), 0 14px 24px rgba(245, 158, 11, 0.18);
+}
+
+.garage-entry__icon img {
+  width: 86px;
+  height: 86px;
+  object-fit: contain;
+}
+
+.garage-entry__content {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.garage-entry__content small {
+  color: #0891b2;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.garage-entry__content strong {
+  color: #111827;
+  font-size: 28px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.garage-entry__content span {
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.garage-entry__arrow {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  color: #fff;
+  background: #0f766e;
+}
+
+.garage-entry__arrow svg {
+  width: 22px;
+  height: 22px;
+}
+
+@media (max-width: 760px) {
+  .study-hero {
+    min-height: 220px;
+  }
+
+  .garage-entry {
+    min-height: 160px;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .garage-entry__arrow {
+    display: none;
+  }
+}
+</style>

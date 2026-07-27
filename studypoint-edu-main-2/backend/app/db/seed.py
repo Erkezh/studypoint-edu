@@ -1,0 +1,303 @@
+from __future__ import annotations
+
+import asyncio
+import logging
+from datetime import datetime, timezone
+
+from redis.asyncio import Redis
+from sqlalchemy import select, text
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.security import hash_password
+from app.db.session import close_engine, get_sessionmaker, init_engine
+from app.models.assignment import Assignment, AssignmentStatusRow
+from app.models.catalog import Grade, Skill, Subject
+from app.models.classroom import Classroom, Enrollment
+from app.models.enums import AssignmentStatus, QuestionType, SubscriptionPlan, UserRole
+from app.models.profile import StudentProfile
+from app.models.question import Question
+from app.models.subscription import Subscription
+from app.models.user import User
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def _default_grade_specs() -> list[dict[str, int | str]]:
+    specs: list[dict[str, int | str]] = [
+        {"id": 1, "number": -1, "label": "Б-а", "title": "Балабақша алды", "description": ""},
+        {"id": 2, "number": 0, "label": "Б", "title": "Балабақша", "description": ""},
+    ]
+    kazakh_numbers = {
+        1: "Бірінші",
+        2: "Екінші",
+        3: "Үшінші",
+        4: "Төртінші",
+        5: "Бесінші",
+        6: "Алтыншы",
+        7: "Жетінші",
+        8: "Сегізінші",
+        9: "Тоғызыншы",
+        10: "Оныншы",
+        11: "Он бірінші",
+        12: "Он екінші",
+    }
+    for number in range(1, 13):
+        title = f"{kazakh_numbers[number]} сынып"
+        specs.append(
+            {
+                "id": number + 2,
+                "number": number,
+                "label": str(number),
+                "title": title,
+                "description": "",
+            }
+        )
+    return specs
+
+
+def _should_apply_default_label(grade: Grade) -> bool:
+    label = (grade.label or "").strip()
+    return not label or (grade.number == -1 and label == "-1") or (grade.number == 0 and label == "0")
+
+
+async def _get_subject_id(session: AsyncSession, slug: str) -> int:
+    subject_id = (await session.execute(select(Subject.id).where(Subject.slug == slug))).scalar_one_or_none()
+    if subject_id is None:
+        raise RuntimeError(f"Default subject {slug!r} is missing")
+    return subject_id
+
+
+async def _get_grade_id(session: AsyncSession, number: int) -> int:
+    grade_id = (await session.execute(select(Grade.id).where(Grade.number == number))).scalar_one_or_none()
+    if grade_id is None:
+        raise RuntimeError(f"Default grade {number!r} is missing")
+    return grade_id
+
+
+async def _ensure_subjects(session: AsyncSession) -> None:
+    existing = (await session.execute(select(Subject.id).limit(1))).scalar_one_or_none()
+    if existing is not None:
+        return
+
+    subjects = [
+        Subject(id=1, slug="math", title="Math"),
+        Subject(id=2, slug="language-arts", title="Language Arts"),
+        Subject(id=3, slug="science", title="Science"),
+        Subject(id=4, slug="social-studies", title="Social Studies"),
+        Subject(id=5, slug="spanish", title="Spanish"),
+    ]
+    session.add_all(subjects)
+
+
+async def _ensure_grades(session: AsyncSession) -> None:
+    specs = _default_grade_specs()
+    existing_grades = list((await session.execute(select(Grade).order_by(Grade.number))).scalars().all())
+    if not existing_grades:
+        session.add_all(
+            [
+                Grade(
+                    id=int(spec["id"]),
+                    number=int(spec["number"]),
+                    label=str(spec["label"]),
+                    title=str(spec["title"]),
+                    description=str(spec["description"]),
+                )
+                for spec in specs
+            ]
+        )
+        return
+
+    grades_by_number = {grade.number: grade for grade in existing_grades}
+    used_ids = {grade.id for grade in existing_grades}
+    next_id = max(used_ids, default=0) + 1
+
+    for spec in specs:
+        number = int(spec["number"])
+        grade = grades_by_number.get(number)
+        if grade is None:
+            grade_id = int(spec["id"])
+            if grade_id in used_ids:
+                while next_id in used_ids:
+                    next_id += 1
+                grade_id = next_id
+                next_id += 1
+            used_ids.add(grade_id)
+            session.add(
+                Grade(
+                    id=grade_id,
+                    number=number,
+                    label=str(spec["label"]),
+                    title=str(spec["title"]),
+                    description=str(spec["description"]),
+                )
+            )
+            continue
+
+        # Force update label and title to keep them in sync with defaults
+        grade.label = str(spec["label"])
+        grade.title = str(spec["title"])
+        if grade.description is None:
+            grade.description = str(spec["description"])
+
+
+async def _ensure_demo_content(session: AsyncSession) -> None:
+    existing = (await session.execute(select(Skill.id).limit(1))).scalar_one_or_none()
+    if existing is not None:
+        return
+
+    grade5_id = await _get_grade_id(session, 5)
+    math_id = await _get_subject_id(session, "math")
+
+    skill1 = Skill(
+        id=1,
+        subject_id=math_id,
+        grade_id=grade5_id,
+        code="A.1",
+        title="Multiply whole numbers",
+        description="Multiply two whole numbers.",
+        tags=["multiplication"],
+        difficulty=2,
+        is_published=True,
+    )
+    skill2 = Skill(
+        id=2,
+        subject_id=math_id,
+        grade_id=grade5_id,
+        code="A.2",
+        title="Divide whole numbers",
+        description="Divide a whole number by a whole number.",
+        tags=["division"],
+        difficulty=2,
+        is_published=True,
+    )
+    session.add_all([skill1, skill2])
+
+    q1 = Question(
+        id=1,
+        skill_id=1,
+        type=QuestionType.MCQ,
+        prompt="What is 7 × 8?",
+        data={"choices": [{"id": "A", "text": "54"}, {"id": "B", "text": "56"}, {"id": "C", "text": "64"}]},
+        correct_answer={"choice": "B"},
+        explanation="7 × 8 = 56.",
+        level=2,
+    )
+    q2 = Question(
+        id=2,
+        skill_id=1,
+        type=QuestionType.NUMERIC,
+        prompt="Compute 12 × 9.",
+        data={"min": 0, "max": 1000},
+        correct_answer={"value": 108},
+        explanation="12 × 9 = 108.",
+        level=2,
+    )
+    q3 = Question(
+        id=3,
+        skill_id=2,
+        type=QuestionType.MCQ,
+        prompt="What is 72 ÷ 9?",
+        data={"choices": [{"id": "A", "text": "8"}, {"id": "B", "text": "9"}, {"id": "C", "text": "7"}]},
+        correct_answer={"choice": "A"},
+        explanation="72 ÷ 9 = 8.",
+        level=2,
+    )
+    session.add_all([q1, q2, q3])
+
+
+async def _ensure_demo_users(session: AsyncSession) -> None:
+    existing = (await session.execute(select(User).where(User.email == "admin@example.com"))).scalar_one_or_none()
+    if existing is not None:
+        return
+
+    admin = User(
+        email="admin@example.com",
+        password_hash=hash_password("Password123!"),
+        full_name="Admin",
+        role=UserRole.ADMIN,
+        is_active=True,
+    )
+    teacher = User(
+        email="teacher@example.com",
+        password_hash=hash_password("Password123!"),
+        full_name="Teacher",
+        role=UserRole.TEACHER,
+        is_active=True,
+    )
+    student = User(
+        email="student@example.com",
+        password_hash=hash_password("Password123!"),
+        full_name="Student",
+        role=UserRole.STUDENT,
+        is_active=True,
+    )
+    session.add_all([admin, teacher, student])
+    await session.flush()
+
+    session.add(StudentProfile(user_id=student.id, grade_level=5, school="Demo School"))
+    session.add(Subscription(user_id=student.id, plan=SubscriptionPlan.FREE, is_active=True))
+
+    classroom = Classroom(teacher_id=teacher.id, title="Demo Grade 5", grade_id=await _get_grade_id(session, 5))
+    session.add(classroom)
+    await session.flush()
+    session.add(Enrollment(classroom_id=classroom.id, student_id=student.id, enrolled_at=datetime.now(timezone.utc)))
+
+    assignment = Assignment(classroom_id=classroom.id, skill_id=1, due_at=None)
+    session.add(assignment)
+    await session.flush()
+    session.add(
+        AssignmentStatusRow(
+            assignment_id=assignment.id,
+            student_id=student.id,
+            status=AssignmentStatus.NOT_STARTED,
+        )
+    )
+
+
+async def _reset_sequences(session: AsyncSession) -> None:
+    # We insert fixed IDs in seed data; ensure sequences advance for future inserts.
+    for table in ["subjects", "grades", "skills", "questions"]:
+        await session.execute(
+            text(
+                f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), COALESCE((SELECT MAX(id) FROM {table}), 1), true);"
+            )
+        )
+
+
+async def _clear_cache() -> None:
+    # Prevent stale Redis values (e.g. cached empty lists) after reseed.
+    try:
+        redis = Redis.from_url(settings.redis_url, decode_responses=True)
+        try:
+            async for key in redis.scan_iter(match="cache:*"):
+                await redis.delete(key)
+        finally:
+            await redis.aclose()
+    except Exception as exc:  # pragma: no cover - non-fatal cleanup
+        logger.warning("Could not clear redis cache after seed: %s", exc)
+
+
+async def seed() -> None:
+    init_engine(settings.database_url)
+    sessionmaker = get_sessionmaker()
+
+    try:
+        async with sessionmaker() as session:
+            async with session.begin():
+                await _ensure_subjects(session)
+                await _ensure_grades(session)
+                await _ensure_demo_content(session)
+                await _ensure_demo_users(session)
+                await _reset_sequences(session)
+            await _clear_cache()
+    finally:
+        await close_engine()
+
+
+def main() -> None:
+    asyncio.run(seed())
+
+
+if __name__ == "__main__":
+    main()

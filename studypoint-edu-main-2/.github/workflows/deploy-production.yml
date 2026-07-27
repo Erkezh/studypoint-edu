@@ -1,0 +1,397 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  frontend-build-check:
+    name: Frontend Build Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.12.0"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        env:
+          VITE_API_URL: ""
+        run: npm run build-only
+
+  deploy:
+    name: Deploy To Server
+    runs-on: ubuntu-latest
+    needs: frontend-build-check
+    timeout-minutes: 30
+    steps:
+      - name: Validate deploy secrets
+        env:
+          DEPLOY_SSH_HOST: ${{ secrets.DEPLOY_SSH_HOST }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+          DEPLOY_SSH_PASSWORD: ${{ secrets.DEPLOY_SSH_PASSWORD }}
+          DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+        run: |
+          set -euo pipefail
+
+          [ -n "$DEPLOY_SSH_HOST" ] || { echo "::error::DEPLOY_SSH_HOST is empty"; exit 1; }
+          [ -n "$DEPLOY_SSH_USER" ] || { echo "::error::DEPLOY_SSH_USER is empty"; exit 1; }
+          if [ -z "$DEPLOY_SSH_PRIVATE_KEY" ] && [ -z "$DEPLOY_SSH_PASSWORD" ]; then
+            echo "::error::Set DEPLOY_SSH_PRIVATE_KEY or DEPLOY_SSH_PASSWORD"
+            exit 1
+          fi
+          if [ -n "$DEPLOY_SSH_PASSWORD" ]; then
+            echo "::notice::Using password authentication for SSH deploy."
+          else
+            echo "::notice::Using private key authentication for SSH deploy."
+          fi
+
+          if [ -n "$DEPLOY_SSH_PORT" ] && ! [[ "$DEPLOY_SSH_PORT" =~ ^[0-9]+$ ]]; then
+            echo "::error::DEPLOY_SSH_PORT must be numeric. Current value: '$DEPLOY_SSH_PORT'"
+            exit 1
+          fi
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_DOMAIN: ${{ secrets.DEPLOY_DOMAIN }}
+          DEPLOY_SSH_PASSWORD: ${{ secrets.DEPLOY_SSH_PASSWORD }}
+          DEPLOY_GITHUB_TOKEN: ${{ github.token }}
+        with:
+          host: ${{ secrets.DEPLOY_SSH_HOST }}
+          port: ${{ secrets.DEPLOY_SSH_PORT != '' && secrets.DEPLOY_SSH_PORT || '22' }}
+          username: ${{ secrets.DEPLOY_SSH_USER }}
+          key: ${{ secrets.DEPLOY_SSH_PASSWORD == '' && secrets.DEPLOY_SSH_PRIVATE_KEY || '' }}
+          password: ${{ secrets.DEPLOY_SSH_PASSWORD != '' && secrets.DEPLOY_SSH_PASSWORD || '' }}
+          debug: true
+          command_timeout: 60m
+          envs: DEPLOY_PATH,DEPLOY_DOMAIN,DEPLOY_SSH_PASSWORD,DEPLOY_GITHUB_TOKEN
+          script: |
+            set -Eeuo pipefail
+
+            REPO_DIR="${DEPLOY_PATH:-}"
+            DOMAIN="${DEPLOY_DOMAIN:-}"
+
+            if [ -z "$REPO_DIR" ]; then
+              for candidate in "/opt/studypoint-edu" "/studypoint-edu/studypoint-edu" "$HOME/studypoint-edu"; do
+                if [ -d "$candidate/.git" ]; then
+                  REPO_DIR="$candidate"
+                  break
+                fi
+              done
+            fi
+
+            if [ -z "$REPO_DIR" ] || [ ! -d "$REPO_DIR/.git" ]; then
+              echo "Repository not found. Set DEPLOY_PATH secret."
+              echo "Checked: /opt/studypoint-edu, /studypoint-edu/studypoint-edu, $HOME/studypoint-edu"
+              exit 1
+            fi
+
+            echo "Using repository path: $REPO_DIR"
+
+            USE_SUDO=0
+            USE_SUDO_PASSWORD=0
+            if sudo -n true >/dev/null 2>&1; then
+              USE_SUDO=1
+              echo "Using passwordless sudo for privileged commands."
+            elif [ -n "${DEPLOY_SSH_PASSWORD:-}" ] && printf '%s\n' "$DEPLOY_SSH_PASSWORD" | sudo -S -p '' -v >/dev/null 2>&1; then
+              USE_SUDO=1
+              USE_SUDO_PASSWORD=1
+              echo "Using sudo with password from DEPLOY_SSH_PASSWORD."
+            else
+              echo "Sudo is not available. Trying deployment without sudo."
+            fi
+
+            run_privileged() {
+              if [ "$USE_SUDO" -eq 1 ] && [ "$USE_SUDO_PASSWORD" -eq 1 ]; then
+                printf '%s\n' "$DEPLOY_SSH_PASSWORD" | sudo -S -p '' "$@"
+              elif [ "$USE_SUDO" -eq 1 ]; then
+                sudo -n "$@"
+              else
+                "$@"
+              fi
+            }
+
+            if ! run_privileged docker compose version >/dev/null 2>&1; then
+              echo "Cannot run 'docker compose' as current user."
+              echo "Fix one of these:"
+              echo "1) Add passwordless sudo for docker/systemctl"
+              echo "2) Add deploy user to docker group and relogin"
+              exit 1
+            fi
+
+            # Runtime processes may leave root-owned files; ensure deploy user can update the repo.
+            current_user="$(id -un)"
+            current_group="$(id -gn)"
+            if [ "$USE_SUDO" -eq 1 ]; then
+              run_privileged chown -R "$current_user:$current_group" "$REPO_DIR" || true
+            fi
+
+            cd "$REPO_DIR"
+            askpass_file=""
+            origin_url="$(git remote get-url origin)"
+            if printf '%s' "$origin_url" | grep -qE '^https://github\.com/'; then
+              if [ -z "${DEPLOY_GITHUB_TOKEN:-}" ]; then
+                echo "Missing DEPLOY_GITHUB_TOKEN for HTTPS git origin."
+                exit 1
+              fi
+              askpass_file="$(mktemp)"
+              cat > "$askpass_file" <<'ASKPASS'
+            #!/usr/bin/env sh
+            case "$1" in
+              *Username*) printf '%s\n' "x-access-token" ;;
+              *Password*) printf '%s\n' "$DEPLOY_GITHUB_TOKEN" ;;
+              *) printf '\n' ;;
+            esac
+            ASKPASS
+              chmod 700 "$askpass_file"
+              export GIT_TERMINAL_PROMPT=0
+              export GIT_ASKPASS="$askpass_file"
+            fi
+            git fetch origin main --prune
+            git checkout main
+            if ! git diff --quiet || ! git diff --cached --quiet || [ -n "$(git ls-files --others --exclude-standard)" ]; then
+              echo "Stashing local repository changes before pull..."
+              git stash push --all --message "auto-deploy-prepull-$(date -u +%Y%m%dT%H%M%SZ)"
+            fi
+            git pull --ff-only origin main
+            if [ -n "$askpass_file" ]; then
+              rm -f "$askpass_file"
+              unset GIT_ASKPASS
+              unset GIT_TERMINAL_PROMPT
+            fi
+
+            if [ ! -f "$REPO_DIR/backend/.env" ]; then
+              if [ -f "$REPO_DIR/backend/.env.example" ]; then
+                cp "$REPO_DIR/backend/.env.example" "$REPO_DIR/backend/.env"
+              else
+                cat > "$REPO_DIR/backend/.env" <<'ENV'
+            POSTGRES_USER=postgres
+            POSTGRES_PASSWORD=postgres
+            POSTGRES_DB=ixl
+            ENV
+              fi
+            fi
+
+            cd "$REPO_DIR/backend"
+            run_privileged docker compose up -d --build
+            run_privileged ./scripts/sync_postgres_password.sh
+            # The api service bind-mounts the repo into /app, so a plain "up -d"
+            # can leave the old uvicorn process running against stale code after git pull.
+            run_privileged docker compose up -d --force-recreate --no-deps api
+            echo "Checking esbuild in API container..."
+            if ! run_privileged docker compose exec -T api sh -lc 'test -x /app/node_modules/.bin/esbuild'; then
+              echo "esbuild not found in /app/node_modules. Installing backend npm dependencies..."
+              run_privileged docker compose exec -T api sh -lc 'npm ci --omit=dev'
+            fi
+            run_privileged docker compose exec -T api sh -lc '/app/node_modules/.bin/esbuild --version'
+            run_privileged docker compose run --rm api python -m alembic upgrade head
+            # Keep default demo/admin users available (seed is idempotent).
+            run_privileged docker compose run --rm api python -m app.db.seed
+            # Recreate the running api container again after migrations/seed so
+            # the live process definitely picks up the freshly pulled code.
+            run_privileged docker compose up -d --force-recreate --no-deps api
+
+            cd "$REPO_DIR"
+            npm ci
+            cat > "$REPO_DIR/.env" <<'ENV'
+            VITE_API_URL=
+            ENV
+            npm run build-only
+
+            HAS_FRONTEND_SERVICE=0
+            HAS_BACKEND_SERVICE=0
+
+            if [ "$USE_SUDO" -eq 1 ] && run_privileged systemctl list-unit-files | grep -q '^studypoint-frontend.service'; then
+              HAS_FRONTEND_SERVICE=1
+            elif [ "$USE_SUDO" -eq 0 ] && systemctl list-unit-files 2>/dev/null | grep -q '^studypoint-frontend.service'; then
+              HAS_FRONTEND_SERVICE=1
+            fi
+
+            if [ "$USE_SUDO" -eq 1 ] && run_privileged systemctl list-unit-files | grep -q '^studypoint-backend.service'; then
+              HAS_BACKEND_SERVICE=1
+            elif [ "$USE_SUDO" -eq 0 ] && systemctl list-unit-files 2>/dev/null | grep -q '^studypoint-backend.service'; then
+              HAS_BACKEND_SERVICE=1
+            fi
+
+            if [ "$USE_SUDO" -eq 1 ] && { [ "$HAS_FRONTEND_SERVICE" -eq 1 ] || [ "$HAS_BACKEND_SERVICE" -eq 1 ]; }; then
+              run_privileged systemctl daemon-reload
+            fi
+
+            restart_frontend_fallback() {
+              local pid_file="/tmp/studypoint-frontend.pid"
+              local old_pid
+              old_pid=""
+
+              if [ -f "$pid_file" ]; then
+                old_pid="$(cat "$pid_file" 2>/dev/null || true)"
+                if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+                  kill "$old_pid" 2>/dev/null || true
+                  sleep 1
+                fi
+              fi
+
+              # Use bracket regex tricks to avoid matching the current shell command line.
+              local vite_expr='[v]ite[[:space:]]+preview[[:space:]]+--[[:space:]]+--host[[:space:]]+0\.0\.0\.0[[:space:]]+--port[[:space:]]+5174'
+              local server_expr='[n]ode[[:space:]]+scripts/serve-dist\.mjs[[:space:]]+--host[[:space:]]+0\.0\.0\.0[[:space:]]+--port[[:space:]]+5174'
+              local pid
+              for pid in $(pgrep -f "$vite_expr" || true); do
+                if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
+                  kill "$pid" 2>/dev/null || true
+                fi
+              done
+
+              for pid in $(pgrep -f "$server_expr" || true); do
+                if [ "$pid" != "$$" ] && [ "$pid" != "$PPID" ]; then
+                  kill "$pid" 2>/dev/null || true
+                fi
+              done
+
+              if [ "$USE_SUDO" -eq 1 ]; then
+                run_privileged sh -lc 'command -v fuser >/dev/null 2>&1 && fuser -k 5174/tcp || true'
+              else
+                command -v fuser >/dev/null 2>&1 && fuser -k 5174/tcp || true
+              fi
+
+              nohup node scripts/serve-dist.mjs --host 0.0.0.0 --port 5174 >/tmp/studypoint-frontend.log 2>&1 &
+              echo $! > "$pid_file"
+            }
+
+            if [ "$HAS_FRONTEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 1 ]; then
+              run_privileged systemctl restart studypoint-frontend
+            elif [ "$HAS_FRONTEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 0 ]; then
+              echo "studypoint-frontend.service exists but no sudo. Skipping service restart."
+            else
+              restart_frontend_fallback
+            fi
+
+            if [ "$HAS_BACKEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 1 ]; then
+              run_privileged systemctl restart studypoint-backend
+            elif [ "$HAS_BACKEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 0 ]; then
+              echo "studypoint-backend.service exists but no sudo. Skipping service restart."
+            fi
+
+            wait_for_http_get() {
+              local url="$1"
+              local retries="${2:-30}"
+              local delay="${3:-2}"
+              local i=1
+              while [ "$i" -le "$retries" ]; do
+                if curl -fsS "$url" >/dev/null; then
+                  return 0
+                fi
+                echo "Waiting for $url ($i/$retries)..."
+                sleep "$delay"
+                i=$((i + 1))
+              done
+              echo "Healthcheck failed: $url"
+              return 1
+            }
+
+            wait_for_http_head() {
+              local url="$1"
+              local retries="${2:-30}"
+              local delay="${3:-2}"
+              local i=1
+              while [ "$i" -le "$retries" ]; do
+                if curl -fsSI "$url" >/dev/null; then
+                  return 0
+                fi
+                echo "Waiting for $url ($i/$retries)..."
+                sleep "$delay"
+                i=$((i + 1))
+              done
+              echo "Healthcheck failed: $url"
+              return 1
+            }
+
+            wait_for_frontend_api() {
+              local url="$1"
+              local retries="${2:-30}"
+              local delay="${3:-2}"
+              local i=1
+              local body=""
+              while [ "$i" -le "$retries" ]; do
+                body="$(curl -fsS "$url" || true)"
+                if [ -n "$body" ] && ! printf '%s' "$body" | grep -q '<!DOCTYPE html>' && printf '%s' "$body" | grep -q '"data"'; then
+                  return 0
+                fi
+                echo "Waiting for frontend API proxy $url ($i/$retries)..."
+                sleep "$delay"
+                i=$((i + 1))
+              done
+              echo "Frontend API proxy healthcheck failed: $url"
+              printf '%s\n' "$body"
+              echo "Direct backend API response sample:"
+              curl -sS http://127.0.0.1:8001/api/v1/grades || true
+              echo
+              echo "Frontend process candidates:"
+              pgrep -af 'serve-dist|vite preview|5174' || true
+              echo "Frontend log tail:"
+              tail -n 120 /tmp/studypoint-frontend.log || true
+              return 1
+            }
+
+            check_external_domain() {
+              local url="$1"
+              local retries="${2:-30}"
+              local delay="${3:-2}"
+              local i=1
+              while [ "$i" -le "$retries" ]; do
+                if curl -fsS -o /dev/null "$url" || curl -fsSI "$url" >/dev/null; then
+                  return 0
+                fi
+                echo "Waiting for $url ($i/$retries)..."
+                sleep "$delay"
+                i=$((i + 1))
+              done
+              echo "::warning::External domain healthcheck failed for $url after deploy, but local frontend and backend checks passed."
+              echo "External GET headers:"
+              curl -sS -D - -o /dev/null "$url" || true
+              echo "Local frontend headers:"
+              curl -sS -D - -o /dev/null http://127.0.0.1:5174/ || true
+              echo "Local backend headers:"
+              curl -sS -D - -o /dev/null http://127.0.0.1:8001/docs || true
+              return 1
+            }
+
+            wait_for_http_get http://127.0.0.1:8001/api/v1/health/live 30 2
+            wait_for_http_get http://127.0.0.1:8001/api/v1/health/ready 30 2
+            wait_for_http_head http://127.0.0.1:5174/ 30 2
+
+            if ! wait_for_frontend_api http://127.0.0.1:5174/api/v1/grades 5 2; then
+              echo "Primary frontend runtime is not proxying /api. Switching to repo-managed fallback server."
+              if [ "$HAS_FRONTEND_SERVICE" -eq 1 ] && [ "$USE_SUDO" -eq 1 ]; then
+                run_privileged systemctl stop studypoint-frontend || true
+              fi
+              restart_frontend_fallback
+              wait_for_http_head http://127.0.0.1:5174/ 30 2
+            fi
+
+            wait_for_frontend_api http://127.0.0.1:5174/api/v1/grades 30 2
+
+            if [ -n "$DOMAIN" ]; then
+              check_external_domain "https://${DOMAIN}/" 30 2 || true
+              check_external_domain "https://${DOMAIN}/api/v1/grades" 30 2 || true
+            fi
+
+            echo "Deployment finished successfully."

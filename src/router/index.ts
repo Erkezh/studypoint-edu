@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useGameSettingsStore } from '@/stores/gameSettings'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -89,7 +90,13 @@ const routes: RouteRecordRaw[] = [
     path: '/profile',
     name: 'profile',
     component: () => import('@/pages/Profile.vue'),
-    meta: { requiresAuth: true },
+    meta: { requiresAuth: true, requiresGame: true },
+  },
+  {
+    path: '/game/select',
+    name: 'game-select',
+    component: () => import('@/pages/GameSelect.vue'),
+    meta: { requiresAuth: true, requiresRole: 'STUDENT' },
   },
   {
     path: '/teacher',
@@ -191,16 +198,23 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
-    path: '/arena',
-    name: 'battle-arena',
-    component: () => import('@/pages/BattleArena.vue'),
-    meta: { requiresAuth: false },
-  },
-  {
     path: '/garage',
     name: 'garage',
     component: () => import('@/pages/GarageView.vue'),
-    meta: { requiresAuth: false },
+    meta: { requiresAuth: true, requiresRole: 'STUDENT', requiresGame: true, gameType: 'car' },
+  },
+  {
+    path: '/game-shop',
+    name: 'game-shop',
+    component: () => import('@/pages/GameShop.vue'),
+    meta: { requiresAuth: true, requiresRole: 'STUDENT', requiresGame: true },
+  },
+  {
+    path: '/character-customization',
+    name: 'avatar-demo',
+    alias: '/avatar-demo',
+    component: () => import('@/views/AvatarDemo.vue'),
+    meta: { requiresAuth: true, requiresRole: 'STUDENT', requiresGame: true, gameType: 'character' },
   },
   {
     path: '/:pathMatch(.*)*',
@@ -217,6 +231,7 @@ const router = createRouter({
 // Навигационный guard для защиты роутов
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const gameSettings = useGameSettingsStore()
 
   // Ждем завершения инициализации (бесшумного обновления токена через cookie)
   await authStore.init()
@@ -242,6 +257,30 @@ router.beforeEach(async (to, from, next) => {
       if (to.meta.requiresRole && authStore.user?.role !== to.meta.requiresRole) {
         next({ name: 'home' }) // Редирект на главную, если нет прав
         return
+      }
+
+      if (authStore.user?.role === 'STUDENT') {
+        try {
+          await gameSettings.fetchGameSettings()
+        } catch {
+          next({ name: 'home' })
+          return
+        }
+
+        const isGameTrial = to.query.trial === '1' && (to.name === 'garage' || to.name === 'avatar-demo')
+
+        if (to.name === 'game-select' && gameSettings.hasSelectedGame) {
+          next(gameSettings.isCarGame ? { name: 'garage' } : { name: 'avatar-demo' })
+          return
+        }
+        if (to.meta.requiresGame && !gameSettings.hasSelectedGame && !isGameTrial) {
+          next({ name: 'game-select', query: { redirect: to.fullPath } })
+          return
+        }
+        if (to.meta.gameType && gameSettings.activeGame !== to.meta.gameType && !isGameTrial) {
+          next(gameSettings.isCarGame ? { name: 'garage' } : { name: 'avatar-demo' })
+          return
+        }
       }
 
       next()

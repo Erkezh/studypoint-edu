@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number Words Practice</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState } = React;
+const questions = [
+  { number: "60 704", answer: "\u0430\u043B\u043F\u044B\u0441 \u043C\u044B\u04A3 \u0436\u0435\u0442\u0456 \u0436\u04AF\u0437 \u0442\u04E9\u0440\u0442" },
+  { number: "90 099", answer: "\u0442\u043E\u049B\u0441\u0430\u043D \u043C\u044B\u04A3 \u0442\u043E\u049B\u0441\u0430\u043D \u0442\u043E\u0493\u044B\u0437" },
+  { number: "760 770", answer: "\u0436\u0435\u0442\u0456 \u0436\u04AF\u0437 \u0430\u043B\u043F\u044B\u0441 \u043C\u044B\u04A3 \u0436\u0435\u0442\u0456 \u0436\u04AF\u0437 \u0436\u0435\u0442\u043F\u0456\u0441" },
+  { number: "885 161", answer: "\u0441\u0435\u0433\u0456\u0437 \u0436\u04AF\u0437 \u0441\u0435\u043A\u0441\u0435\u043D \u0431\u0435\u0441 \u043C\u044B\u04A3 \u0431\u0456\u0440 \u0436\u04AF\u0437 \u0430\u043B\u043F\u044B\u0441 \u0431\u0456\u0440" },
+  { number: "2 620 094", answer: "\u0435\u043A\u0456 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0430\u043B\u0442\u044B \u0436\u04AF\u0437 \u0436\u0438\u044B\u0440\u043C\u0430 \u043C\u044B\u04A3 \u0442\u043E\u049B\u0441\u0430\u043D \u0442\u04E9\u0440\u0442" },
+  { number: "4 670 817", answer: "\u0442\u04E9\u0440\u0442 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0430\u043B\u0442\u044B \u0436\u04AF\u0437 \u0436\u0435\u0442\u043F\u0456\u0441 \u043C\u044B\u04A3 \u0441\u0435\u0433\u0456\u0437 \u0436\u04AF\u0437 \u043E\u043D \u0436\u0435\u0442\u0456" },
+  { number: "3 000 843", answer: "\u04AF\u0448 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0441\u0435\u0433\u0456\u0437 \u0436\u04AF\u0437 \u049B\u044B\u0440\u044B\u049B \u04AF\u0448" },
+  { number: "2 080 276", answer: "\u0435\u043A\u0456 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0441\u0435\u043A\u0441\u0435\u043D \u043C\u044B\u04A3 \u0435\u043A\u0456 \u0436\u04AF\u0437 \u0436\u0435\u0442\u043F\u0456\u0441 \u0430\u043B\u0442\u044B" },
+  { number: "6 126 476", answer: "\u0430\u043B\u0442\u044B \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0431\u0456\u0440 \u0436\u04AF\u0437 \u0436\u0438\u044B\u0440\u043C\u0430 \u0430\u043B\u0442\u044B \u043C\u044B\u04A3 \u0442\u04E9\u0440\u0442 \u0436\u04AF\u0437 \u0436\u0435\u0442\u043F\u0456\u0441 \u0430\u043B\u0442\u044B" },
+  { number: "3 381 020", answer: "\u04AF\u0448 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u04AF\u0448 \u0436\u04AF\u0437 \u0441\u0435\u043A\u0441\u0435\u043D \u0431\u0456\u0440 \u043C\u044B\u04A3 \u0436\u0438\u044B\u0440\u043C\u0430" },
+  { number: "4 763 297", answer: "\u0442\u04E9\u0440\u0442 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0436\u0435\u0442\u0456 \u0436\u04AF\u0437 \u0430\u043B\u043F\u044B\u0441 \u04AF\u0448 \u043C\u044B\u04A3 \u0435\u043A\u0456 \u0436\u04AF\u0437 \u0442\u043E\u049B\u0441\u0430\u043D \u0436\u0435\u0442\u0456" },
+  { number: "421 397", answer: "\u0442\u04E9\u0440\u0442 \u0436\u04AF\u0437 \u0436\u0438\u044B\u0440\u043C\u0430 \u0431\u0456\u0440 \u043C\u044B\u04A3 \u04AF\u0448 \u0436\u04AF\u0437 \u0442\u043E\u049B\u0441\u0430\u043D \u0436\u0435\u0442\u0456" },
+  { number: "3 276 042", answer: "\u04AF\u0448 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0435\u043A\u0456 \u0436\u04AF\u0437 \u0436\u0435\u0442\u043F\u0456\u0441 \u0430\u043B\u0442\u044B \u043C\u044B\u04A3 \u049B\u044B\u0440\u044B\u049B \u0435\u043A\u0456" },
+  { number: "8 607 232", answer: "\u0441\u0435\u0433\u0456\u0437 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0430\u043B\u0442\u044B \u0436\u04AF\u0437 \u0436\u0435\u0442\u0456 \u043C\u044B\u04A3 \u0435\u043A\u0456 \u0436\u04AF\u0437 \u043E\u0442\u044B\u0437 \u0435\u043A\u0456" },
+  { number: "5 217 076", answer: "\u0431\u0435\u0441 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0435\u043A\u0456 \u0436\u04AF\u0437 \u043E\u043D \u0436\u0435\u0442\u0456 \u043C\u044B\u04A3 \u0436\u0435\u0442\u043F\u0456\u0441 \u0430\u043B\u0442\u044B" },
+  { number: "9 000 967", answer: "\u0442\u043E\u0493\u044B\u0437 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0442\u043E\u0493\u044B\u0437 \u0436\u04AF\u0437 \u0430\u043B\u043F\u044B\u0441 \u0436\u0435\u0442\u0456" },
+  { number: "8 518 223", answer: "\u0441\u0435\u0433\u0456\u0437 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0431\u0435\u0441 \u0436\u04AF\u0437 \u043E\u043D \u0441\u0435\u0433\u0456\u0437 \u043C\u044B\u04A3 \u0435\u043A\u0456 \u0436\u04AF\u0437 \u0436\u0438\u044B\u0440\u043C\u0430 \u04AF\u0448" },
+  { number: "8 969 909", answer: "\u0441\u0435\u0433\u0456\u0437 \u043C\u0438\u043B\u043B\u0438\u043E\u043D \u0442\u043E\u0493\u044B\u0437 \u0436\u04AF\u0437 \u0430\u043B\u043F\u044B\u0441 \u0442\u043E\u0493\u044B\u0437 \u043C\u044B\u04A3 \u0442\u043E\u0493\u044B\u0437 \u0436\u04AF\u0437 \u0442\u043E\u0493\u044B\u0437" }
+];
+function NumberWordsPractice() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [userAnswer, setUserAnswer] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [completed, setCompleted] = useState(false);
+  const currentQuestion = questions[currentIndex];
+  const normalizeAnswer = (str) => {
+    return str.toLowerCase().trim().replace(/\s+/g, " ");
+  };
+  const checkAnswer = () => {
+    const normalized = normalizeAnswer(userAnswer);
+    const correct = normalizeAnswer(currentQuestion.answer);
+    if (normalized === correct) {
+      setFeedback("correct");
+      setTimeout(() => {
+        if (currentIndex < questions.length - 1) {
+          setCurrentIndex(currentIndex + 1);
+          setUserAnswer("");
+          setFeedback(null);
+        } else {
+          setCompleted(true);
+        }
+      }, 1500);
+    } else {
+      setFeedback("incorrect");
+    }
+  };
+  const handleUnderstood = () => {
+    if (currentIndex < questions.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+      setUserAnswer("");
+      setFeedback(null);
+    } else {
+      setCompleted(true);
+    }
+  };
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      checkAnswer();
+    }
+  };
+  const restart = () => {
+    setCurrentIndex(0);
+    setUserAnswer("");
+    setFeedback(null);
+    setCompleted(false);
+  };
+  if (completed) {
+    return /* @__PURE__ */ React.createElement("div", { style: {
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      fontFamily: "Verdana, sans-serif",
+      padding: "20px",
+      boxSizing: "border-box",
+      backgroundColor: "#f5f5f5"
+    } }, /* @__PURE__ */ React.createElement("div", { style: {
+      fontSize: "clamp(18px, 4vw, 24px)",
+      textAlign: "center",
+      marginBottom: "30px"
+    } }, "\u0411\u0430\u0440\u043B\u044B\u049B \u0442\u0430\u043F\u0441\u044B\u0440\u043C\u0430\u043B\u0430\u0440 \u043E\u0440\u044B\u043D\u0434\u0430\u043B\u0434\u044B!"), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: restart,
+        style: {
+          backgroundColor: "#323048",
+          color: "white",
+          border: "none",
+          padding: "clamp(10px, 2vw, 15px) clamp(25px, 5vw, 40px)",
+          fontSize: "clamp(14px, 3vw, 18px)",
+          fontFamily: "Verdana, sans-serif",
+          cursor: "pointer",
+          borderRadius: "4px"
+        }
+      },
+      "\u049A\u0430\u0439\u0442\u0430 \u0431\u0430\u0441\u0442\u0430\u0443"
+    ));
+  }
+  return /* @__PURE__ */ React.createElement("div", { style: {
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    fontFamily: "Verdana, sans-serif",
+    padding: "20px",
+    boxSizing: "border-box",
+    backgroundColor: "#f5f5f5"
+  } }, /* @__PURE__ */ React.createElement("h1", { style: {
+    fontSize: "clamp(16px, 4vw, 24px)",
+    textAlign: "center",
+    marginBottom: "40px",
+    marginTop: "20px",
+    fontWeight: "normal"
+  } }, "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043E\u043D \u043C\u0438\u043B\u043B\u0438\u043E\u043D\u0493\u0430 \u0434\u0435\u0439\u0456\u043D \u0441\u04E9\u0437\u0431\u0435\u043D \u0436\u0430\u0437\u0443"), /* @__PURE__ */ React.createElement("div", { style: {
+    width: "100%",
+    maxWidth: "600px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center"
+  } }, /* @__PURE__ */ React.createElement("div", { style: {
+    fontSize: "clamp(14px, 3vw, 16px)",
+    marginBottom: "20px",
+    textAlign: "center"
+  } }, "\u0411\u04B1\u043B \u0441\u0430\u043D\u0434\u044B \u0441\u04E9\u0437\u0431\u0435\u043D \u049B\u0430\u043B\u0430\u0439 \u0436\u0430\u0437\u0430\u0441\u044B\u0437?"), /* @__PURE__ */ React.createElement("div", { style: {
+    fontSize: "clamp(24px, 6vw, 36px)",
+    fontWeight: "bold",
+    marginBottom: "30px",
+    textAlign: "center"
+  } }, currentQuestion.number), /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: userAnswer,
+      onChange: (e) => {
+        setUserAnswer(e.target.value);
+        if (feedback === "incorrect") {
+          setFeedback(null);
+        }
+      },
+      onKeyPress: handleKeyPress,
+      placeholder: "",
+      style: {
+        width: "100%",
+        maxWidth: "500px",
+        padding: "clamp(10px, 2vw, 15px)",
+        fontSize: "clamp(14px, 3vw, 16px)",
+        fontFamily: "Verdana, sans-serif",
+        border: "1px solid #ccc",
+        borderRadius: "4px",
+        backgroundColor: "white",
+        outline: "none",
+        boxSizing: "border-box",
+        WebkitAppearance: "none",
+        MozAppearance: "none",
+        appearance: "none"
+      }
+    }
+  ), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: checkAnswer,
+      style: {
+        backgroundColor: "#323048",
+        color: "white",
+        border: "none",
+        padding: "clamp(10px, 2vw, 15px) clamp(30px, 6vw, 50px)",
+        fontSize: "clamp(14px, 3vw, 18px)",
+        fontFamily: "Verdana, sans-serif",
+        cursor: "pointer",
+        borderRadius: "4px",
+        marginTop: "25px"
+      }
+    },
+    "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+  ), feedback === "correct" && /* @__PURE__ */ React.createElement("div", { style: {
+    marginTop: "25px",
+    fontSize: "clamp(16px, 4vw, 20px)",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px"
+  } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#4CAF50", fontSize: "clamp(20px, 5vw, 28px)" } }, "\u2713"), /* @__PURE__ */ React.createElement("span", { style: { color: "#4CAF50" } }, "\u0414\u04B1\u0440\u044B\u0441")), feedback === "incorrect" && /* @__PURE__ */ React.createElement("div", { style: {
+    marginTop: "25px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "15px"
+  } }, /* @__PURE__ */ React.createElement("span", { style: { color: "#f44336", fontSize: "clamp(16px, 4vw, 20px)" } }, "\u049A\u0430\u0442\u0435"), /* @__PURE__ */ React.createElement("div", { style: {
+    fontSize: "clamp(14px, 3vw, 16px)",
+    textAlign: "center",
+    color: "#333"
+  } }, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u0431\u044B: ", currentQuestion.answer), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: handleUnderstood,
+      style: {
+        backgroundColor: "#323048",
+        color: "white",
+        border: "none",
+        padding: "clamp(10px, 2vw, 15px) clamp(30px, 6vw, 50px)",
+        fontSize: "clamp(14px, 3vw, 18px)",
+        fontFamily: "Verdana, sans-serif",
+        cursor: "pointer",
+        borderRadius: "4px",
+        marginTop: "10px"
+      }
+    },
+    "\u0422\u04AF\u0441\u0456\u043D\u0434\u0456\u043C"
+  ))));
+}
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(NumberWordsPractice));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

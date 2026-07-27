@@ -1,0 +1,5 @@
+[
+  { "id": "warm", "name": "Warm Beam", "model": null, "unlockLevel": 1, "rarity": "common" },
+  { "id": "blue", "name": "Blue Beam", "model": null, "unlockLevel": 4, "rarity": "rare" },
+  { "id": "laser", "name": "Laser Eyes", "model": null, "unlockLevel": 11, "rarity": "legendary" }
+]

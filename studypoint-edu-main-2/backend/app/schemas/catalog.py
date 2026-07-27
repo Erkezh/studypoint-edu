@@ -1,0 +1,64 @@
+from __future__ import annotations
+
+from datetime import datetime
+
+from pydantic import BaseModel, Field
+
+
+class SubjectResponse(BaseModel):
+    id: int
+    slug: str
+    title: str
+
+
+class GradeResponse(BaseModel):
+    id: int
+    number: int = Field(examples=[-1, 0, 1, 12])
+    label: str
+    title: str
+    description: str = ""
+
+
+class TopicResponse(BaseModel):
+    id: int
+    slug: str
+    title: str
+    description: str = ""
+    icon: str | None = None
+    order: int = 0
+    is_published: bool = True
+    parent_id: int | None = None
+
+
+class SkillListItem(BaseModel):
+    id: int
+    subject_id: int
+    grade_id: int
+    topic_id: int | None = None
+    topic_title: str | None = None
+    code: str
+    title: str
+    difficulty: int
+    tags: list[str]
+
+
+class SkillDetailResponse(SkillListItem):
+    description: str
+    example_url: str | None = None
+    video_url: str | None = None
+    is_published: bool
+
+
+class SkillStatsResponse(BaseModel):
+    best_smartscore: int = 0
+    last_smartscore: int = 0
+    last_practiced_at: datetime | None = None
+    total_questions: int = 0
+    accuracy_percent: int = 0
+
+
+class SkillUpdate(BaseModel):
+    grade_id: int | None = None
+    topic_id: int | None = None
+    code: str | None = None
+    title: str | None = None

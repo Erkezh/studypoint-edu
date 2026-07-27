@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { authApi } from '@/api/auth'
+import { useGameSettingsStore } from '@/stores/gameSettings'
 import type { UserMeResponse, AuthLoginRequest, AuthRegisterRequest } from '@/types/api'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -37,6 +38,7 @@ export const useAuthStore = defineStore('auth', () => {
         accessToken.value = null
         refreshToken.value = null
         user.value = null
+        useGameSettingsStore().reset()
         clearStoredAuth()
       },
     }
@@ -100,6 +102,7 @@ export const useAuthStore = defineStore('auth', () => {
         accessToken.value = response.data.access_token
         refreshToken.value = response.data.refresh_token
         user.value = response.data.user
+        useGameSettingsStore().reset()
 
         // Сохраняем токены и объект пользователя в localStorage для персистентности сессии.
         localStorage.setItem('access_token', response.data.access_token)
@@ -133,6 +136,7 @@ export const useAuthStore = defineStore('auth', () => {
         accessToken.value = response.data.access_token
         refreshToken.value = response.data.refresh_token
         user.value = response.data.user
+        useGameSettingsStore().reset()
 
         // Сохраняем токены и объект пользователя в localStorage для персистентности сессии.
         localStorage.setItem('access_token', response.data.access_token)
@@ -166,6 +170,7 @@ export const useAuthStore = defineStore('auth', () => {
       accessToken.value = null
       refreshToken.value = null
       user.value = null
+      useGameSettingsStore().reset()
       clearStoredAuth()
       syncAuthBridge()
     }
@@ -183,6 +188,7 @@ export const useAuthStore = defineStore('auth', () => {
       accessToken.value = null
       refreshToken.value = null
       user.value = null
+      useGameSettingsStore().reset()
       clearStoredAuth()
       syncAuthBridge()
 

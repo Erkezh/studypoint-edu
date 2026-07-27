@@ -1,0 +1,55 @@
+Plugins count: 14
+Questions count: 12
+
+All Plugin IDs:
+- 181a4d69-04f6-474a-82f0-cf0f5bfdc5e8
+- 2d90bc37-0257-4752-a9ab-b3b85298390f
+- 2e0f5817-3944-43a2-833b-2ca0913bfdbc
+- 4511aff0-ec70-403e-a62e-00137ec258a6
+- 4ec6abb5-8a36-47d2-ba8b-d35f77c335cc
+- 4fb3653c-a03f-4688-b4fc-fd93ce95bc10
+- 77abbbe2-fe10-4193-b905-19cbd10b66ae
+- 8eafe739-97a9-4281-8ddf-860b2aeeebd1
+- 90627428-8ed3-436d-8031-4dcd9e6be8de
+- 9293cebb-4775-45f5-9ab3-c320d411d185
+- a71e9102-c8a6-499f-84c7-7e40a088cef0
+- be5895d2-280f-4bc7-a88d-0faf7c8ddabb
+- f9331340-71f6-4b8f-a574-f5072c3111e2
+- f9791184-5ebf-43e9-80df-9001dc149c26
+
+Plugin Questions found: 0
+
+Sample Plugin: {
+  "id": "be5895d2-280f-4bc7-a88d-0faf7c8ddabb",
+  "plugin_id": "elapsedtimegamejsx",
+  "name": "elapsedtimegamejsx",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "api_version": "1",
+  "capabilities": {
+    "submit": true,
+    "explanation": true
+  },
+  "height": 400,
+  "is_published": true,
+  "created_at": "2026-02-17T11:49:06.920191+00:00",
+  "updated_at": "2026-02-17T11:49:10.120452+00:00"
+}
+
+Sample Question: {
+  "id": 1332,
+  "skill_id": 149,
+  "skill_title": "elapsedtimegamejsx",
+  "type": "PLUGIN",
+  "prompt": "elapsedtimegamejsx",
+  "data": {
+    "entry": "index.html",
+    "height": 400,
+    "plugin_id": "elapsedtimegamejsx",
+    "plugin_version": "1.0.0"
+  },
+  "correct_answer": {},
+  "explanation": "",
+  "level": 1,
+  "created_at": "2026-02-17T11:49:17.852363+00:00"
+}

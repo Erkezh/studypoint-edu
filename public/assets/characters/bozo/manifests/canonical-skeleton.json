@@ -1,0 +1,2918 @@
+{
+    "id": "BoZo.Body_BasicBody.Canonical.v1",
+    "sourcePrefab": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Common/Resources/Body/Body_BasicBody.prefab",
+    "generatedUtc": "2026-07-17T06:15:39.5576030Z",
+    "jointCount": 122,
+    "bones": [
+        {
+            "index": 0,
+            "path": "pelvis",
+            "name": "pelvis",
+            "parentPath": "",
+            "localPosition": [
+                -1.643580336430943e-23,
+                -0.02379462495446205,
+                0.9869322180747986
+            ],
+            "localRotation": [
+                -0.022227099165320398,
+                0.7067573666572571,
+                -0.022227099165320398,
+                0.7067573666572571
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 1,
+            "path": "pelvis/spine_01",
+            "name": "spine_01",
+            "parentPath": "pelvis",
+            "localPosition": [
+                -0.024718530476093293,
+                7.424815970380472e-13,
+                1.7832338965902858e-18
+            ],
+            "localRotation": [
+                8.525570933670679e-7,
+                1.2929291415275657e-7,
+                0.149938702583313,
+                0.9886953234672546
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 2,
+            "path": "pelvis/spine_01/spine_02",
+            "name": "spine_02",
+            "parentPath": "pelvis/spine_01",
+            "localPosition": [
+                -0.06441671401262284,
+                0.0017404179088771344,
+                -3.001543236180737e-9
+            ],
+            "localRotation": [
+                -0.0000013149401638656855,
+                -2.4246297414265429e-8,
+                -0.059524279087781909,
+                0.9982268810272217
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 3,
+            "path": "pelvis/spine_01/spine_02/spine_03",
+            "name": "spine_03",
+            "parentPath": "pelvis/spine_01/spine_02",
+            "localPosition": [
+                -0.061613474041223529,
+                -6.5895943215932284e-12,
+                2.0313506090744454e-17
+            ],
+            "localRotation": [
+                0.000001709307753117173,
+                -7.25269941881379e-8,
+                -0.08994777500629425,
+                0.99594646692276
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 4,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04",
+            "name": "spine_04",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03",
+            "localPosition": [
+                -0.0885111466050148,
+                -4.108311954520438e-11,
+                1.560868904761678e-16
+            ],
+            "localRotation": [
+                0.0000017543409285281087,
+                -3.165152691053663e-7,
+                -0.07392207533121109,
+                0.99726402759552
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 5,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/breast_l",
+            "name": "breast_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04",
+            "localPosition": [
+                -0.07069999724626541,
+                -0.06323999911546707,
+                -0.0587015226483345
+            ],
+            "localRotation": [
+                0.5494518876075745,
+                -0.44508790969848635,
+                0.549448549747467,
+                0.4450906217098236
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 6,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/breast_r",
+            "name": "breast_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04",
+            "localPosition": [
+                -0.07069835811853409,
+                -0.06323643773794174,
+                0.05870228260755539
+            ],
+            "localRotation": [
+                -0.44509124755859377,
+                -0.5494545698165894,
+                -0.4450872838497162,
+                0.5494458675384522
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 7,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05",
+            "name": "spine_05",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04",
+            "localPosition": [
+                -0.17498758435249329,
+                2.1512604198026254e-11,
+                -5.0903292825375049e-18
+            ],
+            "localRotation": [
+                -0.0000019437520677456634,
+                4.384443919036585e-9,
+                -0.0022556546609848739,
+                0.9999974966049194
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 8,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l",
+            "name": "clavicle_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05",
+            "localPosition": [
+                -0.0583048090338707,
+                0.010049030184745789,
+                -0.009313623420894146
+            ],
+            "localRotation": [
+                0.08991552889347077,
+                -0.75046306848526,
+                0.05957699939608574,
+                0.6520513892173767
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 9,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l",
+            "name": "upperarm_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l",
+            "localPosition": [
+                -0.12042658776044846,
+                0.003377449931576848,
+                -0.007800160441547632
+            ],
+            "localRotation": [
+                0.013510764576494694,
+                -0.38097503781318667,
+                0.023579763248562814,
+                0.9241858720779419
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 10,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l",
+            "name": "lowerarm_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l",
+            "localPosition": [
+                -0.26283058524131777,
+                -0.000002819609335347195,
+                -0.0000015065454590512673
+            ],
+            "localRotation": [
+                0.017971323803067209,
+                0.04286578670144081,
+                0.18147996068000794,
+                0.982295572757721
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 11,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l",
+            "name": "hand_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l",
+            "localPosition": [
+                -0.22426974773406983,
+                -2.3307988783471957e-7,
+                7.872319685020557e-8
+            ],
+            "localRotation": [
+                -0.6102010607719421,
+                -0.06955917179584503,
+                -0.038730718195438388,
+                0.7882360816001892
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 12,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l",
+            "name": "index_metacarpal_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l",
+            "localPosition": [
+                -0.03452208638191223,
+                0.0011242228792980314,
+                -0.020516565069556237
+            ],
+            "localRotation": [
+                0.02809441275894642,
+                -0.014797555282711983,
+                0.07673202455043793,
+                0.9965460300445557
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 13,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l/index_01_l",
+            "name": "index_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l",
+            "localPosition": [
+                -0.07113928347826004,
+                0.006060345564037561,
+                0.0014300950570032
+            ],
+            "localRotation": [
+                -0.028144655749201776,
+                0.02427457459270954,
+                -0.10323445498943329,
+                0.9939624071121216
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 14,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l/index_01_l/index_02_l",
+            "name": "index_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l/index_01_l",
+            "localPosition": [
+                -0.0275232195854187,
+                -0.000927288259845227,
+                0.00007970657316036522
+            ],
+            "localRotation": [
+                0.0001743250759318471,
+                -0.0022266176529228689,
+                -0.025526465848088266,
+                0.9996716380119324
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 15,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l/index_01_l/index_02_l/index_03_l",
+            "name": "index_03_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/index_metacarpal_l/index_01_l/index_02_l",
+            "localPosition": [
+                -0.02878466062247753,
+                -0.0000016466527767988737,
+                -0.000006182652214192785
+            ],
+            "localRotation": [
+                1.0536710171038522e-8,
+                -0.0005250708200037479,
+                0.00010779863805510104,
+                0.9999998807907105
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 16,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l",
+            "name": "middle_metacarpal_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l",
+            "localPosition": [
+                -0.03115994855761528,
+                -0.0006816931418143213,
+                -0.0036431222688406708
+            ],
+            "localRotation": [
+                0.0004133373440708965,
+                0.01759592816233635,
+                0.062430188059806827,
+                0.9978941679000855
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 17,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l/middle_01_l",
+            "name": "middle_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l",
+            "localPosition": [
+                -0.07175154238939285,
+                0.007404747419059277,
+                0.0041973101906478409
+            ],
+            "localRotation": [
+                -0.01959477923810482,
+                0.02670920267701149,
+                -0.09728814661502838,
+                0.9947048425674439
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 18,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l/middle_01_l/middle_02_l",
+            "name": "middle_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l/middle_01_l",
+            "localPosition": [
+                -0.030946211889386178,
+                -0.0002576741389930248,
+                0.00015369118773378432
+            ],
+            "localRotation": [
+                -0.0005757010658271611,
+                -0.004191745072603226,
+                -0.007050731685012579,
+                0.9999662041664124
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 19,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l/middle_01_l/middle_02_l/middle_03_l",
+            "name": "middle_03_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/middle_metacarpal_l/middle_01_l/middle_02_l",
+            "localPosition": [
+                -0.031564436852931979,
+                0.00012725168198812753,
+                0.000009820017112360802
+            ],
+            "localRotation": [
+                -0.000047503730456810445,
+                0.0019094139570370317,
+                -0.02487095631659031,
+                0.9996888637542725
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 20,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l",
+            "name": "pinky_metacarpal_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l",
+            "localPosition": [
+                -0.02982921525835991,
+                0.0024192749988287689,
+                0.019277231767773629
+            ],
+            "localRotation": [
+                -0.12421862781047821,
+                0.20142625272274018,
+                0.023156708106398584,
+                0.9713191986083984
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 21,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l/pinky_01_l",
+            "name": "pinky_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l",
+            "localPosition": [
+                -0.06584234535694123,
+                0.003876959905028343,
+                -0.00036985179758630693
+            ],
+            "localRotation": [
+                -0.0036573370452970268,
+                -0.0893312469124794,
+                -0.1016719862818718,
+                0.9907923340797424
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 22,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l/pinky_01_l/pinky_02_l",
+            "name": "pinky_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l/pinky_01_l",
+            "localPosition": [
+                -0.030473938211798669,
+                0.000044943099055672064,
+                0.000005021396646043286
+            ],
+            "localRotation": [
+                -0.00029502110555768013,
+                0.0018232872243970633,
+                -0.01460892241448164,
+                0.9998915791511536
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 23,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l/pinky_01_l/pinky_02_l/pinky_03_l",
+            "name": "pinky_03_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/pinky_metacarpal_l/pinky_01_l/pinky_02_l",
+            "localPosition": [
+                -0.01816370338201523,
+                0.000014216932868293952,
+                8.172109460247157e-7
+            ],
+            "localRotation": [
+                -0.000025351257136208005,
+                0.0007322023157030344,
+                -0.028393087908625604,
+                0.9995965957641602
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 24,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l",
+            "name": "ring_metacarpal_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l",
+            "localPosition": [
+                -0.031082293018698694,
+                0.0006009566131979227,
+                0.008015621453523636
+            ],
+            "localRotation": [
+                -0.0860767662525177,
+                0.13765409588813783,
+                0.06943291425704956,
+                0.9842872023582459
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 25,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l/ring_01_l",
+            "name": "ring_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l",
+            "localPosition": [
+                -0.07128546386957169,
+                0.006903508212417364,
+                -0.0003032540262211114
+            ],
+            "localRotation": [
+                -0.014875329099595547,
+                -0.056908562779426578,
+                -0.15517106652259828,
+                0.986134946346283
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 26,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l/ring_01_l/ring_02_l",
+            "name": "ring_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l/ring_01_l",
+            "localPosition": [
+                -0.028632186353206636,
+                -0.0008094513323158026,
+                0.00010370551171945408
+            ],
+            "localRotation": [
+                -0.001313684624619782,
+                -0.0036819546949118377,
+                -0.029154302552342416,
+                0.9995673298835754
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 27,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l/ring_01_l/ring_02_l/ring_03_l",
+            "name": "ring_03_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/ring_metacarpal_l/ring_01_l/ring_02_l",
+            "localPosition": [
+                -0.024630045518279077,
+                -0.0006254185573197901,
+                -0.00004998307485948317
+            ],
+            "localRotation": [
+                -0.00013455835869535804,
+                0.003215624950826168,
+                -0.0403730608522892,
+                0.9991795420646668
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 28,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/thumb_01_l",
+            "name": "thumb_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l",
+            "localPosition": [
+                -0.04212439805269241,
+                0.013390587642788887,
+                -0.035533640533685687
+            ],
+            "localRotation": [
+                0.5442122220993042,
+                -0.2695290446281433,
+                0.014400244690477848,
+                0.7943423390388489
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 29,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/thumb_01_l/thumb_02_l",
+            "name": "thumb_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/thumb_01_l",
+            "localPosition": [
+                -0.04041514918208122,
+                -0.002166181104257703,
+                -0.0002250336401630193
+            ],
+            "localRotation": [
+                0.026962989941239358,
+                0.01332526933401823,
+                -0.17529238760471345,
+                0.9840569496154785
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 30,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/thumb_01_l/thumb_02_l/thumb_03_l",
+            "name": "thumb_03_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/hand_l/thumb_01_l/thumb_02_l",
+            "localPosition": [
+                -0.021500010043382646,
+                -0.0014880540547892452,
+                0.000019765686374739744
+            ],
+            "localRotation": [
+                -0.000001523808691672457,
+                -0.0017221253365278245,
+                0.009186191484332085,
+                0.9999563097953796
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 31,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/lowerarm_twist_01_l",
+            "name": "lowerarm_twist_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l",
+            "localPosition": [
+                -0.1370334029197693,
+                -0.000043854201067006215,
+                -0.00012186386447865516
+            ],
+            "localRotation": [
+                0.0012477213749662042,
+                0.0016746744513511658,
+                -0.0005855495692230761,
+                0.9999976754188538
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 32,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l/lowerarm_twist_02_l",
+            "name": "lowerarm_twist_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/lowerarm_l",
+            "localPosition": [
+                -0.05928768590092659,
+                -0.00003333523272885941,
+                -0.00009058793511940166
+            ],
+            "localRotation": [
+                0.0012477213749662042,
+                0.0016747411573305727,
+                -0.0005855495110154152,
+                0.9999976754188538
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 33,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/shoulder_twist_l",
+            "name": "shoulder_twist_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l",
+            "localPosition": [
+                -1.4210854397564649e-16,
+                -4.440891999238953e-18,
+                -1.4210854397564649e-16
+            ],
+            "localRotation": [
+                -1.3010426069826054e-18,
+                2.7755575615628916e-17,
+                -1.8648277366750677e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 34,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/upperarm_twist_01_l",
+            "name": "upperarm_twist_01_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l",
+            "localPosition": [
+                -0.09029968082904816,
+                -0.0000010437427135912004,
+                0.0000018067596556647914
+            ],
+            "localRotation": [
+                3.8242552591327696e-7,
+                0.0020894540939480068,
+                -0.00011396279296604916,
+                0.9999978542327881
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 35,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l/upperarm_twist_02_l",
+            "name": "upperarm_twist_02_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_l/upperarm_l",
+            "localPosition": [
+                -0.15903978049755097,
+                -0.0000019053926507694997,
+                0.0000047150069804047238
+            ],
+            "localRotation": [
+                3.939659620755265e-7,
+                0.0000011916504263354,
+                0.000005457783117890358,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 36,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r",
+            "name": "clavicle_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05",
+            "localPosition": [
+                -0.0583048090338707,
+                0.010049071162939072,
+                0.009313576854765416
+            ],
+            "localRotation": [
+                0.7504626512527466,
+                0.0899113267660141,
+                0.6520520448684692,
+                -0.05958184227347374
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 37,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r",
+            "name": "upperarm_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r",
+            "localPosition": [
+                0.12042649835348129,
+                -0.003379437606781721,
+                0.0078006223775446419
+            ],
+            "localRotation": [
+                0.013506489805877209,
+                -0.3809768855571747,
+                0.023572532460093499,
+                0.9241853952407837
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 38,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r",
+            "name": "lowerarm_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r",
+            "localPosition": [
+                0.26283058524131777,
+                0.0000028196207040309675,
+                0.0000015065446632434032
+            ],
+            "localRotation": [
+                0.017971323803067209,
+                0.04286578670144081,
+                0.18147996068000794,
+                0.982295572757721
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 39,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r",
+            "name": "hand_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r",
+            "localPosition": [
+                0.22426974773406983,
+                2.3307988783471957e-7,
+                -7.872319685020557e-8
+            ],
+            "localRotation": [
+                -0.6102010607719421,
+                -0.06955917179584503,
+                -0.038730718195438388,
+                0.7882360816001892
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 40,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r",
+            "name": "index_metacarpal_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r",
+            "localPosition": [
+                0.03452208638191223,
+                -0.0011242228792980314,
+                0.020516565069556237
+            ],
+            "localRotation": [
+                0.02809441275894642,
+                -0.014797555282711983,
+                0.07673202455043793,
+                0.9965460300445557
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 41,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r/index_01_r",
+            "name": "index_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r",
+            "localPosition": [
+                0.07113928347826004,
+                -0.006060345564037561,
+                -0.0014300950570032
+            ],
+            "localRotation": [
+                -0.028144655749201776,
+                0.02427457459270954,
+                -0.10323445498943329,
+                0.9939624071121216
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 42,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r/index_01_r/index_02_r",
+            "name": "index_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r/index_01_r",
+            "localPosition": [
+                0.027523163706064225,
+                0.0009278458310291171,
+                -0.00007988172728801146
+            ],
+            "localRotation": [
+                0.0001743250759318471,
+                -0.0022266176529228689,
+                -0.025526465848088266,
+                0.9996716380119324
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 43,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r/index_01_r/index_02_r/index_03_r",
+            "name": "index_03_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/index_metacarpal_r/index_01_r/index_02_r",
+            "localPosition": [
+                0.02878415770828724,
+                0.000001101441853279539,
+                0.000006235180080693681
+            ],
+            "localRotation": [
+                1.0536710171038522e-8,
+                -0.0005250708200037479,
+                0.00010779863805510104,
+                0.9999998807907105
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 44,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r",
+            "name": "middle_metacarpal_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r",
+            "localPosition": [
+                0.03115994855761528,
+                0.0006816931418143213,
+                0.0036431222688406708
+            ],
+            "localRotation": [
+                0.0004133373440708965,
+                0.01759592816233635,
+                0.062430188059806827,
+                0.9978941679000855
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 45,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r/middle_01_r",
+            "name": "middle_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r",
+            "localPosition": [
+                0.07175154238939285,
+                -0.007404747419059277,
+                -0.0041973101906478409
+            ],
+            "localRotation": [
+                -0.01959477923810482,
+                0.02670920267701149,
+                -0.09728814661502838,
+                0.9947048425674439
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 46,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r/middle_01_r/middle_02_r",
+            "name": "middle_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r/middle_01_r",
+            "localPosition": [
+                0.030946211889386178,
+                0.0002576741389930248,
+                -0.00015369118773378432
+            ],
+            "localRotation": [
+                -0.0005757010658271611,
+                -0.004191745072603226,
+                -0.007050731685012579,
+                0.9999662041664124
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 47,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r/middle_01_r/middle_02_r/middle_03_r",
+            "name": "middle_03_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/middle_metacarpal_r/middle_01_r/middle_02_r",
+            "localPosition": [
+                0.031564243137836459,
+                -0.00012680378858931363,
+                -0.00000962612648436334
+            ],
+            "localRotation": [
+                -0.000047503730456810445,
+                0.0019094139570370317,
+                -0.02487095631659031,
+                0.9996888637542725
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 48,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r",
+            "name": "pinky_metacarpal_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r",
+            "localPosition": [
+                0.02982921525835991,
+                -0.0024192749988287689,
+                -0.019277231767773629
+            ],
+            "localRotation": [
+                -0.12421862781047821,
+                0.20142625272274018,
+                0.023156708106398584,
+                0.9713191986083984
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 49,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r/pinky_01_r",
+            "name": "pinky_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r",
+            "localPosition": [
+                0.06584234535694123,
+                -0.003876959905028343,
+                0.00036985179758630693
+            ],
+            "localRotation": [
+                -0.0036573370452970268,
+                -0.0893312469124794,
+                -0.1016719862818718,
+                0.9907923340797424
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 50,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r/pinky_01_r/pinky_02_r",
+            "name": "pinky_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r/pinky_01_r",
+            "localPosition": [
+                0.03047352284193039,
+                -0.00004479444396565668,
+                -0.000005009972937841667
+            ],
+            "localRotation": [
+                -0.00029502110555768013,
+                0.0018232872243970633,
+                -0.01460892241448164,
+                0.9998915791511536
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 51,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r/pinky_01_r/pinky_02_r/pinky_03_r",
+            "name": "pinky_03_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/pinky_metacarpal_r/pinky_01_r/pinky_02_r",
+            "localPosition": [
+                0.01816450245678425,
+                -0.000014280713003245182,
+                -8.640132023174374e-7
+            ],
+            "localRotation": [
+                -0.000025351257136208005,
+                0.0007322023157030344,
+                -0.028393087908625604,
+                0.9995965957641602
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 52,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r",
+            "name": "ring_metacarpal_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r",
+            "localPosition": [
+                0.031082293018698694,
+                -0.0006009566131979227,
+                -0.008015621453523636
+            ],
+            "localRotation": [
+                -0.0860767662525177,
+                0.13765409588813783,
+                0.06943291425704956,
+                0.9842872023582459
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 53,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r/ring_01_r",
+            "name": "ring_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r",
+            "localPosition": [
+                0.07128546386957169,
+                -0.006903508212417364,
+                0.0003032540262211114
+            ],
+            "localRotation": [
+                -0.014875329099595547,
+                -0.056908562779426578,
+                -0.15517106652259828,
+                0.986134946346283
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 54,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r/ring_01_r/ring_02_r",
+            "name": "ring_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r/ring_01_r",
+            "localPosition": [
+                0.028632184490561487,
+                0.0008097965619526804,
+                -0.00010371774260420352
+            ],
+            "localRotation": [
+                -0.001313684624619782,
+                -0.0036819546949118377,
+                -0.029154302552342416,
+                0.9995673298835754
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 55,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r/ring_01_r/ring_02_r/ring_03_r",
+            "name": "ring_03_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/ring_metacarpal_r/ring_01_r/ring_02_r",
+            "localPosition": [
+                0.024629807099699975,
+                0.0006252460298128426,
+                0.00005006086939829402
+            ],
+            "localRotation": [
+                -0.00013455835869535804,
+                0.003215624950826168,
+                -0.0403730608522892,
+                0.9991795420646668
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 56,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_01_r",
+            "name": "thumb_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r",
+            "localPosition": [
+                0.04212439805269241,
+                -0.013390587642788887,
+                0.035533640533685687
+            ],
+            "localRotation": [
+                0.5442122220993042,
+                -0.2695290446281433,
+                0.014400244690477848,
+                0.7943423390388489
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 57,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_01_r/thumb_02_r",
+            "name": "thumb_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_01_r",
+            "localPosition": [
+                0.04041514918208122,
+                0.002166181104257703,
+                0.0002250336401630193
+            ],
+            "localRotation": [
+                0.026962989941239358,
+                0.01332526933401823,
+                -0.17529238760471345,
+                0.9840569496154785
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 58,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_01_r/thumb_02_r/thumb_03_r",
+            "name": "thumb_03_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/hand_r/thumb_01_r/thumb_02_r",
+            "localPosition": [
+                0.021499942988157274,
+                0.0014878479996696115,
+                -0.000019537816115189344
+            ],
+            "localRotation": [
+                -0.000001523808691672457,
+                -0.0017221253365278245,
+                0.009186191484332085,
+                0.9999563097953796
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 59,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/lowerarm_twist_01_r",
+            "name": "lowerarm_twist_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r",
+            "localPosition": [
+                0.1370334029197693,
+                0.000043854201067006215,
+                0.00012186386447865516
+            ],
+            "localRotation": [
+                0.0012477213749662042,
+                0.0016746744513511658,
+                -0.0005855495692230761,
+                0.9999976754188538
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 60,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r/lowerarm_twist_02_r",
+            "name": "lowerarm_twist_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/lowerarm_r",
+            "localPosition": [
+                0.05928768590092659,
+                0.00003333523272885941,
+                0.00009058793511940166
+            ],
+            "localRotation": [
+                0.0012477213749662042,
+                0.0016747411573305727,
+                -0.0005855495110154152,
+                0.9999976754188538
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 61,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/shoulder_twist_r",
+            "name": "shoulder_twist_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r",
+            "localPosition": [
+                1.4210854397564649e-16,
+                8.881783998477906e-18,
+                0.0
+            ],
+            "localRotation": [
+                -8.673617379884036e-18,
+                5.551115123125783e-17,
+                -1.3877787807814458e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 62,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/upperarm_twist_01_r",
+            "name": "upperarm_twist_01_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r",
+            "localPosition": [
+                0.09029968082904816,
+                0.0000010437466926305206,
+                -0.0000018067598830384669
+            ],
+            "localRotation": [
+                3.827072134754417e-7,
+                0.0020894540939480068,
+                -0.00011396277113817632,
+                0.9999978542327881
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 63,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r/upperarm_twist_02_r",
+            "name": "upperarm_twist_02_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/clavicle_r/upperarm_r",
+            "localPosition": [
+                0.15903978049755097,
+                0.0000019053996993534384,
+                -0.000004715007435152074
+            ],
+            "localRotation": [
+                3.9424767805940066e-7,
+                0.0000011916515632037772,
+                0.000005457803126773797,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 64,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01",
+            "name": "neck_01",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05",
+            "localPosition": [
+                -0.09749261289834976,
+                -0.003945639356970787,
+                -2.0623831531452198e-8
+            ],
+            "localRotation": [
+                2.880472216304497e-8,
+                4.854304052059888e-7,
+                0.15039412677288056,
+                0.9886261224746704
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 65,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02",
+            "name": "neck_02",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01",
+            "localPosition": [
+                -0.03982332721352577,
+                -0.0004405553045216948,
+                1.0045333453945205e-9
+            ],
+            "localRotation": [
+                -0.000004129663466301281,
+                9.74863212377386e-9,
+                -0.005270763766020536,
+                0.9999861121177673
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 66,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head",
+            "name": "head",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02",
+            "localPosition": [
+                -0.04271586984395981,
+                -0.003412314923480153,
+                -3.3881317132865547e-23
+            ],
+            "localRotation": [
+                0.480182409286499,
+                -0.5190615057945252,
+                0.4801821708679199,
+                0.5190617442131043
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 67,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_l",
+            "name": "eyeRoot_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head",
+            "localPosition": [
+                -0.045634157955646518,
+                0.04975524917244911,
+                0.03669978678226471
+            ],
+            "localRotation": [
+                0.0000029793311568937499,
+                1.670034777134788e-7,
+                -4.975586457602044e-13,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 68,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_l/eyeSocket_l",
+            "name": "eyeSocket_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_l",
+            "localPosition": [
+                -2.6645284166623488e-17,
+                -1.7053025277077579e-15,
+                -3.108624482185328e-17
+            ],
+            "localRotation": [
+                0.0000029793311568937499,
+                1.670034777134788e-7,
+                -4.975586457602044e-13,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 69,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_l/eyeSocket_l/eye_l",
+            "name": "eye_l",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_l/eyeSocket_l",
+            "localPosition": [
+                -2.8216021519256176e-7,
+                5.027548013458727e-7,
+                0.04218689724802971
+            ],
+            "localRotation": [
+                -0.0000029793311568937499,
+                -1.670034777134788e-7,
+                -2.4877931745909132e-12,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 70,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_r",
+            "name": "eyeRoot_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head",
+            "localPosition": [
+                0.04563364014029503,
+                0.0497552752494812,
+                0.03670033439993858
+            ],
+            "localRotation": [
+                0.0000029793311568937499,
+                1.670034777134788e-7,
+                -4.975586457602044e-13,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 71,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_r/eyeSocket_r",
+            "name": "eyeSocket_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_r",
+            "localPosition": [
+                1.776356799695581e-17,
+                -5.684341759025859e-16,
+                7.993605433193992e-17
+            ],
+            "localRotation": [
+                0.0000029793311568937499,
+                1.670034777134788e-7,
+                -4.975586457602044e-13,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 72,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_r/eyeSocket_r/eye_r",
+            "name": "eye_r",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/eyeRoot_r/eyeSocket_r",
+            "localPosition": [
+                7.168850970629137e-7,
+                5.027566771786951e-7,
+                0.04218689724802971
+            ],
+            "localRotation": [
+                -0.0000029793311568937499,
+                -1.670034777134788e-7,
+                -2.4877931745909132e-12,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 73,
+            "path": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head/Jaw",
+            "name": "Jaw",
+            "parentPath": "pelvis/spine_01/spine_02/spine_03/spine_04/spine_05/neck_01/neck_02/head",
+            "localPosition": [
+                -2.42352314216987e-7,
+                -0.013404405675828457,
+                0.04100777953863144
+            ],
+            "localRotation": [
+                -0.4801807999610901,
+                0.5190601944923401,
+                -0.48018383979797366,
+                0.5190631151199341
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 74,
+            "path": "pelvis/thigh_l",
+            "name": "thigh_l",
+            "parentPath": "pelvis",
+            "localPosition": [
+                0.026536650955677034,
+                -0.012540281750261784,
+                -0.09293319284915924
+            ],
+            "localRotation": [
+                0.001051158644258976,
+                0.012049690820276738,
+                0.040930457413196567,
+                0.9990888237953186
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 75,
+            "path": "pelvis/thigh_l/calf_l",
+            "name": "calf_l",
+            "parentPath": "pelvis/thigh_l",
+            "localPosition": [
+                0.42537814378738406,
+                1.3313961488847781e-8,
+                -2.42908328118574e-7
+            ],
+            "localRotation": [
+                0.004376668017357588,
+                0.004737793002277613,
+                0.031418975442647937,
+                0.9994854927062988
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 76,
+            "path": "pelvis/thigh_l/calf_l/calf_twist_01_l",
+            "name": "calf_twist_01_l",
+            "parentPath": "pelvis/thigh_l/calf_l",
+            "localPosition": [
+                0.19054599106311799,
+                -1.858359155448852e-8,
+                8.138474072438839e-7
+            ],
+            "localRotation": [
+                2.3092638912203257e-14,
+                6.31873026124552e-16,
+                2.6717994136560287e-15,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 77,
+            "path": "pelvis/thigh_l/calf_l/calf_twist_01_l1",
+            "name": "calf_twist_01_l1",
+            "parentPath": "pelvis/thigh_l/calf_l",
+            "localPosition": [
+                0.3343469798564911,
+                6.093710869237157e-9,
+                -5.385256685030981e-8
+            ],
+            "localRotation": [
+                2.3599178167188485e-14,
+                5.993469609499869e-16,
+                2.6743472887613697e-15,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 78,
+            "path": "pelvis/thigh_l/calf_l/foot_l",
+            "name": "foot_l",
+            "parentPath": "pelvis/thigh_l/calf_l",
+            "localPosition": [
+                0.42818737030029299,
+                1.349626543856175e-8,
+                -4.690655330819027e-8
+            ],
+            "localRotation": [
+                -0.00646296376362443,
+                -0.0191555954515934,
+                -0.01787182316184044,
+                0.9996358752250671
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 79,
+            "path": "pelvis/thigh_l/calf_l/foot_l/ball_l",
+            "name": "ball_l",
+            "parentPath": "pelvis/thigh_l/calf_l/foot_l",
+            "localPosition": [
+                0.07424264401197434,
+                -0.12459280341863632,
+                0.00043938311864621937
+            ],
+            "localRotation": [
+                -1.057972539959244e-16,
+                7.381274860060916e-16,
+                0.7071068286895752,
+                0.7071068286895752
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 80,
+            "path": "pelvis/thigh_l/thigh_twist_01_l",
+            "name": "thigh_twist_01_l",
+            "parentPath": "pelvis/thigh_l",
+            "localPosition": [
+                0.18913660943508149,
+                0.00035238912096247077,
+                -0.0004463242366909981
+            ],
+            "localRotation": [
+                -3.213575239247035e-16,
+                7.632783294297951e-17,
+                -2.6595479291069426e-16,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 81,
+            "path": "pelvis/thigh_l/thigh_twist_01_l1",
+            "name": "thigh_twist_01_l1",
+            "parentPath": "pelvis/thigh_l",
+            "localPosition": [
+                0.32751020789146426,
+                4.340086956489131e-9,
+                2.3721351283256809e-7
+            ],
+            "localRotation": [
+                -3.213575239247035e-16,
+                7.632783294297951e-17,
+                -2.6595479291069426e-16,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 82,
+            "path": "pelvis/thigh_r",
+            "name": "thigh_r",
+            "parentPath": "pelvis",
+            "localPosition": [
+                0.026536745950579644,
+                -0.012540268711745739,
+                0.09293316304683685
+            ],
+            "localRotation": [
+                -0.012049689888954163,
+                0.0010511585278436542,
+                0.9990887641906738,
+                -0.040930453687906268
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 83,
+            "path": "pelvis/thigh_r/calf_r",
+            "name": "calf_r",
+            "parentPath": "pelvis/thigh_r",
+            "localPosition": [
+                -0.42537832260131838,
+                -1.0214051350095407e-16,
+                -1.1191048003518284e-15
+            ],
+            "localRotation": [
+                0.004376668017357588,
+                0.004737793002277613,
+                0.031418975442647937,
+                0.9994854927062988
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 84,
+            "path": "pelvis/thigh_r/calf_r/calf_twist_01_r",
+            "name": "calf_twist_01_r",
+            "parentPath": "pelvis/thigh_r/calf_r",
+            "localPosition": [
+                -0.19054530560970307,
+                -2.181671163943502e-17,
+                2.6460525105003643e-17
+            ],
+            "localRotation": [
+                6.938893903907229e-18,
+                1.3010426069826054e-18,
+                9.64939933512099e-18,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 85,
+            "path": "pelvis/thigh_r/calf_r/calf_twist_01_r1",
+            "name": "calf_twist_01_r1",
+            "parentPath": "pelvis/thigh_r/calf_r",
+            "localPosition": [
+                -0.33434706926345827,
+                -3.938861361665617e-17,
+                2.9825459440922409e-17
+            ],
+            "localRotation": [
+                6.938893903907229e-18,
+                8.673617379884036e-19,
+                2.3527187142935447e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 86,
+            "path": "pelvis/thigh_r/calf_r/foot_r",
+            "name": "foot_r",
+            "parentPath": "pelvis/thigh_r/calf_r",
+            "localPosition": [
+                -0.4281874895095825,
+                1.1546319032585155e-16,
+                -7.105427198782324e-17
+            ],
+            "localRotation": [
+                -0.00646296376362443,
+                -0.0191555954515934,
+                -0.01787182316184044,
+                0.9996358752250671
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 87,
+            "path": "pelvis/thigh_r/calf_r/foot_r/ball_r",
+            "name": "ball_r",
+            "parentPath": "pelvis/thigh_r/calf_r/foot_r",
+            "localPosition": [
+                -0.0742422342300415,
+                0.12459272146224976,
+                -0.00043897645082324743
+            ],
+            "localRotation": [
+                -1.057972539959244e-16,
+                7.381274860060916e-16,
+                0.7071068286895752,
+                0.7071068286895752
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 88,
+            "path": "pelvis/thigh_r/thigh_twist_01_r",
+            "name": "thigh_twist_01_r",
+            "parentPath": "pelvis/thigh_r",
+            "localPosition": [
+                -0.18913672864437104,
+                -0.00035233443486504257,
+                0.00044652633368968964
+            ],
+            "localRotation": [
+                -6.505213034913027e-19,
+                -6.938893903907229e-18,
+                -1.7381116077658244e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 89,
+            "path": "pelvis/thigh_r/thigh_twist_01_r1",
+            "name": "thigh_twist_01_r1",
+            "parentPath": "pelvis/thigh_r",
+            "localPosition": [
+                -0.32751041650772097,
+                2.0066809399217864e-17,
+                -2.4273459979003745e-19
+            ],
+            "localRotation": [
+                -6.505213034913027e-19,
+                -6.938893903907229e-18,
+                -1.7381116077658244e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 90,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root",
+            "name": "root",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature",
+            "localPosition": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 91,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/center_of_mass",
+            "name": "center_of_mass",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "localPosition": [
+                1.776356799695581e-17,
+                3.552713599391162e-17,
+                -1.8735012217060538e-18
+            ],
+            "localRotation": [
+                -0.7071068286895752,
+                2.7685531615719149e-17,
+                -8.059374563698084e-18,
+                0.7071068286895752
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 92,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root",
+            "name": "ik_foot_root",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "localPosition": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "localRotation": [
+                -0.7071068286895752,
+                0.0,
+                0.0,
+                0.7071068286895752
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 93,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root/ik_foot_l",
+            "name": "ik_foot_l",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root",
+            "localPosition": [
+                -0.11724399030208588,
+                0.005175349768251181,
+                0.10954000055789948
+            ],
+            "localRotation": [
+                0.016631420701742173,
+                0.69352787733078,
+                0.01587515138089657,
+                0.7200628519058228
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 94,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root/ik_foot_r",
+            "name": "ik_foot_r",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root",
+            "localPosition": [
+                0.11724390089511872,
+                0.005175350699573755,
+                0.10954000055789948
+            ],
+            "localRotation": [
+                0.7200628519058228,
+                -0.01587515138089657,
+                0.69352787733078,
+                -0.016631420701742173
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 95,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun",
+            "name": "ik_hand_gun",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "localPosition": [
+                0.4226651191711426,
+                1.0591741800308228,
+                0.06063321605324745
+            ],
+            "localRotation": [
+                0.08882312476634979,
+                -0.2349974811077118,
+                -0.4282621145248413,
+                0.8680312037467957
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 96,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun/ik_hand_l",
+            "name": "ik_hand_l",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun",
+            "localPosition": [
+                -0.4418807625770569,
+                -0.5932073593139648,
+                0.4091813564300537
+            ],
+            "localRotation": [
+                0.512645959854126,
+                0.7496153116226196,
+                -0.4138060212135315,
+                0.06352732330560684
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 97,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun/ik_hand_r",
+            "name": "ik_hand_r",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun",
+            "localPosition": [
+                0.0,
+                -2.8421708795129299e-16,
+                -7.105427198782324e-17
+            ],
+            "localRotation": [
+                -4.0245584642661927e-16,
+                5.551115123125783e-17,
+                -5.551115123125783e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 98,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_root",
+            "name": "ik_hand_root",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "localPosition": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "localRotation": [
+                -0.7071068286895752,
+                0.0,
+                0.0,
+                0.7071068286895752
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 99,
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/interaction",
+            "name": "interaction",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "localPosition": [
+                1.776356799695581e-17,
+                3.552713599391162e-17,
+                -1.8735012217060538e-18
+            ],
+            "localRotation": [
+                -0.7071068286895752,
+                2.7685531615719149e-17,
+                -8.059374563698084e-18,
+                0.7071068286895752
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 100,
+            "path": "HaiFront",
+            "name": "HaiFront",
+            "parentPath": "HairFront_CurtainBangs",
+            "localPosition": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 101,
+            "path": "HairBack",
+            "name": "HairBack",
+            "parentPath": "CasualFlow1",
+            "localPosition": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 102,
+            "path": "HairFront",
+            "name": "HairFront",
+            "parentPath": "HairFront_AsymmetricalFringe",
+            "localPosition": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 103,
+            "path": "Hair_Back",
+            "name": "Hair_Back",
+            "parentPath": "HairBack",
+            "localPosition": [
+                0.0,
+                0.05535050109028816,
+                -0.08069910109043122
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 104,
+            "path": "Hair_Back1",
+            "name": "Hair_Back1",
+            "parentPath": "Hair_Back",
+            "localPosition": [
+                0.0,
+                -0.152171328663826,
+                -0.015235626138746739
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 105,
+            "path": "Hair_Back2",
+            "name": "Hair_Back2",
+            "parentPath": "Hair_Back1",
+            "localPosition": [
+                0.0,
+                -0.14494861662387849,
+                1.0769162994756884e-16
+            ],
+            "localRotation": [
+                -0.0428260937333107,
+                0.0,
+                0.0,
+                0.9990825653076172
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 106,
+            "path": "Hair_Back3",
+            "name": "Hair_Back3",
+            "parentPath": "Hair_Back2",
+            "localPosition": [
+                0.0,
+                -0.14548137784004212,
+                1.0658140798173486e-16
+            ],
+            "localRotation": [
+                -0.0428260937333107,
+                0.0,
+                0.0,
+                0.9990825653076172
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 107,
+            "path": "Hair_BackLeft",
+            "name": "Hair_BackLeft",
+            "parentPath": "HairBack",
+            "localPosition": [
+                -0.1430358737707138,
+                0.1771499663591385,
+                -0.09432534128427506
+            ],
+            "localRotation": [
+                -0.3949038088321686,
+                0.6318218111991882,
+                -0.5541599988937378,
+                -0.37115901708602908
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 108,
+            "path": "Hair_BackLeft1",
+            "name": "Hair_BackLeft1",
+            "parentPath": "Hair_BackLeft",
+            "localPosition": [
+                1.0305016071185619e-17,
+                1.51267891737389e-17,
+                0.12170445173978806
+            ],
+            "localRotation": [
+                1.249000902703301e-16,
+                1.3877787807814457e-16,
+                5.551115123125783e-17,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 109,
+            "path": "Hair_BackRight",
+            "name": "Hair_BackRight",
+            "parentPath": "HairBack",
+            "localPosition": [
+                0.14303599298000337,
+                0.17714999616146089,
+                -0.09432530403137207
+            ],
+            "localRotation": [
+                -0.37115901708602908,
+                0.5541599988937378,
+                0.6318218111991882,
+                0.3949038088321686
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 110,
+            "path": "Hair_BackRight1",
+            "name": "Hair_BackRight1",
+            "parentPath": "Hair_BackRight",
+            "localPosition": [
+                3.7462066870830315e-7,
+                2.2783397923831218e-7,
+                -0.12170447409152985
+            ],
+            "localRotation": [
+                2.0816681711721686e-17,
+                2.220446049250313e-16,
+                -4.3021142204224818e-16,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 111,
+            "path": "Hair_BackRight2",
+            "name": "Hair_BackRight2",
+            "parentPath": "Hair_BackRight1",
+            "localPosition": [
+                -2.380219399356065e-7,
+                1.586365172556725e-8,
+                -0.12698817253112794
+            ],
+            "localRotation": [
+                1.3877787807814458e-17,
+                -3.608224830031759e-16,
+                -5.551115123125783e-16,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 112,
+            "path": "Hair_Front",
+            "name": "Hair_Front",
+            "parentPath": "HairFront",
+            "localPosition": [
+                0.0,
+                0.1452743411064148,
+                0.12040810286998749
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 113,
+            "path": "Hair_Front1",
+            "name": "Hair_Front1",
+            "parentPath": "Hair_Front",
+            "localPosition": [
+                0.0,
+                -0.06969811022281647,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 114,
+            "path": "Hair_Left",
+            "name": "Hair_Left",
+            "parentPath": "HairFront",
+            "localPosition": [
+                -0.10126237571239472,
+                0.0630771666765213,
+                0.07396616041660309
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 115,
+            "path": "Hair_Left1",
+            "name": "Hair_Left1",
+            "parentPath": "Hair_Left",
+            "localPosition": [
+                0.0,
+                -0.06969811022281647,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 116,
+            "path": "Hair_Pony",
+            "name": "Hair_Pony",
+            "parentPath": "HairBack",
+            "localPosition": [
+                0.0,
+                0.08274805545806885,
+                -0.1492871642112732
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 117,
+            "path": "Hair_Pony1",
+            "name": "Hair_Pony1",
+            "parentPath": "Hair_Pony",
+            "localPosition": [
+                0.0,
+                -0.07676408439874649,
+                -0.015235626138746739
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 118,
+            "path": "Hair_Right",
+            "name": "Hair_Right",
+            "parentPath": "HairFront",
+            "localPosition": [
+                0.10126199573278427,
+                0.06307720392942429,
+                0.07396619766950607
+            ],
+            "localRotation": [
+                1.0,
+                0.0,
+                0.0,
+                -6.123234262925839e-17
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 119,
+            "path": "Hair_Right1",
+            "name": "Hair_Right1",
+            "parentPath": "Hair_Right",
+            "localPosition": [
+                0.0,
+                0.06969814747571945,
+                -8.881783998477906e-18
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 120,
+            "path": "joint10",
+            "name": "joint10",
+            "parentPath": "Hair_Back",
+            "localPosition": [
+                0.0,
+                -0.1380603313446045,
+                0.0
+            ],
+            "localRotation": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        },
+        {
+            "index": 121,
+            "path": "joint9",
+            "name": "joint9",
+            "parentPath": "Hair_Back",
+            "localPosition": [
+                0.0,
+                -0.11935218423604965,
+                0.0
+            ],
+            "localRotation": [
+                -0.06157339736819267,
+                0.0,
+                0.0,
+                0.998102605342865
+            ],
+            "localScale": [
+                1.0,
+                1.0,
+                1.0
+            ]
+        }
+    ],
+    "extraBones": [
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root",
+            "name": "root",
+            "parentPath": "",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/center_of_mass",
+            "name": "center_of_mass",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root",
+            "name": "ik_foot_root",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root/ik_foot_l",
+            "name": "ik_foot_l",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root/ik_foot_r",
+            "name": "ik_foot_r",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_foot_root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun",
+            "name": "ik_hand_gun",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun/ik_hand_l",
+            "name": "ik_hand_l",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun/ik_hand_r",
+            "name": "ik_hand_r",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_gun",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/ik_hand_root",
+            "name": "ik_hand_root",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "BMAC_CharacterBase/BodyRig/armature/root/interaction",
+            "name": "interaction",
+            "parentPath": "BMAC_CharacterBase/BodyRig/armature/root",
+            "firstAsset": "BMAC_CharacterBase",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/BMAC_CharacterBase.prefab"
+        },
+        {
+            "path": "HaiFront",
+            "name": "HaiFront",
+            "parentPath": "",
+            "firstAsset": "HairFront_CurtainBangs",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_CurtainBangs.prefab"
+        },
+        {
+            "path": "HairBack",
+            "name": "HairBack",
+            "parentPath": "",
+            "firstAsset": "HairBack_CasualFlow",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_CasualFlow.prefab"
+        },
+        {
+            "path": "HairFront",
+            "name": "HairFront",
+            "parentPath": "",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "Hair_Back",
+            "name": "Hair_Back",
+            "parentPath": "HairBack",
+            "firstAsset": "HairBack_CasualFlow",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_CasualFlow.prefab"
+        },
+        {
+            "path": "Hair_Back1",
+            "name": "Hair_Back1",
+            "parentPath": "Hair_Back",
+            "firstAsset": "HairBack_CasualFlow",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_CasualFlow.prefab"
+        },
+        {
+            "path": "Hair_Back2",
+            "name": "Hair_Back2",
+            "parentPath": "Hair_Back1",
+            "firstAsset": "HairBack_LongStreight",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_LongStreight.prefab"
+        },
+        {
+            "path": "Hair_Back3",
+            "name": "Hair_Back3",
+            "parentPath": "Hair_Back2",
+            "firstAsset": "HairBack_LongStreight",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_LongStreight.prefab"
+        },
+        {
+            "path": "Hair_BackLeft",
+            "name": "Hair_BackLeft",
+            "parentPath": "HairBack",
+            "firstAsset": "HairBack_TwinLongTails",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_TwinLongTails.prefab"
+        },
+        {
+            "path": "Hair_BackLeft1",
+            "name": "Hair_BackLeft1",
+            "parentPath": "Hair_BackLeft",
+            "firstAsset": "HairBack_TwinLongTails",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_TwinLongTails.prefab"
+        },
+        {
+            "path": "Hair_BackRight",
+            "name": "Hair_BackRight",
+            "parentPath": "HairBack",
+            "firstAsset": "HairBack_TwinLongTails",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_TwinLongTails.prefab"
+        },
+        {
+            "path": "Hair_BackRight1",
+            "name": "Hair_BackRight1",
+            "parentPath": "Hair_BackRight",
+            "firstAsset": "HairBack_TwinLongTails",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_TwinLongTails.prefab"
+        },
+        {
+            "path": "Hair_BackRight2",
+            "name": "Hair_BackRight2",
+            "parentPath": "Hair_BackRight1",
+            "firstAsset": "HairBack_TwinLongTails",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_TwinLongTails.prefab"
+        },
+        {
+            "path": "Hair_Front",
+            "name": "Hair_Front",
+            "parentPath": "HairFront",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "Hair_Front1",
+            "name": "Hair_Front1",
+            "parentPath": "Hair_Front",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "Hair_Left",
+            "name": "Hair_Left",
+            "parentPath": "HairFront",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "Hair_Left1",
+            "name": "Hair_Left1",
+            "parentPath": "Hair_Left",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "Hair_Pony",
+            "name": "Hair_Pony",
+            "parentPath": "HairBack",
+            "firstAsset": "HairBack_HeroTie",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_HeroTie.prefab"
+        },
+        {
+            "path": "Hair_Pony1",
+            "name": "Hair_Pony1",
+            "parentPath": "Hair_Pony",
+            "firstAsset": "HairBack_HeroTie",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_HeroTie.prefab"
+        },
+        {
+            "path": "Hair_Right",
+            "name": "Hair_Right",
+            "parentPath": "HairFront",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "Hair_Right1",
+            "name": "Hair_Right1",
+            "parentPath": "Hair_Right",
+            "firstAsset": "HairFront_AsymmetricalFringe",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairFront/HairFront_AsymmetricalFringe.prefab"
+        },
+        {
+            "path": "joint10",
+            "name": "joint10",
+            "parentPath": "Hair_Back",
+            "firstAsset": "HairBack_LongPonyTail",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_LongPonyTail.prefab"
+        },
+        {
+            "path": "joint9",
+            "name": "joint9",
+            "parentPath": "Hair_Back",
+            "firstAsset": "HairBack_LongPonyTail",
+            "firstAssetPath": "Assets/BoZo_ModularAnimeCharacters/Prefabs/Base/Resources/HairBack/HairBack_LongPonyTail.prefab"
+        }
+    ]
+}

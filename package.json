@@ -14,6 +14,7 @@
     "prebuild-only": "npm run check:node",
     "prepreview": "npm run check:node",
     "dev": "vite",
+    "sync:bozo-presets": "node scripts/sync-bozo-character-presets.mjs",
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "node scripts/serve-dist.mjs",
     "preview:vite": "vite preview",

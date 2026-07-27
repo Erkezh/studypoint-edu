@@ -1,0 +1,30 @@
+total 208
+drwxr-xr-x@ 29 erkenazzhanabay  staff   928 Feb 18 14:31 .
+drwxr-xr-x@  7 erkenazzhanabay  staff   224 Feb 18 14:33 ..
+-rw-rw-r--@  1 erkenazzhanabay  staff  9031 Oct  7  2024 Activate.ps1
+-rw-rw-r--@  1 erkenazzhanabay  staff  2159 Feb 18 14:01 activate
+-rw-rw-r--@  1 erkenazzhanabay  staff   960 Feb 18 14:01 activate.csh
+-rw-rw-r--@  1 erkenazzhanabay  staff  2239 Feb 18 14:01 activate.fish
+-rwxr-xr-x@  1 erkenazzhanabay  staff   320 Feb 18 14:01 alembic
+-rwxr-xr-x@  1 erkenazzhanabay  staff   319 Feb 18 14:01 dotenv
+-rwxr-xr-x@  1 erkenazzhanabay  staff   330 Feb 18 14:01 email_validator
+-rwxr-xr-x@  1 erkenazzhanabay  staff   317 Feb 18 14:01 fastapi
+-rwxr-xr-x@  1 erkenazzhanabay  staff   311 Feb 18 14:01 httpx
+-rwxr-xr-x@  1 erkenazzhanabay  staff   320 Feb 18 14:01 jsonschema
+-rwxr-xr-x@  1 erkenazzhanabay  staff   320 Feb 18 14:01 mako-render
+-rwxr-xr-x@  1 erkenazzhanabay  staff   340 Feb 18 14:01 normalizer
+-rwxr-xr-x@  1 erkenazzhanabay  staff   328 Feb 18 14:01 pip
+-rwxr-xr-x@  1 erkenazzhanabay  staff   328 Feb 18 14:01 pip3
+-rwxr-xr-x@  1 erkenazzhanabay  staff   328 Feb 18 14:01 pip3.13
+-rwxr-xr-x@  1 erkenazzhanabay  staff   319 Feb 18 14:01 pyrsa-decrypt
+-rwxr-xr-x@  1 erkenazzhanabay  staff   319 Feb 18 14:01 pyrsa-encrypt
+-rwxr-xr-x@  1 erkenazzhanabay  staff   317 Feb 18 14:01 pyrsa-keygen
+-rwxr-xr-x@  1 erkenazzhanabay  staff   340 Feb 18 14:01 pyrsa-priv2pub
+-rwxr-xr-x@  1 erkenazzhanabay  staff   313 Feb 18 14:01 pyrsa-sign
+-rwxr-xr-x@  1 erkenazzhanabay  staff   317 Feb 18 14:01 pyrsa-verify
+lrwxr-xr-x@  1 erkenazzhanabay  staff    10 Feb 18 14:01 python -> python3.13
+lrwxr-xr-x@  1 erkenazzhanabay  staff    10 Feb 18 14:01 python3 -> python3.13
+lrwxr-xr-x@  1 erkenazzhanabay  staff    65 Feb 18 14:01 python3.13 -> /Library/Frameworks/Python.framework/Versions/3.13/bin/python3.13
+-rwxr-xr-x@  1 erkenazzhanabay  staff   318 Feb 18 14:01 uvicorn
+-rwxr-xr-x@  1 erkenazzhanabay  staff   318 Feb 18 14:01 watchfiles
+-rwxr-xr-x@  1 erkenazzhanabay  staff   320 Feb 18 14:01 websockets

@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>divisibility-gamejsx</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect } = React;
+const { Check, X } = window.lucideReact;
+const DivisibilityGame = () => {
+  const [currentQuestion, setCurrentQuestion] = useState(null);
+  const [selectedAnswers, setSelectedAnswers] = useState([]);
+  const [typedAnswer, setTypedAnswer] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [questionNumber, setQuestionNumber] = useState(1);
+  const mainTitle = "\u0411\u04E9\u043B\u0456\u043D\u0433\u0456\u0448\u0442\u0456\u043A \u0435\u0440\u0435\u0436\u0435\u043B\u0435\u0440\u0456";
+  const generateRandomNumber = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  };
+  const generateLargeNumber = () => {
+    return generateRandomNumber(1e5, 99999999);
+  };
+  const isDivisibleBy = (num, divisor) => {
+    return num % divisor === 0;
+  };
+  const getSuffix = (divisor) => {
+    if ([1, 4, 5, 9].includes(divisor)) return "\u043A\u0435";
+    if ([3].includes(divisor)) return "\u043A\u0435";
+    if ([2, 7, 8].includes(divisor)) return "\u0433\u0435";
+    if ([6, 10].includes(divisor)) return "\u0493\u0430";
+    return "\u0433\u0435";
+  };
+  const generateYesNoQuestion = () => {
+    const divisors = [2, 3, 4, 5, 6, 8, 9, 10];
+    const divisor = divisors[generateRandomNumber(0, divisors.length - 1)];
+    const number = generateLargeNumber();
+    const isDiv = isDivisibleBy(number, divisor);
+    return {
+      type: "yesNo",
+      question: `${number.toLocaleString("en-US").replace(/,/g, ",")} \u0441\u0430\u043D\u044B ${divisor}-${getSuffix(divisor)} \u0431\u04E9\u043B\u0456\u043D\u0435 \u043C\u0435?`,
+      correctAnswer: isDiv ? "\u0438\u04D9" : "\u0436\u043E\u049B",
+      options: ["\u0438\u04D9", "\u0436\u043E\u049B"]
+    };
+  };
+  const generateFindDigitQuestion = () => {
+    const divisors = [2, 3, 5, 10];
+    const divisor = divisors[generateRandomNumber(0, divisors.length - 1)];
+    const baseNumber = generateRandomNumber(1e5, 9999999);
+    const baseStr = String(baseNumber);
+    const position = generateRandomNumber(0, baseStr.length);
+    let validDigits = [];
+    for (let d = 0; d <= 9; d++) {
+      const testNum = parseInt(baseStr.slice(0, position) + d + baseStr.slice(position));
+      if (isDivisibleBy(testNum, divisor)) {
+        validDigits.push(d);
+      }
+    }
+    if (validDigits.length === 0) {
+      return generateFindDigitQuestion();
+    }
+    const displayNumber = baseStr.slice(0, position) + "\u25A1" + baseStr.slice(position);
+    const formattedNumber = displayNumber.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return {
+      type: "findDigit",
+      question: `\u0422\u04E9\u043C\u0435\u043D\u0434\u0435\u0433\u0456 \u0441\u04E9\u0439\u043B\u0435\u043C\u0434\u0456 \u0430\u049B\u0438\u049B\u0430\u0442 \u0435\u0442\u0435\u0442\u0456\u043D \u0441\u0430\u043D\u0434\u044B \u0442\u0430\u0431\u044B\u04A3\u044B\u0437.
+${formattedNumber} \u0441\u0430\u043D\u044B ${divisor}-${getSuffix(divisor)} \u0431\u04E9\u043B\u0456\u043D\u0435\u0434\u0456.`,
+      correctAnswers: validDigits.map(String),
+      displayNumber,
+      divisor
+    };
+  };
+  const generateSelectDigitsQuestion = () => {
+    const divisors = [2, 4, 5, 8, 10];
+    const divisor = divisors[generateRandomNumber(0, divisors.length - 1)];
+    const baseNumber = generateRandomNumber(1e4, 9999999);
+    const baseStr = String(baseNumber);
+    let validDigits = [];
+    let invalidDigits = [];
+    for (let d = 0; d <= 9; d++) {
+      const testNum = parseInt(baseStr + d);
+      if (isDivisibleBy(testNum, divisor)) {
+        validDigits.push(d);
+      } else {
+        invalidDigits.push(d);
+      }
+    }
+    if (validDigits.length === 0 || validDigits.length > 4) {
+      return generateSelectDigitsQuestion();
+    }
+    const shuffledInvalid = invalidDigits.sort(() => Math.random() - 0.5);
+    const optionsCount = 4;
+    const neededInvalid = optionsCount - validDigits.length;
+    const selectedInvalid = shuffledInvalid.slice(0, Math.max(0, neededInvalid));
+    const allOptions = [...validDigits.slice(0, 4), ...selectedInvalid].slice(0, 4);
+    const shuffledOptions = allOptions.sort(() => Math.random() - 0.5);
+    const displayNumber = baseStr + "\u25A1";
+    return {
+      type: "selectDigits",
+      question: `\u0422\u04E9\u043C\u0435\u043D\u0434\u0435\u0433\u0456 \u0441\u04E9\u0439\u043B\u0435\u043C\u0434\u0456 \u0430\u049B\u0438\u049B\u0430\u0442 \u0435\u0442\u0435\u0442\u0456\u043D \u0431\u0430\u0440\u043B\u044B\u049B \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u0442\u0430\u04A3\u0434\u0430\u04A3\u044B\u0437.
+${displayNumber.replace(/\B(?=(\d{3})+(?!\d))/g, ",")} \u0441\u0430\u043D\u044B ${divisor}-${getSuffix(divisor)} \u0431\u04E9\u043B\u0456\u043D\u0435\u0434\u0456.`,
+      options: shuffledOptions.map(String),
+      correctAnswers: validDigits.map(String),
+      displayNumber,
+      divisor
+    };
+  };
+  const generateWordProblem = () => {
+    const scenarios = [
+      { item: "\u0448\u043E\u043A\u043E\u043B\u0430\u0434", place: "\u0444\u0430\u0431\u0440\u0438\u043A\u0430", unit: "\u0442\u04AF\u0440\u0456", question: "\u0442\u04AF\u0440\u0456 \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0433\u0432\u043E\u0437\u0434\u044C", place: "\u0434\u04AF\u043A\u0435\u043D", unit: "\u0436\u04D9\u0448\u0456\u043A", question: "\u0436\u04D9\u0448\u0456\u043A \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0430\u044F\u049B \u043A\u0438\u0456\u043C", place: "\u049B\u043E\u0439\u043C\u0430", unit: "\u049B\u0430\u0442\u0430\u0440", question: "\u049B\u0430\u0442\u0430\u0440 \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0444\u0443\u0442\u0431\u043E\u043B\u043A\u0430", place: "\u0444\u0430\u0431\u0440\u0438\u043A\u0430", unit: "\u043E\u0440\u0430\u043C\u0430", question: "\u043E\u0440\u0430\u043C\u0430 \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0433\u0430\u0437\u0435\u0442", place: "\u0431\u0430\u0441\u043F\u0430", unit: "\u0431\u0430\u0439\u043B\u0430\u043C", question: "\u0431\u0430\u0439\u043B\u0430\u043C \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0444\u043B\u0430\u0435\u0440", place: "\u043A\u043E\u043C\u043F\u0430\u043D\u0438\u044F", unit: "\u0441\u0430\u0442\u0443\u0448\u044B", question: "\u0441\u0430\u0442\u0443\u0448\u044B \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0434\u043E\u043F", place: "\u0431\u0430\u043B\u0430\u043B\u0430\u0440 \u043E\u0440\u0442\u0430\u043B\u044B\u0493\u044B", unit: "\u0431\u0430\u0441\u0441\u0435\u0439\u043D", question: "\u0431\u0430\u0441\u0441\u0435\u0439\u043D \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u0441\u0443 \u0431\u04E9\u0442\u0435\u043B\u043A\u0435\u0441\u0456", place: "\u049B\u043E\u0439\u043C\u0430", unit: "\u049B\u0430\u0442\u0430\u0440", question: "\u049B\u0430\u0442\u0430\u0440 \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" },
+      { item: "\u043B\u0438\u043C\u043E\u043D\u0430\u0434", place: "\u043A\u043E\u043C\u043F\u0430\u043D\u0438\u044F", unit: "\u0434\u04D9\u043C", question: "\u0434\u04D9\u043C \u0431\u043E\u043B\u0443\u044B \u043C\u04AF\u043C\u043A\u0456\u043D" }
+    ];
+    const scenario = scenarios[generateRandomNumber(0, scenarios.length - 1)];
+    const possibleDivisors = [2, 3, 4, 5, 6, 8, 9, 10];
+    let baseNumber = generateRandomNumber(1e4, 999999);
+    let validDivisors = possibleDivisors.filter((d) => isDivisibleBy(baseNumber, d));
+    while (validDivisors.length < 1) {
+      baseNumber = generateRandomNumber(1e4, 999999);
+      validDivisors = possibleDivisors.filter((d) => isDivisibleBy(baseNumber, d));
+    }
+    const options = [];
+    const correctAnswers = [];
+    const shuffledValid = validDivisors.sort(() => Math.random() - 0.5).slice(0, 2);
+    shuffledValid.forEach((d) => {
+      options.push(String(d));
+      correctAnswers.push(String(d));
+    });
+    const invalidDivisors = possibleDivisors.filter((d) => !isDivisibleBy(baseNumber, d));
+    const shuffledInvalid = invalidDivisors.sort(() => Math.random() - 0.5).slice(0, 4 - shuffledValid.length);
+    shuffledInvalid.forEach((d) => options.push(String(d)));
+    const shuffledOptions = options.sort(() => Math.random() - 0.5);
+    return {
+      type: "wordProblem",
+      question: `${scenario.place.charAt(0).toUpperCase() + scenario.place.slice(1)} ${baseNumber.toLocaleString("en-US").replace(/,/g, ",")} ${scenario.item} \u0448\u044B\u0493\u0430\u0440\u0434\u044B. \u04D8\u0440 ${scenario.unit} \u0431\u0456\u0440\u0434\u0435\u0439 \u0441\u0430\u043D\u0434\u0430 \u0431\u043E\u043B\u0434\u044B. \u041D\u0435\u0448\u0435 ${scenario.question}?
+\u0411\u0430\u0440\u043B\u044B\u049B \u043C\u04AF\u043C\u043A\u0456\u043D \u043D\u04B1\u0441\u049B\u0430\u043B\u0430\u0440\u0434\u044B \u0442\u0430\u04A3\u0434\u0430\u04A3\u044B\u0437.`,
+      options: shuffledOptions,
+      correctAnswers,
+      number: baseNumber
+    };
+  };
+  const generateQuestion = () => {
+    const questionTypes = [
+      generateYesNoQuestion,
+      generateFindDigitQuestion,
+      generateSelectDigitsQuestion,
+      generateWordProblem
+    ];
+    const randomType = questionTypes[generateRandomNumber(0, questionTypes.length - 1)];
+    return randomType();
+  };
+  useEffect(() => {
+    setCurrentQuestion(generateQuestion());
+  }, []);
+  const handleOptionClick = (option) => {
+    if (feedback) return;
+    if (currentQuestion.type === "yesNo") {
+      setSelectedAnswers([option]);
+    } else {
+      if (selectedAnswers.includes(option)) {
+        setSelectedAnswers(selectedAnswers.filter((a) => a !== option));
+      } else {
+        setSelectedAnswers([...selectedAnswers, option]);
+      }
+    }
+  };
+  const handleInputChange = (e) => {
+    const value = e.target.value.replace(/[^0-9]/g, "");
+    if (value.length <= 1) {
+      setTypedAnswer(value);
+    }
+  };
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter" && !feedback && typedAnswer) {
+      checkAnswer();
+    }
+  };
+  const checkAnswer = () => {
+    if (currentQuestion.type === "findDigit") {
+      if (!typedAnswer) return;
+    } else {
+      if (selectedAnswers.length === 0) return;
+    }
+    let isCorrect = false;
+    let userAnswerStr = "";
+    let correctAnswerStr = "";
+    if (currentQuestion.type === "yesNo") {
+      userAnswerStr = selectedAnswers[0];
+      correctAnswerStr = currentQuestion.correctAnswer;
+      isCorrect = userAnswerStr === correctAnswerStr;
+    } else if (currentQuestion.type === "findDigit") {
+      userAnswerStr = String(typedAnswer);
+      correctAnswerStr = currentQuestion.correctAnswers.join(", ");
+      isCorrect = currentQuestion.correctAnswers.includes(typedAnswer);
+    } else if (currentQuestion.type === "selectDigits" || currentQuestion.type === "wordProblem") {
+      const sortedSelected = [...selectedAnswers].sort();
+      const sortedCorrect = currentQuestion.correctAnswers.filter((a) => currentQuestion.options.includes(a)).sort();
+      userAnswerStr = sortedSelected.join(", ");
+      correctAnswerStr = sortedCorrect.join(", ");
+      isCorrect = sortedSelected.length === sortedCorrect.length && sortedSelected.every((val, idx) => val === sortedCorrect[idx]);
+    }
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: "exercise-result",
+          isCorrect,
+          userAnswer: userAnswerStr,
+          correctAnswer: correctAnswerStr,
+          studentAnswer: userAnswerStr,
+          question: currentQuestion.question
+        },
+        "*"
+      );
+    }
+    setFeedback(isCorrect ? "correct" : "incorrect");
+    if (isCorrect) {
+      setTimeout(() => {
+        nextQuestion();
+      }, 1500);
+    }
+  };
+  const nextQuestion = () => {
+    setCurrentQuestion(generateQuestion());
+    setSelectedAnswers([]);
+    setTypedAnswer("");
+    setFeedback(null);
+    setQuestionNumber((prev) => prev + 1);
+  };
+  if (!currentQuestion) {
+    return /* @__PURE__ */ React.createElement("div", { style: styles.container }, "\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435...");
+  }
+  return /* @__PURE__ */ React.createElement("div", { style: styles.container }, /* @__PURE__ */ React.createElement("h1", { style: styles.title }, mainTitle), /* @__PURE__ */ React.createElement("div", { style: styles.questionContainer }, /* @__PURE__ */ React.createElement("div", { style: styles.questionNumber }, "\u0422\u0430\u043F\u0441\u044B\u0440\u043C\u0430 ", questionNumber), /* @__PURE__ */ React.createElement("div", { style: styles.questionText }, currentQuestion.question.split("\n").map((line, idx) => /* @__PURE__ */ React.createElement("div", { key: idx }, line))), currentQuestion.type === "findDigit" ? /* @__PURE__ */ React.createElement("div", { style: styles.inputContainer }, /* @__PURE__ */ React.createElement(
+    "input",
+    {
+      type: "text",
+      value: typedAnswer,
+      onChange: handleInputChange,
+      onKeyPress: handleKeyPress,
+      style: styles.input,
+      maxLength: 1,
+      disabled: feedback !== null
+    }
+  )) : /* @__PURE__ */ React.createElement("div", { style: styles.optionsContainer }, currentQuestion.options.map((option, idx) => /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      key: idx,
+      onClick: () => handleOptionClick(option),
+      style: {
+        ...styles.optionButton,
+        ...selectedAnswers.includes(option) ? styles.selectedOption : {}
+      },
+      disabled: feedback !== null
+    },
+    option
+  ))), /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: checkAnswer,
+      style: {
+        ...styles.checkButton,
+        opacity: feedback !== null || currentQuestion.type === "findDigit" && typedAnswer === "" || currentQuestion.type !== "findDigit" && selectedAnswers.length === 0 ? 0.5 : 1,
+        cursor: feedback !== null || currentQuestion.type === "findDigit" && typedAnswer === "" || currentQuestion.type !== "findDigit" && selectedAnswers.length === 0 ? "not-allowed" : "pointer"
+      },
+      disabled: feedback !== null || currentQuestion.type === "findDigit" && typedAnswer === "" || currentQuestion.type !== "findDigit" && selectedAnswers.length === 0
+    },
+    "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+  ), feedback && /* @__PURE__ */ React.createElement("div", { style: {
+    ...styles.feedback,
+    color: feedback === "correct" ? "#4CAF50" : "#f44336"
+  } }, feedback === "correct" ? /* @__PURE__ */ React.createElement("span", { style: styles.feedbackContent }, /* @__PURE__ */ React.createElement(Check, { size: 24, style: { marginRight: "8px" } }), "\u0414\u04B1\u0440\u044B\u0441") : /* @__PURE__ */ React.createElement("span", { style: styles.feedbackContent }, /* @__PURE__ */ React.createElement(X, { size: 24, style: { marginRight: "8px" } }), "\u049A\u0430\u0442\u0435")), feedback === "incorrect" && /* @__PURE__ */ React.createElement(
+    "button",
+    {
+      onClick: nextQuestion,
+      style: styles.nextButton
+    },
+    "\u041A\u0435\u043B\u0435\u0441\u0456 \u0442\u0430\u043F\u0441\u044B\u0440\u043C\u0430"
+  )));
+};
+const styles = {
+  container: {
+    fontFamily: "Verdana, sans-serif",
+    maxWidth: "600px",
+    margin: "0 auto",
+    padding: "20px",
+    minHeight: "100vh",
+    boxSizing: "border-box"
+  },
+  title: {
+    fontSize: "clamp(18px, 5vw, 24px)",
+    textAlign: "center",
+    marginBottom: "30px",
+    color: "#333",
+    fontWeight: "normal"
+  },
+  questionContainer: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center"
+  },
+  questionNumber: {
+    fontSize: "clamp(14px, 4vw, 16px)",
+    color: "#666",
+    marginBottom: "15px"
+  },
+  questionText: {
+    fontSize: "clamp(14px, 4vw, 18px)",
+    textAlign: "center",
+    marginBottom: "25px",
+    lineHeight: "1.6",
+    color: "#333"
+  },
+  optionsContainer: {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: "10px",
+    marginBottom: "25px"
+  },
+  optionButton: {
+    fontFamily: "Verdana, sans-serif",
+    fontSize: "clamp(14px, 4vw, 16px)",
+    padding: "12px 24px",
+    border: "1px solid #ccc",
+    borderRadius: "4px",
+    backgroundColor: "#ffffff",
+    cursor: "pointer",
+    minWidth: "60px",
+    transition: "all 0.2s"
+  },
+  selectedOption: {
+    backgroundColor: "#e3f2fd",
+    borderColor: "#2196F3"
+  },
+  inputContainer: {
+    marginBottom: "25px"
+  },
+  input: {
+    fontFamily: "Verdana, sans-serif",
+    fontSize: "clamp(16px, 5vw, 20px)",
+    padding: "12px",
+    width: "60px",
+    textAlign: "center",
+    border: "1px solid #ccc",
+    borderRadius: "4px",
+    backgroundColor: "#ffffff",
+    outline: "none",
+    appearance: "none",
+    MozAppearance: "textfield",
+    WebkitAppearance: "none"
+  },
+  checkButton: {
+    fontFamily: "Verdana, sans-serif",
+    fontSize: "clamp(14px, 4vw, 16px)",
+    padding: "12px 40px",
+    backgroundColor: "#323048",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    marginBottom: "20px"
+  },
+  feedback: {
+    fontSize: "clamp(18px, 5vw, 24px)",
+    fontWeight: "bold",
+    marginTop: "10px"
+  },
+  feedbackContent: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center"
+  },
+  nextButton: {
+    fontFamily: "Verdana, sans-serif",
+    fontSize: "clamp(12px, 3.5vw, 14px)",
+    padding: "10px 20px",
+    backgroundColor: "#757575",
+    color: "#ffffff",
+    border: "none",
+    borderRadius: "4px",
+    cursor: "pointer",
+    marginTop: "15px"
+  }
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(DivisibilityGame));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

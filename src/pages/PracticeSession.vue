@@ -20,7 +20,7 @@
     </div>
 
     <main class="container mx-auto px-4 py-6">
-      <GamificationBar v-if="authStore.isAuthenticated" class="mb-4" />
+      <GamificationBar v-if="showStudentGamification" class="mb-4" />
 
       <!-- Parent Mode Warning -->
       <div v-if="authStore.user?.role === 'PARENT'" class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-4 flex items-start gap-3">
@@ -467,6 +467,7 @@ const router = useRouter()
 const practiceStore = usePracticeStore()
 const authStore = useAuthStore()
 const gamificationStore = useGamificationStore()
+const showStudentGamification = computed(() => authStore.isAuthenticated && authStore.user?.role === 'STUDENT')
 
 // Инициализируем trialQuestions сразу, чтобы он был доступен везде
 const trialQuestions = useTrialQuestions()
@@ -1193,6 +1194,9 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       saveToRecentSessions()
       userAnswer.value = answer
       gamificationStore.applyReward(response.reward)
+      if (authStore.isAuthenticated) {
+        await gamificationStore.fetchGamification()
+      }
       showRewardModal.value = Boolean(response.is_correct && response.reward && (response.reward.xp_gained || response.reward.coins_gained))
 
       // Отправляем результат в iframe для PLUGIN
