@@ -163,21 +163,45 @@ function DecimalOrderExercise() {
   useEffect(() => {
     if (isReview) {
       const qd = reviewMode.questionData || {};
-      const numbers = Array.isArray(qd.numbers) ? qd.numbers : [];
-      const ascending = qd.ascending !== void 0 ? qd.ascending : true;
-      const correctOrder = [...numbers].sort((a, b) => ascending ? a - b : b - a);
+      let numbers = Array.isArray(qd.numbers) ? qd.numbers : [];
+      let ascending = qd.ascending !== void 0 ? qd.ascending : true;
+      let correctOrder = [];
+      let level = qd.level || "";
+      let explanation = qd.explanation || "";
+
+      if (numbers.length === 0) {
+        const p = generateProblem();
+        numbers = p.numbers;
+        ascending = p.ascending;
+        correctOrder = p.correctOrder;
+        level = p.level;
+        explanation = p.explanation;
+      } else {
+        correctOrder = [...numbers].sort((a, b) => ascending ? a - b : b - a);
+      }
+
       const p = {
         id: Date.now(),
         question: reviewMode.question || (ascending ? "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440" : "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440"),
         ascending,
         numbers,
         correctOrder,
-        level: qd.level || ""
+        level
       };
-      const studentValues = parseAnswerString(reviewMode.studentAnswer);
-      const studentOrder = studentValues.map((v, i) => ({ value: v, id: `num-${i}-${v}` }));
+      p.explanation = explanation || buildExplanation(p);
+
+      const studentAnswerRaw = reviewMode.studentAnswer;
+      const correctAnswerRaw = reviewMode.correctAnswer || correctOrder.map((n) => fmt(n)).join(", ");
+      const noStudentAnswer = studentAnswerRaw === null || studentAnswerRaw === void 0 || String(studentAnswerRaw).trim() === "";
+      const studentEqualsCorrectAnswer = !noStudentAnswer && correctAnswerRaw != null && String(studentAnswerRaw).trim() === String(correctAnswerRaw).trim();
+      const onlyCorrect = !!reviewMode.isCorrect && (noStudentAnswer || studentEqualsCorrectAnswer);
+
+      const displayOrder = onlyCorrect 
+        ? correctOrder.map((n, i) => ({ value: n, id: `correct-${i}-${n}` })) 
+        : parseAnswerString(studentAnswerRaw).map((v, i) => ({ value: v, id: `num-${i}-${v}` }));
+
       setProblem(p);
-      setUserOrder(studentOrder);
+      setUserOrder(displayOrder);
       setRemaining([]);
       setIsCorrect(!!reviewMode.isCorrect);
       setShowResult(true);

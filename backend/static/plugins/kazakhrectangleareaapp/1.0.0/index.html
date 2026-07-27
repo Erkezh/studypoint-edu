@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kazakh Rectangle Area App</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect, useRef } = React;
+const COLORS = {
+  green: "#38B000",
+  greenBg: "#F0F9EB",
+  sky: "#0ea5e9",
+  skyBg: "#EFF8FE",
+  teal: "#00ACC1",
+  tealBg: "#E6F7F9",
+  orange: "#f97316",
+  border: "#e5e7eb",
+  lightGray: "#f8f9fa",
+  textDark: "#1f2937",
+  textMuted: "#6b7280",
+  success: "#10B981",
+  successBg: "#ECFDF5",
+  error: "#EF4444",
+  errorBg: "#FEF2F2"
+};
+const KazakhRectangleAreaApp = () => {
+  const gridSize = 10;
+  const containerRef = useRef(null);
+  const urlParams = new URLSearchParams(window.location.search);
+  const seedParam = urlParams.get("seed");
+  const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
+  const isFrozen = urlParams.get("frozen") === "1";
+  const isQuiz = urlParams.get("mode") === "quiz";
+  const reviewMode = window.reviewMode || null;
+  const isReview = !!reviewMode;
+  function createSeededRandom(s) {
+    let state = s;
+    return () => {
+      state = state * 1664525 + 1013904223 & 2147483647;
+      return state / 2147483647;
+    };
+  }
+  const random = createSeededRandom(seed);
+  const [problem, setProblem] = useState(null);
+  const [selectedCells, setSelectedCells] = useState(/* @__PURE__ */ new Set());
+  const [showAnswer, setShowAnswer] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reviewCorrectCells, setReviewCorrectCells] = useState(/* @__PURE__ */ new Set());
+  const getFactorPairs = (area) => {
+    const pairs = [];
+    for (let i = 1; i <= Math.sqrt(area); i++) {
+      if (area % i === 0) {
+        const width = i;
+        const height = area / i;
+        if (width <= gridSize && height <= gridSize) {
+          pairs.push([width, height]);
+        }
+      }
+    }
+    return pairs;
+  };
+  const generateCorrectAnswers = (area) => {
+    const pairs = getFactorPairs(area);
+    const answers = [];
+    pairs.forEach(([width, height]) => {
+      const positions = [
+        { startRow: 1, startCol: 1 },
+        { startRow: 2, startCol: 3 },
+        { startRow: 0, startCol: 5 }
+      ];
+      positions.forEach((pos) => {
+        if (pos.startRow + height <= gridSize && pos.startCol + width <= gridSize) {
+          const cells = /* @__PURE__ */ new Set();
+          for (let r = pos.startRow; r < pos.startRow + height; r++) {
+            for (let c = pos.startCol; c < pos.startCol + width; c++) {
+              cells.add(`${r}-${c}`);
+            }
+          }
+          answers.push({ cells, width, height });
+        }
+      });
+    });
+    return answers.slice(0, 3);
+  };
+  const generateRandomArea = () => {
+    const possibleAreas = [];
+    for (let area = 6; area <= 90; area++) {
+      const pairs = getFactorPairs(area);
+      if (pairs.length > 0) {
+        possibleAreas.push(area);
+      }
+    }
+    return possibleAreas[Math.floor(random() * possibleAreas.length)];
+  };
+  const generateProblem = () => {
+    const targetArea = generateRandomArea();
+    return {
+      id: seed,
+      question: `\u0411\u0435\u0440\u0456\u043B\u0433\u0435\u043D \u0430\u0443\u0434\u0430\u043D\u044B ${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0431\u043E\u044F\u04A3\u044B\u0437`,
+      correctAnswer: `${targetArea}`,
+      targetArea,
+      correctAnswers: generateCorrectAnswers(targetArea)
+    };
+  };
+  const cellsToFilled = (cells) => Array.from(cells);
+  const sendHeight = () => {
+    if (window.parent !== window && containerRef.current) {
+      window.parent.postMessage(
+        { type: "resize", height: containerRef.current.scrollHeight + 20 },
+        "*"
+      );
+    }
+  };
+  useEffect(() => {
+    if (isReview) {
+      let targetArea = parseInt(reviewMode.correctAnswer, 10);
+      let restoredProblem;
+      if (isNaN(targetArea)) {
+        const generated = generateProblem();
+        targetArea = generated.targetArea;
+        restoredProblem = {
+          id: seed,
+          question: generated.question,
+          correctAnswer: String(generated.correctAnswer),
+          targetArea,
+          correctAnswers: generated.correctAnswers
+        };
+      } else {
+        restoredProblem = {
+          id: seed,
+          question: `\u0411\u0435\u0440\u0456\u043B\u0433\u0435\u043D \u0430\u0443\u0434\u0430\u043D\u044B ${targetArea} \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0431\u043E\u044F\u04A3\u044B\u0437`,
+          correctAnswer: reviewMode.correctAnswer,
+          targetArea,
+          correctAnswers: generateCorrectAnswers(targetArea)
+        };
+      }
+      setProblem(restoredProblem);
+      const userGrid = reviewMode.answerData?.userDisplay?.grids?.[0];
+      const noStudentAnswer = !userGrid || !userGrid.filled || userGrid.filled.length === 0;
+      let restoredCells;
+      if (noStudentAnswer) {
+        const correctAnsObj = restoredProblem.correctAnswers[0];
+        restoredCells = new Set(correctAnsObj ? Array.from(correctAnsObj.cells) : []);
+      } else {
+        restoredCells = new Set(userGrid?.filled || []);
+      }
+      setSelectedCells(restoredCells);
+      const correctGrid = reviewMode.answerData?.correctDisplay?.grids?.[0];
+      const correctCells = correctGrid?.filled ? new Set(correctGrid.filled) : restoredProblem.correctAnswers[0]?.cells || /* @__PURE__ */ new Set();
+      setReviewCorrectCells(correctCells);
+      setIsCorrect(!!reviewMode.isCorrect);
+      setShowAnswer(true);
+    } else {
+      setProblem(generateProblem());
+    }
+  }, []);
+  useEffect(() => {
+    sendHeight();
+    setTimeout(sendHeight, 100);
+  }, [problem, showAnswer]);
+  const getRectangleCells = (startRow, startCol, endRow, endCol) => {
+    const minRow = Math.min(startRow, endRow);
+    const maxRow = Math.max(startRow, endRow);
+    const minCol = Math.min(startCol, endCol);
+    const maxCol = Math.max(startCol, endCol);
+    const cells = /* @__PURE__ */ new Set();
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        cells.add(`${r}-${c}`);
+      }
+    }
+    return cells;
+  };
+  const handleMouseDown = (row, col) => {
+    if (showAnswer || isFrozen || isReview || isSubmitted) return;
+    setIsDragging(true);
+    setDragStart({ row, col });
+    setSelectedCells(/* @__PURE__ */ new Set([`${row}-${col}`]));
+  };
+  const handleMouseEnter = (row, col) => {
+    if (!isDragging || !dragStart || showAnswer || isFrozen || isReview || isSubmitted) return;
+    const rectangleCells = getRectangleCells(dragStart.row, dragStart.col, row, col);
+    setSelectedCells(rectangleCells);
+  };
+  const handleMouseUp = () => {
+    if (isDragging) {
+      setIsDragging(false);
+    }
+  };
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+      }
+    };
+    document.addEventListener("mouseup", handleGlobalMouseUp);
+    return () => {
+      document.removeEventListener("mouseup", handleGlobalMouseUp);
+    };
+  }, [isDragging]);
+  const isValidRectangle = () => {
+    if (selectedCells.size === 0) return false;
+    const cells = Array.from(selectedCells).map((id) => {
+      const [row, col] = id.split("-").map(Number);
+      return { row, col };
+    });
+    const minRow = Math.min(...cells.map((c) => c.row));
+    const maxRow = Math.max(...cells.map((c) => c.row));
+    const minCol = Math.min(...cells.map((c) => c.col));
+    const maxCol = Math.max(...cells.map((c) => c.col));
+    const expectedCells = (maxRow - minRow + 1) * (maxCol - minCol + 1);
+    if (expectedCells !== selectedCells.size) return false;
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        if (!selectedCells.has(`${r}-${c}`)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+  const handleSubmit = () => {
+    if (isReview || isFrozen || !problem || selectedCells.size === 0 || isSubmitted) return;
+    const correct = selectedCells.size === problem.targetArea && isValidRectangle();
+    const bestCorrect = problem.correctAnswers[0];
+    window.parent.postMessage(
+      {
+        type: "exercise-result",
+        isCorrect: correct,
+        question: problem.question,
+        userAnswer: `${selectedCells.size}`,
+        correctAnswer: problem.correctAnswer,
+        answerData: {
+          type: "grid",
+          correctDisplay: {
+            grids: [
+              {
+                rows: gridSize,
+                cols: gridSize,
+                filled: bestCorrect ? cellsToFilled(bestCorrect.cells) : []
+              }
+            ],
+            text: problem.correctAnswer
+          },
+          userDisplay: {
+            grids: [
+              {
+                rows: gridSize,
+                cols: gridSize,
+                filled: cellsToFilled(selectedCells)
+              }
+            ],
+            text: `${selectedCells.size}`
+          }
+        }
+      },
+      "*"
+    );
+    if (isQuiz) {
+      setIsSubmitted(true);
+      return;
+    }
+    setIsCorrect(correct);
+    setShowAnswer(true);
+  };
+  const handleNext = () => {
+    if (isFrozen || isQuiz) return;
+    setProblem(generateProblem());
+    setSelectedCells(/* @__PURE__ */ new Set());
+    setShowAnswer(false);
+    setIsCorrect(null);
+    setIsDragging(false);
+    setDragStart(null);
+    setIsSubmitted(false);
+  };
+  const resetGrid = () => {
+    if (isFrozen || isReview || isSubmitted) return;
+    setSelectedCells(/* @__PURE__ */ new Set());
+    setShowAnswer(false);
+    setIsCorrect(null);
+    setIsDragging(false);
+    setDragStart(null);
+  };
+  if (!problem) return null;
+  if (isReview) {
+    const renderStaticGrid = (filledCells, fillColor, borderColor) => /* @__PURE__ */ React.createElement("div", { className: "inline-block border rounded-md p-4 bg-white", style: { borderColor } }, /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-10 gap-0.5" }, Array.from(
+      { length: gridSize },
+      (_, row) => Array.from({ length: gridSize }, (_2, col) => {
+        const cellId = `${row}-${col}`;
+        const filled = filledCells.has(cellId);
+        return /* @__PURE__ */ React.createElement(
+          "div",
+          {
+            key: cellId,
+            className: "w-6 h-6",
+            style: {
+              backgroundColor: filled ? fillColor : "#ffffff",
+              border: `1px solid ${COLORS.border}`
+            }
+          }
+        );
+      })
+    )));
+    return /* @__PURE__ */ React.createElement("div", { ref: containerRef, className: "max-w-4xl mx-auto p-6 bg-white" }, /* @__PURE__ */ React.createElement("div", { className: "space-y-5" }, /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border p-6", style: { borderColor: COLORS.border } }, /* @__PURE__ */ React.createElement("h3", { className: "text-center font-semibold mb-4", style: { color: COLORS.textDark } }, "\u0415\u0441\u0435\u043F: ", problem.targetArea, " \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A"), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, renderStaticGrid(/* @__PURE__ */ new Set(), COLORS.sky, COLORS.border))), /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border p-6", style: { borderColor: COLORS.border } }, /* @__PURE__ */ React.createElement("h3", { className: "text-center font-semibold mb-4", style: { color: COLORS.textDark } }, "\u041E\u049B\u0443\u0448\u044B\u043D\u044B\u04A3 \u0436\u0430\u0443\u0430\u0431\u044B"), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, renderStaticGrid(
+      selectedCells,
+      isCorrect ? COLORS.success : COLORS.error,
+      isCorrect ? COLORS.success : COLORS.error
+    ))), /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border p-6", style: { borderColor: COLORS.border } }, /* @__PURE__ */ React.createElement("h3", { className: "text-center font-semibold mb-4", style: { color: COLORS.textDark } }, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F"), /* @__PURE__ */ React.createElement("div", { className: "flex justify-center" }, renderStaticGrid(reviewCorrectCells, COLORS.success, COLORS.success)))));
+  }
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      ref: containerRef,
+      className: "max-w-4xl mx-auto p-6 bg-white min-h-screen",
+      style: isFrozen ? { pointerEvents: "none" } : {}
+    },
+    /* @__PURE__ */ React.createElement("div", { className: "mb-6" }, /* @__PURE__ */ React.createElement("div", { className: "w-10 h-1 rounded-full mb-3", style: { backgroundColor: COLORS.sky } }), /* @__PURE__ */ React.createElement("h1", { className: "text-2xl font-bold", style: { color: COLORS.textDark } }, "\u0411\u0435\u0440\u0456\u043B\u0433\u0435\u043D \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0431\u043E\u044F\u0443")),
+    /* @__PURE__ */ React.createElement("div", { className: "rounded-xl border p-6 mb-5", style: { borderColor: COLORS.border } }, /* @__PURE__ */ React.createElement("div", { className: "text-center" }, /* @__PURE__ */ React.createElement("h2", { className: "text-lg font-semibold mb-1", style: { color: COLORS.textDark } }, /* @__PURE__ */ React.createElement("span", { className: "text-2xl font-bold", style: { color: COLORS.sky } }, problem.targetArea), " \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A."), /* @__PURE__ */ React.createElement("p", { className: "text-sm", style: { color: COLORS.textMuted } }, "\u0422\u044B\u0448\u049B\u0430\u043D\u0434\u044B \u0431\u0430\u0441\u044B\u043F \u04B1\u0441\u0442\u0430\u043F, \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448 \u0441\u044B\u0437\u044B\u04A3\u044B\u0437"))),
+    /* @__PURE__ */ React.createElement("div", { className: "flex justify-center mb-5" }, /* @__PURE__ */ React.createElement(
+      "div",
+      {
+        className: "inline-block border rounded-xl p-4 select-none bg-white",
+        style: {
+          borderColor: COLORS.border,
+          ...isFrozen || isSubmitted ? { pointerEvents: "none", opacity: 0.85 } : {}
+        },
+        onMouseLeave: () => setIsDragging(false)
+      },
+      /* @__PURE__ */ React.createElement("div", { className: "grid grid-cols-10 gap-0.5" }, Array.from(
+        { length: gridSize },
+        (_, row) => Array.from({ length: gridSize }, (_2, col) => {
+          const cellId = `${row}-${col}`;
+          const isSelected = selectedCells.has(cellId);
+          const isInCorrectAnswer = showAnswer && problem.correctAnswers.some((answer) => answer.cells.has(cellId));
+          let bg = "#ffffff";
+          if (isSelected) {
+            bg = isCorrect === true ? COLORS.success : isCorrect === false ? COLORS.error : COLORS.sky;
+          } else if (isInCorrectAnswer && showAnswer) {
+            bg = COLORS.successBg;
+          }
+          return /* @__PURE__ */ React.createElement(
+            "div",
+            {
+              key: cellId,
+              className: `w-7 h-7 transition-colors duration-100 ${isDragging ? "cursor-crosshair" : "cursor-pointer"}`,
+              style: { backgroundColor: bg, border: `1px solid ${COLORS.border}`, userSelect: "none" },
+              onMouseDown: () => handleMouseDown(row, col),
+              onMouseEnter: () => handleMouseEnter(row, col),
+              onMouseUp: handleMouseUp
+            }
+          );
+        })
+      ))
+    )),
+    !isFrozen && /* @__PURE__ */ React.createElement("div", { className: "flex justify-center gap-3 mb-5" }, /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: resetGrid,
+        className: "px-6 py-2.5 rounded-md font-semibold text-white transition-opacity disabled:opacity-40",
+        style: { backgroundColor: COLORS.textMuted },
+        disabled: showAnswer || isSubmitted
+      },
+      "\u0422\u0430\u0437\u0430\u043B\u0430\u0443"
+    ), !isSubmitted && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleSubmit,
+        className: "px-6 py-2.5 rounded-md font-semibold text-white transition-opacity disabled:opacity-40",
+        style: { backgroundColor: COLORS.green },
+        disabled: showAnswer || selectedCells.size === 0
+      },
+      "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+    ), isQuiz && isSubmitted && /* @__PURE__ */ React.createElement("p", { className: "flex items-center font-semibold", style: { color: COLORS.success } }, "\u2713 \u0416\u0430\u0443\u0430\u043F \u049B\u0430\u0431\u044B\u043B\u0434\u0430\u043D\u0434\u044B"), showAnswer && !isQuiz && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleNext,
+        className: "px-6 py-2.5 rounded-md font-semibold text-white transition-opacity",
+        style: { backgroundColor: COLORS.teal }
+      },
+      "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B"
+    )),
+    selectedCells.size > 0 && !showAnswer && /* @__PURE__ */ React.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "inline-block rounded-md border px-4 py-2", style: { borderColor: COLORS.border } }, /* @__PURE__ */ React.createElement("span", { style: { color: COLORS.textMuted } }, "\u0422\u0430\u04A3\u0434\u0430\u043B\u0493\u0430\u043D \u0430\u0443\u0434\u0430\u043D: "), /* @__PURE__ */ React.createElement("span", { className: "font-bold", style: { color: COLORS.sky } }, selectedCells.size), /* @__PURE__ */ React.createElement("span", { style: { color: COLORS.textMuted } }, " \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A"))),
+    showAnswer && !isQuiz && /* @__PURE__ */ React.createElement("div", { className: "rounded-xl p-5 border", style: {
+      borderColor: isCorrect ? COLORS.success : COLORS.error,
+      backgroundColor: isCorrect ? COLORS.successBg : COLORS.errorBg
+    } }, /* @__PURE__ */ React.createElement("div", { className: "text-center", style: { color: isCorrect ? COLORS.success : COLORS.error } }, isCorrect ? /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "text-xl font-bold mb-1" }, "\u0414\u04B1\u0440\u044B\u0441!"), /* @__PURE__ */ React.createElement("p", { className: "text-sm" }, "\u0421\u0456\u0437 ", problem.targetArea, " \u0448\u0430\u0440\u0448\u044B \u0431\u0456\u0440\u043B\u0456\u043A \u0430\u0443\u0434\u0430\u043D\u0434\u0430\u0493\u044B \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B \u0434\u04B1\u0440\u044B\u0441 \u0431\u043E\u0439\u0430\u0434\u044B\u04A3\u044B\u0437.")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { className: "text-xl font-bold mb-1" }, "\u049A\u0430\u0442\u0435"), /* @__PURE__ */ React.createElement("p", { className: "text-sm" }, "\u0421\u0456\u0437 ", selectedCells.size, " \u04B1\u044F\u0448\u044B\u049B \u0442\u0430\u04A3\u0434\u0430\u0434\u044B\u04A3\u044B\u0437, \u0431\u0456\u0440\u0430\u049B ", problem.targetArea, " \u049B\u0430\u0436\u0435\u0442.", !isValidRectangle() && selectedCells.size === problem.targetArea && " \u0422\u0456\u043A\u0431\u04B1\u0440\u044B\u0448 \u043F\u0456\u0448\u0456\u043D\u0456 \u0431\u043E\u043B\u0443\u044B \u043A\u0435\u0440\u0435\u043A.")))),
+    !isFrozen && /* @__PURE__ */ React.createElement("div", { className: "mt-5 rounded-xl p-5 border", style: { backgroundColor: COLORS.lightGray, borderColor: COLORS.border } }, /* @__PURE__ */ React.createElement("h3", { className: "text-sm font-semibold mb-2", style: { color: COLORS.textDark } }, "\u041D\u04B1\u0441\u049B\u0430\u0443\u043B\u044B\u049B:"), /* @__PURE__ */ React.createElement("ul", { className: "text-sm space-y-1.5", style: { color: COLORS.textMuted } }, /* @__PURE__ */ React.createElement("li", null, "\u2022 \u0422\u044B\u0448\u049B\u0430\u043D\u0434\u044B \u0431\u0430\u0441\u044B\u043F \u04B1\u0441\u0442\u0430\u043F, \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448 \u043F\u0456\u0448\u0456\u043D\u0456\u043D \u0441\u044B\u0437\u044B\u04A3\u044B\u0437"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u0411\u0430\u0441\u0442\u0430\u043F\u049B\u044B \u043D\u04AF\u043A\u0442\u0435\u0434\u0435\u043D \u0430\u0493\u044B\u043C\u0434\u0430\u0493\u044B \u043E\u0440\u044B\u043D\u0493\u0430 \u0434\u0435\u0439\u0456\u043D \u0431\u0430\u0440\u043B\u044B\u049B \u04B1\u044F\u0448\u044B\u049B\u0442\u0430\u0440 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0442\u044B \u0442\u04AF\u0440\u0434\u0435 \u0431\u043E\u044F\u043B\u0430\u0434\u044B"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u0422\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u044B\u04A3 \u0430\u0443\u0434\u0430\u043D\u044B \u043A\u04E9\u0440\u0441\u0435\u0442\u0456\u043B\u0433\u0435\u043D \u0441\u0430\u043D\u0493\u0430 \u0442\u0435\u04A3 \u0431\u043E\u043B\u0443\u044B \u043A\u0435\u0440\u0435\u043A"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u04D8\u0440\u0442\u04AF\u0440\u043B\u0456 \u04E9\u043B\u0448\u0435\u043C\u0434\u0435\u0433\u0456 \u0442\u0456\u043A\u0431\u04B1\u0440\u044B\u0448\u0442\u0430\u0440 \u0436\u0430\u0441\u0430\u0443\u0493\u0430 \u0431\u043E\u043B\u0430\u0434\u044B (\u043C\u044B\u0441\u0430\u043B\u044B: 2\xD76 = 3\xD74 = 12)"), /* @__PURE__ */ React.createElement("li", null, "\u2022 \u0416\u0430\u0441\u044B\u043B \u0442\u04AF\u0441 - \u0434\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F, \u049B\u044B\u0437\u044B\u043B \u0442\u04AF\u0441 - \u049B\u0430\u0442\u0435 \u0436\u0430\u0443\u0430\u043F")))
+  );
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(KazakhRectangleAreaApp));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

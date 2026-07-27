@@ -6,7 +6,7 @@
       ref="questionFrame"
       :srcdoc="iframeSrcdoc"
       class="w-full border-0 min-h-[600px] rounded-lg"
-      sandbox="allow-scripts allow-same-origin allow-forms"
+      sandbox="allow-scripts allow-forms"
       @load="onIframeLoad"
     ></iframe>
     <div v-else class="text-center py-8 text-gray-500">
@@ -22,12 +22,12 @@ import { createTsxIframeHtml } from '@/utils/tsxTransformer'
 
 interface Props {
   componentCode: string
-  questionData?: Record<string, any>
+  questionData?: Record<string, unknown>
   disabled?: boolean
 }
 
 interface Emits {
-  (e: 'answer', answer: any): void
+  (e: 'answer', answer: unknown): void
 }
 
 const props = defineProps<Props>()

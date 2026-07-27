@@ -19,14 +19,31 @@ export enum QuizEndType {
 export interface QuizQuestionCreate {
     question_id: number
     position: number
+    seed?: number | null
 }
 
 export interface QuizCreateRequest {
     name: string
     question_order: QuizQuestionOrder
     result_visibility: QuizResultVisibility
+    ended_result_visibility: QuizResultVisibility
     end_type: QuizEndType
     questions: QuizQuestionCreate[]
+}
+
+export interface QuizAssignmentResponse {
+    id: string
+    quiz_id: string
+    classroom_id?: string | null
+    student_id?: string | null
+    due_at?: string | null
+    end_at?: string | null
+    created_at: string
+    started_at?: string | null
+    completed_at?: string | null
+    score?: number | null
+    time_spent_seconds?: number | null
+    question_results?: Record<string, unknown> | null
 }
 
 export interface QuizResponse {
@@ -35,12 +52,14 @@ export interface QuizResponse {
     teacher_id: string
     question_order: QuizQuestionOrder
     result_visibility: QuizResultVisibility
+    ended_result_visibility: QuizResultVisibility
     end_type: QuizEndType
     created_at: string
     questions: Array<{
         id: string
         question_id: number
         position: number
+        seed?: number | null
         question?: {
             id: number
             prompt: string
@@ -48,8 +67,10 @@ export interface QuizResponse {
             data?: Record<string, unknown>
             correct_answer?: Record<string, unknown>
             level?: number
+            skill_id?: number
         }
     }>
+    assignments: QuizAssignmentResponse[]
 }
 
 export interface QuizAssignmentCreate {
@@ -67,6 +88,11 @@ export interface StudentQuizAssignmentResponse {
     due_at: string | null
     end_at: string | null
     created_at: string
+    started_at?: string | null
+    completed_at?: string | null
+    score?: number | null
+    time_spent_seconds?: number | null
+    question_results?: Record<string, boolean> | null
 }
 
 export const quizApi = {
@@ -90,7 +116,19 @@ export const quizApi = {
         return apiClient.delete<{ data: boolean }>(`/teacher/quizzes/${quizId}`)
     },
 
+    endQuizAssignment(assignmentId: string) {
+        return apiClient.post<{ data: unknown }>(`/teacher/quizzes/assignments/${assignmentId}/end`)
+    },
+
     listStudentAssignedQuizzes() {
         return apiClient.get<{ data: QuizResponse[] }>('/student/quizzes/all')
+    },
+
+    startQuizAssignment(assignmentId: string) {
+        return apiClient.post<{ data: QuizAssignmentResponse }>(`/student/quizzes/assignments/${assignmentId}/start`)
+    },
+
+    submitQuizAssignment(assignmentId: string, payload: { score: number; time_spent_seconds: number; question_results: Array<{ question_id: string; submitted_answer: unknown }> }) {
+        return apiClient.post<{ data: QuizAssignmentResponse }>(`/student/quizzes/assignments/${assignmentId}/submit`, payload)
     }
 }

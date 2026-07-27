@@ -23,10 +23,69 @@
 
         <form @submit.prevent="handleTsxUpload" class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">TSX/JSX файл *</label>
-            <input ref="tsxFileInput" type="file" accept=".tsx,.ts,.jsx,.js" @change="handleTsxFileSelect"
+            <label class="block text-sm font-medium text-gray-700 mb-1">TSX/JSX/HTML файл *</label>
+            <input ref="tsxFileInput" type="file" accept=".html,.htm,.tsx,.ts,.jsx,.js" @change="handleTsxFileSelect"
               class="w-full p-2.5 border-2 border-gray-200 rounded-lg focus:border-purple-500 focus:outline-none" />
             <p v-if="selectedTsxFile" class="text-sm text-gray-600 mt-1">{{ selectedTsxFile.name }} ({{ formatFileSize(selectedTsxFile.size) }})</p>
+
+            <!-- AUTOMATIC PLUGIN AUDIT RESULT CARD -->
+            <div v-if="fileCheckResult" class="mt-4 p-4 rounded-xl border transition-all" :class="fileCheckResult.isValid && fileCheckResult.warnings.length === 0 ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-amber-50 border-amber-300 text-slate-900'">
+              <div class="flex flex-wrap items-center justify-between gap-2 font-bold text-sm mb-2">
+                <div class="flex items-center gap-2">
+                  <span v-if="fileCheckResult.isValid && fileCheckResult.warnings.length === 0" class="text-emerald-600 text-lg">✅</span>
+                  <span v-else-if="fileCheckResult.issues.length > 0" class="text-rose-600 text-lg">🔴</span>
+                  <span v-else class="text-amber-600 text-lg">⚠️</span>
+
+                  <span v-if="fileCheckResult.isValid && fileCheckResult.warnings.length === 0" class="text-emerald-900 font-bold">
+                    Плагин регламентке (PLUGIN_PROMPT_TEMPLATE.md) толық сәйкес келеді!
+                  </span>
+                  <span v-else-if="fileCheckResult.issues.length > 0" class="text-rose-900 font-extrabold">
+                    Плагинде қателер табылды! (Учитель мен оқушыда әртүрлі сұрақ шығуы мүмкін)
+                  </span>
+                  <span v-else class="text-amber-900 font-bold">
+                    Плагинде ескертулер бар
+                  </span>
+                </div>
+
+                <!-- Copy AI Prompt Button -->
+                <button 
+                  v-if="fileCheckResult.aiPrompt" 
+                  type="button" 
+                  @click="copyAiPrompt(fileCheckResult.aiPrompt)" 
+                  class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                  {{ promptCopied ? 'Промт көшірілді! ✓' : 'ИИ промтын көшіру (AI Fix Prompt)' }}
+                </button>
+              </div>
+
+              <!-- Passed checks -->
+              <div v-if="fileCheckResult.passed.length > 0" class="text-xs space-y-1 mb-2">
+                <div v-for="(p, idx) in fileCheckResult.passed" :key="idx" class="flex items-center gap-1.5 text-emerald-700 font-medium">
+                  <span class="font-bold">✓</span> {{ p }}
+                </div>
+              </div>
+
+              <!-- Critical Issues -->
+              <div v-if="fileCheckResult.issues.length > 0" class="mt-2 space-y-2 border-t border-rose-200/80 pt-2">
+                <div v-for="issue in fileCheckResult.issues" :key="issue.code" class="p-3 bg-rose-100/90 border border-rose-300 rounded-lg text-xs text-rose-950 space-y-1">
+                  <div class="font-bold flex items-center gap-1.5 text-rose-900 text-xs">
+                    <span>❌</span> <span>[{{ issue.code }}] {{ issue.title }}</span>
+                  </div>
+                  <div class="text-rose-800 leading-relaxed">{{ issue.description }}</div>
+                </div>
+              </div>
+
+              <!-- Warnings -->
+              <div v-if="fileCheckResult.warnings.length > 0" class="mt-2 space-y-2 border-t border-amber-200/80 pt-2">
+                <div v-for="warn in fileCheckResult.warnings" :key="warn.code" class="p-3 bg-amber-100/90 border border-amber-300 rounded-lg text-xs text-amber-950 space-y-1">
+                  <div class="font-bold flex items-center gap-1.5 text-amber-900 text-xs">
+                    <span>⚠️</span> <span>[{{ warn.code }}] {{ warn.title }}</span>
+                  </div>
+                  <div class="text-amber-800 leading-relaxed">{{ warn.description }}</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -67,6 +126,92 @@
           </div>
         </form>
       </div>
+
+      <!-- MANUAL PLUGIN CODE CHECKER SECTION -->
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-2 flex items-center gap-2 text-slate-800">
+          <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          Плагин Чекер (Кодты тексеру және ИИ Промтын алу)
+        </h2>
+        <p class="text-sm text-slate-500 mb-4">Плагиннің HTML/TSX кодын мында қойып, `seed`, `level`, `frozen`, `postMessage` талаптарының орындалуын тексеріңіз.</p>
+
+        <div class="space-y-3">
+          <textarea 
+            v-model="manualCodeToTest" 
+            rows="6" 
+            placeholder="Плагиннің HTML немесе TSX кодын осы жерге қойыңыз..." 
+            class="w-full p-3 border border-slate-300 rounded-xl text-xs font-mono bg-slate-50 focus:outline-none focus:border-indigo-500"
+          ></textarea>
+
+          <div class="flex items-center gap-3">
+            <Button @click="runManualCheck" variant="primary" :disabled="!manualCodeToTest.trim()">
+              Плагинді тексеру
+            </Button>
+            <Button v-if="manualCodeToTest" @click="manualCodeToTest = ''; manualCheckResult = null" variant="outline">
+              Тазалау
+            </Button>
+          </div>
+
+          <!-- MANUAL AUDIT RESULT CONTAINER -->
+          <div v-if="manualCheckResult" class="mt-4 p-4 rounded-xl border transition-all" :class="manualCheckResult.isValid && manualCheckResult.warnings.length === 0 ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-amber-50 border-amber-300 text-slate-900'">
+            <div class="flex flex-wrap items-center justify-between gap-2 font-bold text-sm mb-2">
+              <div class="flex items-center gap-2">
+                <span v-if="manualCheckResult.isValid && manualCheckResult.warnings.length === 0" class="text-emerald-600 text-lg">✅</span>
+                <span v-else-if="manualCheckResult.issues.length > 0" class="text-rose-600 text-lg">🔴</span>
+                <span v-else class="text-amber-600 text-lg">⚠️</span>
+
+                <span v-if="manualCheckResult.isValid && manualCheckResult.warnings.length === 0" class="text-emerald-900 font-bold">
+                  Плагин регламентке толық сәйкес келеді!
+                </span>
+                <span v-else-if="manualCheckResult.issues.length > 0" class="text-rose-900 font-extrabold">
+                  Плагинде қателер табылды! (Учитель мен оқушыда әртүрлі сұрақ шығуы мүмкін)
+                </span>
+                <span v-else class="text-amber-900 font-bold">
+                  Плагинде ескертулер бар
+                </span>
+              </div>
+
+              <!-- Copy AI Prompt Button -->
+              <button 
+                v-if="manualCheckResult.aiPrompt" 
+                type="button" 
+                @click="copyAiPrompt(manualCheckResult.aiPrompt)" 
+                class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+                {{ promptCopied ? 'Промт көшірілді! ✓' : 'ИИ промтын көшіру (AI Fix Prompt)' }}
+              </button>
+            </div>
+
+            <!-- Passed checks -->
+            <div v-if="manualCheckResult.passed.length > 0" class="text-xs space-y-1 mb-2">
+              <div v-for="(p, idx) in manualCheckResult.passed" :key="idx" class="flex items-center gap-1.5 text-emerald-700 font-medium">
+                <span class="font-bold">✓</span> {{ p }}
+              </div>
+            </div>
+
+            <!-- Critical Issues -->
+            <div v-if="manualCheckResult.issues.length > 0" class="mt-2 space-y-2 border-t border-rose-200/80 pt-2">
+              <div v-for="issue in manualCheckResult.issues" :key="issue.code" class="p-3 bg-rose-100/90 border border-rose-300 rounded-lg text-xs text-rose-950 space-y-1">
+                <div class="font-bold flex items-center gap-1.5 text-rose-900 text-xs">
+                  <span>❌</span> <span>[{{ issue.code }}] {{ issue.title }}</span>
+                </div>
+                <div class="text-rose-800 leading-relaxed">{{ issue.description }}</div>
+              </div>
+            </div>
+
+            <!-- Warnings -->
+            <div v-if="manualCheckResult.warnings.length > 0" class="mt-2 space-y-2 border-t border-amber-200/80 pt-2">
+              <div v-for="warn in manualCheckResult.warnings" :key="warn.code" class="p-3 bg-amber-100/90 border border-amber-300 rounded-lg text-xs text-amber-950 space-y-1">
+                <div class="font-bold flex items-center gap-1.5 text-amber-900 text-xs">
+                  <span>⚠️</span> <span>[{{ warn.code }}] {{ warn.title }}</span>
+                </div>
+                <div class="text-amber-800 leading-relaxed">{{ warn.description }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </main>
     <Footer />
   </div>
@@ -78,6 +223,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { adminApi } from '@/api/admin'
 import { catalogApi } from '@/api/catalog'
+import { validatePluginCode, type PluginCheckResult } from '@/utils/pluginValidator'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
@@ -94,6 +240,11 @@ const authStore = useAuthStore()
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
 const selectedTsxFile = ref<File | null>(null)
+const fileCheckResult = ref<PluginCheckResult | null>(null)
+const manualCodeToTest = ref('')
+const manualCheckResult = ref<PluginCheckResult | null>(null)
+const promptCopied = ref(false)
+
 const tsxFileInput = ref<HTMLInputElement | null>(null)
 const tsxPluginName = ref('')
 const uploadingTsx = ref(false)
@@ -114,9 +265,38 @@ const handleTsxFileSelect = (event: Event) => {
   if (file instanceof File) {
     selectedTsxFile.value = file
     if (!tsxPluginName.value && file.name) {
-      const fileName = file.name.replace(/\.(tsx|ts|jsx|js)$/, '')
+      const fileName = file.name.replace(/\.(tsx|ts|jsx|js|html|htm)$/, '')
       tsxPluginName.value = fileName.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
     }
+
+    // Read file and validate automatically
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const text = (e.target?.result as string) || ''
+      fileCheckResult.value = validatePluginCode(text)
+    }
+    reader.readAsText(file)
+  } else {
+    fileCheckResult.value = null
+  }
+}
+
+const runManualCheck = () => {
+  if (!manualCodeToTest.value.trim()) {
+    manualCheckResult.value = null
+    return
+  }
+  manualCheckResult.value = validatePluginCode(manualCodeToTest.value)
+}
+
+const copyAiPrompt = async (promptText: string) => {
+  if (!promptText) return
+  try {
+    await navigator.clipboard.writeText(promptText)
+    promptCopied.value = true
+    setTimeout(() => { promptCopied.value = false }, 3000)
+  } catch (err) {
+    console.error('Failed to copy to clipboard:', err)
   }
 }
 
@@ -175,6 +355,7 @@ const handleTsxUpload = async () => {
 
 const resetTsxUpload = () => {
   selectedTsxFile.value = null
+  fileCheckResult.value = null
   tsxPluginName.value = ''
   uploadGradeId.value = null
   uploadThemeId.value = null

@@ -13,7 +13,7 @@
           @mouseleave="hoverTab = null"
         >
           <button
-            @click="tab.dropdown ? (hoverTab === tab.key ? hoverTab = null : hoverTab = tab.key) : (activeTab = tab.key)"
+            @click="tab.dropdown ? (activeTab = tab.dropdown[0].key, hoverTab = null) : (activeTab = tab.key)"
             class="tab-btn"
             :class="{ active: activeTab === tab.key || (tab.dropdown && tab.dropdown.some(d => d.key === activeTab)) }"
           >
@@ -390,68 +390,190 @@
       <!-- ===================== КВИЗДЕР ===================== -->
       <template v-if="activeTab === 'quizzes'">
         <div class="quizzes-section">
-          <QuizCreator 
-            v-if="isCreatingQuiz || isEditingQuiz" 
-            :initial-quiz="selectedEditQuiz" 
-            @cancel="handleQuizCreationCancel" 
-            @created="handleQuizCreatedOrUpdated" 
-          />
-          
-          <template v-else>
-            <div class="tools-header">
-              <div>
-                <h1 class="tools-title">Квиздер</h1>
-                <p class="tools-subtitle">Оқушыларға арналған тесттер мен тапсырмалар</p>
-              </div>
-              <button @click="isCreatingQuiz = true" class="add-btn">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
-                Квиз құру
+            <div class="quizzes-top-action">
+              <button @click="router.push({ name: 'teacher-quiz-create' })" class="create-quiz-action-btn">
+                Жаңа квиз жасау
               </button>
             </div>
 
-            <div class="mt-6">
-              <div v-if="loadingQuizzes" class="flex justify-center flex-col items-center p-12 bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="spinner"></div>
-                <p class="text-gray-500 mt-4 text-sm">Квиздер жүктелуде...</p>
-              </div>
-              <div v-else-if="quizzesError" class="text-red-500 p-6 bg-red-50 rounded-xl shadow-sm border border-red-100">{{ quizzesError }}</div>
-              <div v-else-if="quizzes.length === 0" class="text-center p-12 bg-white rounded-xl shadow-sm border border-gray-100">
-                <div class="empty-icon text-4xl mb-4">📝</div>
-                <p class="font-medium text-gray-700">Әзірге квиздер жоқ</p>
-                <p class="text-sm text-gray-400 mt-1">Жаңа квиз жасау үшін «Квиз құру» түймесін басыңыз</p>
-              </div>
-              <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div v-for="(quiz, index) in quizzes" :key="quiz.id" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition">
-                  <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-semibold text-lg text-gray-900 line-clamp-2 pr-4 leading-tight">{{ quiz.name }}</h3>
-                    <span class="bg-cyan-50 text-cyan-700 text-xs px-2.5 py-1 rounded-full font-medium whitespace-nowrap">{{ index + 1 }}-квиз</span>
-                  </div>
-                  
-                  <div class="space-y-3 mb-6 flex-1">
-                    <div class="flex items-center text-sm text-gray-600">
-                      <svg class="w-4 h-4 mr-2 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                      {{ quiz.questions.length }} сұрақ
+            <!-- Error State -->
+            <div v-if="quizzesError" class="error-state-wrapper">
+              {{ quizzesError }}
+            </div>
+
+            <!-- Content Blocks -->
+            <div v-else class="quizzes-blocks-container">
+              <!-- 1. Active Quizzes Section -->
+              <div class="quiz-block-section">
+                <h2 class="block-section-title">Белсенді квиздер</h2>
+                <div v-if="activeQuizzes.length === 0" class="quiz-block-empty">
+                  Белсенді квиздер жоқ.
+                </div>
+                <div v-else class="quiz-cards-grid">
+                  <div v-for="quiz in activeQuizzes" :key="quiz.id" class="quiz-card-item active-quiz">
+                    <div class="card-header">
+                      <div class="card-title-group">
+                        <h3 class="card-title-text">{{ quiz.name }}</h3>
+                      </div>
+                      
+                      <!-- Options Dropdown -->
+                      <div class="relative">
+                        <button @click.stop="toggleDropdown(quiz.id)" class="options-trigger-btn">
+                          <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
+                        </button>
+                        <div v-if="openDropdownId === quiz.id" class="options-dropdown-menu">
+                          <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Көру</button>
+                          <button @click.stop="editQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Өңдеу</button>
+                          <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Өшіру</button>
+                        </div>
+                      </div>
                     </div>
-                    <div class="flex items-center text-sm text-gray-600">
-                      <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                      {{ new Date(quiz.created_at).toLocaleDateString() }}
+
+                    <div class="card-body">
+                      <div class="info-row">
+                        <span class="info-icon">▦</span>
+                        <span class="info-text">Берілді: {{ formatDateShort(quiz.assignments?.[0]?.created_at || quiz.created_at) }}</span>
+                      </div>
+                      <div class="info-row">
+                        <span class="info-icon">◴</span>
+                        <span class="info-text">{{ formatEndTime(quiz.assignments?.[0]?.end_at) }}</span>
+                      </div>
+                      <div class="info-row">
+                        <span class="info-icon">#</span>
+                        <span class="info-text">{{ quiz.questions?.length || 0 }} сұрақ</span>
+                      </div>
+                      <div class="info-row">
+                        <span class="info-icon">♙</span>
+                        <span class="info-text flex-1">
+                          {{ formatAssignedStudents(quiz.assignments) }}
+                        </span>
+                        <span class="completion-badge-count">
+                          ✓ {{ getCompletionStats(quiz).completed }} / {{ getCompletionStats(quiz).total }} оқушы
+                        </span>
+                      </div>
+
+                      <!-- Progress Bar -->
+                      <div class="progress-bar-container">
+                        <div class="progress-bar-fill" :style="{ width: getCompletionPercent(quiz) + '%' }"></div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div class="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
-                    <button @click="viewQuiz(quiz)" class="flex items-center text-cyan-600 hover:text-cyan-800 text-sm font-medium transition-colors">
-                      <svg class="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                      Көру
-                    </button>
-                    <div class="flex items-center space-x-4">
-                      <button @click="editQuiz(quiz)" class="text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors">Өңдеу</button>
-                      <button @click="confirmDeleteQuiz(quiz)" class="text-red-500 hover:text-red-700 text-sm font-medium transition-colors">Өшіру</button>
+
+                    <div class="card-footer">
+                      <button @click="endQuiz(quiz)" class="end-quiz-btn">
+                        Қазір аяқтау
+                        <span class="caret-icon">▼</span>
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
+
+              <!-- 2. Drafts Section -->
+              <div class="quiz-block-section">
+                <h2 class="block-section-title">Квиз черновиктері</h2>
+                <div v-if="draftQuizzes.length === 0" class="quiz-block-empty">
+                  Сақталған черновиктер жоқ.
+                </div>
+                <div v-else class="quiz-cards-grid">
+                  <div v-for="quiz in draftQuizzes" :key="quiz.id" class="quiz-card-item draft-quiz">
+                    <div class="card-header">
+                      <h3 class="card-title-text">{{ quiz.name }}</h3>
+                      
+                      <!-- Options Dropdown -->
+                      <div class="relative">
+                        <button @click.stop="toggleDropdown(quiz.id)" class="options-trigger-btn">
+                          <svg class="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                          </svg>
+                        </button>
+                        <div v-if="openDropdownId === quiz.id" class="options-dropdown-menu">
+                          <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Көру</button>
+                          <button @click.stop="editQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Өңдеу</button>
+                          <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Өшіру</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card-body">
+                      <div class="info-row">
+                        <span class="info-icon">#</span>
+                        <span class="info-text">{{ quiz.questions.length }} сұрақ қосылды</span>
+                      </div>
+                      <div class="info-row">
+                        <span class="info-icon">♙</span>
+                        <span class="info-text">
+                          {{ formatAssignedStudents(quiz.assignments) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div class="card-footer">
+                      <button @click="editQuiz(quiz)" class="keep-adding-btn">
+                        Жалғастыру
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Past Quizzes Section -->
+              <div class="quiz-block-section">
+                <h2 class="block-section-title">Аяқталған квиздер</h2>
+                <div v-if="pastQuizzes.length === 0" class="quiz-block-empty">
+                  Аяқталған квиздер жоқ.
+                </div>
+                <div v-else class="past-quizzes-table-card">
+                  <table class="past-quizzes-table">
+                    <thead>
+                      <tr>
+                        <th>Атауы</th>
+                        <th>Кімге берілді</th>
+                        <th>Сұрақтар саны</th>
+                        <th>Күндері</th>
+                        <th>Орташа ұпай</th>
+                        <th class="no-sort"></th>
+                        <th class="no-sort w-10"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="quiz in pastQuizzes" :key="quiz.id">
+                        <td class="quiz-name-cell">
+                          <button @click="viewQuizReport(quiz)" class="hover:underline text-[#159be8] text-left font-semibold cursor-pointer">
+                            {{ quiz.name }}
+                          </button>
+                        </td>
+                        <td>{{ formatAssignedStudents(quiz.assignments) }}</td>
+                        <td>{{ quiz.questions?.length || 0 }} сұрақ</td>
+                        <td>{{ getPeriodDates(quiz) }}</td>
+                        <td class="average-score-cell">{{ getAverageScoreText(quiz) }}</td>
+                        <td class="report-action-cell">
+                          <button @click="viewQuizReport(quiz)" class="view-report-link-btn">
+                            <span class="graph-icon">▥</span>
+                            Есепті көру
+                          </button>
+                        </td>
+                        <td>
+                          <!-- Options Dropdown for Past Quiz -->
+                          <div class="relative">
+                            <button @click.stop="toggleDropdown(quiz.id)" class="options-trigger-btn">
+                              <svg class="w-4 h-4 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+                              </svg>
+                            </button>
+                            <div v-if="openDropdownId === quiz.id" class="options-dropdown-menu">
+                              <button @click.stop="viewQuiz(quiz); closeDropdown()" class="dropdown-menu-item">Көру</button>
+                              <button @click.stop="confirmDeleteQuiz(quiz); closeDropdown()" class="dropdown-menu-item text-red-600">Өшіру</button>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-          </template>
         </div>
       </template>
 
@@ -543,7 +665,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import type { QuizResponse, QuizAssignmentResponse } from '@/api/quiz'
 import { h } from 'vue'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
@@ -554,7 +678,6 @@ import type { StudentInfo } from '@/api/teacher'
 import { useCatalogStore } from '@/stores/catalog'
 import { useAuthStore } from '@/stores/auth'
 import { useQuizStore } from '@/stores/quiz'
-import QuizCreator from '@/components/teacher/QuizCreator.vue'
 
 defineOptions({ name: 'TeacherDashboard' })
 
@@ -586,6 +709,19 @@ const tabs = ref([
 
 const activeTab = ref('glance')
 const hoverTab = ref<string | null>(null)
+const route = useRoute()
+
+// Read tab from URL query (?tab=quizzes)
+if (route.query.tab && typeof route.query.tab === 'string') {
+  activeTab.value = route.query.tab
+}
+
+// Watch for route query changes
+watch(() => route.query.tab, (newTab) => {
+  if (newTab && typeof newTab === 'string') {
+    activeTab.value = newTab
+  }
+})
 
 const teacherStore = useTeacherStore()
 const catalogStore = useCatalogStore()
@@ -594,11 +730,8 @@ const quizStore = useQuizStore()
 
 const { students, loading: loadingStudents, error: studentsError } = storeToRefs(teacherStore)
 const { grades } = storeToRefs(catalogStore)
-const { quizzes, loading: loadingQuizzes, error: quizzesError } = storeToRefs(quizStore)
+const { quizzes, error: quizzesError } = storeToRefs(quizStore)
 
-const isCreatingQuiz = ref(false)
-const isEditingQuiz = ref(false)
-const selectedEditQuiz = ref<any>(null)
 
 // Dashboard analytics data
 const loadingData = ref(true)
@@ -623,37 +756,172 @@ const overviewData = ref<{
 }>({ total_time_sec: 0, skills_practiced: 0, avg_accuracy_percent: 0, total_questions_answered: 0 })
 
 const showViewQuizModal = ref(false)
-const selectedViewQuiz = ref<any>(null)
+const selectedViewQuiz = ref<QuizResponse | null>(null)
 
-const viewQuiz = (quiz: any) => {
+const viewQuiz = (quiz: QuizResponse) => {
   selectedViewQuiz.value = quiz
   showViewQuizModal.value = true
 }
 
-const editQuiz = (quiz: any) => {
-  selectedEditQuiz.value = quiz
-  isEditingQuiz.value = true
+const editQuiz = (quiz: QuizResponse) => {
+  router.push({ name: 'teacher-quiz-edit', params: { quizId: quiz.id } })
 }
 
-const handleQuizCreationCancel = () => {
-    isCreatingQuiz.value = false
-    isEditingQuiz.value = false
-    selectedEditQuiz.value = null
+
+const router = useRouter()
+
+// Filter and search variables for quizzes
+const searchQuery = ref('')
+const filterStudent = ref('any')
+const openDropdownId = ref<string | null>(null)
+
+const toggleDropdown = (id: string) => {
+  if (openDropdownId.value === id) {
+    openDropdownId.value = null
+  } else {
+    openDropdownId.value = id
+  }
 }
 
-const handleQuizCreatedOrUpdated = () => {
-    isCreatingQuiz.value = false
-    isEditingQuiz.value = false
-    selectedEditQuiz.value = null
-    quizStore.fetchQuizzes()
+// Close options dropdown
+const closeDropdown = () => {
+  openDropdownId.value = null
 }
 
-const confirmDeleteQuiz = async (quiz: any) => {
-  if (confirm(`"${quiz.name}" квизін өшіргіңіз келетініне сенімдісіз бе?`)) {
+const filteredQuizzes = computed(() => {
+  let list = quizzes.value || []
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(item => item.name.toLowerCase().includes(q))
+  }
+  if (filterStudent.value !== 'any') {
+    list = list.filter(quiz => 
+      (quiz.assignments || []).some(a => a.student_id === filterStudent.value || (!a.student_id && !a.classroom_id))
+    )
+  }
+  return list
+})
+
+const activeQuizzes = computed(() => {
+  return filteredQuizzes.value.filter(quiz => {
+    const assignments = quiz.assignments || []
+    if (assignments.length === 0) return false
+    return assignments.some(a => !a.end_at || new Date(a.end_at) > new Date())
+  })
+})
+
+const draftQuizzes = computed(() => {
+  return filteredQuizzes.value.filter(quiz => (quiz.assignments || []).length === 0)
+})
+
+const pastQuizzes = computed(() => {
+  return filteredQuizzes.value.filter(quiz => {
+    const assignments = quiz.assignments || []
+    if (assignments.length === 0) return false
+    return assignments.every(a => a.end_at && new Date(a.end_at) <= new Date())
+  })
+})
+
+const getCompletionStats = (quiz: QuizResponse) => {
+  const assignments = quiz.assignments || []
+  const total = assignments.length
+  const completed = assignments.filter(a => !!a.completed_at).length
+  return { completed, total }
+}
+
+const getCompletionPercent = (quiz: QuizResponse) => {
+  const { completed, total } = getCompletionStats(quiz)
+  if (total === 0) return 0
+  return Math.round((completed / total) * 100)
+}
+
+const getAverageScoreText = (quiz: QuizResponse) => {
+  const { completed, total } = getCompletionStats(quiz)
+  if (completed === 0) return '0%'
+  const completedAssignments = (quiz.assignments || []).filter(a => !!a.completed_at)
+  if (completedAssignments.length === 0) return '0%'
+  const sumScore = completedAssignments.reduce((acc, curr) => acc + (curr.score || 0), 0)
+  const average = Math.round(sumScore / completedAssignments.length)
+  return `${average}% (${completed}/${total} оқушы)`
+}
+
+const KAZAKH_MONTHS = [
+  'қаңтар', 'ақпан', 'наурыз', 'сәуір', 'мамыр', 'маусым',
+  'шілде', 'тамыз', 'қыркүйек', 'қазан', 'қараша', 'желтоқсан'
+]
+
+const formatDateShort = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ''
+  const day = date.getDate()
+  const month = KAZAKH_MONTHS[date.getMonth()]
+  return `${day} ${month}`
+}
+
+const formatEndTime = (dateStr?: string | null) => {
+  if (!dateStr) return 'Аяқталу уақыты жоқ'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return 'Аяқталу уақыты жоқ'
+  const day = date.getDate()
+  const month = KAZAKH_MONTHS[date.getMonth()]
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${day} ${month}, ${hours}:${minutes}`
+}
+
+const formatAssignedStudents = (assignments?: QuizAssignmentResponse[]) => {
+  if (!assignments || assignments.length === 0) return 'Оқушылар таңдалмаған'
+  if (students.value.length > 0 && assignments.length === students.value.length) {
+    return 'Барлық оқушылар'
+  }
+  if (assignments.length === 1) {
+    const studentId = assignments[0].student_id
+    const student = students.value.find(s => s.id === studentId)
+    return student ? student.full_name : '1 оқушы'
+  }
+  return `${assignments.length} оқушы`
+}
+
+const getPeriodDates = (quiz: QuizResponse) => {
+  const assignments = quiz.assignments || []
+  if (!assignments.length) return ''
+  const first = assignments[0]
+  const start = formatDateShort(first.created_at)
+  const end = first.end_at ? formatDateShort(first.end_at) : 'Қазіргі уақыт'
+  const date = new Date(first.end_at || first.created_at)
+  const year = Number.isNaN(date.getTime()) ? new Date().getFullYear() : date.getFullYear()
+  return `${start} - ${end}, ${year}`
+}
+
+const endQuiz = async (quiz: QuizResponse) => {
+  const assignments = quiz.assignments || []
+  const activeAssignments = assignments.filter((a: QuizAssignmentResponse) => !a.end_at || new Date(a.end_at) > new Date())
+  if (activeAssignments.length === 0) return
+  if (confirm(`"${quiz.name}" квизін қазір аяқтауды растайсыз ба?`)) {
+    try {
+      await Promise.all(
+        activeAssignments.map(a => quizStore.endQuizAssignment(a.id))
+      )
+      alert('Квиз сәтті аяқталды!')
+    } catch (err) {
+      console.error(err)
+      alert('Квизді аяқтау мүмкін болмады.')
+    }
+  }
+}
+
+const viewQuizReport = (quiz: QuizResponse) => {
+  router.push({ name: 'analytics', query: { tab: 'quizzes', quizId: quiz.id } })
+}
+
+const confirmDeleteQuiz = async (quiz: QuizResponse) => {
+  if (confirm(`"${quiz.name}" квизін өшіруді растайсыз ба?`)) {
     try {
       await quizStore.deleteQuiz(quiz.id);
-    } catch (e: any) {
-      alert('Квизді өшіру мүмкін болмады: ' + (e.response?.data?.message || e.message));
+    } catch (e: unknown) {
+      const err = e as { response?: { data?: { message?: string } }; message?: string }
+      alert('Квизді өшіру мүмкін болмады: ' + (err.response?.data?.message || err.message));
     }
   }
 }
@@ -661,7 +929,7 @@ const confirmDeleteQuiz = async (quiz: any) => {
 const studentsBreakdown = ref<StudentBreakdown[]>([])
 
 const teacherName = computed(() => {
-  return authStore.user?.full_name || 'Мұғалім'
+  return authStore.user?.full_name || 'Teacher'
 })
 
 // Selected student or "all" computed data
@@ -875,6 +1143,7 @@ const stopLivePolling = () => {
 
 // Start/stop polling when tools tab is active
 watch(activeTab, (tab) => {
+
   if (tab === 'tools') {
     startLivePolling()
     stopGlancePolling()
@@ -2033,6 +2302,419 @@ const confirmDelete = async (student: StudentInfo) => {
 }
 .transition-transform {
   transition: transform 0.2s ease;
+}
+
+/* Quizzes Main Styles */
+.quizzes-section {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 22px 0 56px;
+}
+.quizzes-top-action {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.create-quiz-action-btn {
+  background: #00a99d;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(0, 169, 157, 0.22);
+}
+.create-quiz-action-btn:hover {
+  background: #009287;
+  box-shadow: 0 4px 10px rgba(0, 169, 157, 0.28);
+}
+
+/* Filters */
+.quizzes-filters-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  background: transparent;
+  padding: 8px 0;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  flex-wrap: wrap;
+}
+.filter-student-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+.filter-student-select {
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  font-weight: 500;
+  color: #334155;
+  outline: none;
+}
+.filter-student-select:focus {
+  border-color: #38b000;
+  box-shadow: 0 0 0 2px rgba(56, 176, 0, 0.1);
+}
+.search-quiz-group {
+  position: relative;
+  width: 100%;
+  max-width: 320px;
+}
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: #94a3b8;
+}
+.search-quiz-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 14px;
+  color: #334155;
+  outline: none;
+}
+.search-quiz-input:focus {
+  border-color: #38b000;
+  box-shadow: 0 0 0 2px rgba(56, 176, 0, 0.1);
+}
+
+/* Loading & State wrappers */
+.loading-state-wrapper,
+.error-state-wrapper,
+.empty-state-wrapper {
+  background: white;
+  padding: 48px;
+  text-align: center;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  margin-bottom: 24px;
+}
+.empty-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 8px;
+}
+.empty-sub {
+  font-size: 14px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* Blocks container */
+.quizzes-blocks-container {
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+  margin-bottom: 48px;
+}
+.quiz-block-section {
+  display: flex;
+  flex-direction: column;
+}
+.block-section-title {
+  font-size: 29px;
+  line-height: 1.15;
+  font-weight: 600;
+  color: #555;
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+.quiz-block-empty {
+  font-size: 14px;
+  color: #94a3b8;
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+/* Grid layout */
+.quiz-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+.quiz-cards-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+/* Cards */
+.quiz-card-item {
+  background: white;
+  border: 1px solid #e5eef2;
+  border-radius: 8px;
+  box-shadow: 0 2px 7px rgba(33, 77, 88, 0.08);
+  position: relative;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  transition: box-shadow 0.2s ease;
+  width: 100%;
+  max-width: 346px;
+  min-height: 190px;
+}
+.quiz-card-item:hover {
+  box-shadow: 0 4px 12px rgba(33, 77, 88, 0.12);
+}
+.card-header {
+  padding: 15px 14px 10px;
+  border-bottom: 1px solid #c7dfe9;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.chart-mini-icon {
+  font-size: 16px;
+}
+.card-title-text {
+  font-size: 16px;
+  font-weight: 800;
+  color: #555;
+}
+.options-trigger-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.options-trigger-btn:hover {
+  background: #f1f5f9;
+}
+.options-dropdown-menu {
+  position: absolute;
+  right: 0;
+  margin-top: 4px;
+  width: 128px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  padding: 4px 0;
+  z-index: 9999;
+}
+.dropdown-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #334155;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+.dropdown-menu-item:hover {
+  background: #f8fafc;
+}
+
+.card-body {
+  padding: 13px 14px 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  color: #555;
+}
+.info-icon {
+  width: 16px;
+  display: inline-flex;
+  justify-content: center;
+  color: #8fc7d4;
+  font-size: 18px;
+  line-height: 1;
+}
+.info-text {
+  font-weight: 600;
+}
+.completion-badge-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: #159be8;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Progress bar */
+.progress-bar-container {
+  height: 12px;
+  background: #e7fbff;
+  border: 1px solid #77cdf7;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: #26b5f4;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.card-footer {
+  padding: 10px 14px 14px;
+  border-top: none;
+  background: white;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  display: flex;
+  justify-content: center;
+}
+
+.end-quiz-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: white;
+  border: 1px solid #20aef2;
+  color: #1aa7ea;
+  font-weight: 500;
+  font-size: 16px;
+  padding: 7px 13px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.end-quiz-btn:hover {
+  background: #eefaff;
+  border-color: #159be8;
+}
+.caret-icon {
+  font-size: 10px;
+  color: #159be8;
+  border-left: 1px solid #20aef2;
+  padding-left: 11px;
+  margin-left: 12px;
+}
+
+.keep-adding-btn {
+  display: inline-block;
+  background: #00a99d;
+  color: white;
+  font-weight: 700;
+  font-size: 16px;
+  padding: 9px 38px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+.keep-adding-btn:hover {
+  background: #009287;
+}
+
+/* Past Quizzes Table */
+.past-quizzes-table-card {
+  background: white;
+  border: none;
+  border-radius: 4px;
+  overflow: visible;
+  box-shadow: 0 1px 3px rgba(33, 77, 88, 0.06);
+  width: 100%;
+}
+.past-quizzes-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+.past-quizzes-table th {
+  background: transparent;
+  color: #0878c9;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: none;
+  padding: 10px 16px;
+  border-bottom: 2px solid #149fee;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.past-quizzes-table th::after {
+  content: ' ↕';
+  font-size: 10px;
+  color: #b0bec5;
+}
+.past-quizzes-table td {
+  padding: 10px 16px;
+  border-bottom: none;
+  color: #555;
+  vertical-align: middle;
+}
+.past-quizzes-table tr:hover td {
+  background: #f7fcff;
+}
+.past-quizzes-table th.no-sort::after {
+  content: '';
+}
+.past-quizzes-table th.no-sort {
+  cursor: default;
+}
+.quiz-name-cell {
+  font-weight: 600;
+  color: #555;
+}
+.average-score-cell {
+  font-weight: 600;
+  color: #555;
+}
+.report-action-cell {
+  white-space: nowrap;
+}
+.view-report-link-btn {
+  background: none;
+  border: none;
+  color: #159be8;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.view-report-link-btn:hover {
+  background: #eefaff;
+}
+.graph-icon {
+  font-size: 16px;
 }
 
 </style>

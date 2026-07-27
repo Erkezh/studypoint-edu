@@ -36,7 +36,7 @@
             v-for="grade in grades"
             :key="grade.id"
             :class="[
-              'relative flex h-[64px] w-full items-center rounded-[14px] border-2 bg-white pl-16 pr-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm',
+              'relative flex h-[64px] w-full items-center rounded-full border-2 bg-white pl-16 pr-3 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm',
               getGradeCardClasses(grade.number).card,
             ]"
             @click="navigateToClass(grade.number)"

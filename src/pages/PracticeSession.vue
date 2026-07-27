@@ -33,6 +33,17 @@
         </div>
       </div>
 
+      <!-- Teacher Mode Warning -->
+      <div v-if="authStore.user?.role === 'TEACHER' || authStore.user?.role === 'ADMIN'" class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-4 flex items-start gap-3">
+        <svg class="w-6 h-6 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+        <div>
+          <p class="font-semibold text-amber-800">Сіз мұғалім ретінде кірдіңіз</p>
+          <p class="text-sm text-amber-700 mt-0.5">Бұл тесттің нәтижелері сақталмайды, өйткені сіз мұғалімсіз.</p>
+        </div>
+      </div>
+
       <!-- Loading -->
       <div v-if="practiceStore.loading && !practiceStore.currentSession" class="text-center py-12">
         <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
@@ -170,16 +181,28 @@
                 <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
                    <iframe v-if="pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
                      :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
-                     sandbox="allow-scripts allow-same-origin" class="rounded-xl" />
+                     sandbox="allow-scripts allow-forms allow-same-origin" class="rounded-xl" />
                    <div v-else class="text-red-500 text-sm flex items-center gap-2">
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                      Плагин не загружен.
                    </div>
-                   <button v-if="pluginIframeSrc" @click="requestPluginAnswer"
-                     :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                     class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                     {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
-                   </button>
+                   <div v-if="pluginIframeSrc && !lastResult" class="flex gap-3">
+                     <button @click="requestPluginAnswer"
+                       :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
+                       class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                       {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
+                     </button>
+                   </div>
+                   <div v-else-if="lastResult" class="flex justify-end pt-2">
+                     <button @click="loadNextQuestion"
+                       :disabled="loadingNext"
+                       class="px-8 py-3 bg-lime-500 hover:bg-lime-600 text-white font-bold rounded-lg shadow-md transition-colors flex items-center gap-2">
+                       <span>{{ loadingNext ? 'Жүктелуде...' : 'Келесі' }}</span>
+                       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                       </svg>
+                     </button>
+                   </div>
                 </div>
 
                 <!-- Unknown type -->
@@ -419,7 +442,7 @@
 <script setup lang="ts">
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
 import { useGamificationStore } from '@/stores/gamification'
@@ -449,10 +472,40 @@ const gamificationStore = useGamificationStore()
 const trialQuestions = useTrialQuestions()
 const catalogStore = useCatalogStore()
 
-// Статистика навыка для отображения предыдущего результата
-const previousBestScore = ref<number | null>(null)
+const submitting = ref(false)
+const numericAnswer = ref<number | null>(null)
+const textAnswer = ref('')
+const lastResult = ref<PracticeSubmitResponse | null>(null)
+const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
+const questionStartTime = ref(Date.now())
+const accumulatedQuestionTimeMs = ref(0)
+const activeQuestionStartedAt = ref<number | null>(Date.now())
+const showingResult = ref(false) // Показывать ли результат вместо вопроса
+const userAnswer = ref<unknown>(null) // Сохраненный ответ пользователя
+const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
+const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
+const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
+const loadingNext = ref(false) // Загрузка следующего вопроса
+const currentTime = ref(0) // Текущее время сессии в секундах
+let timeInterval: number | null = null // Интервал для обновления времени
+const isComponentMounted = ref(false)
+const error = ref<string | null>(null) // Ошибка для отображения
+const previousBestScore = ref(0)
+const showRewardModal = ref(false)
 
-const currentQuestion = computed(() => practiceStore.currentQuestion)
+// Отображаемый вопрос в сессии (не меняется во время показа результата)
+const displayedQuestion = ref<QuestionPublic | null>(null)
+
+// Обновляем отображаемый вопрос при смене вопроса в store
+watch(() => practiceStore.currentQuestion, (newQ) => {
+  if (!showingResult.value && !submitting.value && newQ) {
+    if (!displayedQuestion.value || displayedQuestion.value.id !== newQ.id) {
+      displayedQuestion.value = { ...newQ }
+    }
+  }
+}, { immediate: true })
+
+const currentQuestion = computed(() => displayedQuestion.value || practiceStore.currentQuestion)
 
 // URL для плагинов (src)
 const pluginIframeSrc = computed(() => {
@@ -463,7 +516,10 @@ const pluginIframeSrc = computed(() => {
   const ver = q.data.plugin_version as string | undefined
   const entry = q.data.entry as string | undefined
   if (!id || !ver || !entry) return ''
-  return `/static/modules/${id}/${ver}/${entry}?embed=1`
+
+  const seed = q.data.seed !== undefined && q.data.seed !== null ? `&seed=${q.data.seed}` : ''
+  const level = q.data.level !== undefined && q.data.level !== null ? `&level=${q.data.level}` : ''
+  return `/static/modules/${id}/${ver}/${entry}?embed=1${seed}${level}`
 })
 
 // Динамическая высота iframe от плагина
@@ -487,23 +543,6 @@ const pluginEmbedHeight = computed(() => {
   // Используем высоту из manifest или минимум 800, максимум 1400
   return Math.min(1400, Math.max(800, Number(q.data.height) || 900))
 })
-
-const submitting = ref(false)
-const numericAnswer = ref<number | null>(null)
-const textAnswer = ref('')
-const lastResult = ref<PracticeSubmitResponse | null>(null)
-const pluginIframeRef = ref<HTMLIFrameElement | null>(null)
-const questionStartTime = ref(Date.now())
-const showingResult = ref(false) // Показывать ли результат вместо вопроса
-const userAnswer = ref<unknown>(null) // Сохраненный ответ пользователя
-const lastQuestion = ref<QuestionPublic | null>(null) // Последний вопрос для отображения правильного ответа
-const lastQuestionData = ref<any>(null) // Визуальные данные ВОПРОСА (числовая прямая, дробь и т.д.)
-const lastAnswerData = ref<any>(null) // Визуальные данные ОТВЕТОВ (сетки, drag-drop и т.д.)
-const loadingNext = ref(false) // Загрузка следующего вопроса
-const currentTime = ref(0) // Текущее время сессии в секундах
-let timeInterval: number | null = null // Интервал для обновления времени
-const error = ref<string | null>(null) // Ошибка для отображения
-const showRewardModal = ref(false)
 
 // Для всех авторизованных пользователей ограничения не применяются
 // hasActiveSubscription используется для будущего функционала подписок
@@ -631,6 +670,30 @@ const stopTimer = () => {
     clearInterval(timeInterval)
     timeInterval = null
   }
+}
+
+const startQuestionTimer = () => {
+  if (activeQuestionStartedAt.value === null) {
+    activeQuestionStartedAt.value = Date.now()
+  }
+}
+
+const pauseQuestionTimer = () => {
+  if (activeQuestionStartedAt.value !== null) {
+    accumulatedQuestionTimeMs.value += Date.now() - activeQuestionStartedAt.value
+    activeQuestionStartedAt.value = null
+  }
+}
+
+const resetQuestionTimer = () => {
+  questionStartTime.value = Date.now()
+  accumulatedQuestionTimeMs.value = 0
+  activeQuestionStartedAt.value = Date.now()
+}
+
+const getActiveQuestionTimeSec = () => {
+  const currentActiveMs = activeQuestionStartedAt.value === null ? 0 : Date.now() - activeQuestionStartedAt.value
+  return Math.max(0, Math.min(3600, Math.floor((accumulatedQuestionTimeMs.value + currentActiveMs) / 1000)))
 }
 
 // Функция для форматирования дробей в красивом виде
@@ -1016,7 +1079,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
   let submittedAnswer: Record<string, any> | null = null
 
   try {
-    const timeSpent = Math.max(0, Math.min(3600, Math.floor((Date.now() - questionStartTime.value) / 1000)))
+    const timeSpent = getActiveQuestionTimeSec()
 
     // Формируем submitted_answer - API ожидает объект Record<string, any>
     // Для MCQ API ожидает { choice: "..." } - ОБЯЗАТЕЛЬНО строка
@@ -1116,21 +1179,26 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       time_spent_sec: timeSpent,
     }
 
+    const pluginWindow = qType === 'PLUGIN' ? pluginIframeRef.value?.contentWindow : null
     const response = await practiceStore.submitAnswer(practiceStore.currentSession.id, requestData)
 
     if (response) {
-      // Сохраняем результат и показываем его
+      // Для PLUGIN не показываем внешний экран результата:
+      // iframe сам отвечает за отображение правильного/неправильного ответа.
+      const shouldShowExternalResult = qType !== 'PLUGIN'
+
       lastResult.value = response
-      showingResult.value = true
+      showingResult.value = shouldShowExternalResult
+
       saveToRecentSessions()
       userAnswer.value = answer
       gamificationStore.applyReward(response.reward)
       showRewardModal.value = Boolean(response.is_correct && response.reward && (response.reward.xp_gained || response.reward.coins_gained))
 
       // Отправляем результат в iframe для PLUGIN
-      if (qType === 'PLUGIN' && pluginIframeRef.value?.contentWindow) {
+      if (qType === 'PLUGIN' && pluginWindow) {
         try {
-          pluginIframeRef.value.contentWindow.postMessage(
+          pluginWindow.postMessage(
             {
               type: 'SERVER_RESULT',
               correct: response.is_correct,
@@ -1144,15 +1212,15 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         }
       }
 
-      // Синхронизируем время с сервером
-      if (response.session?.time_elapsed_sec !== undefined) {
-        currentTime.value = response.session.time_elapsed_sec
-      }
+      // Таймер продолжается непрерывно без скачков при ответе на вопросы
 
       // SmartScore 100: завершаем сессию
       const sessionAny = response.session as any
       const currentSmartScore = sessionAny?.current_smartscore || sessionAny?.smartscore || 0
       if (currentSmartScore >= 100 && !response.finished) {
+        if (qType === 'PLUGIN') {
+          return
+        }
         try {
           await practiceStore.finishSession(practiceStore.currentSession!.id)
         } catch (err) {
@@ -1171,7 +1239,9 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 
       // Сессия завершена
       if (response.finished) {
-        stopTimer()
+        if (qType !== 'PLUGIN') {
+          stopTimer()
+        }
         if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
           showTrialEndedModal.value = true
         }
@@ -1191,7 +1261,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
           lastQuestion.value = null
           lastQuestionData.value = null
           lastAnswerData.value = null
-          questionStartTime.value = Date.now()
+          resetQuestionTimer()
           submitting.value = false
           return
         }
@@ -1238,11 +1308,15 @@ const loadNextQuestion = async () => {
     textAnswer.value = ''
 
     // Загружаем следующий вопрос
-    // lastResult.value уже null, поэтому всегда загружаем следующий вопрос
     if (!practiceStore.currentQuestion) {
       await practiceStore.getNextQuestion(practiceStore.currentSession.id)
     }
-    questionStartTime.value = Date.now()
+
+    if (practiceStore.currentQuestion) {
+      displayedQuestion.value = { ...practiceStore.currentQuestion }
+    }
+
+    resetQuestionTimer()
   } catch (err: any) {
     const status = err.response?.status
 
@@ -1374,10 +1448,30 @@ const saveToRecentSessions = () => {
   }
 }
 
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    stopTimer()
+    pauseQuestionTimer()
+    practiceStore.stopHeartbeat()
+  } else {
+    if (practiceStore.currentSession && !practiceStore.currentSession.finished_at) {
+      startTimer()
+      startQuestionTimer()
+      practiceStore.startHeartbeat(practiceStore.currentSession.id)
+    }
+  }
+}
+
 onMounted(async () => {
+  isComponentMounted.value = true
   window.addEventListener('message', pluginMessageHandler)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
   try {
     const session = await practiceStore.getSession(props.sessionId)
+    if (!isComponentMounted.value) {
+      practiceStore.resetSession()
+      return
+    }
 
     // Загружаем статистику навыка для отображения предыдущего результата
     if (session?.skill_id) {
@@ -1408,15 +1502,35 @@ onMounted(async () => {
       await practiceStore.getNextQuestion(props.sessionId)
     }
 
-    questionStartTime.value = Date.now()
+    if (!isComponentMounted.value) {
+      practiceStore.resetSession()
+      return
+    }
+
+    resetQuestionTimer()
     startTimer()
+    if (practiceStore.currentSession?.id) {
+      practiceStore.startHeartbeat(practiceStore.currentSession.id)
+    }
   } catch (err: any) {
     console.error('Failed to load session:', err)
   }
 })
 
+onBeforeRouteLeave(() => {
+  stopTimer()
+  pauseQuestionTimer()
+  practiceStore.stopHeartbeat()
+  practiceStore.resetSession()
+})
+
 onUnmounted(() => {
+  isComponentMounted.value = false
   window.removeEventListener('message', pluginMessageHandler)
   stopTimer()
+  pauseQuestionTimer()
+  practiceStore.stopHeartbeat()
+  practiceStore.resetSession()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>

@@ -72,9 +72,6 @@ export const usePracticeStore = defineStore('practice', () => {
           localStorage.setItem(`session_${numericSkillId}`, response.data.id)
         }
 
-        // Запускаем heartbeat
-        startHeartbeat(response.data.id)
-
         // Сохраняем состояние в localStorage для восстановления
         saveSessionState()
 
@@ -149,7 +146,6 @@ export const usePracticeStore = defineStore('practice', () => {
         currentQuestion.value = response.data.current_question || null
         updateActivity()
         saveSessionState()
-        startHeartbeat(sessionId)
         return response.data
       }
       throw new Error('Session not found')
@@ -358,12 +354,26 @@ export const usePracticeStore = defineStore('practice', () => {
 
   // Heartbeat для обновления времени активности и присутствия (presence)
   const startHeartbeat = (sessionId: string) => {
+    const isPracticeRoute = () => {
+      const route = router.currentRoute.value
+      return route.name === 'practice' && String(route.params.sessionId || '') === sessionId
+    }
+
+    if (!isPracticeRoute()) {
+      stopHeartbeat()
+      return
+    }
+
     if (heartbeatTimer.value) {
       clearInterval(heartbeatTimer.value)
     }
 
     const sendHeartbeatIfActive = async () => {
       if (!currentSession.value) return
+      if (!isPracticeRoute()) {
+        stopHeartbeat()
+        return
+      }
 
       const now = Date.now()
       const inactiveTime = now - lastActivity.value
@@ -463,5 +473,7 @@ export const usePracticeStore = defineStore('practice', () => {
     restoreSessionState,
     resetSession,
     updateActivity,
+    startHeartbeat,
+    stopHeartbeat,
   }
 })

@@ -254,11 +254,15 @@ class PracticeService:
         else:
             # Старый способ - получаем вопрос из БД
             if ps.last_question_id is not None:
-                already = await self.practice.has_attempt(session_id=ps.id, question_id=ps.last_question_id)
-                if not already:
-                    q = await self.questions.get(ps.last_question_id)
-                    if q is not None:
-                        return {"finished": False, "question": _to_question_public(q).model_dump(mode="json")}
+                last_q = await self.questions.get(ps.last_question_id)
+                # Для PLUGIN/INTERACTIVE всегда выбираем новый вопрос,
+                # т.к. плагин генерирует случайный контент каждый раз.
+                is_plugin_type = last_q and last_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE)
+                if not is_plugin_type:
+                    already = await self.practice.has_attempt(session_id=ps.id, question_id=ps.last_question_id)
+                    if not already:
+                        if last_q is not None:
+                            return {"finished": False, "question": _to_question_public(last_q).model_dump(mode="json")}
 
             q = await self._select_next_question(ps)
             ps.last_question_id = q.id
@@ -271,11 +275,41 @@ class PracticeService:
             q_public = q
         else:
             q_public = _to_question_public(q)
+
+        # Для PLUGIN/INTERACTIVE генерируем случайный seed и уровень на основе SmartScore
+        if q_public.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+            import random
+            seed = random.randint(1, 2147483647)
+            
+            score = ps.current_smartscore or 0
+            if score >= 90:
+                lvl = 5
+            elif score >= 75:
+                lvl = 4
+            elif score >= 55:
+                lvl = 3
+            elif score >= 30:
+                lvl = 2
+            else:
+                lvl = 1
+
+            ps.state["current_question_seed"] = seed
+            ps.state["current_question_level"] = lvl
+            
+            # Добавляем в data копию, чтобы отправить клиенту
+            q_public.data = {**(q_public.data or {}), "seed": seed, "level": lvl}
+            q_public.level = lvl
+
         return {"finished": False, "question": q_public.model_dump(mode="json")}
 
     async def submit(self, *, user_id, session_id: str, req: PracticeSubmitRequest, user_role: str | None = None) -> PracticeSubmitResponse:
         import logging
         logger = logging.getLogger(__name__)
+        
+        is_correct = False
+        explanation = ""
+        q_data = None
+        question = None
         
         user_uuid = _parse_uuid(user_id)
         ps = await self.practice.get_session(session_id=session_id)
@@ -360,8 +394,8 @@ class PracticeService:
             logger.info(f"Validating submitted answer for question {current_q_id}")
             _validate_submitted_answer(question_type, question_data, req.submitted_answer)
             
-            # Проверяем ответ используя генератор
-            logger.info(f"Calling GeneratorService.validate_answer for question {current_q_id}")
+            assert skill is not None
+            assert skill.generator_code is not None
             is_correct, explanation = await GeneratorService.validate_answer(
                 skill.generator_code,
                 q_data,
@@ -404,7 +438,7 @@ class PracticeService:
                     )
                     raise AppError(status_code=409, code="conflict", message="Question does not match current session state")
 
-            question = await self.questions.get(req.question_id)
+            question = await self.questions.get(int(req.question_id))
             if question is None or question.skill_id != ps.skill_id:
                 raise AppError(status_code=404, code="not_found", message="Question not found")
 
@@ -414,6 +448,8 @@ class PracticeService:
             question_type = question.type
             question_data = question.data
             question_level = question.level
+            if question_type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                question_level = ps.state.get("current_question_level") or question.level
             explanation = question.explanation
 
             if question_type == QuestionType.PLUGIN:
@@ -580,10 +616,10 @@ class PracticeService:
 
         now = utc_now()
         zone_before = ps.current_zone or zone_for_score(ps.current_smartscore)
-        streak_before = int(ps.current_streak_correct or 0)
+        streak_before = ps.current_streak_correct or 0
         window = ps.state.get("recent_window") or {"correct": 0, "total": 0}
         stats = WindowStats(correct=int(window.get("correct", 0)), total=int(window.get("total", 0)))
-        score_before = int(ps.current_smartscore or 0)
+        score_before = ps.current_smartscore or 0
         
         # Логируем состояние перед вычислением SmartScore
         logger.info(
@@ -638,6 +674,7 @@ class PracticeService:
 
         # Для генераторов создаем вопрос с данными из q_data
         if is_generator_skill:
+            assert q_data is not None
             logger.info(f"Creating PracticeAttempt for generator question {req.question_id}")
             # Для генераторов используем данные из q_data
             # Для генераторов question_id = None, так как вопроса нет в базе данных
@@ -672,24 +709,32 @@ class PracticeService:
             )
             logger.info(f"PracticeAttempt created for generator, adding to database")
         else:
-            logger.info(f"Creating PracticeAttempt for regular question {question.id if question else 'None'}")
-            # Для PLUGIN/INTERACTIVE разрешаем несколько попыток, не привязывая к question_id
-            is_plugin_like = question.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE)
+            active_seed = ps.state.get("current_question_seed")
+            if not active_seed and isinstance(req.submitted_answer, dict):
+                sub_dict = req.submitted_answer
+                active_seed = sub_dict.get("seed") or (sub_dict.get("questionData") if isinstance(sub_dict.get("questionData"), dict) else {}).get("seed")
+
+            q_payload_data = {**(question.data or {})}
+            if active_seed is not None:
+                q_payload_data["seed"] = active_seed
+            q_payload_data["level"] = question_level
+
             attempt = PracticeAttempt(
                 session_id=ps.id,
                 user_id=user_uuid,
                 skill_id=ps.skill_id,
-                question_id=None if is_plugin_like else question.id,
-                question_level=question.level,
+                question_id=question.id,
+                question_level=question_level,
                 question_payload={
                     "id": question.id,
                     "skill_id": question.skill_id,
                     "type": question.type.value,
                     "prompt": question.prompt,
-                    "data": question.data,
+                    "data": q_payload_data,
                     "correct_answer": question.correct_answer,
                     "explanation": explanation,
-                    "level": question.level,
+                    "level": question_level,
+                    "seed": active_seed,
                 },
                 submitted_answer=req.submitted_answer,
                 is_correct=is_correct,
@@ -703,7 +748,7 @@ class PracticeService:
             )
         
         logger.info(f"Adding PracticeAttempt to database: session_id={attempt.session_id}, question_id={attempt.question_id}, is_correct={attempt.is_correct}")
-        is_parent_preview = user_role == "PARENT"
+        is_parent_preview = user_role in ("PARENT", "TEACHER", "ADMIN")
         if not is_parent_preview:
             await self.practice.add_attempt(attempt)
             logger.info(f"PracticeAttempt added successfully")
@@ -712,10 +757,10 @@ class PracticeService:
         ps.total_correct += 1 if is_correct else 0
         ps.total_incorrect += 0 if is_correct else 1
         ps.current_streak_correct = score_res.streak
-        ps.max_streak_correct = max(int(ps.max_streak_correct or 0), score_res.streak)
+        ps.max_streak_correct = max(ps.max_streak_correct or 0, score_res.streak)
         ps.current_smartscore = score_res.smartscore
         ps.current_zone = score_res.zone
-        ps.best_smartscore = max(int(ps.best_smartscore or 0), ps.current_smartscore)
+        ps.best_smartscore = max(ps.best_smartscore or 0, ps.current_smartscore)
         
         # Обновляем серию неправильных ответов в state
         ps.state["wrong_streak"] = wrong_streak_after
@@ -728,11 +773,11 @@ class PracticeService:
             ps.state["current_question_id"] = None
 
         # Update rolling window stats for consistency effects.
-        window_total = min(20, int(window.get("total", 0)) + 1)
-        window_correct = int(window.get("correct", 0)) + (1 if is_correct else 0)
+        window_total = min(20, (window.get("total", 0)) + 1)
+        window_correct = (window.get("correct", 0)) + (1 if is_correct else 0)
         if window_total == 20:
             # crude decay once we hit the window size
-            window_correct = int(round(window_correct * 0.95))
+            window_correct = round(window_correct * 0.95)
         ps.state["recent_window"] = {"correct": window_correct, "total": window_total}
 
         if ps.current_zone == PracticeZone.CHALLENGE and not ps.state.get("entered_challenge_zone_at"):
@@ -743,6 +788,10 @@ class PracticeService:
         ps.correct_count = ps.total_correct
         ps.wrong_count = ps.total_incorrect
         ps.smartscore = ps.current_smartscore
+        # Accumulate actual active time spent on question (capped at 300s) instead of wall-clock idle time
+        if req.time_spent_sec and req.time_spent_sec > 0:
+            ps.active_time_seconds = (ps.active_time_seconds or 0) + min(req.time_spent_sec, 300)
+        ps.last_activity_at = now
         ps.time_elapsed_sec = ps.active_time_seconds
 
         if not is_parent_preview:
@@ -761,16 +810,16 @@ class PracticeService:
                 )
             snap.last_practiced_at = now
             snap.last_smartscore = ps.current_smartscore
-            snap.best_smartscore = max(int(snap.best_smartscore or 0), ps.current_smartscore)
-            snap.best_smartscore_all_time = max(int(snap.best_smartscore_all_time or 0), ps.current_smartscore)
-            snap.total_questions_answered_all_time = int(snap.total_questions_answered_all_time or 0) + 1
-            snap.total_time_seconds_all_time = int(snap.total_time_seconds_all_time or 0) + int(req.time_spent_sec)
+            snap.best_smartscore = max(snap.best_smartscore or 0, ps.current_smartscore)
+            snap.best_smartscore_all_time = max(snap.best_smartscore_all_time or 0, ps.current_smartscore)
+            snap.total_questions_answered_all_time = (snap.total_questions_answered_all_time or 0) + 1
+            snap.total_time_seconds_all_time = (snap.total_time_seconds_all_time or 0) + req.time_spent_sec
 
-            prev_total = int(snap.total_questions or 0)
+            prev_total = snap.total_questions or 0
             snap.total_questions = prev_total + 1
-            prev_correct_est = int(round(prev_total * (int(snap.accuracy_percent or 0) / 100.0)))
+            prev_correct_est = round(prev_total * ((snap.accuracy_percent or 0) / 100.0))
             new_correct_est = prev_correct_est + (1 if is_correct else 0)
-            snap.accuracy_percent = int(round((new_correct_est / max(1, snap.total_questions)) * 100))
+            snap.accuracy_percent = round((new_correct_est / max(1, snap.total_questions)) * 100)
             await self.practice.upsert_snapshot(snap)
 
             await self._update_assignment_status(student_id=user_uuid, skill_id=ps.skill_id, now=now, session_obj=ps, attempt=attempt)
@@ -805,6 +854,8 @@ class PracticeService:
         # Если тест не завершен, загружаем следующий вопрос
         if not finished:
             if is_generator_skill:
+                assert skill is not None
+                assert skill.generator_code is not None
                 # Для генераторов создаем новый вопрос
                 logger.info("Generating next question for generator skill")
                 try:
@@ -824,12 +875,30 @@ class PracticeService:
                     await self.session.flush()
                     next_q = _generated_to_question_public(q_data, question_id)
                     logger.info(f"Next question generated: {question_id}")
+                    if next_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                        import random
+                        seed = random.randint(1, 2147483647)
+                        score = ps.current_smartscore or 0
+                        if score >= 90:
+                            lvl = 5
+                        elif score >= 75:
+                            lvl = 4
+                        elif score >= 55:
+                            lvl = 3
+                        elif score >= 30:
+                            lvl = 2
+                        else:
+                            lvl = 1
+                        ps.state["current_question_seed"] = seed
+                        ps.state["current_question_level"] = lvl
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(ps, "state")
                 except Exception as e:
                     logger.error(f"Error generating next question: {e}", exc_info=True)
                     # Если генератор не работает, пытаемся использовать вопросы из БД
                     try:
                         next_q = await self._select_next_question(ps)
-                        if next_q:
+                        if next_q is not None:
                             ps.last_question_id = next_q.id
                             ps.state["current_question_id"] = next_q.id
                             ps.state["recent_question_ids"] = _push_recent(ps.state.get("recent_question_ids", []), next_q.id)
@@ -840,10 +909,30 @@ class PracticeService:
                 # Старый способ - получаем вопрос из БД
                 # IXL-like: keep session open; prepare next question immediately.
                 next_q = await self._select_next_question(ps)
-                if next_q:
+                if next_q is not None:
                     ps.last_question_id = next_q.id
                     ps.state["current_question_id"] = next_q.id
                     ps.state["recent_question_ids"] = _push_recent(ps.state.get("recent_question_ids", []), next_q.id)
+
+                    if next_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                        import random
+                        seed = random.randint(1, 2147483647)
+                        score = ps.current_smartscore or 0
+                        if score >= 90:
+                            lvl = 5
+                        elif score >= 75:
+                            lvl = 4
+                        elif score >= 55:
+                            lvl = 3
+                        elif score >= 30:
+                            lvl = 2
+                        else:
+                            lvl = 1
+                        ps.state["current_question_seed"] = seed
+                        ps.state["current_question_level"] = lvl
+
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(ps, "state")
 
         await self.session.flush()
 
@@ -870,7 +959,7 @@ class PracticeService:
             is_correct=is_correct,
             explanation=(None if is_correct else explanation),
             session=session_resp,
-            next_question=_to_question_public(next_q) if next_q is not None else None,
+            next_question=_to_question_public(next_q, ps) if next_q is not None else None,
             finished=finished,
             gained_xp=reward_payload["xp_gained"],
             gained_coins=reward_payload["coins_gained"],
@@ -895,7 +984,7 @@ class PracticeService:
     async def _select_next_question(self, session_obj: PracticeSession):
         desired_levels = _level_search_order(3 if session_obj.current_zone == PracticeZone.CHALLENGE else 2)
         recent = session_obj.state.get("recent_question_ids") or []
-        recent_ids = [int(x) for x in recent if isinstance(x, int)]
+        recent_ids = [x for x in recent if isinstance(x, int)]
 
         candidates = await self.questions.list_for_skill_levels(
             skill_id=session_obj.skill_id,
@@ -925,12 +1014,47 @@ class PracticeService:
             q = current_question
         else:
             try:
-                q = _to_question_public(current_question)
+                q = _to_question_public(current_question, ps)
             except Exception as e:
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f"Error converting question to public format: {e}", exc_info=True)
                 q = None
+
+        if q and q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+            # Получаем сохраненные seed и level из state сессии
+            seed = ps.state.get("current_question_seed")
+            lvl = ps.state.get("current_question_level")
+            
+            # Если сида или уровня нет (например, при самом первом старте сессии), генерируем их
+            need_save = False
+            if seed is None:
+                import random
+                seed = random.randint(1, 2147483647)
+                ps.state["current_question_seed"] = seed
+                need_save = True
+            if lvl is None:
+                score = ps.current_smartscore or 0
+                if score >= 90:
+                    lvl = 5
+                elif score >= 75:
+                    lvl = 4
+                elif score >= 55:
+                    lvl = 3
+                elif score >= 30:
+                    lvl = 2
+                else:
+                    lvl = 1
+                ps.state["current_question_level"] = lvl
+                need_save = True
+                
+            if need_save:
+                # Помечаем сессию как измененную для алхимии, т.к. мы обновили state
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(ps, "state")
+                
+            q.data = {**(q.data or {}), "seed": seed, "level": lvl}
+            q.level = lvl
         return PracticeSessionResponse(
             id=str(ps.id),
             skill_id=ps.skill_id,
@@ -1060,11 +1184,11 @@ class PracticeService:
             if status_row.status == AssignmentStatus.NOT_STARTED:
                 status_row.status = AssignmentStatus.IN_PROGRESS
             status_row.last_smartscore = session_obj.current_smartscore
-            status_row.best_smartscore = max(int(status_row.best_smartscore or 0), int(session_obj.best_smartscore or 0))
-            status_row.questions_answered = int(status_row.questions_answered or 0) + 1
-            status_row.time_spent_seconds = int(getattr(status_row, "time_spent_seconds", 0) or 0) + int(attempt.time_spent_sec or 0)
+            status_row.best_smartscore = max(status_row.best_smartscore or 0, session_obj.best_smartscore or 0)
+            status_row.questions_answered = (status_row.questions_answered or 0) + 1
+            status_row.time_spent_seconds = (getattr(status_row, "time_spent_seconds", 0) or 0) + (attempt.time_spent_sec or 0)
             status_row.last_activity_at = now
-            if status_row.best_smartscore >= int(assignment.target_smartscore or 80):
+            if status_row.best_smartscore >= (assignment.target_smartscore or 80):
                 status_row.status = AssignmentStatus.COMPLETED
                 status_row.completed_at = now
 
@@ -1083,7 +1207,7 @@ def _parse_uuid(value) -> uuid.UUID:
 
 
 def _push_recent(recent: list[Any], qid: int, max_len: int = 20) -> list[int]:
-    out: list[int] = [int(x) for x in recent if isinstance(x, int) and int(x) != qid]
+    out: list[int] = [x for x in recent if isinstance(x, int) and x != qid]
     out.insert(0, qid)
     return out[:max_len]
 
@@ -1101,8 +1225,18 @@ def _level_search_order(difficulty: int) -> list[int]:
     return order
 
 
-def _to_question_public(q) -> QuestionPublic:
-    return QuestionPublic(id=q.id, skill_id=q.skill_id, type=q.type, prompt=q.prompt, data=q.data, level=q.level)
+def _to_question_public(q, session_obj=None) -> QuestionPublic:
+    q_data = {**(q.data or {})}
+    q_level = q.level
+    if session_obj and getattr(q, 'type', None) in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+        seed = session_obj.state.get("current_question_seed")
+        lvl = session_obj.state.get("current_question_level")
+        if seed is not None:
+            q_data["seed"] = seed
+        if lvl is not None:
+            q_data["level"] = lvl
+            q_level = lvl
+    return QuestionPublic(id=q.id, skill_id=q.skill_id, type=q.type, prompt=q.prompt, data=q_data, level=q_level)
 
 
 def _generated_to_question_public(q_data: dict[str, Any], question_id: str) -> QuestionPublic:
@@ -1201,15 +1335,17 @@ def _is_correct(qtype: QuestionType, data: dict[str, Any], correct: dict[str, An
             
             # Проверяем, может быть нужно сравнить значения вариантов напрямую
             for idx, choice in enumerate(choices):
+                choice_id = ""
                 if isinstance(choice, dict):
                     choice_str = str(choice.get("value") or choice.get("label") or choice.get("text") or "").strip()
+                    choice_id = str(choice.get("id") or "").strip()
                 else:
                     choice_str = str(choice).strip()
                 
-                # Если отправленный ответ совпадает с вариантом, проверяем, является ли этот вариант правильным
-                if sub_str == choice_str:
-                    # Правильный ответ может быть индексом или значением
-                    if str(idx) == cor_str or choice_str == cor_str:
+                # Если отправленный ответ совпадает с вариантом или его ID
+                if sub_str == choice_str or (choice_id and sub_str == choice_id):
+                    # Правильный ответ может быть индексом, значением или ID
+                    if str(idx) == cor_str or choice_str == cor_str or (choice_id and choice_id == cor_str):
                         return True
         
         # Если одно из значений None, возвращаем False
@@ -1218,8 +1354,12 @@ def _is_correct(qtype: QuestionType, data: dict[str, Any], correct: dict[str, An
         return set(submitted.get("choices") or []) == set(correct.get("choices") or [])
     if qtype == QuestionType.NUMERIC:
         tol = float(data.get("tolerance") or 0)
+        sub_val = submitted.get("value")
+        corr_val = correct.get("value")
+        if sub_val is None or corr_val is None:
+            return False
         try:
-            return abs(float(submitted.get("value")) - float(correct.get("value"))) <= tol
+            return abs(float(sub_val) - float(corr_val)) <= tol
         except (TypeError, ValueError):
             return False
     if qtype == QuestionType.TEXT:

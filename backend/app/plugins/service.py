@@ -675,20 +675,23 @@ class PluginService:
             except Exception as e:
                 logger.warning(f"Error checking plugin in DB: {e}")
         
-        # Также проверяем структуру ответа - TSX плагины отправляют isCorrect
         if not is_tsx_plugin and isinstance(user_answer, dict):
-            if "isCorrect" in user_answer or "is_correct" in user_answer:
+            if "isCorrect" in user_answer or "is_correct" in user_answer or "correct" in user_answer:
                 is_tsx_plugin = True
-                logger.info(f"TSX plugin detected by answer structure: plugin_id={plugin_id}, has isCorrect={('isCorrect' in user_answer)}")
-        
-        if is_tsx_plugin:
-            # TSX плагины отправляют ответ в формате:
-            # { "isCorrect": true/false, "userAnswer": "...", "correctAnswer": "..." }
-            is_correct_raw = user_answer.get("isCorrect")
-            user_answer_value = user_answer.get("userAnswer", "")
-            correct_answer_value = user_answer.get("correctAnswer", "")
-            
-            # Преобразуем в булево значение
+
+        # Универсальная проверка для плагинов, отправляющих статус ответа (isCorrect / is_correct / correct)
+        has_status_key = False
+        is_correct_raw = None
+        for key in ("isCorrect", "is_correct", "correct"):
+            if key in user_answer and user_answer[key] is not None:
+                has_status_key = True
+                is_correct_raw = user_answer[key]
+                break
+
+        if has_status_key or is_tsx_plugin:
+            user_answer_value = user_answer.get("userAnswer") or user_answer.get("user_answer") or user_answer.get("studentAnswer") or user_answer.get("answer") or ""
+            correct_answer_value = user_answer.get("correctAnswer") or user_answer.get("correct_answer") or user_answer.get("expectedAnswer") or ""
+
             if isinstance(is_correct_raw, bool):
                 is_correct = is_correct_raw
             elif isinstance(is_correct_raw, str):
@@ -697,60 +700,24 @@ class PluginService:
                 is_correct = bool(is_correct_raw)
             else:
                 is_correct = False
-                logger.warning(f"TSX plugin: isCorrect is not a valid boolean: {is_correct_raw} (type: {type(is_correct_raw)})")
-            
-            logger.info(f"TSX plugin answer: isCorrect={is_correct} (raw: {is_correct_raw}, type: {type(is_correct_raw)}), userAnswer={user_answer_value}, correctAnswer={correct_answer_value}")
-            
+
             score = 1.0 if is_correct else 0.0
-            
-            if is_correct:
-                explanation = f"Правильно! Правильный ответ: {correct_answer_value}"
-            else:
-                explanation = f"Неправильно. Ваш ответ: {user_answer_value}. Правильный ответ: {correct_answer_value}"
-            
-            return {
-                "correct": is_correct,
-                "score": score,
-                "explanation": explanation,
-                "correct_answer": correct_answer_value,  # Добавляем для отображения на фронтенде
-            }
-        
-        # Для плагинов, которые отправляют уже проверенный ответ (с полем isCorrect)
-        if "isCorrect" in user_answer or user_answer.get("isCorrect") is not None:
-            is_correct_raw = user_answer.get("isCorrect")
-            # Проверяем разные варианты ключей
-            correct_answer_value = user_answer.get("correctAnswer") or user_answer.get("correct_answer", "")
-            user_answer_value = user_answer.get("userAnswer") or user_answer.get("user_answer", "")
-            
-            # Преобразуем в булево значение
-            if isinstance(is_correct_raw, bool):
-                is_correct = is_correct_raw
-            elif isinstance(is_correct_raw, str):
-                is_correct = is_correct_raw.lower() in ("true", "1", "yes")
-            elif isinstance(is_correct_raw, (int, float)):
-                is_correct = bool(is_correct_raw)
-            else:
-                is_correct = False
-                logger.warning(f"Plugin with isCorrect: isCorrect is not a valid boolean: {is_correct_raw} (type: {type(is_correct_raw)})")
-            
-            logger.info(f"Plugin with isCorrect: isCorrect={is_correct} (raw: {is_correct_raw}, type: {type(is_correct_raw)}), userAnswer={user_answer_value}, correctAnswer={correct_answer_value}")
-            
-            score = 1.0 if is_correct else 0.0
-            
-            if is_correct:
-                explanation = f"Правильно! Правильный ответ: {correct_answer_value}"
-            else:
-                explanation = f"Неправильно. Ваш ответ: {user_answer_value}. Правильный ответ: {correct_answer_value}"
-            
+            explanation = (
+                f"Правильно! {correct_answer_value}".strip()
+                if is_correct
+                else f"Неправильно. Ваш ответ: {user_answer_value}. Правильный ответ: {correct_answer_value}".strip()
+            )
+
+            logger.info(f"Plugin evaluation final: is_correct={is_correct}, userAnswer={user_answer_value}, correctAnswer={correct_answer_value}")
+
             return {
                 "correct": is_correct,
                 "score": score,
                 "explanation": explanation,
                 "correct_answer": correct_answer_value,
             }
-        
+
         # Для других плагинов - базовая проверка
-        # В будущем можно добавить специфичную логику для каждого плагина
         return {
             "correct": False,
             "score": 0.0,

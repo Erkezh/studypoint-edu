@@ -187,8 +187,7 @@ export const useAuthStore = defineStore('auth', () => {
       syncAuthBridge()
 
       loading.value = false
-      const { default: router } = await import('@/router')
-      router.push({ name: 'home' })
+      window.location.href = '/'
     }
   }
 

@@ -1,280 +1,177 @@
-# Промт для генерации интерактивных тестов
+# Промт для генерации интерактивных плагинов (StudyPoint IXL Contract)
 
 **Тема:** [ОПИШИ ТЕМУ]  
 **Тип:** [текстовый ввод / выбор / drag-drop / сетка]
 
 ---
 
-## ⚠️ ГЛАВНОЕ ПРАВИЛО
+## 🚨 КРИТИЧЕСКИЕ ПРАВИЛА (СТРОГИЙ РЕГЛАМЕНТ - ОБЯЗАТЕЛЬНО К ИСПОЛНЕНИЮ)
 
-**Если в вопросе есть картинка → передай её в `questionData`!**
-
-Иначе в аналитике вопрос "Қай бөлшек көрсетілген?" без картинки не имеет смысла.
-
----
-
-## 🚨 КРИТИЧНО: СИНТАКСИС КОМПОНЕНТА
-
-**ОБЯЗАТЕЛЬНО используй один из этих форматов:**
+### 1. 🔐 ДЕТЕРМИНИРОВАННЫЙ SEED И PRNG (100% СОВПАДЕНИЕ У УЧЕНИКА И УЧИТЕЛЯ)
+- В URL передаётся `?seed=12345`.
+- **Генератор условий `generateProblem(level, seed)` ОБЯЗАН быть 100% чистой функцией**, создающей собственный экземпляр `createSeededRandom(seed)` внутри себя!
+- **НЕ ИСПОЛЬЗУЙ `Math.random()`!** Все рандомные числа, выбор имён, перетасовка вариантов должны браться ТОЛЬКО из `rng()`.
+- **НЕ ИСПОЛЬЗУЙ mutable `useRef` для сохранения PRNG между рендерами React!**
 
 ```tsx
-// ✅ Вариант 1: Arrow function (рекомендуется)
-const ComponentName: React.FC = () => {
-  // ...
+function createSeededRandom(s: number): () => number {
+  let state = s % 2147483647;
+  if (state <= 0) state += 2147483646;
+  return () => {
+    state = (state * 16807) % 2147483647;
+    return (state - 1) / 2147483646;
+  };
+}
+
+// ✅ ПРАВИЛЬНО: генератор создаёт свежий PRNG от seed при каждом вызове
+const generateProblem = (level: number, seed: number, depth = 0): Problem => {
+  const random = createSeededRandom(seed + depth * 10007);
+  // ... генерация задачи через random() ...
+  return { ... };
 };
-export default ComponentName;
-
-// ✅ Вариант 2: Function declaration
-function ComponentName() {
-  // ...
-}
-export default ComponentName;
-```
-
-**❌ НИКОГДА не пиши так — это вызовет ошибку компиляции:**
-```tsx
-ComponentName() {   // ❌ НЕПРАВИЛЬНО!
-  // ...
-}
 ```
 
 ---
 
-## 1. СТРУКТУРА
-
+### 2. 🎯 5 УРОВНЕЙ СЛОЖНОСТИ (`?level=1..5`)
+Плагин **ОБЯЗАН** поддерживать 5 уровней сложности:
 ```tsx
-import React, { useState, useEffect, useRef } from 'react';
+const levelParam = urlParams.get('level');
+const level = levelParam ? Math.min(5, Math.max(1, parseInt(levelParam, 10))) : 1;
+```
+- **1-деңгей (Бастапқы):** Простейшие наглядные примеры, маленькие числа (1-10).
+- **2-деңгей (Оңай):** Базовые задачи с небольшим усложнением.
+- **3-деңгей (Орташа):** Стандартные задачи по теме.
+- **4-деңгей (Күрделі):** Продвинутые задачи повышенной сложности.
+- **5-деңгей (Жоғары):** Олимпиадный/мастер уровень.
 
-interface Problem {
-  id: number;
-  question: string;
-  correctAnswer: string;
-  visualData?: any;  // Данные для аналитики (тип вопроса)
-}
+---
 
-const Component: React.FC = () => {
-  const [problem, setProblem] = useState<Problem | null>(null);
-  const [userAnswer, setUserAnswer] = useState('');
-  const [showResult, setShowResult] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+### 3. 🖼️ ВНУТРЕННИЙ ИНТЕРФЕЙС РЕЗУЛЬТАТА И ТҮСІНДІРМЕ (EXPLANATION)
+- **Плагин САМ показывает вердикт (Дұрыс! / Қате!) и ПОШАГОВОЕ ОБЪЯСНЕНИЕ (Түсіндірме / Шешуі) внутри iframe.**
+- При нажатии "Тексеру" / "Жіберу" или при получении `SERVER_RESULT` плагин НЕ очищает экран, а показывает:
+  1. Зелёную плашку "Дұрыс! 🎉" или красную плашку "Қате! ❌".
+  2. Если отвечено неправильно: показывает введенный ответ ученика (красным) и правильный ответ (зеленым).
+  3. **Блок с пошаговым объяснением решения на казахском языке (`Түсіндірме` / `Шешуі`).**
 
-  // ⚠️ Режим просмотра ошибок (аналитика для учителя/ученика)
-  const reviewMode = (window as any).reviewMode || null;
-  const isReview = !!reviewMode;
+---
 
-  const generateProblem = (): Problem => ({
-    id: Date.now(),
-    question: 'Сұрақ мәтіні',
-    correctAnswer: '3/4',
-    visualData: { type: 'fractionbar', fractionBar: { total: 4, filled: 3 } },
-  });
-
-  const sendHeight = () => {
-    if (window.parent !== window && containerRef.current) {
-      window.parent.postMessage({ type: 'resize', height: containerRef.current.scrollHeight + 20 }, '*');
+### 4. 📊 АНАЛИТИКА И РЕЖИМ РЕЦЕНЗИРОВАНИЯ (`mode=review` & `studentAnswer`)
+При открытии аналитики у учителя или в журнале ответов (`?mode=review` или `?studentAnswer=...`):
+- Считывай ответ ученика из URL: `const studentAnsParam = urlParams.get('studentAnswer') || urlParams.get('userAnswer');`
+- Ответ ученика может прийти как строка, так и JSON-строка объекта. Обязательно парси его:
+  ```tsx
+  let parsedAnswer = studentAnsParam;
+  try {
+    if (studentAnsParam && (studentAnsParam.startsWith('{') || studentAnsParam.startsWith('['))) {
+      const parsed = JSON.parse(studentAnsParam);
+      parsedAnswer = parsed.userAnswer ?? parsed.studentAnswer ?? parsed.value ?? parsed.answer ?? parsed;
     }
-  };
-
-  useEffect(() => {
-    if (isReview) {
-      // ⚠️ Восстанавливаем сохраненное состояние для аналитики
-      setProblem({
-        id: Date.now(),
-        question: 'Сұрақ мәтіні',
-        correctAnswer: reviewMode.correctAnswer,
-        // Если visualData нужна для отрисовки, родитель может передать ее в reviewMode.questionData
-        visualData: reviewMode.questionData
-      });
-      setUserAnswer(reviewMode.studentAnswer);
-      
-      // Восстановите внутреннее состояние (например, закрашенные ячейки, выбранные кнопки)
-      // на основе reviewMode.studentAnswer!
-      
-      setShowResult(true);
-    } else {
-      setProblem(generateProblem());
-    }
-  }, []);
-
-  useEffect(() => { sendHeight(); setTimeout(sendHeight, 100); }, [problem, showResult]);
-
-  const handleSubmit = () => {
-    if (isReview || !userAnswer || !problem) return;
-    const isCorrect = userAnswer === problem.correctAnswer;
-    
-    window.parent.postMessage({
-      type: 'exercise-result',
-      isCorrect,
-      question: problem.question,
-      userAnswer,
-      correctAnswer: problem.correctAnswer,
-      questionData: problem.visualData,  // ⚠️ Передаём картинку!
-    }, '*');
-    
-    setShowResult(true);
-  };
-
-  const handleNext = () => {
-    setProblem(generateProblem());
-    setUserAnswer('');
-    setShowResult(false);
-  };
-
-  return (
-    <div ref={containerRef} className="p-4 bg-white rounded-xl">
-      {/* ⚠️ В режиме isReview отключайте любые клики и ввод: disabled={isReview} */}
-      {/* ⚠️ При неверном ответе в isReview покажите верное решение зеленым, а неверное - красным */}
-    </div>
-  );
-};
-
-export default Component;
-```
-
----
-
-## 2. ТИПЫ ВИЗУАЛЬНЫХ ЗАДАНИЙ
-
-### ТИП A: Картинка в ВОПРОСЕ → `questionData`
-Ученик видит картинку, пишет текстовый ответ.
-
-```tsx
-postMessage({
-  type: 'exercise-result',
-  question: 'Сан түзуінде көрсетілген бөлшек?',
-  userAnswer: '1/3',
-  correctAnswer: '3/11',
-  questionData: { type: 'numberline', numberline: { min: 0, max: 1, divisions: 11, markedPosition: 3 } },
-});
-```
-
-### ТИП B: Картинка в ОТВЕТЕ → `answerData`
-Вопрос текстовый, ученик рисует/выбирает.
-
-```tsx
-postMessage({
-  type: 'exercise-result',
-  question: '4 шаршы бірлік сыз',
-  userAnswer: '2 клетки',
-  correctAnswer: '4 клетки',
-  answerData: {
-    type: 'grid',
-    correctDisplay: { grids: [{ rows: 8, cols: 8, filled: ['0-0','0-1','1-0','1-1'] }], text: '4' },
-    userDisplay: { grids: [{ rows: 8, cols: 8, filled: ['0-0','0-1'] }], text: '2' },
-  },
-});
-```
-
----
-
-## 3. ФОРМАТЫ questionData
-
-| Тип | visualData | Пример вопроса |
-|-----|------------|----------------|
-| Числовая прямая | `{ type: 'numberline', numberline: { min, max, divisions, markedPosition } }` | Сан түзуіндегі бөлшек? |
-| Дробная полоска | `{ type: 'fractionbar', fractionBar: { total, filled } }` | Боялған бөлік қандай? |
-| Сетка | `{ type: 'grid', grid: { rows, cols, filled: ['0-0','0-1'] } }` | Аудан қанша? |
-| Фигуры | `{ type: 'shapes', shapes: { items: [{type, color}], targetType, targetCount, totalCount } }` | Жұлдыздар қанша? |
-
-### Примеры генерации:
-
-```tsx
-// Числовая прямая
-const generateNumberLine = () => {
-  const pos = Math.floor(Math.random() * 9) + 1;
-  return {
-    question: 'Сан түзуінде көрсетілген бөлшек қандай?',
-    correctAnswer: `${pos}/10`,
-    visualData: { type: 'numberline', numberline: { min: 0, max: 1, divisions: 11, markedPosition: pos } },
-  };
-};
-
-// Дробная полоска
-const generateFractionBar = () => {
-  const total = [3,4,5,6,8][Math.floor(Math.random() * 5)];
-  const filled = Math.floor(Math.random() * total) + 1;
-  return {
-    question: 'Боялған бөлігі қай бөлшекке тең?',
-    correctAnswer: `${filled}/${total}`,
-    visualData: { type: 'fractionbar', fractionBar: { total, filled } },
-  };
-};
-
-// Фигуры (звёзды, круги и т.д.)
-const generateShapes = () => {
-  const types = [
-    { name: 'шеңберлер', color: '#3b82f6' },
-    { name: 'жұлдыздар', color: '#f59e0b' },
-  ];
-  const shapes = [0, 1, 1, 0, 1]; // 2 круга, 3 звезды
-  return {
-    question: 'Фигуралардың қандай бөлшегі жұлдыздар?',
-    correctAnswer: '3/5',
-    visualData: {
-      type: 'shapes',
-      shapes: {
-        items: shapes.map(i => ({ type: types[i].name, color: types[i].color })),
-        targetType: 'жұлдыздар',
-        targetCount: 3,
-        totalCount: 5,
-      },
-    },
-  };
-};
-```
-
----
-
-## 3.5. РЕЖИМ ПРОСМОТРА ОШИБОК (АНАЛИТИКА / REVIEW MODE)
-
-Для того чтобы учитель или ученик в аналитике могли увидеть, какую ошибку совершил ученик:
-1. **Проверьте наличие `window.reviewMode`** при старте плагина.
-2. **Отключите интерактивность:** если `isReview` равен `true`, пользователь не должен иметь возможности кликать по кнопкам, менять значения, перетаскивать элементы или вводить данные (`disabled={isReview}`).
-3. **Восстановите состояние ученика:** распарсите ответ ученика из `window.reviewMode.studentAnswer` (например, отметьте те же клетки сетки, выберите ту же опцию или покажите число на прямой) и покажите его.
-4. **Покажите правильный ответ:**
-   - Если ответ ученика верный (`reviewMode.isCorrect === true`), выделите его зеленым цветом (рамка, заливка).
-   - Если ответ неверный, выделите неверный ответ ученика красной рамкой/заливкой, а правильный ответ из `reviewMode.correctAnswer` подсветите зеленой рамкой/заливкой.
-
-Пример разметки сетки:
-```tsx
-const isSelected = selectedCells.has(cellId);
-const isCorrectAnswerCell = isReview && correctCells.has(cellId);
-
-let cellClass = "w-8 h-8 border ";
-if (isReview) {
-  if (isSelected) {
-    cellClass += isCorrect ? "bg-green-400 border-green-500" : "bg-red-400 border-red-500";
-  } else if (isCorrectAnswerCell) {
-    cellClass += "bg-green-200 border-green-300"; // Показываем правильный ответ
-  } else {
-    cellClass += "bg-white border-gray-200";
+  } catch (e) {
+    console.warn(e);
   }
-}
+  ```
+- **Считывание `questionData` из URL (КРИТИЧЕСКИ ВАЖНО):**
+  В URL передаётся `?questionData=...` с JSON-строкой параметров вопроса.
+  Плагин **ОБЯЗАН** считать его и использовать для восстановления условия:
+  ```tsx
+  const qDataParam = urlParams.get('questionData');
+  let urlQuestionData = null;
+  try {
+    if (qDataParam) {
+      urlQuestionData = JSON.parse(qDataParam);
+    }
+  } catch (e) {
+    console.warn("Failed to parse questionData:", e);
+  }
+  ```
+
+---
+
+### 5. 🧊 FROZEN РЕЖИМ (ПРЕВЬЮ В КОНСТРУКТОРЕ)
+URL содержит `?frozen=1`.
+- **Сохранять 100% оригинальные яркие цвета (`opacity: 1`, БЕЗ серых фильтров!)**
+- **Отключить клики и интерактивность:** `pointer-events: none` на контейнере.
+- **Поля ввода и кнопки:** `disabled`.
+
+---
+
+### 6. ⚡ РЕАКТИВНЫЕ ЗАВИСИМОСТИ В EFFECT (КРИТИЧЕСКИ ВАЖНО)
+Массив зависимостей React `useEffect` **ОБЯЗАТЕЛЬНО** должен содержать `[level, seed, qDataParam]`!
+**НИКОГДА** не оставляйте пустой массив `[]`!
+
+---
+
+### 7. 📩 POSTMESSAGE ПРОТОКОЛ
+
+#### А) `STUDENT_ANSWER` (При каждом вводе/изменении):
+```tsx
+window.parent.postMessage({
+  type: 'STUDENT_ANSWER',
+  answer: { value: currentAnswer },
+  isComplete: !!currentAnswer && String(currentAnswer).trim().length > 0
+}, '*');
+```
+
+#### Б) `exercise-result` (При проверке ответа):
+⚠️ **ОБЯЗАТЕЛЬНО передавай `userAnswer` (ответ ученика), ДАЖЕ ЕСЛИ ОТВЕТ НЕПРАВИЛЬНЫЙ!**
+```tsx
+window.parent.postMessage({
+  type: 'exercise-result',
+  isCorrect: correct,
+  question: problem.question,       // Текст вопроса на казахском
+  userAnswer: currentAnswer,         // Ответ ученика (СТРОГО обязательно!)
+  correctAnswer: problem.correctAnswer, // Правильный ответ
+  questionData: problem.visualData,  // Параметры вопроса для генерации в аналитике
+  answerData: problem.answerData     // Данные интерактивного ответа
+}, '*');
+```
+
+#### В) `SERVER_RESULT` (Обработчик ответа от платформы):
+```tsx
+useEffect(() => {
+  const handleMessage = (event: MessageEvent) => {
+    const data = event.data || {};
+    if (data.type === 'SERVER_RESULT') {
+      if (typeof data.isCorrect === 'boolean') {
+        setIsCorrect(data.isCorrect);
+      }
+      setIsSubmitted(true);
+    }
+  };
+  window.addEventListener('message', handleMessage);
+  return () => window.removeEventListener('message', handleMessage);
+}, []);
+```
+
+#### Г) `HEIGHT_CHANGE` (Изменение высоты):
+```tsx
+window.parent.postMessage({
+  type: 'HEIGHT_CHANGE',
+  height: document.body.scrollHeight
+}, '*');
 ```
 
 ---
 
-## 4. ПРАВИЛА
+## 🎨 ТРЕБОВАНИЯ К ДИЗАЙНУ И ИНТЕРФЕЙСУ
 
-✅ **Разрешено:**
-- React + TypeScript (.tsx)
-- Tailwind CSS
-- lucide-react иконки
-- Один вопрос за раз
-
-❌ **Запрещено:**
-- Внешние зависимости
-- Прогресс-бары, счётчики ("Вопрос 3 из 10")
-- Score, статистика
-- Менять структуру postMessage
+1. **Язык:** Весь текст строго на **казахском языке** (Қазақ тілі).
+2. **Шрифт:** Modern sans-serif (Verdana, Inter, system-ui).
+3. **Цвета:** Яркие, гармоничные (зелёный `#34a853` для успеха, красный `#d93025` для ошибок, тёмно-синий `#323048` для кнопок).
+4. **Адаптивность:** `max-width: 560px`, центрирование, адаптивные шрифты `clamp()`.
 
 ---
 
-## ЧЕКЛИСТ
+## 📋 ЧЕКЛИСТ ГОТОВНОСТИ ПЛАГИНА
 
-- [ ] Есть картинка в вопросе? → `visualData` в Problem + `questionData` в postMessage
-- [ ] `question` заполнен
-- [ ] `handleSubmit` отправляет postMessage
-- [ ] `sendHeight()` вызывается
-- [ ] UI на казахском
-- [ ] НЕТ прогресс-баров и счётчиков
+- [ ] **1. В коде НЕТ `Math.random()`. Для ВСЕХ генераций используется `createSeededRandom(seed)`.**
+- [ ] **2. `generateProblem(level, seed)` берёт `seed` из параметров и создаёт свой PRNG.**
+- [ ] **3. Поддерживает 5 уровней сложности (`?level=1..5`).**
+- [ ] **4. В React `useEffect` для генерации задачи указаны зависимости `[level, seed]` (не `[]`).**
+- [ ] **5. Плагин САМ показывает результат и объяснение (Түсіндірме) внутри iframe при проверке.**
+- [ ] **6. В `exercise-result` postMessage ВСЕГДА отправляется `userAnswer` (даже если ответ неверный).**
+- [ ] **7. В `mode=review` считывается `studentAnswer` и `questionData` из URL и выводится сохранённый ответ.**
+- [ ] **8. `frozen=1` режим сохраняет 100% оригинальную яркость (`opacity: 1`) и отключает клики (`pointer-events: none`).**
+- [ ] **9. При каждом изменении ответа отправляется `STUDENT_ANSWER` postMessage.**
+- [ ] **10. Весь интерфейс строго на казахском языке.**

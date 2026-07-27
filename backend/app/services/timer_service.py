@@ -26,6 +26,7 @@ def apply_active_time_delta(
     delta = int((now_ts - last_activity_at).total_seconds())
     if delta <= 0:
         return current_active_time_seconds, now_ts
-    capped = min(delta, int(inactivity_threshold_seconds))
+    # Cap delta to at most 3 seconds per heartbeat so away/idle/tab-switch time is not added to active time.
+    capped = min(delta, 3)
     return current_active_time_seconds + capped, now_ts
 

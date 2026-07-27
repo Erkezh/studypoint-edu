@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, JSON
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,6 +34,11 @@ class Quiz(Base, TimestampMixin):
         nullable=False, 
         default=QuizResultVisibility.ALWAYS
     )
+    ended_result_visibility: Mapped[QuizResultVisibility] = mapped_column(
+        Enum(QuizResultVisibility, name="quiz_result_visibility"), 
+        nullable=False, 
+        default=QuizResultVisibility.ALWAYS
+    )
     end_type: Mapped[QuizEndType] = mapped_column(
         Enum(QuizEndType, name="quiz_end_type"), 
         nullable=False, 
@@ -52,6 +57,8 @@ class QuizQuestion(Base):
     quiz_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("quizzes.id", ondelete="CASCADE"), index=True, nullable=False)
     question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"), index=True, nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    seed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    level: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     quiz: Mapped["Quiz"] = relationship(back_populates="questions")
     question: Mapped["Question"] = relationship()
@@ -67,5 +74,11 @@ class QuizAssignment(Base, TimestampMixin):
     
     due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    time_spent_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    question_results: Mapped[dict | list | None] = mapped_column(JSON, nullable=True)
 
     quiz: Mapped["Quiz"] = relationship(back_populates="assignments")

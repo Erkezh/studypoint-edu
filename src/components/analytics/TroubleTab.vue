@@ -123,7 +123,7 @@ const props = defineProps<{
   allStudentsData?: Array<{
     student_id: string
     full_name: string
-    skills: Array<{ skill_id: number; last_smartscore: number }>
+    skills: Array<{ skill_id: number; last_smartscore?: number; best_smartscore?: number }>
   }>
 }>()
 
@@ -237,8 +237,8 @@ const troubleSpotSkills = computed(() => {
         for (const sid of studentIds) {
           const studentInfo = props.allStudentsData.find(s => s.student_id === sid)
           if (studentInfo) {
-            const sk = (studentInfo.skills || []).find((s_skill: { skill_id: number; last_smartscore: number }) => s_skill.skill_id === skillId)
-            const sc = sk ? sk.last_smartscore : 0
+            const sk = (studentInfo.skills || []).find((s_skill: { skill_id: number; last_smartscore?: number; best_smartscore?: number }) => s_skill.skill_id === skillId)
+            const sc = sk ? Math.max(Number(sk.best_smartscore || 0), Number(sk.last_smartscore || 0)) : 0
             stuckStudents.push({
               id: sid,
               name: studentInfo.full_name,

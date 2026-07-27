@@ -44,12 +44,35 @@ class AssignmentService:
         await self.assignments.create(assignment)
         enrollments = await self.classrooms.list_enrollments(classroom.id)
         from app.models.notification import Notification
+        from app.models.practice import ProgressSnapshot
+        from sqlalchemy import select
+
         for enr in enrollments:
+            snap_stmt = select(ProgressSnapshot).where(
+                ProgressSnapshot.user_id == enr.student_id,
+                ProgressSnapshot.skill_id == req.skill_id
+            )
+            snap = (await self.session.execute(snap_stmt)).scalar_one_or_none()
+            best_score = snap.best_smartscore if snap else 0
+            last_score = snap.last_smartscore if snap else 0
+            questions_cnt = snap.total_questions if snap else 0
+            
+            target_score = req.target_smartscore or 80
+            if best_score >= target_score:
+                init_status = AssignmentStatus.COMPLETED
+            elif best_score > 0 or questions_cnt > 0:
+                init_status = AssignmentStatus.IN_PROGRESS
+            else:
+                init_status = AssignmentStatus.NOT_STARTED
+
             self.session.add(
                 AssignmentStatusRow(
                     assignment_id=assignment.id,
                     student_id=enr.student_id,
-                    status=AssignmentStatus.NOT_STARTED,
+                    status=init_status,
+                    best_smartscore=best_score,
+                    last_smartscore=last_score,
+                    questions_answered=questions_cnt,
                 )
             )
             self.session.add(
@@ -211,6 +234,6 @@ def _parse_uuid(value: str | None) -> uuid.UUID:
     try:
         if isinstance(value, uuid.UUID):
             return value
-        return uuid.UUID(str(value))
+        return uuid.UUID(value)
     except ValueError as e:
         raise AppError(status_code=400, code="validation_error", message="Invalid id") from e

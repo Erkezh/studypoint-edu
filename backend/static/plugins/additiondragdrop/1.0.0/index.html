@@ -158,6 +158,9 @@ const AdditionDragDrop = () => {
   const handleAnswerChange = (e) => {
     setUserAnswer(e.target.value);
   };
+  const urlParams = new URLSearchParams(window.location.search);
+  const quizMode = urlParams.get('mode') === 'quiz';
+
   const handleSubmit = () => {
     if (firstSlot === null || secondSlot === null) return;
     const correctAnswer = problems[currentIndex].correctAnswer;
@@ -180,6 +183,10 @@ const AdditionDragDrop = () => {
         },
         "*"
       );
+    }
+    if (quizMode) {
+      // In quiz mode, do not show correctness feedback or answers to the student
+      return;
     }
     setShowResult(true);
   };

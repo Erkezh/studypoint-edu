@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElapsedTimeGame TextInput (1)</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        body.embed {
+            padding: 0;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script>
+      window.lucideReact = new Proxy({}, {
+        get(_, name) {
+          const toKebab = s => s.replace(/([A-Z])/g, '-$1').toLowerCase().replace(/^-/, '');
+          return ({ size = 24, color, strokeWidth = 2, fill = 'none', className, ...props }) => {
+            const ref = React.useRef();
+            React.useEffect(() => {
+              if (ref.current && lucide[toKebab(name)]) {
+                ref.current.innerHTML = '';
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                const iconData = lucide[toKebab(name)];
+                svg.setAttribute('width', size);
+                svg.setAttribute('height', size);
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('fill', fill);
+                svg.setAttribute('stroke', color || 'currentColor');
+                svg.setAttribute('stroke-width', strokeWidth);
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                if (className) svg.setAttribute('class', className);
+                iconData[2].forEach(el => {
+                  const node = document.createElementNS('http://www.w3.org/2000/svg', el[0]);
+                  Object.entries(el[1] || {}).forEach(([k,v]) => node.setAttribute(k, v));
+                  svg.appendChild(node);
+                });
+                ref.current.appendChild(svg);
+              }
+            }, [size, color, strokeWidth, fill, className]);
+            return React.createElement('span', { ref, style: { display: 'inline-flex' }, ...props });
+          };
+        }
+      });
+    </script>
+    <script>
+        (function() {
+            const embedMode = /[?&]embed=1/i.test(window.location.search);
+            if (embedMode) {
+                document.body.classList.add('embed');
+            }
+            
+            const { useState, useEffect, useRef, useCallback } = React;
+const { Check, X } = window.lucideReact;
+const taskTitles = [
+  "\u0410\u044F\u049B\u0442\u0430\u043B\u0443 \u0443\u0430\u049B\u044B\u0442\u044B\u043D \u0442\u0430\u0431\u044B\u04A3\u044B\u0437",
+  "\u041E\u049B\u0438\u0493\u0430 \u049B\u0430\u0448\u0430\u043D \u0430\u044F\u049B\u0442\u0430\u043B\u0434\u044B?",
+  "\u04E8\u0442\u043A\u0435\u043D \u0443\u0430\u049B\u044B\u0442\u0442\u044B \u0435\u0441\u0435\u043F\u0442\u0435\u04A3\u0456\u0437",
+  "\u0410\u044F\u049B\u0442\u0430\u043B\u0443 \u0441\u04D9\u0442\u0456\u043D \u0430\u043D\u044B\u049B\u0442\u0430\u04A3\u044B\u0437",
+  "\u0423\u0430\u049B\u044B\u0442 \u0430\u0440\u0430\u043B\u044B\u0493\u044B\u043D \u0435\u0441\u0435\u043F\u0442\u0435\u04A3\u0456\u0437"
+];
+const names = [
+  "\u0410\u043B\u0438\u0445\u0430\u043D",
+  "\u0410\u0439\u0433\u04AF\u043B",
+  "\u0411\u0435\u043A\u0437\u0430\u0442",
+  "\u0414\u0430\u043D\u0430",
+  "\u0415\u0440\u0436\u0430\u043D",
+  "\u0424\u0430\u0440\u0438\u0437\u0430",
+  "\u0492\u0430\u043B\u044B\u043C",
+  "\u0413\u04AF\u043B\u043D\u0430\u0440",
+  "\u049A\u0430\u0439\u0440\u0430\u0442",
+  "\u0416\u0430\u043D\u043D\u0430",
+  "\u041C\u0430\u0434\u0438\u043D\u0430",
+  "\u041D\u04B1\u0440\u043B\u0430\u043D",
+  "\u041E\u043B\u0436\u0430\u0441",
+  "\u0421\u04D9\u0443\u043B\u0435",
+  "\u0422\u0438\u043C\u0443\u0440",
+  "\u04B0\u043B\u0430\u043D",
+  "\u0410\u0440\u043C\u0430\u043D",
+  "\u0414\u0456\u043D\u043C\u04B1\u0445\u0430\u043C\u0435\u0434",
+  "\u0417\u0435\u0440\u0435",
+  "\u041C\u04D9\u043B\u0456\u043A",
+  "\u0416\u0430\u043D\u0441\u0430\u044F",
+  "\u0411\u0430\u043B\u043D\u04B1\u0440",
+  "\u0410\u049B\u0431\u043E\u0442\u0430",
+  "\u0421\u0430\u043D\u0436\u0430\u0440"
+];
+const timeStr = (h, m) => `${(h % 24 + 24) % 24}:${m.toString().padStart(2, "0")}`;
+const addMinutes = (h, m, add) => {
+  const total = h * 60 + m + add;
+  return [Math.floor(total / 60) % 24, total % 60];
+};
+const durationText = (d) => {
+  if (d >= 60) {
+    const hrs = Math.floor(d / 60);
+    const mins = d % 60;
+    return mins > 0 ? `${hrs} \u0441\u0430\u0493\u0430\u0442 ${mins} \u043C\u0438\u043D\u0443\u0442` : `${hrs} \u0441\u0430\u0493\u0430\u0442`;
+  }
+  return `${d} \u043C\u0438\u043D\u0443\u0442`;
+};
+const scenarios = [
+  (n, h, m, d) => `${timeStr(h, m)} \u0443\u0430\u049B\u044B\u0442\u0442\u0430 ${n} \u0436\u04B1\u043C\u044B\u0441\u049B\u0430 \u0448\u044B\u0493\u0443\u0493\u0430 \u0434\u0430\u0439\u044B\u043D \u0431\u043E\u043B\u0434\u044B, \u0431\u0456\u0440\u0430\u049B \u043A\u0456\u043B\u0442\u0456\u043D \u0442\u0430\u0431\u0430 \u0430\u043B\u043C\u0430\u0434\u044B. \u041A\u0456\u043B\u0442\u0442\u0456 \u0442\u0430\u0431\u0443\u0493\u0430 ${durationText(d)} \u043A\u0435\u0442\u0442\u0456. ${n} \u043A\u0456\u043B\u0442\u0456\u043D \u0442\u0430\u043F\u049B\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u043C\u0430\u043A\u0430\u0440\u043E\u043D \u043F\u0456\u0441\u0456\u0440\u0435 \u0431\u0430\u0441\u0442\u0430\u0434\u044B. \u041E\u043B ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u0434\u0430\u0439\u044B\u043D \u0431\u043E\u043B\u0434\u044B. \u041C\u0430\u043A\u0430\u0440\u043E\u043D \u0434\u0430\u0439\u044B\u043D \u0431\u043E\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `\u0421\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 ${n} \u0430\u043F\u0435\u043B\u044C\u0441\u0438\u043D \u0448\u044B\u0440\u044B\u043D\u044B\u043D \u0436\u0430\u0441\u0430\u0439 \u0431\u0430\u0441\u0442\u0430\u0434\u044B. ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u043E\u043B \u0430\u044F\u049B\u0442\u0430\u0434\u044B. ${n} \u0430\u044F\u049B\u0442\u0430\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u043A\u04E9\u043F\u0456\u0440\u0434\u0456 \u043A\u0435\u0441\u0456\u043F \u04E9\u0442\u0443\u0456 \u043A\u0435\u0440\u0435\u043A \u0435\u0434\u0456. \u041E\u043B \u043A\u04E9\u043F\u0456\u0440\u0433\u0435 \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0448\u044B\u049B\u0442\u044B. \u041E\u0493\u0430\u043D ${durationText(d)} \u043A\u0435\u0442\u0442\u0456. ${n} \u043A\u04E9\u043F\u0456\u0440\u0434\u0456 \u043A\u0435\u0441\u0456\u043F \u04E9\u0442\u043A\u0435\u043D\u0434\u0435 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u043C\u0435\u043A\u0442\u0435\u043F\u0442\u0435\u043D \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u049B\u0430\u0439\u0442\u0442\u044B. \u041E\u043B \u043A\u0435\u043A\u0441 \u043F\u0456\u0441\u0456\u0440\u0443\u0434\u0456 \u0448\u0435\u0448\u0442\u0456. \u041A\u0435\u043A\u0441 \u043F\u0456\u0441\u0456\u0440\u0443\u0433\u0435 ${durationText(d)} \u043A\u0435\u0442\u0442\u0456. \u041A\u0435\u043A\u0441 \u0434\u0430\u0439\u044B\u043D \u0431\u043E\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0440\u0430\u0434\u0438\u043E\u0434\u0430\u043D \u0441\u04AF\u0439\u0456\u043A\u0442\u0456 \u04D9\u043D\u0456\u043D \u0435\u0441\u0442\u0456\u0434\u0456. \u04D8\u043D \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0441\u0442\u0430\u043B\u044B\u043F, ${durationText(d)} \u0441\u043E\u0437\u044B\u043B\u0434\u044B. \u04D8\u043D \u0430\u044F\u049B\u0442\u0430\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u043A\u0438\u043D\u043E\u0442\u0435\u0430\u0442\u0440\u0434\u0430 \u043A\u0435\u0437\u0435\u043A\u043A\u0435 \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0442\u04B1\u0440\u0434\u044B. ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u043E\u0440\u043D\u044B\u043D\u0430 \u043E\u0442\u044B\u0440\u0434\u044B. \u041E\u0442\u044B\u0440\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `\u0421\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 ${n} \u044B\u0434\u044B\u0441 \u0436\u0443\u0430 \u0431\u0430\u0441\u0442\u0430\u0434\u044B. \u0411\u0430\u0440\u043B\u044B\u049B \u044B\u0434\u044B\u0441\u0442\u044B \u0436\u0443\u0443\u0493\u0430 ${durationText(d)} \u043A\u0435\u0442\u0442\u0456. \u042B\u0434\u044B\u0441 \u0436\u0443\u044B\u043B\u044B\u043F \u0431\u043E\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u043A\u0456\u0442\u0430\u043F \u043E\u049B\u0438 \u0431\u0430\u0441\u0442\u0430\u0434\u044B. ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u043E\u049B\u0443\u0434\u044B \u0442\u043E\u049B\u0442\u0430\u0442\u0442\u044B. \u0422\u043E\u049B\u0442\u0430\u0442\u049B\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `\u0421\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u04B1\u0440\u0448\u0430\u049B \u0436\u0430\u0443\u0430 \u0431\u0430\u0441\u0442\u0430\u0434\u044B. \u0411\u04B1\u0440\u0448\u0430\u049B ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u0442\u043E\u049B\u0442\u0430\u0434\u044B. \u0422\u043E\u049B\u0442\u0430\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0430\u0432\u0442\u043E\u0431\u0443\u0441\u049B\u0430 \u043C\u0456\u043D\u0434\u0456. ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u0442\u04AF\u0441\u0442\u0456. \u0422\u04AF\u0441\u043A\u0435\u043D\u0434\u0435 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0442\u0430\u0440\u0438\u0445\u0438 \u0441\u0430\u0440\u0430\u0439\u0493\u0430 \u044D\u043A\u0441\u043A\u0443\u0440\u0441\u0438\u044F\u0493\u0430 \u0431\u0430\u0440\u0434\u044B. \u042D\u043A\u0441\u043A\u0443\u0440\u0441\u0438\u044F \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0441\u0442\u0430\u043B\u044B\u043F, ${durationText(d)} \u0441\u043E\u0437\u044B\u043B\u0434\u044B. \u0410\u044F\u049B\u0442\u0430\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u04AF\u0439 \u0442\u0430\u043F\u0441\u044B\u0440\u043C\u0430\u0441\u044B\u043D \u0431\u0430\u0441\u0442\u0430\u0434\u044B. \u041E\u0493\u0430\u043D ${durationText(d)} \u043A\u0435\u0442\u0442\u0456. \u0422\u0430\u043F\u0441\u044B\u0440\u043C\u0430\u043D\u044B \u0430\u044F\u049B\u0442\u0430\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0444\u043E\u0440\u0442\u0435\u043F\u0438\u0430\u043D\u043E \u0441\u0430\u0431\u0430\u0493\u044B \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0441\u0442\u0430\u043B\u0434\u044B. \u0421\u0430\u0431\u0430\u049B ${durationText(d)} \u0441\u043E\u0437\u044B\u043B\u0434\u044B. \u0421\u0430\u0431\u0430\u049B \u0430\u044F\u049B\u0442\u0430\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0436\u0430\u0440\u044B\u0441\u049B\u0430 \u049B\u0430\u0442\u044B\u0441\u0442\u044B. \u0416\u0430\u0440\u044B\u0441 \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0441\u0442\u0430\u043B\u044B\u043F, ${durationText(d)} \u0441\u043E\u0437\u044B\u043B\u0434\u044B. \u0416\u0430\u0440\u044B\u0441 \u0430\u044F\u049B\u0442\u0430\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0441\u0435\u0440\u0443\u0435\u043D\u0433\u0435 \u0448\u044B\u049B\u0442\u044B. ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u04AF\u0439\u0433\u0435 \u049B\u0430\u0439\u0442\u0442\u044B. \u049A\u0430\u0439\u0442\u049B\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0434\u04AF\u043A\u0435\u043D\u0433\u0435 \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0440\u0434\u044B. \u0414\u04AF\u043A\u0435\u043D\u0434\u0435 ${durationText(d)} \u0436\u04AF\u0440\u0434\u0456. \u0414\u04AF\u043A\u0435\u043D\u043D\u0435\u043D \u0448\u044B\u049B\u049B\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0441\u0443\u0440\u0435\u0442\u0456\u043D \u0441\u0430\u043B\u0430 \u0431\u0430\u0441\u0442\u0430\u0434\u044B. \u0421\u0443\u0440\u0435\u0442 ${durationText(d)} \u043A\u0435\u0439\u0456\u043D \u0434\u0430\u0439\u044B\u043D \u0431\u043E\u043B\u0434\u044B. \u0414\u0430\u0439\u044B\u043D \u0431\u043E\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u043C\u04B1\u0440\u0430\u0436\u0430\u0439\u0493\u0430 \u0431\u0430\u0440\u0434\u044B. \u042D\u043A\u0441\u043A\u0443\u0440\u0441\u0438\u044F \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0441\u0442\u0430\u043B\u044B\u043F, ${durationText(d)} \u0441\u043E\u0437\u044B\u043B\u0434\u044B. \u0410\u044F\u049B\u0442\u0430\u043B\u0493\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`,
+  (n, h, m, d) => `${n} \u0431\u0430\u0441\u0441\u0435\u0439\u043D\u0433\u0435 \u0441\u0430\u0493\u0430\u0442 ${timeStr(h, m)}-\u0434\u0435 \u0431\u0430\u0440\u0434\u044B. \u041E\u043B ${durationText(d)} \u0436\u04AF\u0437\u0434\u0456. \u0411\u0430\u0441\u0441\u0435\u0439\u043D\u043D\u0435\u043D \u0448\u044B\u049B\u049B\u0430\u043D\u0434\u0430 \u0441\u0430\u0493\u0430\u0442 \u043D\u0435\u0448\u0435\u0434\u0435 \u0431\u043E\u043B\u0434\u044B?`
+];
+function createSeededRandom(s) {
+  let state = s % 2147483647;
+  if (state <= 0) state += 2147483646;
+  return () => {
+    state = state * 16807 % 2147483647;
+    return (state - 1) / 2147483646;
+  };
+}
+const randInt = (min, max, random) => Math.floor(random() * (max - min + 1)) + min;
+const pick = (arr, random) => arr[randInt(0, arr.length - 1, random)];
+const LEVELS = [
+  { value: 1, label: "1-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u0411\u0430\u0441\u0442\u0430\u043F\u049B\u044B", hourRange: [1, 9], minuteChoices: [0, 15, 30, 45], durationRange: [5, 30], durationStep: 5, allowWrap: false },
+  { value: 2, label: "2-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041E\u04A3\u0430\u0439", hourRange: [1, 12], minuteRange: [0, 59], durationRange: [10, 45], durationStep: 5, allowWrap: false },
+  { value: 3, label: "3-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041E\u0440\u0442\u0430\u0448\u0430", hourRange: [1, 22], minuteRange: [0, 59], durationRange: [15, 55], durationStep: 1, allowWrap: false },
+  { value: 4, label: "4-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041A\u04AF\u0440\u0434\u0435\u043B\u0456", hourRange: [1, 21], minuteRange: [0, 59], durationRange: [60, 150], durationStep: 1, allowWrap: false },
+  { value: 5, label: "5-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u0416\u043E\u0493\u0430\u0440\u044B", hourRange: [1, 23], minuteRange: [0, 59], durationRange: [60, 300], durationStep: 1, allowWrap: true }
+];
+const generateProblem = (level, seed, depth = 0) => {
+  const lvl = Math.min(5, Math.max(1, level));
+  const cfg = LEVELS[lvl - 1];
+  const random = createSeededRandom(seed + depth * 10007);
+  const name = pick(names, random);
+  const hour = randInt(cfg.hourRange[0], cfg.hourRange[1], random);
+  const minute = cfg.minuteChoices ? pick(cfg.minuteChoices, random) : randInt(cfg.minuteRange[0], cfg.minuteRange[1], random);
+  const durSteps = Math.floor((cfg.durationRange[1] - cfg.durationRange[0]) / cfg.durationStep);
+  const duration = cfg.durationRange[0] + randInt(0, durSteps, random) * cfg.durationStep;
+  const [correctH, correctM] = addMinutes(hour, minute, duration);
+  const wrapped = hour * 60 + minute + duration >= 24 * 60;
+  if (!cfg.allowWrap && (wrapped || correctH === 0) && depth < 50) {
+    return generateProblem(level, seed, depth + 1);
+  }
+  const scenarioIdx = randInt(0, scenarios.length - 1, random);
+  const correctAnswer = timeStr(correctH, correctM);
+  const question = scenarios[scenarioIdx](name, hour, minute, duration);
+  const titleIdx = randInt(0, taskTitles.length - 1, random);
+  return {
+    id: seed,
+    taskTitle: taskTitles[titleIdx],
+    question,
+    correctAnswer,
+    startTime: timeStr(hour, minute),
+    duration,
+    level: cfg.label,
+    levelValue: cfg.value,
+    visualData: {
+      type: "elapsed_time",
+      startTime: timeStr(hour, minute),
+      duration,
+      endTime: correctAnswer,
+      level: cfg.label
+    }
+  };
+};
+const normalizeTime = (raw) => {
+  if (!raw) return "";
+  const cleaned = raw.trim().replace(/[.\-]/g, ":").replace(/\s+/g, "");
+  const match = cleaned.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (!match) return cleaned;
+  const h = parseInt(match[1], 10);
+  const m = parseInt(match[2], 10);
+  if (Number.isNaN(h) || Number.isNaN(m)) return cleaned;
+  return timeStr(h, m);
+};
+const checkAnswer = (raw, correctAnswer) => normalizeTime(raw) === correctAnswer;
+const TimeInputGame = () => {
+  const [problem, setProblem] = useState(null);
+  const [userAnswer, setUserAnswer] = useState("");
+  const [showResult, setShowResult] = useState(false);
+  const [isCorrect, setIsCorrect] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [externalShowAnswer, setExternalShowAnswer] = useState(false);
+  const containerRef = useRef(null);
+  const inputRef = useRef(null);
+  const problemRef = useRef(null);
+  const urlParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : ""
+  );
+  const seedParam = urlParams.get("seed");
+  const seed = seedParam ? parseInt(seedParam, 10) : 12345;
+  const levelParam = urlParams.get("level");
+  const level = levelParam ? Math.min(5, Math.max(1, parseInt(levelParam, 10))) : 1;
+  const isFrozen = urlParams.get("frozen") === "1";
+  const isQuiz = urlParams.get("mode") === "quiz";
+  const isShowAnswerUrl = urlParams.get("mode") === "review" || urlParams.get("showCorrectAnswer") === "1";
+  const isShowAnswer = isShowAnswerUrl || externalShowAnswer;
+  const initialStudentAnswer = isQuiz ? urlParams.get("studentAnswer") : null;
+  const locked = isFrozen || isShowAnswer || isSubmitted;
+  const sendHeight = useCallback(() => {
+    if (window.parent !== window) {
+      const height = containerRef.current ? containerRef.current.scrollHeight + 20 : document.body.scrollHeight;
+      window.parent.postMessage({ type: "resize", height }, "*");
+      window.parent.postMessage({ type: "HEIGHT_CHANGE", height: document.body.scrollHeight }, "*");
+    }
+  }, []);
+  const sendStudentAnswer = useCallback((value) => {
+    if (window.parent !== window) {
+      window.parent.postMessage(
+        {
+          type: "STUDENT_ANSWER",
+          answer: { value },
+          isComplete: !!value && value.trim().length > 0
+        },
+        "*"
+      );
+    }
+  }, []);
+  useEffect(() => {
+    const p = generateProblem(level, seed);
+    setProblem(p);
+    problemRef.current = p;
+    const studentAnsFromUrl = urlParams.get("studentAnswer");
+    if (isShowAnswerUrl) {
+      if (studentAnsFromUrl !== null && studentAnsFromUrl !== void 0 && studentAnsFromUrl !== "") {
+        setUserAnswer(studentAnsFromUrl);
+        setIsCorrect(checkAnswer(studentAnsFromUrl, p.correctAnswer));
+      } else {
+        setUserAnswer(p.correctAnswer);
+        setIsCorrect(true);
+      }
+      setShowResult(true);
+      setIsSubmitted(true);
+    } else if (isQuiz && initialStudentAnswer) {
+      setUserAnswer(initialStudentAnswer);
+      setIsSubmitted(true);
+      setShowResult(false);
+    } else {
+      setUserAnswer("");
+      setShowResult(false);
+      setIsSubmitted(false);
+    }
+  }, [level, seed]);
+  useEffect(() => {
+    problemRef.current = problem;
+  }, [problem]);
+  useEffect(() => {
+    const handleMessage = (event) => {
+      const data = event.data || {};
+      const { type, correctAnswer, showCorrectAnswer, isCorrect: serverIsCorrect } = data;
+      if (type === "SHOW_ANSWER" || showCorrectAnswer) {
+        const answerToShow = correctAnswer != null ? String(correctAnswer) : problemRef.current ? problemRef.current.correctAnswer : "";
+        setUserAnswer(answerToShow);
+        setIsCorrect(true);
+        setShowResult(true);
+        setIsSubmitted(true);
+        setExternalShowAnswer(true);
+        return;
+      }
+      if (type === "SERVER_RESULT") {
+        if (typeof serverIsCorrect === "boolean") {
+          setIsCorrect(serverIsCorrect);
+        }
+        setIsSubmitted(true);
+        if (!isQuiz) {
+          setShowResult(true);
+        }
+      }
+    };
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+  useEffect(() => {
+    sendHeight();
+    const t = setTimeout(sendHeight, 100);
+    return () => clearTimeout(t);
+  }, [problem, showResult, sendHeight]);
+  const handleSubmit = () => {
+    if (locked || !userAnswer.trim() || !problem || showResult) return;
+    const correct = checkAnswer(userAnswer, problem.correctAnswer);
+    setIsCorrect(correct);
+    sendStudentAnswer(userAnswer.trim());
+    window.parent.postMessage(
+      {
+        type: "exercise-result",
+        isCorrect: correct,
+        question: problem.question,
+        userAnswer: userAnswer.trim(),
+        correctAnswer: problem.correctAnswer,
+        questionData: problem.visualData
+      },
+      "*"
+    );
+    if (isQuiz) {
+      setIsSubmitted(true);
+      return;
+    }
+    setIsSubmitted(true);
+    setShowResult(true);
+  };
+  const handleNext = () => {
+    if (isFrozen || isQuiz || isShowAnswer) return;
+    const nextSeed = Date.now() % 2147483647;
+    const next = generateProblem(level, nextSeed);
+    setProblem(next);
+    problemRef.current = next;
+    setUserAnswer("");
+    setShowResult(false);
+    setIsSubmitted(false);
+  };
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") handleSubmit();
+  };
+  if (!problem) return null;
+  return /* @__PURE__ */ React.createElement(
+    "div",
+    {
+      ref: containerRef,
+      style: {
+        fontFamily: "Verdana, Geneva, sans-serif",
+        maxWidth: 560,
+        margin: "0 auto",
+        padding: 20,
+        // ⚠️ FROZEN режимде түстер 100% түпнұсқа қалпында сақталады (opacity: 1, сұр фильтр жоқ)
+        pointerEvents: isFrozen ? "none" : "auto",
+        opacity: 1
+      }
+    },
+    /* @__PURE__ */ React.createElement("h1", { style: {
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(1.1rem, 4vw, 1.45rem)",
+      color: "#323048",
+      textAlign: "center",
+      marginBottom: 28,
+      fontWeight: "bold",
+      lineHeight: 1.4
+    } }, "\u0423\u0430\u049B\u044B\u0442 \u0435\u0441\u0435\u043F\u0442\u0435\u0440\u0456"),
+    /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(0.82rem, 3vw, 0.95rem)",
+      color: "#555",
+      marginBottom: 14,
+      fontWeight: "bold"
+    } }, problem.taskTitle),
+    /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(0.85rem, 3.2vw, 1rem)",
+      color: "#222",
+      lineHeight: 1.65,
+      marginBottom: 24
+    } }, problem.question),
+    isShowAnswer ? (
+      // ⚠️ Поле-ввода тапсырмасы: тек дұрыс жауабы бар өріс, жасыл рамка/фон, батырмалар жоқ
+      /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 8 } }, /* @__PURE__ */ React.createElement(
+        "div",
+        {
+          className: "p-3",
+          style: {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "#e8f5e9",
+            border: "2px solid #34a853",
+            color: "#2e7d32",
+            fontFamily: "Verdana, Geneva, sans-serif",
+            fontWeight: "bold"
+          }
+        },
+        /* @__PURE__ */ React.createElement("span", null, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F:"),
+        /* @__PURE__ */ React.createElement(
+          "input",
+          {
+            disabled: true,
+            value: problem.correctAnswer,
+            readOnly: true,
+            style: {
+              fontFamily: "Verdana, Geneva, sans-serif",
+              fontSize: "clamp(1rem, 4vw, 1.2rem)",
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid #34a853",
+              background: "#ffffff",
+              color: "#2e7d32",
+              fontWeight: "bold",
+              textAlign: "center",
+              outline: "none"
+            }
+          }
+        )
+      ))
+    ) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 24 } }, /* @__PURE__ */ React.createElement(
+      "input",
+      {
+        ref: inputRef,
+        type: "text",
+        inputMode: "numeric",
+        placeholder: "\u041C\u044B\u0441\u0430\u043B\u044B: 9:05",
+        value: userAnswer,
+        onChange: (e) => {
+          if (locked || showResult) return;
+          const val = e.target.value;
+          setUserAnswer(val);
+          sendStudentAnswer(val);
+        },
+        onKeyDown: handleKeyDown,
+        disabled: locked || showResult,
+        style: {
+          fontFamily: "Verdana, Geneva, sans-serif",
+          fontSize: "clamp(1rem, 4vw, 1.2rem)",
+          padding: "14px 16px",
+          width: "100%",
+          boxSizing: "border-box",
+          textAlign: "center",
+          borderRadius: 10,
+          border: `2px solid ${showResult ? isCorrect ? "#34a853" : "#d93025" : "#d0d0d8"}`,
+          background: showResult ? isCorrect ? "#e8f5e9" : "#fce8e6" : "#ffffff",
+          color: showResult ? isCorrect ? "#2e7d32" : "#c62828" : "#222",
+          outline: "none",
+          WebkitAppearance: "none",
+          appearance: "none",
+          transition: "border-color 0.15s, background 0.15s"
+        }
+      }
+    )), !isQuiz && !isSubmitted && !showResult && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleSubmit,
+        disabled: isFrozen || !userAnswer.trim(),
+        style: {
+          fontFamily: "Verdana, Geneva, sans-serif",
+          fontSize: "clamp(0.9rem, 3.2vw, 1.05rem)",
+          fontWeight: "bold",
+          padding: "13px 36px",
+          background: "#323048",
+          color: "#fff",
+          border: "none",
+          borderRadius: 10,
+          cursor: !isFrozen && userAnswer.trim() ? "pointer" : "default",
+          display: "block",
+          margin: "0 auto",
+          opacity: !isFrozen && userAnswer.trim() ? 1 : 0.45,
+          letterSpacing: 0.3,
+          transition: "opacity 0.15s"
+        }
+      },
+      "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
+    ), isQuiz && !isSubmitted && /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleSubmit,
+        disabled: isFrozen || !userAnswer.trim(),
+        style: {
+          fontFamily: "Verdana, Geneva, sans-serif",
+          fontSize: "clamp(0.9rem, 3.2vw, 1.05rem)",
+          fontWeight: "bold",
+          padding: "13px 36px",
+          background: "#323048",
+          color: "#fff",
+          border: "none",
+          borderRadius: 10,
+          cursor: !isFrozen && userAnswer.trim() ? "pointer" : "default",
+          display: "block",
+          margin: "0 auto",
+          opacity: !isFrozen && userAnswer.trim() ? 1 : 0.45,
+          letterSpacing: 0.3,
+          transition: "opacity 0.15s"
+        }
+      },
+      "\u0416\u0456\u0431\u0435\u0440\u0443"
+    ), isQuiz && isSubmitted && /* @__PURE__ */ React.createElement("div", { style: {
+      textAlign: "center",
+      marginTop: 16,
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(0.85rem, 3vw, 0.95rem)",
+      color: "#555"
+    } }, "\u0416\u0430\u0443\u0430\u0431\u044B\u04A3\u044B\u0437 \u0441\u0430\u049B\u0442\u0430\u043B\u0434\u044B."), !isQuiz && showResult && /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", marginTop: 20 } }, isCorrect ? /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(0.95rem, 3.5vw, 1.15rem)",
+      fontWeight: "bold",
+      color: "#34a853",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(Check, { size: 20 }), " \u0414\u04B1\u0440\u044B\u0441") : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(0.95rem, 3.5vw, 1.15rem)",
+      fontWeight: "bold",
+      color: "#d93025",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6
+    } }, /* @__PURE__ */ React.createElement(X, { size: 20 }), " \u049A\u0430\u0442\u0435"), /* @__PURE__ */ React.createElement("div", { style: {
+      fontFamily: "Verdana, Geneva, sans-serif",
+      fontSize: "clamp(0.78rem, 2.8vw, 0.88rem)",
+      color: "#444",
+      background: "#fff7f0",
+      borderLeft: "3px solid #e8a04c",
+      padding: "12px 14px",
+      marginTop: 14,
+      borderRadius: "0 8px 8px 0",
+      lineHeight: 1.6,
+      textAlign: "left"
+    } }, problem.startTime, " + ", durationText(problem.duration), " = ", problem.correctAnswer, ". \u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F: ", problem.correctAnswer)), /* @__PURE__ */ React.createElement(
+      "button",
+      {
+        onClick: handleNext,
+        style: {
+          fontFamily: "Verdana, Geneva, sans-serif",
+          fontSize: "clamp(0.85rem, 3vw, 0.95rem)",
+          fontWeight: "bold",
+          padding: "10px 28px",
+          background: "#323048",
+          color: "#fff",
+          border: "none",
+          borderRadius: 10,
+          cursor: "pointer",
+          marginTop: 16,
+          transition: "opacity 0.15s"
+        }
+      },
+      "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B \u2192"
+    ))),
+    /* @__PURE__ */ React.createElement("div", { style: {
+      marginTop: 24,
+      textAlign: "center",
+      fontSize: 11,
+      color: "#999",
+      opacity: 0.7,
+      letterSpacing: "0.05em"
+    } }, "\u0414\u0435\u04A3\u0433\u0435\u0439: ", problem.level)
+  );
+};
+
+            
+            // Рендерим компонент
+            ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(TimeInputGame));
+            
+            // Отправляем INIT сообщение
+            if (embedMode && window.parent) {
+                window.parent.postMessage({ type: 'INIT', status: 'ready' }, '*');
+            }
+        })();
+    </script>
+</body>
+</html>

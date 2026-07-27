@@ -89,7 +89,7 @@
                 <span>Жүктелуде...</span>
               </div>
 
-              <div v-else-if="assignedQuizzes.length === 0" class="empty-state">
+              <div v-else-if="activeQuizzes.length === 0" class="empty-state">
                 <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -100,7 +100,7 @@
 
               <div v-else class="quiz-list">
                 <div
-                  v-for="quiz in assignedQuizzes"
+                  v-for="quiz in activeQuizzes"
                   :key="quiz.id"
                   class="quiz-card"
                 >
@@ -224,32 +224,54 @@
       </div>
 
       <!-- Past Quizzes -->
-      <div class="quizzes-section">
+      <div class="quizzes-section mt-8">
         <h2 class="section-title">Өткен квиздер</h2>
 
         <div v-if="completedQuizzes.length === 0" class="quizzes-empty">
+          <svg class="empty-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
           <p>Аяқталған квиз жоқ</p>
         </div>
 
-        <div v-else class="past-quizzes-table-wrapper">
+        <div v-else class="past-quizzes-table-wrapper bg-white rounded-xl border border-gray-100 shadow-sm p-4">
           <table class="past-quizzes-table">
             <thead>
               <tr>
                 <th>Атауы</th>
-                <th>Күндері</th>
+                <th>Тапсырылған күні</th>
                 <th>Нәтиже</th>
+                <th>Әрекет</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="quiz in completedQuizzes" :key="quiz.id">
-                <td>{{ quiz.name }}</td>
+                <td class="font-semibold text-gray-800">{{ quiz.name }}</td>
                 <td>{{ formatDateFull(getQuizCompletedDate(quiz.id) || quiz.created_at) }}</td>
-                <td>100% (Аяқталған)</td>
+                <td class="font-bold text-green-600">
+                  <span v-if="shouldShowQuizScore(quiz) && getQuizScore(quiz.id) !== null">{{ getQuizScore(quiz.id) }}%</span>
+                  <span v-else class="text-gray-400 font-normal">—</span>
+                </td>
+                <td>
+                  <button
+                    v-if="shouldShowQuizResults(quiz)"
+                    @click="goToQuizAnalytics(quiz.id)"
+                    class="px-3 py-1.5 bg-cyan-50 text-cyan-700 font-semibold rounded-lg hover:bg-cyan-100 transition whitespace-nowrap text-xs cursor-pointer inline-flex items-center gap-1 shadow-sm"
+                  >
+                    <span>Есепті көру</span>
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                  <span v-else class="text-gray-400 text-xs">—</span>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
     </div>
   </div>
 </template>
@@ -259,6 +281,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { quizApi, type QuizResponse } from '@/api/quiz'
+import { getQuizEffectiveVisibility } from '@/utils/quizVisibility'
 import Header from '@/components/layout/Header.vue'
 
 defineOptions({ name: 'MyIxlView' })
@@ -303,23 +326,20 @@ interface RecentSession {
 const recentSessions = ref<RecentSession[]>([])
 
 const isQuizCompleted = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  if (assignment?.completed_at) {
+    return true
+  }
   try {
-    return !!localStorage.getItem(`quiz_result_${quizId}`)
+    const userId = authStore.user?.id || ''
+    return !!localStorage.getItem(`quiz_result_${userId}_${quizId}`)
   } catch {
     return false
   }
 }
 
-const getQuizCompletedDate = (quizId: string) => {
-  try {
-    const data = localStorage.getItem(`quiz_result_${quizId}`)
-    if (data) {
-      const parsed = JSON.parse(data)
-      return parsed.completedAt
-    }
-  } catch {}
-  return null
-}
+
 
 const activeQuizzes = computed(() => {
   return assignedQuizzes.value.filter(q => !isQuizCompleted(q.id))
@@ -328,6 +348,48 @@ const activeQuizzes = computed(() => {
 const completedQuizzes = computed(() => {
   return assignedQuizzes.value.filter(q => isQuizCompleted(q.id))
 })
+
+const getQuizCompletedDate = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  if (assignment?.completed_at) {
+    return assignment.completed_at
+  }
+  try {
+    const userId = authStore.user?.id || ''
+    const data = localStorage.getItem(`quiz_result_${userId}_${quizId}`)
+    if (data) {
+      const parsed = JSON.parse(data)
+      return parsed.completedAt
+    }
+  } catch {}
+  return null
+}
+
+const getQuizScore = (quizId: string) => {
+  const quiz = assignedQuizzes.value.find(q => q.id === quizId)
+  const assignment = quiz?.assignments?.find(a => a.student_id === authStore.user?.id)
+  return assignment?.score ?? null
+}
+
+const goToQuizAnalytics = (quizId: string) => {
+  router.push({ path: '/analytics', query: { tab: 'quizzes', quizId } })
+}
+
+const getQuizVisibilitySetting = (quiz: QuizResponse) => {
+  return getQuizEffectiveVisibility(quiz, authStore.user?.id)
+}
+
+const shouldShowQuizScore = (quiz: QuizResponse) => {
+  const visibility = getQuizVisibilitySetting(quiz)
+  return visibility === 'ALWAYS' || visibility === 'SCORE_ONLY'
+}
+
+const shouldShowQuizResults = (quiz: QuizResponse) => {
+  const visibility = getQuizVisibilitySetting(quiz)
+  return visibility === 'ALWAYS'
+}
+
 
 const loadRecentSessions = () => {
   try {
@@ -448,15 +510,18 @@ onMounted(async () => {
 }
 
 .subtab-container {
-  max-width: 900px;
+  width: 88%;
+  max-width: 100%;
   margin: 0 auto;
   display: flex;
   gap: 0;
 }
 
 .subtab-btn {
+  flex: 1;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   padding: 16px 28px;
   font-size: 15px;
@@ -467,6 +532,17 @@ onMounted(async () => {
   cursor: pointer;
   border-bottom: 3px solid transparent;
   transition: all 0.2s;
+  position: relative;
+}
+
+.subtab-btn + .subtab-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 1px;
+  background: #e5e7eb;
 }
 
 .subtab-btn:hover {
@@ -491,9 +567,10 @@ onMounted(async () => {
 }
 
 .wave-inner {
-  max-width: 1000px;
+  width: 88%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 40px 0 60px;
 }
 
 /* ===== GREETING ===== */
@@ -661,7 +738,6 @@ onMounted(async () => {
   color: #065f46;
 }
 
-.quiz-card-right {}
 
 .start-quiz-btn {
   padding: 7px 16px;
@@ -733,7 +809,9 @@ onMounted(async () => {
   font-size: 14px;
   font-weight: 600;
   color: #1f2937;
-  truncate: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recent-meta {
@@ -851,9 +929,10 @@ onMounted(async () => {
 
 /* ===== QUIZZES TAB ===== */
 .quizzes-content {
-  max-width: 900px;
+  width: 88%;
+  max-width: 100%;
   margin: 0 auto;
-  padding: 40px 20px 60px;
+  padding: 40px 0 60px;
 }
 
 .quizzes-header {

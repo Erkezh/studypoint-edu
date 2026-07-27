@@ -2,6 +2,17 @@
   <div class="min-h-screen bg-gray-50">
     <Header />
     <main class="container mx-auto px-4 py-8">
+      <!-- Teacher Mode Warning -->
+      <div v-if="authStore.user?.role === 'TEACHER' || authStore.user?.role === 'ADMIN'" class="bg-amber-50 border border-amber-300 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <svg class="w-6 h-6 text-amber-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+        <div>
+          <p class="font-semibold text-amber-800">Сіз мұғалім ретінде кірдіңіз</p>
+          <p class="text-sm text-amber-700 mt-0.5">Бұл тесттің нәтижелері сақталмайды, өйткені сіз мұғалімсіз.</p>
+        </div>
+      </div>
+
       <div class="mb-6">
         <button
           @click="router.back()"
@@ -80,15 +91,15 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div v-if="authStore.isAuthenticated">
               <span class="text-sm text-gray-500">SmartScore</span>
-              <p class="text-2xl font-bold">{{ stats.smartscore || 0 }}</p>
+              <p class="text-2xl font-bold">{{ stats.best_smartscore || 0 }}</p>
             </div>
             <div>
-              <span class="text-sm text-gray-500">Правильных ответов</span>
-              <p class="text-2xl font-bold text-green-600">{{ stats.correct || 0 }}</p>
+              <span class="text-sm text-gray-500">Дұрыс жауаптар пайызы</span>
+              <p class="text-2xl font-bold text-green-600">{{ stats.accuracy_percent || 0 }}%</p>
             </div>
             <div>
               <span class="text-sm text-gray-500">Всего вопросов</span>
-              <p class="text-2xl font-bold">{{ stats.total || 0 }}</p>
+              <p class="text-2xl font-bold">{{ stats.total_questions || 0 }}</p>
             </div>
           </div>
         </div>
@@ -100,13 +111,14 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useCatalogStore } from '@/stores/catalog'
 import { usePracticeStore } from '@/stores/practice'
 import { useAuthStore } from '@/stores/auth'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
+import type { SkillStatsResponse } from '@/types/api'
 import { prefetchPracticePage, waitForNextPaint } from '@/utils/ui'
 
 interface Props {
@@ -120,7 +132,7 @@ const practiceStore = usePracticeStore()
 const authStore = useAuthStore()
 
 const skill = ref(catalogStore.skillDetails.get(parseInt(props.skillId, 10)))
-const stats = ref<Record<string, any> | null>(null)
+const stats = ref<SkillStatsResponse | null>(null)
 const loading = ref(true)
 const startingPractice = ref(false)
 const error = ref<string | null>(null)
@@ -140,27 +152,37 @@ const startPractice = async () => {
     }
     const session = await practiceStore.createSession(skillId)
     router.push({ name: 'practice', params: { sessionId: session.id } })
-  } catch (err: any) {
+  } catch (err: unknown) {
     let errorMessage = 'Не удалось начать практику'
+    const errorObj = err as {
+      response?: {
+        data?: {
+          detail?: string | Array<{ loc?: string[]; msg?: string }>
+          message?: string
+        }
+      }
+      message?: string
+    }
     
-    if (err.response?.data?.detail) {
+    if (errorObj.response?.data?.detail) {
+      const detail = errorObj.response.data.detail
       // Ошибка валидации от FastAPI
-      if (Array.isArray(err.response.data.detail)) {
-        const validationErrors = err.response.data.detail
-          .map((e: any) => `${e.loc?.join('.')}: ${e.msg}`)
+      if (Array.isArray(detail)) {
+        const validationErrors = detail
+          .map((e) => `${e.loc?.join('.')}: ${e.msg}`)
           .join(', ')
         errorMessage = `Ошибка валидации: ${validationErrors}`
-      } else if (typeof err.response.data.detail === 'string') {
-        errorMessage = err.response.data.detail
+      } else if (typeof detail === 'string') {
+        errorMessage = detail
       }
-    } else if (err.response?.data?.message) {
-      errorMessage = err.response.data.message
-    } else if (err.message) {
-      errorMessage = err.message
+    } else if (errorObj.response?.data?.message) {
+      errorMessage = errorObj.response.data.message
+    } else if (errorObj.message) {
+      errorMessage = errorObj.message
     }
     
     error.value = errorMessage
-    console.error('Failed to start practice:', err.response?.data || err)
+    console.error('Failed to start practice:', err)
   } finally {
     startingPractice.value = false
   }
@@ -193,8 +215,9 @@ onMounted(async () => {
       console.error('Failed to fetch stats:', err)
       // Stats не критичны, продолжаем работу
     }
-  } catch (err: any) {
-    error.value = err.message || 'Не удалось загрузить навык'
+  } catch (err: unknown) {
+    const errorObj = err as { message?: string }
+    error.value = errorObj.message || 'Не удалось загрузить навык'
     console.error('Failed to load skill:', err)
   } finally {
     loading.value = false

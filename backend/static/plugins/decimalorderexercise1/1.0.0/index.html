@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Decimal Order Exercise(1)</title>
+    <title>Decimal Order Exercise (1)</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -63,49 +63,74 @@
             }
             
             const { useState, useEffect, useRef, useCallback } = React;
-const DIFFICULTY_LEVELS = [
-  { label: "\u0416\u0435\u04A3\u0456\u043B", count: [3, 4], decimals: 1, range: [0.1, 0.9] },
-  { label: "\u041E\u0440\u0442\u0430\u0448\u0430", count: [4, 5], decimals: 1, range: [1, 9.9] },
-  { label: "\u041A\u04AF\u0440\u0434\u0435\u043B\u0456", count: [4, 5], decimals: 2, range: [0.1, 9.99] },
-  { label: "\u049A\u0438\u044B\u043D", count: [4, 5], decimals: 2, range: [30, 99.99] }
+const LEVELS = [
+  { value: 1, label: "1-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u0411\u0430\u0441\u0442\u0430\u043F\u049B\u044B", count: [3, 3], decimals: 1, range: [0.1, 0.9] },
+  { value: 2, label: "2-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041E\u04A3\u0430\u0439", count: [3, 4], decimals: 1, range: [1, 9.9] },
+  { value: 3, label: "3-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041E\u0440\u0442\u0430\u0448\u0430", count: [4, 4], decimals: 2, range: [0.1, 9.99] },
+  { value: 4, label: "4-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u041A\u04AF\u0440\u0434\u0435\u043B\u0456", count: [4, 5], decimals: 2, range: [10, 99.99] },
+  { value: 5, label: "5-\u0434\u0435\u04A3\u0433\u0435\u0439 \xB7 \u0416\u043E\u0493\u0430\u0440\u044B", count: [5, 6], decimals: "mixed", range: [0.01, 999.99] }
 ];
-function randomInRange(min, max, decimals) {
-  const val = Math.random() * (max - min) + min;
+function createSeededRandom(s) {
+  let state = s;
+  return () => {
+    state = state * 1664525 + 1013904223 & 2147483647;
+    return state / 2147483647;
+  };
+}
+function randomInRange(min, max, decimals, random) {
+  const val = random() * (max - min) + min;
   return parseFloat(val.toFixed(decimals));
 }
 function fmt(num) {
   return String(num).replace(".", ",");
 }
-function shuffleArray(arr) {
+function parseAnswerString(str) {
+  if (!str) return [];
+  return String(str).split(", ").map((s) => parseFloat(s.trim().replace(",", "."))).filter((n) => !Number.isNaN(n));
+}
+function shuffleArray(arr, random) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
 }
-function generateProblem() {
-  const level = DIFFICULTY_LEVELS[Math.floor(Math.random() * DIFFICULTY_LEVELS.length)];
-  const count = level.count[0] + Math.floor(Math.random() * (level.count[1] - level.count[0] + 1));
-  const ascending = Math.random() > 0.5;
+function buildExplanation(problem) {
+  const { correctOrder, ascending } = problem;
+  const direction = ascending ? "\u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439" : "\u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439";
+  const chain = correctOrder.map((n) => fmt(n)).join(" \u2192 ");
+  return `\u041E\u043D\u0434\u044B\u049B \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u0441\u0430\u043B\u044B\u0441\u0442\u044B\u0440\u0493\u0430\u043D\u0434\u0430 \u0430\u043B\u0434\u044B\u043C\u0435\u043D \u0431\u04AF\u0442\u0456\u043D \u0431\u04E9\u043B\u0456\u0433\u0456\u043D, \u0430\u043B \u043E\u043B \u0442\u0435\u04A3 \u0431\u043E\u043B\u0441\u0430 \u04AF\u0442\u0456\u0440\u0434\u0435\u043D \u043A\u0435\u0439\u0456\u043D\u0433\u0456 \u0446\u0438\u0444\u0440\u043B\u0430\u0440\u0434\u044B \u0441\u043E\u043B \u0436\u0430\u049B\u0442\u0430\u043D \u043E\u04A3\u0493\u0430 \u049B\u0430\u0440\u0430\u0439 \u0431\u0456\u0440-\u0431\u0456\u0440\u043B\u0435\u043F \u0441\u0430\u043B\u044B\u0441\u0442\u044B\u0440\u0430\u043C\u044B\u0437. \u041E\u0441\u044B \u0435\u0440\u0435\u0436\u0435\u0433\u0435 \u0441\u0430\u0439 \u0441\u0430\u043D\u0434\u0430\u0440\u0434\u044B ${direction} \u0440\u0435\u0442\u043A\u0435 \u043A\u0435\u043B\u0442\u0456\u0440\u0441\u0435\u043A: ${chain}.`;
+}
+function generateProblem(level, random) {
+  const lvl = Math.min(5, Math.max(1, level));
+  const cfg = LEVELS[lvl - 1];
+  const count = cfg.count[0] + Math.floor(random() * (cfg.count[1] - cfg.count[0] + 1));
+  const ascending = random() > 0.5;
   const nums = /* @__PURE__ */ new Set();
-  while (nums.size < count) {
-    nums.add(randomInRange(level.range[0], level.range[1], level.decimals));
+  let guard = 0;
+  while (nums.size < count && guard < 500) {
+    const decimals = cfg.decimals === "mixed" ? random() > 0.5 ? 1 : 2 : cfg.decimals;
+    nums.add(randomInRange(cfg.range[0], cfg.range[1], decimals, random));
+    guard++;
   }
   const sorted = [...nums].sort((a, b) => ascending ? a - b : b - a);
-  const shuffled = shuffleArray(sorted);
+  const shuffled = shuffleArray(sorted, random);
   if (JSON.stringify(shuffled) === JSON.stringify(sorted)) {
     const i = 0, j = shuffled.length - 1;
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
-  return {
-    id: Date.now(),
+  const problem = {
+    id: Math.floor(random() * 1e9),
     question: ascending ? "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440" : "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440",
     ascending,
     numbers: shuffled,
     correctOrder: sorted,
-    level: level.label
+    level: cfg.label,
+    levelValue: cfg.value
   };
+  problem.explanation = buildExplanation(problem);
+  return problem;
 }
 const COLORS = {
   bg: "#0a0e1a",
@@ -130,12 +155,46 @@ function DecimalOrderExercise() {
   const [remaining, setRemaining] = useState([]);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [reviewOnlyCorrect, setReviewOnlyCorrect] = useState(false);
   const [draggedItem, setDraggedItem] = useState(null);
   const [dragSource, setDragSource] = useState(null);
   const [hoveredSlot, setHoveredSlot] = useState(null);
   const [animateIn, setAnimateIn] = useState(false);
-  const [touchDrag, setTouchDrag] = useState(null);
   const containerRef = useRef(null);
+  const urlParams = new URLSearchParams(
+    typeof window !== "undefined" ? window.location.search : ""
+  );
+  const seedParam = urlParams.get("seed");
+  const seed = seedParam ? parseInt(seedParam, 10) : Date.now();
+  const levelParam = urlParams.get("level");
+  const level = levelParam ? Math.min(5, Math.max(1, parseInt(levelParam, 10))) : 1;
+  const isFrozen = urlParams.get("frozen") === "1";
+  const isQuiz = urlParams.get("mode") === "quiz";
+  const randomRef = useRef(null);
+  if (randomRef.current === null) {
+    randomRef.current = createSeededRandom(seed);
+  }
+  const random = randomRef.current;
+  const isReviewModeUrl = urlParams.get("mode") === "review" || urlParams.get("showCorrectAnswer") === "1";
+  const initialStudentAnswer = isQuiz ? urlParams.get("studentAnswer") : null;
+  const parseJsonParam = (param) => {
+    if (!param) return null;
+    try {
+      return JSON.parse(param);
+    } catch {
+      return param;
+    }
+  };
+  const reviewMode = typeof window !== "undefined" && window.reviewMode || (isReviewModeUrl ? {
+    studentAnswer: parseJsonParam(urlParams.get("studentAnswer")),
+    correctAnswer: parseJsonParam(urlParams.get("correctAnswer")),
+    isCorrect: urlParams.get("isCorrect") === "true",
+    questionData: parseJsonParam(urlParams.get("questionData")),
+    answerData: parseJsonParam(urlParams.get("answerData"))
+  } : null);
+  const isReview = !!reviewMode || isFrozen;
+  const locked = isReview || isSubmitted;
   const sendHeight = useCallback(() => {
     if (window.parent !== window && containerRef.current) {
       window.parent.postMessage(
@@ -145,42 +204,102 @@ function DecimalOrderExercise() {
     }
   }, []);
   const startNewProblem = useCallback(() => {
-    const p = generateProblem();
+    if (isFrozen || isQuiz) return;
+    const p = generateProblem(level, random);
     setProblem(p);
     setUserOrder([]);
     setRemaining(p.numbers.map((n, i) => ({ value: n, id: `num-${i}-${n}` })));
     setShowResult(false);
     setIsCorrect(false);
+    setIsSubmitted(false);
     setAnimateIn(false);
     setTimeout(() => setAnimateIn(true), 50);
-  }, []);
+  }, [isFrozen, isQuiz]);
   useEffect(() => {
-    startNewProblem();
-  }, [startNewProblem]);
+    if (reviewMode && reviewMode.questionData && Array.isArray(reviewMode.questionData.numbers) && reviewMode.questionData.numbers.length > 0) {
+      const qd = reviewMode.questionData || {};
+      const numbers = Array.isArray(qd.numbers) ? qd.numbers : [];
+      const ascending = qd.ascending !== void 0 ? qd.ascending : true;
+      const correctOrder = [...numbers].sort((a, b) => ascending ? a - b : b - a);
+      const p = {
+        id: 0,
+        question: reviewMode.question || (ascending ? "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043A\u0456\u0448\u0456\u0434\u0435\u043D \u04AF\u043B\u043A\u0435\u043D\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440" : "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u04AF\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u043A\u0456\u0448\u0456\u0433\u0435 \u049B\u0430\u0440\u0430\u0439 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440"),
+        ascending,
+        numbers,
+        correctOrder,
+        level: qd.level || ""
+      };
+      p.explanation = qd.explanation || buildExplanation(p);
+      const studentAnswerRaw = reviewMode.studentAnswer;
+      const correctAnswerRaw = reviewMode.correctAnswer;
+      const noStudentAnswer = studentAnswerRaw === null || studentAnswerRaw === void 0 || String(studentAnswerRaw).trim() === "";
+      const studentEqualsCorrectAnswer = !noStudentAnswer && correctAnswerRaw != null && String(studentAnswerRaw).trim() === String(correctAnswerRaw).trim();
+      const onlyCorrect = !!reviewMode.isCorrect && (noStudentAnswer || studentEqualsCorrectAnswer);
+      const displayOrder = onlyCorrect ? correctOrder.map((n, i) => ({ value: n, id: `correct-${i}-${n}` })) : parseAnswerString(studentAnswerRaw).map((v, i) => ({ value: v, id: `num-${i}-${v}` }));
+      setProblem(p);
+      setUserOrder(displayOrder);
+      setRemaining([]);
+      setIsCorrect(!!reviewMode.isCorrect);
+      setReviewOnlyCorrect(onlyCorrect);
+      setShowResult(true);
+      setIsSubmitted(true);
+      setAnimateIn(true);
+    } else if (reviewMode || isReviewModeUrl) {
+      const p = generateProblem(level, random);
+      const displayOrder = p.correctOrder.map((n, i) => ({ value: n, id: `correct-${i}-${n}` }));
+      setProblem(p);
+      setUserOrder(displayOrder);
+      setRemaining([]);
+      setIsCorrect(true);
+      setReviewOnlyCorrect(true);
+      setShowResult(true);
+      setIsSubmitted(true);
+      setAnimateIn(true);
+    } else {
+      const p = generateProblem(level, random);
+      setProblem(p);
+      if (isQuiz && initialStudentAnswer) {
+        const studentValues = parseAnswerString(initialStudentAnswer);
+        const studentOrder = studentValues.map((v, i) => ({ value: v, id: `num-${i}-${v}` }));
+        setUserOrder(studentOrder);
+        setRemaining([]);
+        setIsSubmitted(true);
+        setShowResult(false);
+      } else {
+        setUserOrder([]);
+        setRemaining(p.numbers.map((n, i) => ({ value: n, id: `num-${i}-${n}` })));
+      }
+      setAnimateIn(false);
+      setTimeout(() => setAnimateIn(true), 50);
+    }
+  }, []);
   useEffect(() => {
     sendHeight();
     const timer = setTimeout(sendHeight, 150);
     return () => clearTimeout(timer);
-  }, [problem, showResult, userOrder, sendHeight]);
+  }, [problem, showResult, userOrder, isSubmitted, sendHeight]);
   const handleChipClick = (item) => {
-    if (showResult) return;
+    if (locked || showResult) return;
     setRemaining((r) => r.filter((x) => x.id !== item.id));
     setUserOrder((o) => [...o, item]);
   };
   const handleSlotClick = (item) => {
-    if (showResult) return;
+    if (locked || showResult) return;
     setUserOrder((o) => o.filter((x) => x.id !== item.id));
     setRemaining((r) => [...r, item]);
   };
   const handleDragStart = (item, source) => {
+    if (locked) return;
     setDraggedItem(item);
     setDragSource(source);
   };
   const handleDragOverSlot = (e, index) => {
+    if (locked) return;
     e.preventDefault();
     setHoveredSlot(index);
   };
   const handleDropOnAnswer = (e, dropIndex) => {
+    if (locked) return;
     e.preventDefault();
     setHoveredSlot(null);
     if (!draggedItem) return;
@@ -202,6 +321,7 @@ function DecimalOrderExercise() {
     setDragSource(null);
   };
   const handleDropOnRemaining = (e) => {
+    if (locked) return;
     e.preventDefault();
     setHoveredSlot(null);
     if (!draggedItem || dragSource !== "answer") return;
@@ -216,11 +336,11 @@ function DecimalOrderExercise() {
     setHoveredSlot(null);
   };
   const handleSubmit = () => {
-    if (!problem || userOrder.length !== problem.numbers.length) return;
+    if (isReview || isFrozen || isSubmitted || !problem || userOrder.length !== problem.numbers.length)
+      return;
     const userValues = userOrder.map((x) => x.value);
     const correct = JSON.stringify(userValues) === JSON.stringify(problem.correctOrder);
     setIsCorrect(correct);
-    setShowResult(true);
     window.parent.postMessage(
       {
         type: "exercise-result",
@@ -232,11 +352,18 @@ function DecimalOrderExercise() {
           type: "decimal-order",
           numbers: problem.numbers,
           ascending: problem.ascending,
-          level: problem.level
+          level: problem.level,
+          explanation: problem.explanation
         }
       },
       "*"
     );
+    if (isQuiz) {
+      setIsSubmitted(true);
+      return;
+    }
+    setIsSubmitted(true);
+    setShowResult(true);
   };
   if (!problem) return null;
   const allPlaced = userOrder.length === problem.numbers.length;
@@ -250,7 +377,9 @@ function DecimalOrderExercise() {
         minHeight: "100vh",
         padding: "24px 16px",
         boxSizing: "border-box",
-        color: COLORS.text
+        color: COLORS.text,
+        pointerEvents: isFrozen ? "none" : "auto",
+        opacity: 1
       }
     },
     /* @__PURE__ */ React.createElement("style", null, `
@@ -424,6 +553,16 @@ function DecimalOrderExercise() {
           font-size: 15px;
           font-weight: 500;
         }
+
+        .explanation-box {
+          padding: 14px 18px;
+          border-radius: 12px;
+          background: rgba(248, 113, 113, 0.06);
+          border-left: 4px solid ${COLORS.error};
+          font-size: 13px;
+          line-height: 1.6;
+          color: ${COLORS.text};
+        }
       `),
     /* @__PURE__ */ React.createElement(
       "div",
@@ -475,7 +614,7 @@ function DecimalOrderExercise() {
         /* @__PURE__ */ React.createElement("span", { style: { fontSize: 16 } }, problem.ascending ? "\u2191" : "\u2193"),
         problem.ascending ? "\u041A\u0456\u0448\u0456\u0434\u0435\u043D \u2192 \u04AE\u043B\u043A\u0435\u043D\u0433\u0435" : "\u04AE\u043B\u043A\u0435\u043D\u043D\u0435\u043D \u2192 \u041A\u0456\u0448\u0456\u0433\u0435"
       )),
-      /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 24 } }, /* @__PURE__ */ React.createElement(
+      !reviewOnlyCorrect && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 24 } }, /* @__PURE__ */ React.createElement(
         "div",
         {
           style: {
@@ -492,8 +631,8 @@ function DecimalOrderExercise() {
         "div",
         {
           className: `dropzone ${draggedItem && dragSource === "answer" ? "active" : ""}`,
-          onDragOver: (e) => e.preventDefault(),
-          onDrop: handleDropOnRemaining,
+          onDragOver: (e) => !locked && e.preventDefault(),
+          onDrop: locked ? void 0 : handleDropOnRemaining,
           style: {
             minHeight: remaining.length === 0 ? 56 : "auto",
             justifyContent: remaining.length === 0 ? "center" : "flex-start"
@@ -516,12 +655,13 @@ function DecimalOrderExercise() {
           {
             key: item.id,
             className: "chip chip-source",
-            draggable: true,
+            draggable: !locked,
             onDragStart: () => handleDragStart(item, "remaining"),
             onDragEnd: handleDragEnd,
             onClick: () => handleChipClick(item),
             style: {
-              animation: `chipAppear 0.3s ease ${i * 0.05}s both`
+              animation: `chipAppear 0.3s ease ${i * 0.05}s both`,
+              cursor: locked ? "default" : "grab"
             }
           },
           fmt(item.value)
@@ -542,14 +682,14 @@ function DecimalOrderExercise() {
             gap: 8
           }
         },
-        /* @__PURE__ */ React.createElement("span", null, "\u0416\u0430\u0443\u0430\u043F"),
-        !showResult && userOrder.length > 0 && /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.5, fontWeight: 400, fontSize: 10, textTransform: "none" } }, "(\u0431\u0430\u0441\u044B\u043F \u0430\u043B\u0443 \u04AF\u0448\u0456\u043D \u0448\u0435\u0440\u0442)")
+        /* @__PURE__ */ React.createElement("span", null, reviewOnlyCorrect ? "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F" : "\u0416\u0430\u0443\u0430\u043F"),
+        !showResult && !locked && userOrder.length > 0 && /* @__PURE__ */ React.createElement("span", { style: { opacity: 0.5, fontWeight: 400, fontSize: 10, textTransform: "none" } }, "(\u0431\u0430\u0441\u044B\u043F \u0430\u043B\u0443 \u04AF\u0448\u0456\u043D \u0448\u0435\u0440\u0442)")
       ), /* @__PURE__ */ React.createElement(
         "div",
         {
           className: `dropzone ${draggedItem && dragSource === "remaining" ? "active" : ""}`,
-          onDragOver: (e) => handleDragOverSlot(e, userOrder.length),
-          onDrop: (e) => handleDropOnAnswer(e, userOrder.length),
+          onDragOver: (e) => !locked && handleDragOverSlot(e, userOrder.length),
+          onDrop: (e) => !locked && handleDropOnAnswer(e, userOrder.length),
           onDragLeave: () => setHoveredSlot(null),
           style: {
             minHeight: 56,
@@ -571,42 +711,41 @@ function DecimalOrderExercise() {
           "\u0421\u0430\u043D\u0434\u0430\u0440\u0434\u044B \u043E\u0441\u044B\u043D\u0434\u0430 \u043E\u0440\u043D\u0430\u043B\u0430\u0441\u0442\u044B\u0440 \u2192"
         ),
         userOrder.map((item, i) => {
-          const chipClass = showResult ? item.value === problem.correctOrder[i] ? "chip chip-correct" : "chip chip-wrong" : "chip chip-placed";
+          const chipClass = reviewOnlyCorrect ? "chip chip-correct" : showResult ? item.value === problem.correctOrder[i] ? "chip chip-correct" : "chip chip-wrong" : "chip chip-placed";
           return /* @__PURE__ */ React.createElement("div", { key: item.id, style: { display: "flex", alignItems: "center", gap: 0 } }, hoveredSlot === i && draggedItem && /* @__PURE__ */ React.createElement("div", { className: "slot-indicator" }), /* @__PURE__ */ React.createElement(
             "div",
             {
               className: chipClass,
-              draggable: !showResult,
-              onDragStart: () => !showResult && handleDragStart(item, "answer"),
+              draggable: !locked && !showResult,
+              onDragStart: () => !locked && !showResult && handleDragStart(item, "answer"),
               onDragEnd: handleDragEnd,
-              onDragOver: (e) => !showResult && handleDragOverSlot(e, i),
-              onDrop: (e) => !showResult && handleDropOnAnswer(e, i),
-              onClick: () => !showResult && handleSlotClick(item),
+              onDragOver: (e) => !locked && !showResult && handleDragOverSlot(e, i),
+              onDrop: (e) => !locked && !showResult && handleDropOnAnswer(e, i),
+              onClick: () => !locked && !showResult && handleSlotClick(item),
               style: {
                 animation: showResult ? "bounceIn 0.3s ease" : `chipAppear 0.2s ease ${i * 0.04}s both`
               }
             },
             fmt(item.value),
-            showResult && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 14 } }, item.value === problem.correctOrder[i] ? "\u2713" : "\u2717")
+            showResult && !reviewOnlyCorrect && /* @__PURE__ */ React.createElement("span", { style: { marginLeft: 6, fontSize: 14 } }, item.value === problem.correctOrder[i] ? "\u2713" : "\u2717")
           ));
         }),
         hoveredSlot === userOrder.length && draggedItem && /* @__PURE__ */ React.createElement("div", { className: "slot-indicator" })
       )),
-      showResult && /* @__PURE__ */ React.createElement(
+      showResult && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 } }, /* @__PURE__ */ React.createElement(
         "div",
         {
           className: "result-banner",
           style: {
             background: isCorrect ? COLORS.successGlow : COLORS.errorGlow,
             border: `1px solid ${isCorrect ? "rgba(52, 211, 153, 0.3)" : "rgba(248, 113, 113, 0.3)"}`,
-            color: isCorrect ? COLORS.success : COLORS.error,
-            marginBottom: 16
+            color: isCorrect ? COLORS.success : COLORS.error
           }
         },
-        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 22 } }, isCorrect ? "\u{1F389}" : "\u{1F4A1}"),
-        /* @__PURE__ */ React.createElement("div", null, isCorrect ? /* @__PURE__ */ React.createElement("span", null, "\u0414\u04B1\u0440\u044B\u0441! \u0416\u0430\u0440\u0430\u0439\u0441\u044B\u04A3!") : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 4 } }, "\u049A\u0430\u0442\u0435. \u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F:"), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, letterSpacing: "0.04em" } }, problem.correctOrder.map((n) => fmt(n)).join("  \u2192  "))))
-      ),
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, justifyContent: "center" } }, !showResult ? /* @__PURE__ */ React.createElement(
+        /* @__PURE__ */ React.createElement("span", { style: { fontSize: 22 } }, reviewOnlyCorrect ? "\u2705" : isCorrect ? "\u{1F389}" : "\u{1F4A1}"),
+        /* @__PURE__ */ React.createElement("div", null, reviewOnlyCorrect ? /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 4 } }, "\u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F:"), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, letterSpacing: "0.04em" } }, problem.correctOrder.map((n) => fmt(n)).join("  \u2192  "))) : isCorrect ? /* @__PURE__ */ React.createElement("span", null, "\u0414\u04B1\u0440\u044B\u0441! \u0416\u0430\u0440\u0430\u0439\u0441\u044B\u04A3!") : /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: 4 } }, "\u049A\u0430\u0442\u0435. \u0414\u04B1\u0440\u044B\u0441 \u0436\u0430\u0443\u0430\u043F:"), /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, letterSpacing: "0.04em" } }, problem.correctOrder.map((n) => fmt(n)).join("  \u2192  "))))
+      ), !reviewOnlyCorrect && !isCorrect && problem.explanation && /* @__PURE__ */ React.createElement("div", { className: "explanation-box" }, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 700, marginBottom: 4 } }, "\u0422\u04AF\u0441\u0456\u043D\u0434\u0456\u0440\u043C\u0435:"), /* @__PURE__ */ React.createElement("div", null, problem.explanation))),
+      !isReview && !isFrozen && !isSubmitted && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, justifyContent: "center" } }, /* @__PURE__ */ React.createElement(
         "button",
         {
           className: "btn btn-primary",
@@ -614,7 +753,8 @@ function DecimalOrderExercise() {
           onClick: handleSubmit
         },
         "\u0422\u0435\u043A\u0441\u0435\u0440\u0443"
-      ) : /* @__PURE__ */ React.createElement("button", { className: "btn btn-success", onClick: startNewProblem }, "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B \u2192")),
+      )),
+      !isReview && !isFrozen && showResult && !isQuiz && /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: 12, justifyContent: "center" } }, /* @__PURE__ */ React.createElement("button", { className: "btn btn-success", onClick: startNewProblem }, "\u041A\u0435\u043B\u0435\u0441\u0456 \u0441\u04B1\u0440\u0430\u049B \u2192")),
       /* @__PURE__ */ React.createElement(
         "div",
         {
@@ -628,7 +768,7 @@ function DecimalOrderExercise() {
           }
         },
         "\u0414\u0435\u04A3\u0433\u0435\u0439: ",
-        problem.level
+        problem.level || level
       )
     )
   );

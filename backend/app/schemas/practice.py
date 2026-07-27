@@ -16,6 +16,9 @@ class QuestionPublic(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
     level: int
 
+    class Config:
+        from_attributes = True
+
 
 class PracticeSessionCreateRequest(BaseModel):
     skill_id: int = Field(examples=[1])

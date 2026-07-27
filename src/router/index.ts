@@ -98,6 +98,19 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true, requiresRole: 'TEACHER' },
   },
   {
+    path: '/teacher/quizzes/create',
+    name: 'teacher-quiz-create',
+    component: () => import('@/pages/teacher/QuizCreateView.vue'),
+    meta: { requiresAuth: true, requiresRole: 'TEACHER' },
+  },
+  {
+    path: '/teacher/quizzes/edit/:quizId',
+    name: 'teacher-quiz-edit',
+    component: () => import('@/pages/teacher/QuizCreateView.vue'),
+    meta: { requiresAuth: true, requiresRole: 'TEACHER' },
+    props: true,
+  },
+  {
     path: '/parent',
     name: 'parent-dashboard',
     component: () => import('@/pages/ParentDashboard.vue'),

@@ -124,29 +124,77 @@
                   <span v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="q-plugin-badge">Plugin</span>
                 </div>
                 
-                <!-- Full Interactive / Visual Preview -->
-                <div class="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4 mb-4">
+                <!-- 1. Question (Сұрақ) Iframe Preview (always rendered first with userAnswer: null) -->
+                <div class="mt-2 bg-slate-50 border border-slate-100 rounded-xl p-4 mb-6 shadow-sm">
                   <SessionQuestionPreview
                     :question="{
                       prompt: q.prompt || '',
                       type: q.questionType || '',
-                      data: q.data || {},
-                      userAnswer: q.rawUserAnswer,
-                      isCorrect: q.isCorrect,
-                      correctAnswer: q.correctAnswer
+                      data: (q.data || {}) as Record<string, unknown>,
+                      userAnswer: null,
+                      isCorrect: false,
+                      correctAnswer: q.correctAnswer,
+                      seed: q.seed
                     }"
                   />
                 </div>
 
-                <div class="q-answers">
-                  <div class="q-answer-block">
-                    <div class="q-section-label">Дұрыс жауап</div>
-                    <div class="q-answer correct-ans">{{ formatAnswer(q.correctAnswer) }}</div>
-                  </div>
-                  <div class="q-answer-block">
-                    <div class="q-section-label">Пайдаланушы жауабы</div>
-                    <div class="q-answer user-ans" :class="q.isCorrect ? 'ans-correct' : 'ans-incorrect'">
+                <!-- 2. Answers Section -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <!-- Student's Answer (Пайдаланушы жауабы) -->
+                  <div class="space-y-2">
+                    <div class="q-section-label flex items-center gap-2">
+                      <span>Пайдаланушы жауабы</span>
+                      <span 
+                        class="px-2 py-0.5 text-[10px] font-bold rounded-full"
+                        :class="q.isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                      >
+                        {{ q.isCorrect ? 'Дұрыс' : 'Қате' }}
+                      </span>
+                    </div>
+
+                    <!-- Plugin visual answer -->
+                    <div v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="rounded-xl border p-2 overflow-hidden bg-white shadow-sm" :class="q.isCorrect ? 'border-green-200' : 'border-red-200'">
+                      <SessionQuestionPreview
+                        :question="{
+                          prompt: q.prompt || '',
+                          type: q.questionType || '',
+                          data: (q.data || {}) as Record<string, unknown>,
+                          userAnswer: q.rawUserAnswer,
+                          isCorrect: q.isCorrect,
+                          correctAnswer: q.correctAnswer,
+                          seed: q.seed
+                        }"
+                      />
+                    </div>
+
+                    <!-- Standard text answer -->
+                    <div 
+                      v-else
+                      class="border rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm"
+                      :class="q.isCorrect ? 'border-green-200 text-green-700 bg-green-50/20' : 'border-red-200 text-red-700 bg-red-50/20'"
+                    >
                       {{ formatAnswer(q.userAnswer) }}
+                    </div>
+                  </div>
+
+                  <!-- Correct Answer (Дұрыс жауап) - shown only if student answered incorrectly -->
+                  <div v-if="!q.isCorrect" class="space-y-2">
+                    <div class="q-section-label">Дұрыс жауап</div>
+
+                    <!-- Plugin visual correct answer -->
+                    <div v-if="q.questionType === 'PLUGIN' || q.questionType === 'INTERACTIVE'" class="rounded-xl border border-green-200 p-2 overflow-hidden bg-white bg-green-50/10 shadow-sm">
+                      <SessionQuestionPreview
+                        :question="buildCorrectReviewPayload(q)"
+                      />
+                    </div>
+
+                    <!-- Standard text correct answer -->
+                    <div 
+                      v-else
+                      class="border border-green-200 rounded-xl bg-white px-5 py-4 font-semibold text-lg shadow-sm text-green-700 bg-green-50/20"
+                    >
+                      {{ formatAnswer(q.correctAnswer) }}
                     </div>
                   </div>
                 </div>
@@ -192,6 +240,44 @@ const analyticsStore = useAnalyticsStore()
 // allQuestions is loaded by the parent AnalyticsView (either user's own or student's)
 
 const printReport = () => window.print()
+
+interface MappedQuestion {
+  index: number
+  isCorrect: boolean
+  questionType: string
+  prompt: string
+  correctAnswer: unknown
+  userAnswer: unknown
+  rawUserAnswer: unknown
+  data: Record<string, any>
+  seed: number | string | null
+}
+
+const buildCorrectReviewPayload = (q: MappedQuestion) => {
+  const rawCorrectAnswer = q.correctAnswer
+  const rawSubmitted = q.rawUserAnswer as Record<string, unknown> | null
+  const studentQData = rawSubmitted ? (rawSubmitted.questionData || rawSubmitted.visualData) : null
+  const studentAnsData = rawSubmitted ? rawSubmitted.answerData : null
+
+  const mockCorrectPayload = {
+    isCorrect: true,
+    userAnswer: rawCorrectAnswer,
+    studentAnswer: rawCorrectAnswer,
+    correctAnswer: rawCorrectAnswer,
+    questionData: studentQData || q.data || null,
+    answerData: studentAnsData
+  }
+
+  return {
+    prompt: q.prompt || '',
+    type: q.questionType || '',
+    data: (q.data || {}) as Record<string, unknown>,
+    userAnswer: mockCorrectPayload,
+    isCorrect: true,
+    correctAnswer: rawCorrectAnswer,
+    seed: q.seed
+  }
+}
 
 // ─── Filters ───────────────────────────────────────────────────────────────
 const selectedGrade = ref<number | null>(null)
@@ -407,28 +493,58 @@ const sessions = computed(() => {
 
       // Helper to extract question text for PLUGIN questions
       const getPluginPrompt = (q: Record<string, unknown>): string => {
-        const ua = q.user_answer as Record<string, unknown> | null
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
         if (!ua) return (q.question_prompt as string) || ''
         return (ua.question ?? ua.prompt ?? ua.equation ?? ua.problem ?? ua.questionText ?? q.question_prompt ?? '') as string
       }
       const getPluginCorrectAnswer = (q: Record<string, unknown>): unknown => {
-        const ua = q.user_answer as Record<string, unknown> | null
-        if (!ua) return q.correct_answer
-        return ua.correctAnswer ?? ua.correct_answer ?? ua.expectedAnswer ?? q.correct_answer ?? ''
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
+        if (!ua) return q.correct_answer || '—'
+        return (
+          ua.correctAnswer ??
+          ua.correct_answer ??
+          ua.expectedAnswer ??
+          ua.expected_answer ??
+          ua.answerData ??
+          q.correct_answer ??
+          '—'
+        )
       }
       const getPluginUserAnswer = (q: Record<string, unknown>): unknown => {
-        const ua = q.user_answer as Record<string, unknown> | null
-        if (!ua) return ''
-        if (typeof ua.userAnswer === 'string' || typeof ua.userAnswer === 'number') return ua.userAnswer
-        if (typeof ua.answer === 'string' || typeof ua.answer === 'number') return ua.answer
-        return ua.userAnswer ?? ua.answer ?? ua.value ?? ''
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
+        if (!ua) return q.user_answer || '—'
+        const extracted =
+          ua.userAnswer ??
+          ua.user_answer ??
+          ua.studentAnswer ??
+          ua.student_answer ??
+          ua.answer ??
+          ua.value ??
+          ua.choice ??
+          ua.text
+        if (extracted !== undefined && extracted !== null) return extracted
+        return q.user_answer || '—'
       }
-      const isPlugin = (q: Record<string, unknown>) =>
-        (q.question_type as string) === 'PLUGIN' || (q.question_type as string) === 'INTERACTIVE'
+      const isPlugin = (q: Record<string, unknown>) => {
+        const type = String(q.question_type || '').toUpperCase()
+        return type === 'PLUGIN' || type === 'INTERACTIVE'
+      }
 
       const questions = dayQs.map(q => {
         globalIndex++
         const pluginQ = isPlugin(q)
+        // For plugin questions, extract the questionData from submitted answer
+        // so the iframe can render the EXACT question that was shown
+        let questionData = (q.question_data || {}) as Record<string, unknown>
+        const ua = normalizeAnswerPayload(q.user_answer) as Record<string, unknown> | null
+        if (pluginQ && ua) {
+          const qd = (ua.questionData || ua.visualData) as Record<string, unknown> | undefined
+          if (qd) {
+            questionData = { ...questionData, ...qd }
+          }
+        }
+        const seedVal = (q.seed ?? questionData.seed ?? (ua?.seed) ?? (ua?.questionData as Record<string, unknown> | undefined)?.seed ?? null) as string | number | null
+
         return {
           index: globalIndex,
           isCorrect: q.is_correct as boolean,
@@ -437,7 +553,8 @@ const sessions = computed(() => {
           correctAnswer: pluginQ ? getPluginCorrectAnswer(q) : q.correct_answer,
           userAnswer: pluginQ ? getPluginUserAnswer(q) : q.user_answer,
           rawUserAnswer: q.user_answer,
-          data: q.question_data || {},
+          data: questionData,
+          seed: seedVal,
         }
       }).reverse()
 
@@ -455,6 +572,11 @@ const tryParseJson = (str: unknown): unknown => {
   return str
 }
 
+const normalizeAnswerPayload = (answer: unknown): unknown => {
+  const parsed = tryParseJson(answer)
+  return parsed && typeof parsed === 'object' ? parsed : answer
+}
+
 const formatAnswer = (answer: unknown): string => {
   if (answer === null || answer === undefined) return '—'
   if (typeof answer === 'boolean') return answer ? 'Иә' : 'Жоқ'
@@ -466,9 +588,25 @@ const formatAnswer = (answer: unknown): string => {
   }
   if (typeof answer === 'object') {
     const obj = answer as Record<string, unknown>
+    if (obj.userDisplay && typeof obj.userDisplay === 'object') {
+      const display = obj.userDisplay as Record<string, unknown>
+      if (display.text !== undefined) return String(display.text)
+    }
+    if (obj.studentAnswer !== undefined) return String(obj.studentAnswer)
+    if (obj.student_answer !== undefined) return String(obj.student_answer)
     if (obj.userAnswer !== undefined) return String(obj.userAnswer)
+    if (obj.user_answer !== undefined) return String(obj.user_answer)
+    if (obj.answer !== undefined) return String(obj.answer)
     if (obj.value !== undefined) return String(obj.value)
     if (obj.text !== undefined) return String(obj.text)
+    if (obj.correctDisplay && typeof obj.correctDisplay === 'object') {
+      const display = obj.correctDisplay as Record<string, unknown>
+      if (display.text !== undefined) return String(display.text)
+    }
+    if (obj.correctAnswer !== undefined) return String(obj.correctAnswer)
+    if (obj.correct_answer !== undefined) return String(obj.correct_answer)
+    if (obj.expectedAnswer !== undefined) return String(obj.expectedAnswer)
+    if (obj.expected_answer !== undefined) return String(obj.expected_answer)
     return JSON.stringify(answer)
   }
   return String(answer)

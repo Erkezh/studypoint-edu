@@ -337,7 +337,7 @@ const allSkillsGroupedByTopic = computed(() => {
       id: skill.id,
       title: skill.title,
       hasPractice: !!practiced,
-      best_smartscore: practiced ? ((practiced.best_smartscore as number) || 0) : 0,
+      best_smartscore: practiced ? Math.max(Number(practiced.best_smartscore || 0), Number(practiced.last_smartscore || 0)) : 0,
       total_questions: practiced ? ((practiced.total_questions as number) || 0) : 0,
       total_time_seconds: practiced ? ((practiced.total_time_seconds as number) || 0) : 0,
       last_practiced_at: practiced ? ((practiced.last_practiced_at as string) || (practiced.last_practiced as string) || '') : '',

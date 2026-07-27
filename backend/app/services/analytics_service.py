@@ -42,8 +42,12 @@ def _stringify_answer_value(answer: Any, *, question_type: str, question_data: d
     if isinstance(answer, dict):
         if "choice" in answer:
             return _choice_label(answer.get("choice"), question_type=question_type, question_data=question_data)
-        if "value" in answer:
-            return str(answer.get("value"))
+        if "text" in answer:
+            return str(answer.get("text"))
+        if "userAnswer" in answer:
+            return str(answer.get("userAnswer"))
+        if "studentAnswer" in answer:
+            return str(answer.get("studentAnswer"))
         if "answer" in answer:
             nested = answer.get("answer")
             return str(nested) if isinstance(nested, (str, int, float, bool)) else _safe_json_dumps(nested)
@@ -91,6 +95,28 @@ def _serialize_attempt_question(attempt: PracticeAttempt) -> dict[str, Any]:
     correct_answer_text = _extract_correct_answer_text(question_payload, question_data, question_type)
     prompt = question_payload.get("prompt", "")
 
+    # For PLUGIN/INTERACTIVE questions, extract the actual question text and parameters
+    # from submitted_answer (the plugin sends question, questionData, etc.)
+    submitted = _as_dict(attempt.submitted_answer)
+    submitted_qdata = _as_dict(submitted.get("questionData") or submitted.get("visualData"))
+
+    if question_type in ("PLUGIN", "INTERACTIVE"):
+        plugin_question = submitted.get("question") or submitted.get("prompt") or submitted.get("questionText") or submitted_qdata.get("question")
+        if plugin_question:
+            prompt = plugin_question
+
+        seed = question_data.get("seed") or question_payload.get("seed") or submitted.get("seed") or submitted_qdata.get("seed")
+        level = question_data.get("level") or question_payload.get("level") or submitted_qdata.get("level") or attempt.question_level
+
+        question_data = {**submitted_qdata, **question_data}
+        if seed is not None:
+            question_data["seed"] = seed
+        if level is not None:
+            question_data["level"] = level
+    else:
+        seed = question_data.get("seed") or question_payload.get("seed")
+        level = question_data.get("level") or question_payload.get("level") or attempt.question_level
+
     return {
         "attempt_id": str(attempt.id),
         "question_id": attempt.question_id,
@@ -106,6 +132,8 @@ def _serialize_attempt_question(attempt: PracticeAttempt) -> dict[str, Any]:
         "time_spent_seconds": attempt.time_spent_sec,
         "smartscore_before": attempt.smartscore_before,
         "smartscore_after": attempt.smartscore_after,
+        "seed": seed,
+        "level": level,
     }
 
 
@@ -135,8 +163,7 @@ class AnalyticsService:
         )
         total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
         total_attempts = int(total_attempts)
-        correct_attempts = int(correct_attempts)
-        avg_accuracy = int(round((correct_attempts / max(1, total_attempts)) * 100))
+        avg_accuracy = round((correct_attempts / max(1, total_attempts)) * 100)
 
         # Get total skills by grade
         # We need to import Skill and Grade inside the method to avoid circular imports if they are not already imported at top level
@@ -247,7 +274,7 @@ class AnalyticsService:
                 continue
             assert user is not None
             snap_stmt = select(func.coalesce(func.avg(ProgressSnapshot.best_smartscore), 0)).where(ProgressSnapshot.user_id == sid)
-            avg_best = int(round(float((await self.session.execute(snap_stmt)).scalar_one())))
+            avg_best = round(float((await self.session.execute(snap_stmt)).scalar_one()))
 
             assign_stmt = (
                 select(
@@ -273,7 +300,7 @@ class AnalyticsService:
                 }
             )
 
-        classroom_avg = int(round(sum(s["avg_best_smartscore"] for s in students) / max(1, len(students))))
+        classroom_avg = round(sum(s["avg_best_smartscore"] for s in students) / max(1, len(students)))
         return {
             "classroom_id": str(cid),
             "title": classroom.title,  # type: ignore
@@ -328,11 +355,18 @@ class AnalyticsService:
                     "active_time_seconds": sess.active_time_seconds,
                     "attempts": [],
                 }
+            q_payload = attempt.question_payload or {}
+            q_data = q_payload.get("data") or {}
+            submitted = _as_dict(attempt.submitted_answer)
+            submitted_qdata = _as_dict(submitted.get("questionData") or submitted.get("visualData"))
+            q_seed = q_data.get("seed") or q_payload.get("seed") or submitted.get("seed") or submitted_qdata.get("seed")
+            q_level = q_data.get("level") or q_payload.get("level") or submitted_qdata.get("level") or attempt.question_level
+
             sessions[key]["attempts"].append(
                 {
                     "attempt_id": str(attempt.id),
                     "question_id": attempt.question_id,
-                    "question_level": attempt.question_level,
+                    "question_level": q_level,
                     "question_payload": attempt.question_payload,
                     "submitted_answer": attempt.submitted_answer,
                     "is_correct": attempt.is_correct,
@@ -343,6 +377,8 @@ class AnalyticsService:
                     "smartscore_after": attempt.smartscore_after,
                     "zone_before": attempt.zone_before.value if hasattr(attempt.zone_before, "value") else str(attempt.zone_before),
                     "zone_after": attempt.zone_after.value if hasattr(attempt.zone_after, "value") else str(attempt.zone_after),
+                    "seed": q_seed,
+                    "level": q_level,
                 }
             )
 
@@ -355,7 +391,7 @@ class AnalyticsService:
             .where(PracticeAttempt.user_id == sid, PracticeAttempt.skill_id == skill_id)
         )
         total_attempts, total_correct, total_time = (await self.session.execute(summary_stmt)).one()
-        accuracy = int(round((int(total_correct) / max(1, int(total_attempts))) * 100))
+        accuracy = round((int(total_correct) / max(1, int(total_attempts))) * 100)
 
         snap_stmt = select(ProgressSnapshot).where(ProgressSnapshot.user_id == sid, ProgressSnapshot.skill_id == skill_id)
         snap = (await self.session.execute(snap_stmt)).scalar_one_or_none()
@@ -430,7 +466,7 @@ class AnalyticsService:
         total_attempts, correct_attempts = (await self.session.execute(attempts_stmt)).one()
         total_attempts = int(total_attempts)
         correct_attempts = int(correct_attempts)
-        avg_accuracy = int(round((correct_attempts / max(1, total_attempts)) * 100))
+        avg_accuracy = round((correct_attempts / max(1, total_attempts)) * 100)
 
         from app.models.catalog import Skill, Grade  # type: ignore
         skills_by_grade_stmt = (
@@ -565,10 +601,10 @@ class AnalyticsService:
             for sr in s_skill_rows:
                 if sr.last_practiced_at and (last_practiced is None or sr.last_practiced_at > last_practiced):
                     last_practiced = sr.last_practiced_at
-                score = sr.best_smartscore or 0
-                if score >= 100:
+                score = max(sr.best_smartscore or 0, sr.last_smartscore or 0)
+                if score >= 90:
                     mastered_count += 1  # type: ignore
-                elif score >= 80:
+                elif score >= 70:
                     proficient_count += 1  # type: ignore
                 elif score > 0:
                     practicing_count += 1  # type: ignore
