@@ -325,8 +325,8 @@ interface FamilyProfile {
 
 const authStore = useAuthStore()
 const gameSettings = useGameSettingsStore()
-const activeGameRoute = computed(() => !gameSettings.hasSelectedGame ? '/game/select' : gameSettings.isCarGame ? '/garage' : '/character-customization')
-const activeGameNavLabel = computed(() => !gameSettings.hasSelectedGame ? 'Ойынды таңдау' : gameSettings.isCarGame ? 'Гараж' : 'Кейіпкер')
+const activeGameRoute = computed(() => '/game/select')
+const activeGameNavLabel = computed(() => 'Ойынды таңдау')
 const showProfileMenu = ref(false)
 const showMobileMenu = ref(false)
 const switchingProfile = ref(false)

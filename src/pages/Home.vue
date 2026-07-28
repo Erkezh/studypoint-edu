@@ -121,8 +121,8 @@ const gameSettings = useGameSettingsStore()
 const grades = ref(catalogStore.grades)
 const error = ref<string | null>(null)
 const isStudent = computed(() => authStore.user?.role === 'STUDENT')
-const gameRoute = computed(() => !gameSettings.hasSelectedGame ? '/game/select' : gameSettings.isCarGame ? '/garage' : '/character-customization')
-const gameTitle = computed(() => !gameSettings.hasSelectedGame ? 'Ойынды таңдау' : gameSettings.isCarGame ? 'Гараж' : 'Кейіпкер әлемі')
+const gameRoute = computed(() => '/game/select')
+const gameTitle = computed(() => 'Ойынды таңдау')
 
 const gradeCardPalette = [
   {
