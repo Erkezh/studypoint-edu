@@ -1,27 +1,27 @@
 <template>
-  <div class="min-h-screen flex flex-col" style="background: linear-gradient(135deg, #65c100 0%, #48d8d1 100%);">
+  <div class="min-h-screen bg-gray-50 flex flex-col">
     <Header />
 
-    <main class="flex-1 container mx-auto px-4 py-16 max-w-6xl">
+    <main class="flex-1 container mx-auto px-4 py-12 max-w-5xl">
       <!-- Title -->
-      <div class="text-center mb-10 sm:mb-16 px-4">
-        <h1 class="text-3xl sm:text-4xl md:text-5xl font-light text-white mb-4 sm:mb-6 leading-tight">
-          <span class="font-bold">StudyPoint</span> — бұл жекелендірілген оқыту
+      <div class="text-center mb-12 px-4">
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight">
+          <span class="text-[#38B000]">StudyPoint</span> — бұл жекелендірілген оқыту
         </h1>
-        <p class="text-white/90 text-sm sm:text-lg max-w-4xl mx-auto font-light">
+        <p class="text-gray-600 text-base sm:text-lg max-w-2xl mx-auto font-normal">
           Математика — кез келген уақытта, кез келген жерде
         </p>
       </div>
 
-      <!-- Plan Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+      <!-- Plan Cards (Family & Classroom) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
         <!-- Family Plan -->
-        <div class="bg-white rounded-[24px] shadow-lg overflow-hidden flex flex-col transform hover:-translate-y-1 transition-transform duration-300">
+        <div class="bg-white rounded-[24px] shadow-md border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300">
           <div class="p-8 flex-1 flex flex-col items-center">
-            <h3 class="text-3xl font-light text-[#5ba100] mb-8">Отбасылық</h3>
+            <h3 class="text-3xl font-bold text-[#38B000] mb-8">Отбасылық</h3>
             
             <div class="w-48 h-32 mb-8 flex items-center justify-center">
-              <svg class="w-full h-full text-[#5ba100]" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg class="w-full h-full text-[#38B000]" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <!-- Couch -->
                 <path d="M40 80C40 74.4772 44.4772 70 50 70H150C155.523 70 160 74.4772 160 80V100C160 105.523 155.523 110 150 110H50C44.4772 110 40 105.523 40 100V80Z" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="2"/>
                 <path d="M50 70V55C50 49.4772 54.4772 45 60 45H140C145.523 45 150 49.4772 150 55V70" stroke="currentColor" stroke-width="2"/>
@@ -49,18 +49,14 @@
             <div class="w-full space-y-3 mt-auto">
               <button
                 @click="selectPlan('family')"
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium text-white transition-colors shadow-md"
-                style="background-color: #5ba100;"
-                onmouseover="this.style.backgroundColor='#4a8400'"
-                onmouseout="this.style.backgroundColor='#5ba100'"
+                class="w-full py-3.5 px-6 rounded-xl text-lg font-bold text-white transition-colors shadow-sm hover:brightness-95 active:scale-95 cursor-pointer"
+                style="background-color: #38B000;"
               >
                 Қазір қосылу
               </button>
               <button
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium border-2 transition-colors"
-                style="color: #5ba100; border-color: #e5e7eb;"
-                onmouseover="this.style.borderColor='#5ba100'"
-                onmouseout="this.style.borderColor='#e5e7eb'"
+                class="w-full py-3.5 px-6 rounded-xl text-lg font-semibold border-2 transition-colors hover:bg-gray-50 active:scale-95 cursor-pointer"
+                style="color: #38B000; border-color: #38B000;"
               >
                 Толығырақ білу
               </button>
@@ -69,9 +65,9 @@
         </div>
 
         <!-- Classroom Plan -->
-        <div class="bg-white rounded-[24px] shadow-lg overflow-hidden flex flex-col transform hover:-translate-y-1 transition-transform duration-300">
+        <div class="bg-white rounded-[24px] shadow-md border border-gray-200 overflow-hidden flex flex-col hover:shadow-lg transition-shadow duration-300">
           <div class="p-8 flex-1 flex flex-col items-center">
-            <h3 class="text-3xl font-light text-[#00b2b2] mb-8">Сыныптық</h3>
+            <h3 class="text-3xl font-bold text-[#00b2b2] mb-8">Сыныптық</h3>
             
             <div class="w-48 h-32 mb-8 flex items-center justify-center">
               <svg class="w-full h-full text-[#00b2b2]" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -104,85 +100,14 @@
             <div class="w-full space-y-3 mt-auto">
               <button
                 @click="selectPlan('classroom')"
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium text-white transition-colors"
+                class="w-full py-3.5 px-6 rounded-xl text-lg font-bold text-white transition-colors shadow-sm hover:brightness-95 active:scale-95 cursor-pointer"
                 style="background-color: #00b2b2;"
-                onmouseover="this.style.backgroundColor='#009999'"
-                onmouseout="this.style.backgroundColor='#00b2b2'"
               >
                 Жазылуды бастау
               </button>
               <button
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium text-white transition-colors"
-                style="background-color: #00b2b2;"
-                onmouseover="this.style.backgroundColor='#009999'"
-                onmouseout="this.style.backgroundColor='#00b2b2'"
-              >
-                Баға ұсынысын алу
-              </button>
-              <button
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium border-2 transition-colors"
-                style="color: #00b2b2; border-color: #e5e7eb;"
-                onmouseover="this.style.borderColor='#00b2b2'"
-                onmouseout="this.style.borderColor='#e5e7eb'"
-              >
-                Толығырақ білу
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- School Plan -->
-        <div class="bg-white rounded-[24px] shadow-lg overflow-hidden flex flex-col transform hover:-translate-y-1 transition-transform duration-300">
-          <div class="p-8 flex-1 flex flex-col items-center">
-            <h3 class="text-3xl font-light text-[#009ee3] mb-8 text-center leading-tight">Мектептер мен<br>аудандар</h3>
-            
-            <div class="w-48 h-32 mb-8 flex items-center justify-center">
-              <svg class="w-full h-full text-[#009ee3]" viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <!-- Clouds -->
-                <path d="M40 35C40 32.2 42.2 30 45 30C45.9 30 46.7 30.2 47.5 30.6C49.1 27.9 52.1 26 55.5 26C59.8 26 63.4 28.9 64.3 32.9C64.5 32.8 64.8 32.8 65 32.8C68.9 32.8 72 36 72 39.8C72 43.7 68.9 46.8 65 46.8H45C42.2 46.8 40 44.6 40 41.8C40 40.7 40.3 39.7 40.9 38.9C40.4 37.8 40 36.5 40 35Z" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M165 25C165 22.8 166.8 21 169 21C169.7 21 170.4 21.2 171 21.5C172.3 20.3 174.1 19.5 176 19.5C179.6 19.5 182.5 22.4 182.5 26C182.5 26.5 182.4 27.1 182.3 27.6C184.5 28.2 186 30.1 186 32.5C186 35.5 183.5 38 180.5 38H169C166.8 38 165 36.2 165 34C165 33.1 165.3 32.3 165.7 31.7C165.3 30.8 165 29.7 165 28.6V25Z" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="1.5"/>
-                <!-- Base & Trees -->
-                <path d="M30 110L20 120H180L170 110H30Z" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-                <path d="M15 120C15 110 25 105 35 110V120H15Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                <path d="M185 120C185 105 170 100 160 110V120H185Z" fill="currentColor" fill-opacity="0.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                <!-- Main building -->
-                <rect x="40" y="70" width="120" height="40" fill="white" stroke="currentColor" stroke-width="2"/>
-                <rect x="75" y="40" width="50" height="30" fill="white" stroke="currentColor" stroke-width="2"/>
-                <path d="M35 70L45 55H155L165 70" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M70 40L100 15L130 40" fill="currentColor" fill-opacity="0.1" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <!-- Bell tower -->
-                <rect x="92" y="5" width="16" height="15" fill="white" stroke="currentColor" stroke-width="2"/>
-                <path d="M92 5H108M100 5V0M100 5V15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <circle cx="100" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
-                <!-- Columns & Windows -->
-                <rect x="85" y="45" width="6" height="65" fill="white" stroke="currentColor" stroke-width="2"/>
-                <rect x="97" y="45" width="6" height="65" fill="white" stroke="currentColor" stroke-width="2"/>
-                <rect x="109" y="45" width="6" height="65" fill="white" stroke="currentColor" stroke-width="2"/>
-                <rect x="50" y="80" width="10" height="15" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M50 87.5H60M55 80V95" stroke="currentColor" stroke-width="1.5"/>
-                <rect x="65" y="80" width="10" height="15" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M65 87.5H75M70 80V95" stroke="currentColor" stroke-width="1.5"/>
-                <rect x="125" y="80" width="10" height="15" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M125 87.5H135M130 80V95" stroke="currentColor" stroke-width="1.5"/>
-                <rect x="140" y="80" width="10" height="15" stroke="currentColor" stroke-width="1.5"/>
-                <path d="M140 87.5H150M145 80V95" stroke="currentColor" stroke-width="1.5"/>
-              </svg>
-            </div>
-
-            <div class="w-full space-y-3 mt-auto">
-              <button
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium text-white transition-colors"
-                style="background-color: #009ee3;"
-                onmouseover="this.style.backgroundColor='#0088cc'"
-                onmouseout="this.style.backgroundColor='#009ee3'"
-              >
-                Баға ұсынысын алу
-              </button>
-              <button
-                class="w-full py-3 px-6 rounded-lg text-lg font-medium border-2 transition-colors"
-                style="color: #009ee3; border-color: #e5e7eb;"
-                onmouseover="this.style.borderColor='#009ee3'"
-                onmouseout="this.style.borderColor='#e5e7eb'"
+                class="w-full py-3.5 px-6 rounded-xl text-lg font-semibold border-2 transition-colors hover:bg-gray-50 active:scale-95 cursor-pointer"
+                style="color: #00b2b2; border-color: #00b2b2;"
               >
                 Толығырақ білу
               </button>
@@ -192,7 +117,7 @@
       </div>
     </main>
 
-    <div class="mt-auto bg-white">
+    <div class="mt-auto bg-white border-t border-gray-200">
       <Footer />
     </div>
   </div>

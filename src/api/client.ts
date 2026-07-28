@@ -152,9 +152,9 @@ apiClient.interceptors.response.use(
       const refreshToken = authStore ? authStore.getRefreshToken() : localStorage.getItem('refresh_token')
       const hasAuthHeader = !!originalRequest.headers?.Authorization
 
-      // Если нет локального refresh_token и в запросе не было Authorization заголовка,
+      // Если нет локального refresh_token,
       // просто возвращаем ошибку без попытки refresh.
-      if (!refreshToken && !hasAuthHeader) {
+      if (!refreshToken) {
         // Для пробных вопросов не требуется авторизация, просто возвращаем ошибку
         // Но устанавливаем понятное сообщение
         const errorData = error.response?.data as ApiErrorResponse | undefined

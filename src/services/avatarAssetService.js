@@ -1,5 +1,5 @@
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
-import { clone as cloneSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js'
 import { AVATAR_MANIFEST_URL, CANONICAL_SKELETON_URL, CATEGORY_DEFINITIONS } from '@/data/avatarDefaults'
 
 const browserAssetPrefix = '/assets/characters/bozo/'

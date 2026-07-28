@@ -2,9 +2,19 @@
   <div class="min-h-screen bg-gray-50">
     <Header />
     <main class="container mx-auto px-4 py-8 max-w-5xl">
-      <div class="mb-6">
-        <h1 class="text-3xl font-bold mb-2">Тест жүктеу</h1>
-        <p class="text-gray-600">TSX файлдан тест жүктеп, сыныпқа, тақырыпқа және ішкі тақырыпқа тіркеңіз. Жүктелген тесттерді <router-link :to="{ name: 'admin-skills' }" class="text-blue-600 underline hover:text-blue-800">Тесттер</router-link> бетінде басқара аласыз.</p>
+      <div class="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-3xl font-bold mb-2 text-gray-900">Тест жүктеу</h1>
+          <p class="text-gray-600">TSX файлдан тест жүктеп, сыныпқа, тақырыпқа және ішкі тақырыпқа тіркеңіз. Жүктелген тесттерді <router-link :to="{ name: 'admin-skills' }" class="text-blue-600 underline hover:text-blue-800">Тесттер</router-link> бетінде басқара аласыз.</p>
+        </div>
+        <button
+          type="button"
+          @click="copyPluginPromptTemplate"
+          class="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm cursor-pointer shrink-0"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+          <span>{{ pluginPromptTemplateCopied ? 'Промт көшірілді! ✓' : '📋 Плагин промтын көшіру' }}</span>
+        </button>
       </div>
 
       <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">{{ error }}</div>
@@ -224,6 +234,7 @@ import { useAuthStore } from '@/stores/auth'
 import { adminApi } from '@/api/admin'
 import { catalogApi } from '@/api/catalog'
 import { validatePluginCode, type PluginCheckResult } from '@/utils/pluginValidator'
+import { PLUGIN_PROMPT_TEMPLATE } from '@/data/pluginPromptTemplate'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
@@ -244,6 +255,19 @@ const fileCheckResult = ref<PluginCheckResult | null>(null)
 const manualCodeToTest = ref('')
 const manualCheckResult = ref<PluginCheckResult | null>(null)
 const promptCopied = ref(false)
+const pluginPromptTemplateCopied = ref(false)
+
+const copyPluginPromptTemplate = async () => {
+  try {
+    await navigator.clipboard.writeText(PLUGIN_PROMPT_TEMPLATE)
+    pluginPromptTemplateCopied.value = true
+    setTimeout(() => {
+      pluginPromptTemplateCopied.value = false
+    }, 3000)
+  } catch (err) {
+    console.error('Failed to copy plugin prompt:', err)
+  }
+}
 
 const tsxFileInput = ref<HTMLInputElement | null>(null)
 const tsxPluginName = ref('')

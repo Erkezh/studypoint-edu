@@ -7,10 +7,20 @@
           <h1 class="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">Интерактивті тапсырма қосу</h1>
           <p class="text-gray-600 mt-1">Мұнда сіз дайын React кодын кірістіре аласыз</p>
         </div>
-        <button @click="router.push({ name: 'admin-questions-list' })"
-          class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors">
-          Тізімге оралу →
-        </button>
+        <div class="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            @click="copyPluginPromptTemplate"
+            class="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm cursor-pointer shrink-0"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            <span>{{ pluginPromptTemplateCopied ? 'Промт көшірілді! ✓' : '📋 Плагин промтын көшіру' }}</span>
+          </button>
+          <button @click="router.push({ name: 'admin-questions-list' })"
+            class="flex items-center gap-2 text-blue-600 hover:text-blue-800 font-medium transition-colors">
+            Тізімге оралу →
+          </button>
+        </div>
       </div>
 
       <div v-if="error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
@@ -214,18 +224,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useCatalogStore } from '@/stores/catalog'
 import { adminApi } from '@/api/admin'
 import { useRouter } from 'vue-router'
+import { PLUGIN_PROMPT_TEMPLATE } from '@/data/pluginPromptTemplate'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import Button from '@/components/ui/Button.vue'
+import type { AxiosError } from 'axios'
 
 const authStore = useAuthStore()
 const router = useRouter()
 const loading = ref(false)
+void loading.value // suppress unused warning
 const submitting = ref(false)
 const error = ref<string | null>(null)
 const successMessage = ref<string | null>(null)
@@ -233,6 +246,19 @@ const correctAnswerJson = ref('{}')
 const autoFilled = ref(false)
 const autoFilledFields = ref<string[]>([])
 const showAdvanced = ref(false)
+const pluginPromptTemplateCopied = ref(false)
+
+const copyPluginPromptTemplate = async () => {
+  try {
+    await navigator.clipboard.writeText(PLUGIN_PROMPT_TEMPLATE)
+    pluginPromptTemplateCopied.value = true
+    setTimeout(() => {
+      pluginPromptTemplateCopied.value = false
+    }, 3000)
+  } catch (err) {
+    console.error('Failed to copy plugin prompt:', err)
+  }
+}
 
 const formData = ref({
   skill_id: 0,
@@ -418,7 +444,7 @@ const handleSubmit = async () => {
     if (correctAnswerJson.value.trim() && correctAnswerJson.value !== '{}') {
       try {
         correctAnswer = JSON.parse(correctAnswerJson.value)
-      } catch (e) {
+      } catch {
         // Если JSON невалидный, создаем простой объект
         correctAnswer = { answer: correctAnswerJson.value }
       }
@@ -481,15 +507,16 @@ const handleSubmit = async () => {
             throw new Error('Не удалось получить ID созданного навыка')
           }
 
-          finalSkillId = skillResponse.data.id as any
+          finalSkillId = Number(skillResponse.data.id)
           console.log('Using skill_id:', finalSkillId)
           successMessage.value = `✅ Автоматически создан новый навык: ${skillTitle} (ID: ${finalSkillId})`
         } else {
           throw new Error('Не найдены предметы или классы для создания навыка')
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Failed to create skill:', err)
-        const errorMsg = err.response?.data?.error?.message || err.response?.data?.message || err.message
+        const errorAny = err as Record<string, any>
+        const errorMsg = errorAny.response?.data?.error?.message || errorAny.response?.data?.message || errorAny.message
         error.value = `Не удалось автоматически создать навык: ${errorMsg}. Обратитесь к разработчику.`
         submitting.value = false
         return
@@ -520,23 +547,24 @@ const handleSubmit = async () => {
     setTimeout(() => {
       successMessage.value = null
     }, 5000)
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const errorAny = err as Record<string, any>
     console.error('Failed to create interactive question:', err)
     console.error('Error details:', {
-      message: err.message,
-      response: err.response?.data,
-      status: err.response?.status,
-      url: err.config?.url
+      message: errorAny.message,
+      response: errorAny.response?.data,
+      status: errorAny.response?.status,
+      url: errorAny.config?.url
     })
 
-    if (err.code === 'ERR_NETWORK' || err.message?.includes('Network Error')) {
+    if (errorAny.code === 'ERR_NETWORK' || errorAny.message?.includes('Network Error')) {
       const apiHint =
         typeof window !== 'undefined'
           ? `${window.location.origin}/api/v1/grades`
           : '/api/v1/grades'
       error.value = `Желі қатесі: Серверге қосылу мүмкін емес. API қолжетімдігін тексеріңіз: ${apiHint}`
-    } else if (err.response?.status === 401) {
-      const errorDetail = err.response.data?.detail || err.response.data?.error
+    } else if (errorAny.response?.status === 401) {
+      const errorDetail = errorAny.response.data?.detail || errorAny.response.data?.error
       if (errorDetail?.message) {
         error.value = `Авторизация қатесі: ${errorDetail.message}. Жүйеге қайта кіріңіз.`
       } else {
@@ -549,12 +577,12 @@ const handleSubmit = async () => {
           router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
         }
       }, 2000)
-    } else if (err.response?.status === 403) {
+    } else if (errorAny.response?.status === 403) {
       error.value = 'Сізде бұл әрекетті орындауға рұқсат жоқ. Тек әкімшілер тапсырма қоса алады. Рөліңізді тексеріңіз.'
-    } else if (err.response?.status === 404) {
+    } else if (errorAny.response?.status === 404) {
       error.value = 'Endpoint табылмады. Сервер жаңартылғанын тексеріңіз.'
     } else {
-      const errorMessage = err.response?.data?.message || err.response?.data?.detail?.message || err.message
+      const errorMessage = errorAny.response?.data?.message || errorAny.response?.data?.detail?.message || errorAny.message
       error.value = errorMessage || 'Тапсырма қосу кезінде қате пайда болды.'
     }
   } finally {

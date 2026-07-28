@@ -3,18 +3,30 @@
     <Header />
 
     <!-- Breadcrumb (Scrollable on mobile) -->
-    <div class="bg-gray-100 border-b border-gray-200 py-2 px-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
+    <div class="bg-gray-100 border-b border-gray-200 py-2.5 px-4 overflow-x-auto whitespace-nowrap scrollbar-hide">
       <div class="container mx-auto">
         <nav class="flex items-center text-xs sm:text-sm text-gray-600">
-          <router-link to="/" class="hover:text-green-600 shrink-0">Басты бет</router-link>
+          <router-link to="/" class="hover:text-green-600 font-medium transition-colors shrink-0">
+            Басты бет
+          </router-link>
           <span class="mx-2 text-gray-400 shrink-0">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
           </span>
-          <span v-if="skillInfo" class="text-gray-800 shrink-0">{{ skillInfo.gradeNumber }} сынып</span>
-          <span class="mx-2 text-gray-400 shrink-0">
-             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          </span>
-          <span v-if="skillInfo" class="font-medium text-gray-900 truncate">{{ skillInfo.code }} {{ skillInfo.title }}</span>
+          <template v-if="skillInfo">
+            <router-link
+              :to="{ name: 'class', params: { gradeId: skillInfo.gradeNumber } }"
+              class="hover:text-green-600 font-medium transition-colors shrink-0"
+            >
+              {{ skillInfo.gradeNumber }} сынып
+            </router-link>
+            <span class="mx-2 text-gray-400 shrink-0">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </span>
+            <span class="font-semibold text-gray-900 truncate">
+              <span v-if="skillInfo.code" class="font-bold mr-1.5">{{ skillInfo.code }}</span>
+              <span>{{ skillInfo.title }}</span>
+            </span>
+          </template>
         </nav>
       </div>
     </div>
@@ -100,20 +112,35 @@
         </div>
 
         <!-- Two-column layout -->
-        <div class="flex flex-col lg:flex-row gap-6">
+        <div class="flex flex-col lg:flex-row gap-6 relative">
 
           <!-- Main question area -->
           <div class="flex-1 lg:w-3/4">
             <!-- Question card -->
-            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 relative"
-              :class="{ 'opacity-75': shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value }">
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8 mb-6 relative overflow-hidden">
 
-              <!-- Overlay for trial exhausted -->
+              <!-- Semi-transparent overlay over the question card / iframe when trial is exhausted -->
               <div v-if="shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value"
-                class="absolute inset-0 bg-white bg-opacity-60 z-10 flex items-center justify-center rounded-xl">
-                <div class="text-center p-4 bg-white bg-opacity-90 rounded-lg border-2 border-yellow-300">
-                  <p class="text-lg font-semibold text-gray-700 mb-2">Жазылым қажет</p>
-                  <p class="text-sm text-gray-600">Жалғастыру үшін аккаунтқа кіріңіз</p>
+                class="absolute inset-0 bg-white/85 backdrop-blur-[3px] z-30 flex flex-col items-center justify-center p-6 text-center rounded-xl border-2 border-amber-300 shadow-xl transition-all">
+                <div class="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mb-3 shadow-sm">
+                  <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m0-6V7a4 4 0 118 0v4m-8 0h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2" />
+                  </svg>
+                </div>
+                <h3 class="text-xl font-bold text-gray-900 mb-1">Сынақ нұсқасы аяқталды (10/10)</h3>
+                <p class="text-gray-600 text-sm max-w-md mb-3 font-medium">
+                  Сіз 10 тегін сынақ сұрағының лимитін толық пайдаландыңыз.
+                </p>
+                <div class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2 mb-4 text-xs sm:text-sm text-amber-800 font-semibold">
+                  ⏳ Келесі мүмкіндік 24 сағаттан кейін ашылады (қалған уақыт: {{ timeUntilResetFormatted }})
+                </div>
+                <div class="flex flex-wrap gap-3 justify-center">
+                  <Button @click="goToPricing" variant="primary" class="text-sm font-bold px-6 py-2.5">
+                    Жазылым сатып алу
+                  </Button>
+                  <Button @click="goToLogin" variant="outline" class="text-sm font-semibold px-6 py-2.5">
+                    Кіру / Тіркелу
+                  </Button>
                 </div>
               </div>
 
@@ -410,23 +437,42 @@
     <Footer />
 
     <!-- Trial ended modal -->
-    <Modal :is-open="showTrialEndedModal" title="Сынақ кезеңі аяқталды" :show-close="false"
+    <Modal :is-open="showTrialEndedModal"
+      title="Сынақ нұсқасы аяқталды (10/10)"
+      :show-close="true"
+      backdrop-class="bg-black/20 backdrop-blur-[2px]"
       @close="showTrialEndedModal = false">
       <template #content>
-        <p class="text-gray-700 mb-4">
-          Сіз бүгін барлық {{ TRIAL_QUESTIONS_LIMIT }} тегін сұрақтарды пайдаландыңыз.
-        </p>
-        <p class="text-gray-700 mb-4">
-          Практиканы жалғастыру және шексіз сұрақтарға қол жеткізу үшін аккаунтқа кіріңіз.
-        </p>
+        <div class="text-center py-2">
+          <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m0-6V7a4 4 0 118 0v4m-8 0h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2" />
+            </svg>
+          </div>
+          <h3 class="text-lg font-bold text-gray-900 mb-2">
+            Тегін сынақ лимиті таусылды
+          </h3>
+          <p class="text-gray-600 text-sm mb-4">
+            Сіз жалпы {{ TRIAL_QUESTIONS_LIMIT }} тегін сынақ сұрағының лимитін толық пайдаландыңыз.
+          </p>
+          <div v-if="timeUntilResetFormatted" class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs sm:text-sm text-amber-800 font-medium">
+            ⏳ <strong>Келесі тегін мүмкіндік 24 сағаттан кейін қолжетімді болады</strong><br />
+            (Қалған уақыт: {{ timeUntilResetFormatted }})
+          </div>
+          <p class="text-gray-500 text-xs">
+            Шексіз тапсырмалар орындау және нәтижелерді сақтау үшін жазылым сатып алыңыз немесе аккаунтқа кіріңіз.
+          </p>
+        </div>
       </template>
       <template #actions>
-        <Button @click="goToLogin" variant="primary">
-          Аккаунтқа кіру
-        </Button>
-        <Button @click="goToHome" variant="outline">
-          Басты бетке
-        </Button>
+        <div class="flex flex-col sm:flex-row gap-3 w-full">
+          <Button @click="goToPricing" variant="primary" class="w-full justify-center text-sm font-bold py-3">
+            Жазылым сатып алу
+          </Button>
+          <Button @click="goToLogin" variant="outline" class="w-full justify-center text-sm font-semibold py-3">
+            Кіру / Тіркелу
+          </Button>
+        </div>
       </template>
     </Modal>
 
@@ -571,6 +617,16 @@ const goToLogin = () => {
   })
 }
 
+const goToPricing = () => {
+  showTrialEndedModal.value = false
+  router.push({ name: 'pricing' })
+}
+
+const timeUntilResetFormatted = computed(() => {
+  const resetInfo = trialQuestions.getTimeUntilReset()
+  return resetInfo?.formatted || '24 сағат'
+})
+
 const goToHome = () => {
   showTrialEndedModal.value = false
   router.push({ name: 'home' })
@@ -636,17 +692,17 @@ const skillInfo = computed(() => {
 
   if (skill) {
     return {
-      gradeNumber: skill.grade_id || 6,
-      code: skill.code || 'A.1',
-      title: skill.title
+      gradeNumber: skill.grade_id || (session as any).grade_number || (session as any).grade_id || 3,
+      code: skill.code || (session as any).skill_code || '',
+      title: skill.title || (session as any).skill_title || 'Тапсырма'
     }
   }
 
   // Fallback: используем данные из сессии
   return {
-    gradeNumber: (session as any).grade_number || 6,
-    code: (session as any).skill_code || 'A.1',
-    title: (session as any).skill_title || 'Тапсырма'
+    gradeNumber: (session as any).grade_number || (session as any).grade_id || 3,
+    code: (session as any).skill_code || (session as any).code || '',
+    title: (session as any).skill_title || (session as any).title || 'Тапсырма'
   }
 })
 
@@ -685,6 +741,15 @@ const pauseQuestionTimer = () => {
     activeQuestionStartedAt.value = null
   }
 }
+
+watch(() => trialQuestions.isTrialQuestionsExhausted.value, (isExhausted) => {
+  if (shouldCheckTrialQuestions.value && isExhausted) {
+    showTrialEndedModal.value = true
+    if (typeof stopTimer === 'function') stopTimer()
+    if (typeof pauseQuestionTimer === 'function') pauseQuestionTimer()
+    practiceStore.stopHeartbeat()
+  }
+}, { immediate: true })
 
 const resetQuestionTimer = () => {
   questionStartTime.value = Date.now()
