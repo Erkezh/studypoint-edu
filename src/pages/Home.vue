@@ -12,7 +12,7 @@
           </div>
         </section>
 
-        <router-link v-if="isStudent" :to="gameRoute" class="garage-entry" :aria-label="gameTitle">
+        <button v-if="isStudent" type="button" class="garage-entry" :aria-label="gameTitle" @click="openGameSelection">
           <span class="garage-entry__shine" aria-hidden="true"></span>
           <span class="garage-entry__icon" aria-hidden="true">
             <img v-if="gameSettings.isCarGame" src="/assets/garage-card-car.png" alt="" />
@@ -28,7 +28,7 @@
               <path d="M7 4.5 12.5 10 7 15.5" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
           </span>
-        </router-link>
+        </button>
       </div>
 
       <div v-if="catalogStore.loading" class="text-center py-12">
@@ -121,8 +121,11 @@ const gameSettings = useGameSettingsStore()
 const grades = ref(catalogStore.grades)
 const error = ref<string | null>(null)
 const isStudent = computed(() => authStore.user?.role === 'STUDENT')
-const gameRoute = computed(() => '/game/select')
 const gameTitle = computed(() => 'Ойынды таңдау')
+
+const openGameSelection = () => {
+  void router.push({ name: 'game-select' })
+}
 
 const gradeCardPalette = [
   {
@@ -287,6 +290,10 @@ onMounted(async () => {
   background: #fcd34d;
   color: #1f2937;
   padding: 22px;
+  width: 100%;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   box-shadow: 0 22px 48px rgba(217, 119, 6, 0.16);
   transition:
     transform 0.22s ease,
@@ -307,6 +314,7 @@ onMounted(async () => {
   height: 300px;
   background: rgba(255, 255, 255, 0.52);
   transform: rotate(24deg);
+  pointer-events: none;
 }
 
 .garage-entry__icon {
