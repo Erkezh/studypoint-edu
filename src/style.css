@@ -716,8 +716,13 @@ textarea {
   width: 52vw;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: #e0f7fa;
-  filter: blur(10px);
+  background: radial-gradient(
+    circle,
+    rgba(224, 247, 250, 0.34) 0%,
+    rgba(224, 247, 250, 0.16) 48%,
+    rgba(224, 247, 250, 0) 74%
+  );
+  filter: blur(14px);
 }
 
 .finish-screen__content {

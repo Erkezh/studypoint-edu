@@ -12,7 +12,7 @@
     </aside>
 
     <main class="avatar-page__main">
-      <GamificationBar class="avatar-page__progress" />
+      <GamificationBar v-if="!isFinished" class="avatar-page__progress" />
 
       <div v-if="assetsError" class="avatar-page__notice">
         <strong>Ресурстарды жүктеу қатесі</strong>
@@ -20,14 +20,18 @@
         <button type="button" @click="reload">Қайталау</button>
       </div>
 
-      <div v-else class="avatar-page__workspace">
+      <div
+        v-else
+        class="avatar-page__workspace"
+        :class="{ 'avatar-page__workspace--finished': isFinished }"
+      >
         <AvatarViewer
           :selected-items="selectedItems"
           :preset-shapes="selectedPreset"
         />
 
         <AvatarCustomizer
-          v-if="manifest"
+          v-if="manifest && !isFinished"
           :categories="visibleCategories"
           :groups="progressionGroups"
           :selected-ids="selectedIds"
@@ -43,9 +47,14 @@
           @save="saveAvatar"
         />
 
-        <section v-else class="avatar-page__panel-loading">
+        <section v-if="!manifest && !isFinished" class="avatar-page__panel-loading">
           <strong>BoZo ресурстары жүктелуде</strong>
           <span>{{ assetsLoading ? 'Кейіпкер деректері оқылуда' : 'Дайындалуда' }}</span>
+        </section>
+
+        <section v-if="isFinished" class="avatar-finish">
+          <h1>Кейіпкерің дайын!</h1>
+          <button type="button" @click="isFinished = false">Тағы баптау</button>
         </section>
       </div>
 
@@ -76,6 +85,7 @@ defineOptions({ name: 'AvatarDemo' })
 const trial = useGameTrial('character')
 const gamification = useGamificationStore()
 const ownedItemIds = ref(new Set())
+const isFinished = ref(false)
 const {
   loading: assetsLoading,
   error: assetsError,
@@ -139,6 +149,7 @@ function saveAvatar() {
     return
   }
   save()
+  isFinished.value = true
 }
 
 void loadEconomy().catch(() => {
@@ -187,6 +198,50 @@ void loadEconomy().catch(() => {
 .avatar-page__workspace > * {
   min-width: 0;
   max-width: 100%;
+}
+
+.avatar-page__workspace--finished {
+  position: relative;
+  display: block;
+  min-height: calc(100svh - 8rem);
+}
+
+.avatar-page__workspace--finished :deep(.avatar-viewer) {
+  min-height: calc(100svh - 8rem);
+}
+
+.avatar-finish {
+  position: absolute;
+  z-index: 5;
+  right: 0;
+  bottom: 10%;
+  left: 0;
+  display: grid;
+  justify-items: center;
+  gap: 1rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.avatar-finish h1 {
+  margin: 0;
+  color: #10172a;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 950;
+  letter-spacing: -0.04em;
+}
+
+.avatar-finish button {
+  min-height: 3rem;
+  border: 0;
+  border-radius: 999px;
+  background: #10b981;
+  color: #071b18;
+  padding: 0 1.5rem;
+  font-size: 1rem;
+  font-weight: 900;
+  cursor: pointer;
+  pointer-events: auto;
 }
 
 .avatar-page__panel-loading,

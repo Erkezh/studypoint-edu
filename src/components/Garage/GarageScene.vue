@@ -1,7 +1,7 @@
 <!-- @vue-ignore -->
 <template>
   <div ref="host" class="garage-scene" aria-label="StudyPoint 3D гаражы">
-    <div class="garage-scene__hint">айналдыру үшін сүйре • жақындату үшін скролл</div>
+    <div v-if="!finished" class="garage-scene__hint">айналдыру үшін сүйре • жақындату үшін скролл</div>
   </div>
 </template>
 

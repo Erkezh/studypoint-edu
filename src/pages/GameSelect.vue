@@ -298,6 +298,9 @@ function openPreview(game: GameType) {
 .game-select-shell {
   width: min(1280px, calc(100% - 32px));
   padding: 34px 0 48px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .game-select-progress {
@@ -359,7 +362,7 @@ function openPreview(game: GameType) {
   border: 0;
   border-radius: 0;
   background: transparent;
-  box-shadow: none;
+  box-shadow: none !important;
 }
 
 .hero-decoration {

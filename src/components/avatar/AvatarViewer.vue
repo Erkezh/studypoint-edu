@@ -78,6 +78,12 @@ let characterGroup = null
 let platform = null
 let buildId = 0
 
+function handleCanvasWheel(event) {
+  if (event.ctrlKey || event.metaKey) return
+  event.stopImmediatePropagation()
+  window.scrollBy({ top: event.deltaY, left: 0, behavior: 'auto' })
+}
+
 const progressLabel = computed(() => {
   if (!totalCount.value) return 'Модельдер дайындалуда'
   return `${loadedCount.value} / ${totalCount.value} модель`
@@ -99,6 +105,7 @@ function setupScene() {
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFShadowMap
   canvasHost.value.appendChild(renderer.domElement)
+  renderer.domElement.addEventListener('wheel', handleCanvasWheel, { capture: true, passive: true })
 
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enablePan = false
@@ -522,6 +529,7 @@ onBeforeUnmount(() => {
   controls?.dispose()
   clearAvatar()
   if (platform) disposeObject3D(platform)
+  renderer?.domElement?.removeEventListener('wheel', handleCanvasWheel, { capture: true })
   renderer?.dispose()
   renderer?.domElement?.remove()
   renderer = null
