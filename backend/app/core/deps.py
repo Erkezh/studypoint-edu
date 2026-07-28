@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import Depends
+from fastapi import Depends, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,18 +53,31 @@ async def get_current_user_optional(
 
 
 async def get_or_create_guest_user(
+    request: Request,
+    response: Response,
     session: AsyncSession = Depends(get_db_session),
 ) -> "User":
-    """Get or create a guest user for unauthenticated trial sessions"""
+    """Get or create a unique guest user per session/cookie to isolate unauthenticated practice sessions."""
     from app.models.user import User
-    
-    # Try to find existing guest user
-    guest_email = "guest@trial.local"
+
+    # Retrieve guest_id from header X-Guest-ID or cookie guest_id
+    guest_id = request.headers.get("X-Guest-ID") or request.cookies.get("guest_id")
+
+    if not guest_id or len(guest_id) < 8:
+        guest_id = uuid.uuid4().hex
+        response.set_cookie(
+            key="guest_id",
+            value=guest_id,
+            max_age=86400,  # 24 hours
+            httponly=True,
+            samesite="lax",
+        )
+
+    guest_email = f"guest_{guest_id[:16]}@trial.local"
     repo = UserRepository(session)
     guest_user = await repo.get_by_email(guest_email)
-    
+
     if guest_user is None:
-        # Create guest user if it doesn't exist
         guest_user = User(
             id=uuid.uuid4(),
             email=guest_email,
@@ -75,5 +88,5 @@ async def get_or_create_guest_user(
         )
         session.add(guest_user)
         await session.flush()
-    
+
     return guest_user

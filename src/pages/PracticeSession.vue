@@ -139,7 +139,7 @@
                     Жазылым сатып алу
                   </Button>
                   <Button @click="goToLogin" variant="outline" class="text-sm font-semibold px-6 py-2.5">
-                    Кіру / Тіркелу
+                    Кіру
                   </Button>
                 </div>
               </div>
@@ -470,7 +470,7 @@
             Жазылым сатып алу
           </Button>
           <Button @click="goToLogin" variant="outline" class="w-full justify-center text-sm font-semibold py-3">
-            Кіру / Тіркелу
+            Кіру
           </Button>
         </div>
       </template>

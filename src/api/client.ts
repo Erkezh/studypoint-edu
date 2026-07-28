@@ -62,6 +62,16 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 30000, // 30 секунд таймаут
 })
 
+const getOrCreateGuestId = (): string => {
+  if (typeof window === 'undefined') return 'guest_default'
+  let id = localStorage.getItem('guest_id')
+  if (!id) {
+    id = uuidv4()
+    localStorage.setItem('guest_id', id)
+  }
+  return id
+}
+
 // Interceptor для добавления access token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
@@ -72,10 +82,11 @@ apiClient.interceptors.request.use(
     // Включаем withCredentials для автоматической передачи/приема cookies (например, refresh_token)
     config.withCredentials = true
     
-    // Добавляем токен только если он есть
-    // Для пробных вопросов можно создавать сессию без токена (если бэкенд поддерживает)
+    // Добавляем токен только если он есть, иначе передаем X-Guest-ID для изоляции пробных сессий
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+    } else {
+      config.headers['X-Guest-ID'] = getOrCreateGuestId()
     }
     
     if (isDev) {
