@@ -30,6 +30,7 @@ from app.models.gamification import (
     WalletTransaction,
 )
 from app.models.enums import GameType
+from app.models.notification import Notification
 from app.models.profile import StudentProfile
 from app.utils.time import utc_now
 
@@ -756,6 +757,17 @@ class GamificationService:
             if exists is not None:
                 continue
             self.session.add(LevelReward(student_id=student_id, level=level))
+            self.session.add(
+                Notification(
+                    user_id=student_id,
+                    title=f"Жаңа деңгей ашылды: {level}-деңгей!",
+                    content=(
+                        f"Құттықтаймыз! Сіз {level}-деңгейге жеттіңіз. "
+                        f"{LEVEL_REWARD_COINS} монета алдыңыз және жаңа ойын сыйлықтары ашылды."
+                    ),
+                    is_read=False,
+                )
+            )
             wallet.coins += LEVEL_REWARD_COINS
             self._add_wallet_transaction(
                 student_id,

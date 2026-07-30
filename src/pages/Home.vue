@@ -3,7 +3,10 @@
     <Header />
     <main class="container mx-auto px-4 py-8">
       <GamificationBar v-if="isStudent" />
-      <div class="mt-6 mb-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch">
+      <div
+        class="mt-6 mb-6 grid gap-5"
+        :class="{ 'lg:grid-cols-[minmax(0,1fr)_360px] lg:items-stretch': isStudent }"
+      >
         <section class="study-hero">
           <div>
             <p class="study-hero__eyebrow">StudyPoint University</p>
