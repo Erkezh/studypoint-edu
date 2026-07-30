@@ -113,6 +113,8 @@ class AuthService:
             
         # Refetch Parent to ensure relationship is solid
         parent_user = await self.users.get_by_id(parent_user.id)
+        if parent_user is None:
+            raise AppError(status_code=500, code="internal_error", message="Failed to retrieve parent account")
 
         # Login as Parent initially
         tokens = await self._issue_tokens(user_id=str(parent_user.id), role=parent_user.role.value)
@@ -134,7 +136,7 @@ class AuthService:
         )
 
     async def login(self, req: AuthLoginRequest) -> AuthTokensResponse:
-        user = await self.users.get_by_email(str(req.email))
+        user = await self.users.get_by_email(req.email)
         if user is None:
             logger.warning("LOGIN FAIL: user not found for email/username=%s", req.email)
             raise AppError(status_code=401, code="unauthorized", message="Invalid credentials")
@@ -157,9 +159,10 @@ class AuthService:
                 full_name=user.full_name,
                 role=user.role,
                 is_active=user.is_active,
-                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
+                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile is not None else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
                 parent_id=str(user.parent_id) if getattr(user, 'parent_id', None) else None,
+                teacher_id=str(user.teacher_id) if getattr(user, 'teacher_id', None) else None,
             ),
         )
 
@@ -207,9 +210,10 @@ class AuthService:
                 full_name=user.full_name,
                 role=user.role,
                 is_active=user.is_active,
-                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
+                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile is not None else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
                 parent_id=str(user.parent_id) if getattr(user, 'parent_id', None) else None,
+                teacher_id=str(user.teacher_id) if getattr(user, 'teacher_id', None) else None,
             ),
         )
 
@@ -253,9 +257,10 @@ class AuthService:
                 full_name=target_user.full_name,
                 role=target_user.role,
                 is_active=target_user.is_active,
-                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
+                profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile is not None else None,
                 subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
                 parent_id=str(target_user.parent_id) if getattr(target_user, 'parent_id', None) else None,
+                teacher_id=str(target_user.teacher_id) if getattr(target_user, 'teacher_id', None) else None,
             ),
         )
 
@@ -285,7 +290,7 @@ class AuthService:
                 "id": child.id,
                 "full_name": child.full_name,
                 "role": child.role,
-                "grade_level": child.profile.grade_level if child.profile else None,
+                "grade_level": child.profile.grade_level if child.profile is not None else None,
                 "is_current": child.id == current_user.id
             })
 

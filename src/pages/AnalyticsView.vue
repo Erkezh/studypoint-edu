@@ -162,8 +162,8 @@
           </div>
 
           <!-- Per-Student Breakdown -->
-          <div class="students-breakdown" v-if="studentsBreakdown.length > 0">
-            <div v-for="student in studentsBreakdown" :key="student.student_id" class="student-card">
+          <div class="students-breakdown" v-if="displayStudentsBreakdown.length > 0">
+            <div v-for="student in displayStudentsBreakdown" :key="student.student_id" class="student-card">
               <table class="student-unified-table">
                 <thead>
                   <tr class="header-summary-row">
@@ -249,6 +249,9 @@
               </div>
             </div>
           </div>
+          <div v-else class="empty-state">
+            <p>Таңдалған уақыт пен сынып аралығында оқушылардың практика мәліметтері табылмады.</p>
+          </div>
         </div>
 
         <SummaryTab v-else-if="activeTab === 'summary'"
@@ -262,25 +265,25 @@
         <SkillsPracticedTab v-else-if="activeTab === 'skills_practiced'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
           :date-label="dateRangeLabel"
-          :all-students-data="studentsBreakdown"
+          :all-students-data="displayStudentsBreakdown"
           @navigate="handleTabNavWithContext" />
 
         <SkillAnalysisTab v-else-if="activeTab === 'skill_analysis'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
           :date-label="dateRangeLabel"
-          :all-students-data="studentsBreakdown"
+          :all-students-data="displayStudentsBreakdown"
           @navigate="handleTabNavWithContext" />
 
         <TroubleTab v-else-if="activeTab === 'trouble' || activeTab === 'trouble_class'"
           :is-class-wide="activeTab === 'trouble_class'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
-          :all-students-data="activeTab === 'trouble_class' ? studentsBreakdown : []"
+          :all-students-data="activeTab === 'trouble_class' ? displayStudentsBreakdown : []"
           @select-student="handleTroubleStudentSelect" />
 
         <ScoreGridTab v-else-if="activeTab === 'scores_grid'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
           :date-label="dateRangeLabel"
-          :all-students-data="studentsBreakdown"
+          :all-students-data="displayStudentsBreakdown"
           @navigate="handleTabNavWithContext" />
 
         <ScoresTab v-else-if="activeTab === 'scores_student'" />
@@ -288,7 +291,7 @@
         <SkillScoreChartTab v-else-if="activeTab === 'scores_skill'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange"
           :date-label="dateRangeLabel"
-          :all-students-data="studentsBreakdown" />
+          :all-students-data="displayStudentsBreakdown" />
 
         <QuestionsTab v-else-if="activeTab === 'questions'"
           :grade-from="gradeFrom" :grade-to="gradeTo" :date-range="dateRange" />
@@ -306,7 +309,7 @@
 
 <script setup lang="ts">
 import { onMounted, computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useAuthStore } from '@/stores/auth'
 import { useTeacherStore } from '@/stores/teacher'
@@ -374,6 +377,128 @@ const studentAnalyticsLoading = ref(false)
 const hoverTab = ref<string | null>(null)
 const studentsBreakdown = ref<StudentBreakdown[]>([])
 
+const displayStudentsBreakdown = computed<StudentBreakdown[]>(() => {
+  if (!studentsBreakdown.value || studentsBreakdown.value.length === 0) {
+    return []
+  }
+
+  const startDate = dateRange.value.start
+  const endDate = dateRange.value.end || new Date()
+
+  return studentsBreakdown.value
+    .map(student => {
+      // Find questions answered by this student
+      const studentQuestions = (analyticsStore.allQuestions || []).filter(q => {
+        const qUserId = String(q.user_id || '')
+        if (qUserId !== String(student.student_id)) return false
+
+        // Grade filter
+        const skill = analyticsStore.skills.find(s => Number(s.skill_id) === Number(q.skill_id))
+        const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+        if (gradeNum !== undefined) {
+          if (!((gradeNum >= gradeFrom.value && gradeNum <= gradeTo.value) || (gradeFrom.value === -1 && gradeTo.value === 12))) {
+            return false
+          }
+        }
+
+        // Date range filter
+        if (startDate) {
+          const ts = (q.answered_at || (q as Record<string, unknown>).created_at) as string | undefined
+          if (!ts) return false
+          const d = new Date(ts)
+          if (d < startDate || d > endDate) return false
+        }
+
+        return true
+      })
+
+      if (!startDate) {
+        // When 'all' time is selected, return student skills filtered by grade range
+        const filteredSkills = student.skills.filter(s => {
+          const g = s.grade_number
+          if (g !== undefined) {
+            return (g >= gradeFrom.value && g <= gradeTo.value) || (gradeFrom.value === -1 && gradeTo.value === 12)
+          }
+          return true
+        })
+        return {
+          ...student,
+          skills: filteredSkills,
+        }
+      }
+
+      // When Date Filter IS ACTIVE:
+      const totalQuestions = studentQuestions.length
+      const totalTimeSec = studentQuestions.reduce((sum, q) => {
+        return sum + Number(q.time_spent_seconds || (q as Record<string, unknown>).time_spent_sec || 0)
+      }, 0)
+
+      let lastPracticedAt: string | null = null
+      if (studentQuestions.length > 0) {
+        const sortedTs = studentQuestions
+          .map(q => (q.answered_at || (q as Record<string, unknown>).created_at) as string)
+          .filter(Boolean)
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+        if (sortedTs.length > 0) {
+          lastPracticedAt = sortedTs[0]
+        }
+      }
+
+      // Group studentQuestions by skill_id
+      const skillMap = new Map<number, typeof studentQuestions>()
+      studentQuestions.forEach(q => {
+        const skId = Number(q.skill_id)
+        if (!skillMap.has(skId)) skillMap.set(skId, [])
+        skillMap.get(skId)!.push(q)
+      })
+
+      const filteredSkills: SkillBreakdown[] = []
+      let masteredCount = 0
+      let proficientCount = 0
+
+      skillMap.forEach((qs, skId) => {
+        const baseSkill = student.skills.find(s => Number(s.skill_id) === skId)
+        const skQuestions = qs.length
+        const skTime = qs.reduce((sum, q) => sum + Number(q.time_spent_seconds || (q as Record<string, unknown>).time_spent_sec || 0), 0)
+
+        const scores = qs.map(q => Number(q.smartscore_after || q.smartscore_before || 0))
+        const maxScore = scores.length > 0 ? Math.max(...scores) : (baseSkill?.best_smartscore || 0)
+        const lastScore = scores.length > 0 ? scores[0] : (baseSkill?.last_smartscore || 0)
+
+        if (maxScore >= 90) masteredCount++
+        else if (maxScore >= 70) proficientCount++
+
+        filteredSkills.push({
+          skill_id: skId,
+          skill_name: baseSkill?.skill_name || (qs[0] as Record<string, unknown>).skill_name as string || `Дағды ${skId}`,
+          skill_code: baseSkill?.skill_code || '',
+          grade_number: baseSkill?.grade_number || 0,
+          grade_label: baseSkill?.grade_label || (baseSkill?.grade_number ? `${baseSkill.grade_number} сынып` : ''),
+          total_questions: skQuestions,
+          total_time_seconds: skTime,
+          best_smartscore: maxScore,
+          last_smartscore: lastScore,
+        })
+      })
+
+      return {
+        ...student,
+        total_questions: totalQuestions,
+        total_time_sec: totalTimeSec,
+        last_practiced_at: lastPracticedAt,
+        mastered_count: masteredCount,
+        proficient_count: proficientCount,
+        skills: filteredSkills,
+      }
+    })
+    .filter(student => {
+      if (startDate) {
+        return student.total_questions > 0
+      }
+      return true
+    })
+})
+
 // Carousel Logic
 const prevStudent = () => {
   if (teacherStudents.value.length === 0) return
@@ -399,7 +524,20 @@ const nextStudent = () => {
   onStudentChange()
 }
 
-const tabsThatNeedQuestionData = new Set(['usage', 'summary', 'trouble', 'trouble_class', 'questions', 'progress', 'students_quickview'])
+const tabsThatNeedQuestionData = new Set([
+  'usage',
+  'summary',
+  'trouble',
+  'trouble_class',
+  'questions',
+  'progress',
+  'students_quickview',
+  'skills_practiced',
+  'skill_analysis',
+  'scores_grid',
+  'scores_student',
+  'scores_skill'
+])
 const ownQuestionsLoaded = ref(false)
 const quickviewQuestionsLoaded = ref(false)
 const quickviewQuestionsLoading = ref(false)
@@ -474,13 +612,16 @@ const loadTeacherQuickviewQuestions = async (requestVersion = teacherQuickviewRe
     if (requestVersion !== teacherQuickviewRequestVersion || (activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis')) {
       return
     }
-    analyticsStore.allQuestions = (resp.data.data || []) as typeof analyticsStore.allQuestions
+    const rawData = resp.data as unknown
+    const qList = Array.isArray(rawData) ? rawData : (Array.isArray((rawData as { data?: unknown })?.data) ? (rawData as { data: Array<Record<string, unknown>> }).data : [])
+    if (qList.length > 0) {
+      analyticsStore.allQuestions = qList as typeof analyticsStore.allQuestions
+    }
     quickviewQuestionsLoaded.value = true
   } catch (err) {
     if (requestVersion !== teacherQuickviewRequestVersion) {
       return
     }
-    analyticsStore.allQuestions = []
     quickviewQuestionsLoaded.value = false
     if (import.meta.env.DEV) {
       console.error('Failed to load teacher quickview question log:', err)
@@ -500,14 +641,17 @@ const loadTeacherQuickviewAnalytics = async () => {
   quickviewQuestionsLoaded.value = false
   quickviewQuestionsLoading.value = false
   try {
-    const resp = await teacherApi.getTeacherQuickviewAnalytics(false)
+    const resp = await teacherApi.getTeacherQuickviewAnalytics(true)
     if (requestVersion !== teacherQuickviewRequestVersion) {
       return
     }
-    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>>; students_breakdown?: Array<Record<string, unknown>> }
+    const data = resp.data.data as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions?: Array<Record<string, unknown>>; students_breakdown?: Array<Record<string, unknown>> }
     analyticsStore.overview = data.overview as typeof analyticsStore.overview
     analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
-    analyticsStore.allQuestions = []
+    if (data.all_questions && data.all_questions.length > 0) {
+      analyticsStore.allQuestions = data.all_questions as typeof analyticsStore.allQuestions
+      quickviewQuestionsLoaded.value = true
+    }
     studentsBreakdown.value = (data.students_breakdown || []) as unknown as StudentBreakdown[]
     analyticsStore.error = null
   } catch (err: unknown) {
@@ -524,7 +668,7 @@ const loadTeacherQuickviewAnalytics = async () => {
     }
   }
 
-  if (requestVersion === teacherQuickviewRequestVersion && shouldLoadQuestionData()) {
+  if (requestVersion === teacherQuickviewRequestVersion && shouldLoadQuestionData() && !quickviewQuestionsLoaded.value) {
     void loadTeacherQuickviewQuestions(requestVersion)
   }
 }
@@ -585,10 +729,27 @@ interface TabItem {
   dropdown?: { id: string; label: string }[]
 }
 
+const showQuizzesTab = computed(() => {
+  if (isTeacher.value) {
+    return true
+  }
+
+  // Student accounts created by a teacher have teacher_id set
+  // Student accounts created by a parent have parent_id set (and no teacher_id)
+  const isTeacherCreatedStudent = !!authStore.user?.teacher_id
+  const isParentCreatedStudent = !!authStore.user?.parent_id && !authStore.user?.teacher_id
+
+  if (isParentCreatedStudent) {
+    return false
+  }
+
+  return isTeacherCreatedStudent
+})
+
 // Tab configuration
 const tabs = computed<TabItem[]>(() => {
   if (isTeacher.value) {
-    return [
+    const teacherTabs: TabItem[] = [
       {
         id: 'students_dropdown',
         label: 'Оқушылар',
@@ -625,33 +786,129 @@ const tabs = computed<TabItem[]>(() => {
       },
       { id: 'questions', label: 'Сұрақтар' },
       { id: 'progress', label: 'Прогресс' },
-      { id: 'quizzes', label: 'Квиздер' },
     ]
+    if (showQuizzesTab.value) {
+      teacherTabs.push({ id: 'quizzes', label: 'Квиздер' })
+    }
+    return teacherTabs
   }
-  return [
+
+  const userTabs: TabItem[] = [
     { id: 'summary', label: 'Қорытынды' },
     { id: 'usage', label: 'Қолдану' },
     { id: 'trouble', label: 'Қиындықтар' },
     { id: 'scores_student', label: 'Ұпайлар' },
     { id: 'questions', label: 'Сұрақтар' },
     { id: 'progress', label: 'Прогресс' },
-    { id: 'quizzes', label: 'Квиздер' },
   ]
+  if (showQuizzesTab.value) {
+    userTabs.push({ id: 'quizzes', label: 'Квиздер' })
+  }
+  return userTabs
 })
 
 const route = useRoute()
+const router = useRouter()
 
-// Initialize active tab based on role and stored state
+const tabToSlugMap: Record<string, string> = {
+  summary: 'summary',
+  students_quickview: 'students-quickview',
+  usage: 'student-usage',
+  skills_practiced: 'skills-practiced',
+  skill_analysis: 'skill-analysis',
+  trouble: 'trouble-spots',
+  trouble_class: 'class-trouble-spots',
+  scores_grid: 'score-grid',
+  scores_student: 'scores-student',
+  scores_skill: 'scores-skill',
+  questions: 'questions-log',
+  progress: 'progress',
+  quizzes: 'quizzes',
+}
+
+const slugToTabMap: Record<string, string> = {
+  'summary': 'summary',
+  'students-quickview': 'students_quickview',
+  'students_quickview': 'students_quickview',
+  'student-usage': 'usage',
+  'usage': 'usage',
+  'skills-practiced': 'skills_practiced',
+  'skills_practiced': 'skills_practiced',
+  'skill-analysis': 'skill_analysis',
+  'skill_analysis': 'skill_analysis',
+  'trouble-spots': 'trouble',
+  'trouble': 'trouble',
+  'class-trouble-spots': 'trouble_class',
+  'trouble_class': 'trouble_class',
+  'score-grid': 'scores_grid',
+  'scores-grid': 'scores_grid',
+  'scores_grid': 'scores_grid',
+  'scores-student': 'scores_student',
+  'scores_student': 'scores_student',
+  'scores-skill': 'scores_skill',
+  'scores_skill': 'scores_skill',
+  'questions-log': 'questions',
+  'questions': 'questions',
+  'progress': 'progress',
+  'quizzes': 'quizzes',
+}
+
 const defaultTeacherTab = 'students_quickview'
-const activeTab = ref<string>((route.query.tab as string) || initialState.activeTab || (isTeacher.value ? defaultTeacherTab : 'summary'))
+
+const resolveTabFromRoute = (tabParam?: string, queryTab?: string): string => {
+  const raw = tabParam || queryTab
+  if (raw && slugToTabMap[raw]) {
+    return slugToTabMap[raw]
+  }
+  if (initialState.activeTab && slugToTabMap[initialState.activeTab]) {
+    return slugToTabMap[initialState.activeTab]
+  }
+  return isTeacher.value ? defaultTeacherTab : 'summary'
+}
+
+const initialActiveTab = resolveTabFromRoute(route.params.tab as string, route.query.tab as string)
+const activeTab = ref<string>(initialActiveTab === 'quizzes' && !showQuizzesTab.value ? (isTeacher.value ? defaultTeacherTab : 'summary') : initialActiveTab)
 
 watch(
-  () => route.query.tab,
-  (newTab) => {
-    if (newTab && typeof newTab === 'string') {
-      activeTab.value = newTab
+  () => [route.params.tab, route.query.tab],
+  ([newParam, newQuery]) => {
+    const resolved = resolveTabFromRoute(newParam as string, newQuery as string)
+    if (resolved && activeTab.value !== resolved) {
+      if (resolved === 'quizzes' && !showQuizzesTab.value) return
+      activeTab.value = resolved
     }
   }
+)
+
+const analyticsTabTitleMap: Record<string, string> = {
+  summary: 'Қорытынды',
+  students_quickview: 'Қысқаша көрініс',
+  usage: 'Оқу уақыты',
+  skills_practiced: 'Орындалған дағдылар',
+  skill_analysis: 'Дағдылар талдауы',
+  trouble: 'Қиындықтар',
+  trouble_class: 'Сынып қиындықтары',
+  scores_grid: 'Ұпай торы',
+  scores_student: 'Ұпайлар',
+  scores_skill: 'Дағды ұпайлары',
+  questions: 'Сұрақтар журналы',
+  progress: 'Прогресс',
+  quizzes: 'Квиздер',
+}
+
+watch(
+  activeTab,
+  (newTab) => {
+    const slug = tabToSlugMap[newTab] || newTab
+    const currentParam = route.params.tab as string
+    if (currentParam !== slug) {
+      router.push({ path: `/analytics/${slug}`, query: route.query })
+    }
+    if (analyticsTabTitleMap[newTab]) {
+      document.title = analyticsTabTitleMap[newTab]
+    }
+  },
+  { immediate: true }
 )
 const gradeFrom = ref<number>(initialState.gradeFrom !== undefined ? initialState.gradeFrom : -1)
 const gradeTo = ref<number>(initialState.gradeTo !== undefined ? initialState.gradeTo : 12)

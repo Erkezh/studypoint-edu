@@ -161,7 +161,6 @@ apiClient.interceptors.response.use(
       // Получаем refresh token из Pinia store через bridge (или localStorage напрямую как fallback)
       const authStore = (window as unknown as Record<string, unknown>).__authStore as AuthStoreBridge | undefined
       const refreshToken = authStore ? authStore.getRefreshToken() : localStorage.getItem('refresh_token')
-      const hasAuthHeader = !!originalRequest.headers?.Authorization
 
       // Если нет локального refresh_token,
       // просто возвращаем ошибку без попытки refresh.
@@ -240,8 +239,7 @@ apiClient.interceptors.response.use(
         return apiClient(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError as Error, null)
-        // Если refresh не удался - очищаем токены, но НЕ редиректим на логин
-        // Пользователь может продолжать использовать пробные вопросы
+        // Если refresh не удался (сессия истекла / прошло много времени) - очищаем токены
         localStorage.removeItem('access_token')
         localStorage.removeItem('refresh_token')
         localStorage.removeItem('user')
@@ -269,21 +267,20 @@ apiClient.interceptors.response.use(
           message = refreshErrorData.error.message
         }
         
-        // Если это админский endpoint, предлагаем перелогиниться
-        if (originalRequest.url?.includes('/admin/')) {
-          message = 'Админ панеліне кіру үшін қайта кіріңіз. Токен мерзімі аяқталған.'
-          // Редиректим на логин для админских endpoints
-          const router = (await import('@/router')).default
-          router.push({ 
-            name: 'login', 
-            query: { 
-              redirect: router.currentRoute.value.fullPath,
-              reason: 'token_expired'
-            } 
-          })
-        }
         ;(refreshError as Error).message = message
-        // НЕ редиректим на логин - пользователь может продолжать без авторизации
+
+        // Автоматически перенаправляем на главную страницу при истечении сессии (прошло много времени)
+        try {
+          const router = (await import('@/router')).default
+          if (router.currentRoute.value.path !== '/') {
+            router.push('/')
+          }
+        } catch {
+          if (window.location.pathname !== '/') {
+            window.location.href = '/'
+          }
+        }
+
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

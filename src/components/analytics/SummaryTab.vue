@@ -91,8 +91,8 @@
 
     <!-- Skills Table -->
     <div class="skills-table-section">
-      <h3 class="section-subtitle">Сіз мына дағдыларды меңгердіңіз:</h3>
-      <div v-if="completedTopics.length === 0" class="empty-state">
+      <h3 class="section-subtitle">ПРАКТИКАЛАНҒАН ДАҒДЫЛАР:</h3>
+      <div v-if="sortedSkills.length === 0" class="empty-state">
         <p>Әлі өткен дағдылар жоқ. Практиканы бастаңыз!</p>
       </div>
       <div v-else class="overflow-x-auto scrollbar-hide">
@@ -101,6 +101,18 @@
             <tr>
               <th @click="sortBy('skill')">
                 Дағды
+                <span class="sort-icon inline-block ml-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                </span>
+              </th>
+              <th @click="sortBy('score')">
+                SmartScore
+                <span class="sort-icon inline-block ml-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
+                </span>
+              </th>
+              <th @click="sortBy('questions')">
+                Сұрақтар
                 <span class="sort-icon inline-block ml-1">
                   <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" /></svg>
                 </span>
@@ -120,6 +132,12 @@
                   {{ skill.name }}
                 </router-link>
               </td>
+              <td>
+                <span class="smartscore-badge" :class="getScoreColorClass(skill.best_smartscore)">
+                  {{ skill.best_smartscore }}
+                </span>
+              </td>
+              <td>{{ skill.total_questions }}</td>
               <td class="date-cell">{{ formatLastPracticed(skill.last_practiced) }}</td>
             </tr>
           </tbody>
@@ -185,17 +203,28 @@ const formatTimeMinutes = (seconds: number): string => {
   return `${mins} мин`
 }
 
-const formatLastPracticed = (dateString: string): string => {
+const formatLastPracticed = (dateString: string | null | undefined): string => {
   if (!dateString) return '-'
   const date = new Date(dateString)
-  const now = new Date()
-  const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+  if (isNaN(date.getTime())) return '-'
 
-  if (diffDays === 0) return 'Бүгін'
+  const now = new Date()
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const dateStart = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  const diffDays = Math.round((todayStart - dateStart) / (1000 * 60 * 60 * 24))
+
+  if (diffDays <= 0) return 'Бүгін'
   if (diffDays === 1) return 'Кеше'
   if (diffDays < 7) return `${diffDays} күн бұрын`
   if (diffDays < 30) return `${Math.floor(diffDays / 7)} апта бұрын`
   return date.toLocaleDateString('kk-KZ', { month: 'short', day: 'numeric' })
+}
+
+const getScoreColorClass = (score: number): string => {
+  if (score >= 90) return 'score-mastered'
+  if (score >= 70) return 'score-proficient'
+  if (score >= 40) return 'score-medium'
+  return 'score-low'
 }
 
 // Helper to check if a date is within selected range
@@ -226,128 +255,124 @@ interface SkillItem {
 
 // Filtered totals based on grade range AND date range
 const filteredTotalQuestions = computed(() => {
-  // If no date range is selected, use the aggregated stats from skills
-  if (!props.dateRange.start) {
-    return (analyticsStore.skills as unknown as SkillItem[]).reduce((sum, skill) => {
-      const gradeNumber = skill.grade_number
-      if (gradeNumber !== undefined) {
-        if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
-          return sum + (skill.total_questions || 0)
+  if (props.dateRange.start) {
+    return analyticsStore.allQuestions.reduce((sum, question) => {
+      const skill = (analyticsStore.skills as unknown as SkillItem[]).find((s) => s.skill_id === question.skill_id)
+      const gradeNum = skill?.grade_number
+      if (gradeNum !== undefined) {
+        if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+          return sum
         }
-        return sum
       }
-      return sum + (skill.total_questions || 0)
+      const timestamp = (question.answered_at || (question as Record<string, unknown>).created_at) as string | undefined
+      if (isDateRunning(timestamp)) {
+        return sum + 1
+      }
+      return sum
     }, 0)
   }
 
-  // If date range IS selected, calculate from granular questions data
-  return analyticsStore.allQuestions.reduce((sum, question) => {
-    // Grade filter
-    const skill = (analyticsStore.skills as unknown as SkillItem[]).find((s) => s.skill_id === question.skill_id)
-    const gradeNum = skill?.grade_number
+  if (analyticsStore.overview?.total_questions_answered !== undefined) {
+    return Number(analyticsStore.overview.total_questions_answered) || 0
+  }
 
-    if (gradeNum !== undefined) {
-      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
-        return sum
+  return (analyticsStore.skills as unknown as SkillItem[]).reduce((sum, skill) => {
+    const gradeNumber = skill.grade_number
+    if (gradeNumber !== undefined) {
+      if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+        return sum + (skill.total_questions || 0)
       }
+      return sum
     }
-
-    // Check date filter
-    const timestamp = (question.answered_at || (question as Record<string, unknown>).converted_at || (question as Record<string, unknown>).created_at) as string | undefined
-    if (isDateRunning(timestamp)) {
-       return sum + 1
-    }
-    return sum
+    return sum + (skill.total_questions || 0)
   }, 0)
 })
 
 const filteredTotalTime = computed(() => {
-   // If no date range, use aggregated
-  if (!props.dateRange.start) {
-    return (analyticsStore.skills as unknown as SkillItem[]).reduce((sum, skill) => {
-      const gradeNumber = skill.grade_number
-      const totalTime = skill.total_time_seconds
-      if (gradeNumber !== undefined) {
-         if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
-          return sum + (totalTime || 0)
+  if (props.dateRange.start) {
+    return analyticsStore.allQuestions.reduce((sum, question) => {
+      const skill = (analyticsStore.skills as unknown as SkillItem[]).find((s) => s.skill_id === question.skill_id)
+      const gradeNum = skill?.grade_number
+      if (gradeNum !== undefined) {
+        if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+          return sum
         }
-        return sum
       }
-      return sum + (totalTime || 0)
+      const timestamp = (question.answered_at || (question as Record<string, unknown>).created_at) as string | undefined
+      if (isDateRunning(timestamp)) {
+        const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
+        return sum + timeSeconds
+      }
+      return sum
     }, 0)
   }
 
-  // If date range active, sum up time spent on questions in that range
-  return analyticsStore.allQuestions.reduce((sum, question) => {
-    // Grade filter
-    const skill = (analyticsStore.skills as unknown as SkillItem[]).find((s) => s.skill_id === question.skill_id)
-    const gradeNum = skill?.grade_number
-    if (gradeNum !== undefined) {
-      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
-        return sum
-      }
-    }
+  if (analyticsStore.overview?.total_time_spent_seconds !== undefined) {
+    return Number(analyticsStore.overview.total_time_spent_seconds) || 0
+  }
 
-    // Date filter
-    const timestamp = (question.answered_at || (question as Record<string, unknown>).converted_at || (question as Record<string, unknown>).created_at) as string | undefined
-    if (isDateRunning(timestamp)) {
-       const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
-       return sum + timeSeconds
+  return (analyticsStore.skills as unknown as SkillItem[]).reduce((sum, skill) => {
+    const gradeNumber = skill.grade_number
+    const totalTime = skill.total_time_seconds
+    if (gradeNumber !== undefined) {
+      if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+        return sum + (totalTime || 0)
+      }
+      return sum
     }
-    return sum
+    return sum + (totalTime || 0)
   }, 0)
 })
 
 // Skills with progress, filtered by grade range AND date range
 const skillsWithProgress = computed(() => {
-  if (!props.dateRange.start) {
-    return (analyticsStore.skills as unknown as SkillItem[]).filter((skill) => {
-      if ((skill.total_questions || 0) === 0 && (skill.total_time_seconds || 0) === 0) return false
-      const gradeNumber = skill.grade_number
-      if (gradeNumber !== undefined) {
-        return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
-      }
-      return true
-    })
-  }
-
-  // Identify unique skills played in date range
-  const skillIdsInRange = new Set<number>()
-  analyticsStore.allQuestions.forEach(q => {
-     const timestamp = (q.answered_at || (q as Record<string, unknown>).created_at || (q as Record<string, unknown>).submitted_at) as string | undefined
-     if (isDateRunning(timestamp) && typeof q.skill_id === 'number') {
-       skillIdsInRange.add(q.skill_id)
-     }
-  })
-
-  return (analyticsStore.skills as unknown as SkillItem[]).filter((skill) => {
-    if (!skillIdsInRange.has(skill.skill_id)) return false
+  const baseSkills = (analyticsStore.skills as unknown as SkillItem[]).filter((skill) => {
+    if ((skill.total_questions || 0) === 0 && (skill.total_time_seconds || 0) === 0) return false
     const gradeNumber = skill.grade_number
     if (gradeNumber !== undefined) {
       return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
     }
     return true
   })
+
+  if (props.dateRange.start) {
+    const skillIdsInRange = new Set<number>()
+    analyticsStore.allQuestions.forEach(q => {
+      const timestamp = (q.answered_at || (q as Record<string, unknown>).created_at) as string | undefined
+      if (isDateRunning(timestamp) && typeof q.skill_id === 'number') {
+        skillIdsInRange.add(q.skill_id)
+      }
+    })
+    return baseSkills.filter((skill) => skillIdsInRange.has(skill.skill_id))
+  }
+
+  return baseSkills
 })
 
-// Completed topics (SmartScore = 100)
-const completedTopics = computed(() => {
+// Practiced topics/skills
+const practicedSkills = computed(() => {
   return (analyticsStore.skills as unknown as SkillItem[])
     .filter((skill) => {
-      const score = Math.max(Number(skill.best_smartscore || 0), Number(skill.last_smartscore || 0))
-      if (score < 90) return false
+      const hasQuestions = (skill.total_questions || 0) > 0
+      const hasTime = (skill.total_time_seconds || 0) > 0
+      const hasPracticed = !!(skill.last_practiced_at || skill.last_practiced)
+      const hasScore = Math.max(Number(skill.best_smartscore || 0), Number(skill.last_smartscore || 0)) > 0
+
+      if (!hasQuestions && !hasTime && !hasPracticed && !hasScore) return false
+
       const gradeNumber = skill.grade_number
       if (gradeNumber !== undefined) {
-        return gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo
+        return (gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)
       }
       return true
     })
     .map((skill) => {
       const apiName = skill.skill_name
+      const score = Math.max(Number(skill.best_smartscore || 0), Number(skill.last_smartscore || 0))
       return {
         skill_id: skill.skill_id,
         name: apiName || props.skillNames.get(skill.skill_id) || `Дағды ${skill.skill_id}`,
-        best_smartscore: skill.best_smartscore || 0,
+        best_smartscore: score,
         total_questions: skill.total_questions || 0,
         accuracy_percent: skill.accuracy_percent || 0,
         last_practiced: (skill.last_practiced_at || skill.last_practiced) || '',
@@ -424,12 +449,21 @@ const topicChartSegments = computed(() => {
 
 // Sorted skills table
 const sortedSkills = computed(() => {
-  const skills = [...completedTopics.value]
+  const skills = [...practicedSkills.value]
   return skills.sort((a, b) => {
     if (sortField.value === 'lastPracticed') {
-      const dateA = new Date(a.last_practiced || 0).getTime()
-      const dateB = new Date(b.last_practiced || 0).getTime()
+      const dateA = a.last_practiced ? new Date(a.last_practiced).getTime() : 0
+      const dateB = b.last_practiced ? new Date(b.last_practiced).getTime() : 0
       return sortDirection.value === 'asc' ? dateA - dateB : dateB - dateA
+    }
+    if (sortField.value === 'score') {
+      return sortDirection.value === 'asc' ? a.best_smartscore - b.best_smartscore : b.best_smartscore - a.best_smartscore
+    }
+    if (sortField.value === 'questions') {
+      return sortDirection.value === 'asc' ? a.total_questions - b.total_questions : b.total_questions - a.total_questions
+    }
+    if (sortField.value === 'skill') {
+      return sortDirection.value === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
     }
     return 0
   })
@@ -756,6 +790,34 @@ const sortBy = (field: string) => {
 
 .date-cell {
   color: #888;
+}
+
+.smartscore-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.score-mastered {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.score-proficient {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.score-medium {
+  background: #fff3e0;
+  color: #ef6c00;
+}
+
+.score-low {
+  background: #f5f5f5;
+  color: #616161;
 }
 
 .empty-state {

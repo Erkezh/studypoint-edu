@@ -104,6 +104,8 @@ export interface UserMeResponse {
   is_active: boolean
   profile?: StudentProfileResponse | null
   subscription?: SubscriptionResponse | null
+  parent_id?: string | null
+  teacher_id?: string | null
 }
 
 export interface AdminUser {

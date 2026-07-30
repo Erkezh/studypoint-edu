@@ -284,102 +284,96 @@ const isDateRunning = (dateStr: string | undefined) => {
 
 // Skills with progress, filtered by grade range AND date range
 const skillsWithProgress = computed(() => {
-  // Identify unique skills played in date range first if range exists
-  let skillIdsInRange: Set<number> | null = null
-
-  if (props.dateRange.start) {
-    skillIdsInRange = new Set<number>()
-    analyticsStore.allQuestions.forEach(q => {
-       const timestamp = q.converted_at || q.created_at || q.answered_at
-       if (isDateRunning(timestamp as string)) {
-         skillIdsInRange!.add(q.skill_id as number)
-       }
-    })
-  }
-
-  return analyticsStore.skills.filter(skill => {
+  const baseSkills = analyticsStore.skills.filter(skill => {
     if (((skill.total_questions as number) || 0) === 0) return false
-
-    // Date filter
-    if (skillIdsInRange && !skillIdsInRange.has(skill.skill_id as number)) return false
-
     const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
     if (gradeNumber !== undefined) {
       return gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo
     }
     return true
   })
+
+  if (props.dateRange.start) {
+    const skillIdsInRange = new Set<number>()
+    analyticsStore.allQuestions.forEach(q => {
+      const timestamp = q.answered_at || q.created_at || (q as Record<string, unknown>).converted_at
+      if (isDateRunning(timestamp as string)) {
+        skillIdsInRange.add(q.skill_id as number)
+      }
+    })
+    return baseSkills.filter(skill => skillIdsInRange.has(skill.skill_id as number))
+  }
+
+  return baseSkills
 })
 
 const filteredTotalQuestions = computed(() => {
-   // If no date range, use aggregated (but filtered by grade)
-  if (!props.dateRange.start) {
-    return analyticsStore.skills.reduce((sum, skill) => {
-      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-      if (gradeNumber !== undefined) {
-        if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
-          return sum + ((skill.total_questions as number) || 0)
+  if (props.dateRange.start) {
+    return analyticsStore.allQuestions.reduce((sum, question) => {
+      const skill = analyticsStore.skills.find(s => s.skill_id as number === question.skill_id)
+      const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+      if (gradeNum !== undefined) {
+        if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+          return sum
         }
-        return sum
       }
-      return sum + ((skill.total_questions as number) || 0)
+      const timestamp = question.answered_at || question.created_at || (question as Record<string, unknown>).converted_at
+      if (isDateRunning(timestamp as string)) {
+        return sum + 1
+      }
+      return sum
     }, 0)
   }
 
-  // If date range IS selected, calculate from granular questions data
-  return analyticsStore.allQuestions.reduce((sum, question) => {
-    // Grade filter
-    const skill = analyticsStore.skills.find(s => s.skill_id as number === question.skill_id)
-    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
-    if (gradeNum !== undefined) {
-      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
-        return sum
-      }
-    }
+  if (analyticsStore.overview?.total_questions_answered !== undefined) {
+    return Number(analyticsStore.overview.total_questions_answered) || 0
+  }
 
-    // Date filter
-    const timestamp = question.converted_at || question.created_at || question.answered_at
-    if (isDateRunning(timestamp as string)) {
-       return sum + 1
+  return analyticsStore.skills.reduce((sum, skill) => {
+    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+    if (gradeNumber !== undefined) {
+      if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+        return sum + ((skill.total_questions as number) || 0)
+      }
+      return sum
     }
-    return sum
+    return sum + ((skill.total_questions as number) || 0)
   }, 0)
 })
 
 const filteredTotalTime = computed(() => {
-  // If no date range, use aggregated
-  if (!props.dateRange.start) {
-    return analyticsStore.skills.reduce((sum, skill) => {
-      const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
-      const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
-      if (gradeNumber !== undefined) {
-         if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
-          return sum + (totalTime || 0)
+  if (props.dateRange.start) {
+    return analyticsStore.allQuestions.reduce((sum, question) => {
+      const skill = analyticsStore.skills.find(s => s.skill_id as number === question.skill_id)
+      const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
+      if (gradeNum !== undefined) {
+        if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
+          return sum
         }
-        return sum
       }
-      return sum + (totalTime || 0)
+      const timestamp = question.answered_at || question.created_at || (question as Record<string, unknown>).converted_at
+      if (isDateRunning(timestamp as string)) {
+        const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
+        return sum + timeSeconds
+      }
+      return sum
     }, 0)
   }
 
-  // If date range active
-  return analyticsStore.allQuestions.reduce((sum, question) => {
-    // Grade filter
-    const skill = analyticsStore.skills.find(s => s.skill_id as number === question.skill_id)
-    const gradeNum = (skill as Record<string, unknown>)?.grade_number as number | undefined
-    if (gradeNum !== undefined) {
-      if (!((gradeNum >= props.gradeFrom && gradeNum <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12))) {
-        return sum
-      }
-    }
+  if (analyticsStore.overview?.total_time_spent_seconds !== undefined) {
+    return Number(analyticsStore.overview.total_time_spent_seconds) || 0
+  }
 
-    // Date filter
-    const timestamp = question.converted_at || question.created_at || question.answered_at
-    if (isDateRunning(timestamp as string)) {
-       const timeSeconds = (question.time_spent_seconds as number) || (question.time_spent_sec as number) || 0
-       return sum + timeSeconds
+  return analyticsStore.skills.reduce((sum, skill) => {
+    const gradeNumber = (skill as Record<string, unknown>).grade_number as number | undefined
+    const totalTime = (skill as Record<string, unknown>).total_time_seconds as number | undefined
+    if (gradeNumber !== undefined) {
+      if ((gradeNumber >= props.gradeFrom && gradeNumber <= props.gradeTo) || (props.gradeFrom === -1 && props.gradeTo === 12)) {
+        return sum + (totalTime || 0)
+      }
+      return sum
     }
-    return sum
+    return sum + (totalTime || 0)
   }, 0)
 })
 
@@ -484,6 +478,13 @@ const allowedSkillIds = computed(() => {
   return ids
 })
 
+const toLocalDateStr = (d: Date): string => {
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 // Practice Chart Data (Dynamic Aggregation)
 const practiceByDay = computed(() => {
   const questions = analyticsStore.allQuestions
@@ -508,13 +509,13 @@ const practiceByDay = computed(() => {
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now)
         d.setDate(d.getDate() - i)
-        dataMap.set(d.toISOString().slice(0, 10), 0)
+        dataMap.set(toLocalDateStr(d), 0)
       }
   } else if (period === 'month' || period === 'last30') {
       for (let i = 29; i >= 0; i--) {
         const d = new Date(now)
         d.setDate(d.getDate() - i)
-        dataMap.set(d.toISOString().slice(0, 10), 0)
+        dataMap.set(toLocalDateStr(d), 0)
       }
   }
 
@@ -536,7 +537,7 @@ const practiceByDay = computed(() => {
     } else if (period === 'all') {
         key = date.getFullYear().toString()
     } else {
-        key = date.toISOString().slice(0, 10)
+        key = toLocalDateStr(date)
     }
 
     dataMap.set(key, (dataMap.get(key) || 0) + 1)
@@ -564,7 +565,8 @@ const practiceByDay = computed(() => {
   } else {
       const sortedKeys = Array.from(dataMap.keys()).sort()
       for(const key of sortedKeys) {
-          const d = new Date(key)
+          const parts = key.split('-').map(Number)
+          const d = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date(key)
           let label = d.getDate().toString()
           if (period === 'week' || period === 'last7') {
               const dayNames: string[] = ['Жс', 'Дс', 'Сс', 'Ср', 'Бс', 'Жм', 'Сб']
@@ -615,7 +617,7 @@ const sessionsByDate = computed(() => {
     const rec = q as Record<string, unknown>
     const answeredAt = rec.answered_at as string
     if (!answeredAt) continue
-    const dateKey = answeredAt.slice(0, 10)
+    const dateKey = toLocalDateStr(new Date(answeredAt))
     if (!dateMap.has(dateKey)) dateMap.set(dateKey, [])
     dateMap.get(dateKey)!.push(rec)
   }
@@ -668,7 +670,8 @@ const sessionsByDate = computed(() => {
     })
 
     const skillsPracticed = skills.length
-    const d = new Date(dateKey + 'T00:00:00')
+    const parts = dateKey.split('-').map(Number)
+    const d = parts.length === 3 ? new Date(parts[0], parts[1] - 1, parts[2]) : new Date(dateKey)
     const dayNames = ['ЖЕКСЕНБІ', 'ДҮЙСЕНБІ', 'СЕЙСЕНБІ', 'СӘРСЕНБІ', 'БЕЙСЕНБІ', 'ЖҰМА', 'СЕНБІ']
     const monthNames = ['ҚАҢТАР', 'АҚПАН', 'НАУРЫЗ', 'СӘУІР', 'МАМЫР', 'МАУСЫМ', 'ШІЛДЕ', 'ТАМЫЗ', 'ҚЫРКҮЙЕК', 'ҚАЗАН', 'ҚАРАША', 'ЖЕЛТОҚСАН']
     const label = `${dayNames[d.getDay()]}, ${d.getDate()} ${monthNames[d.getMonth()]}`

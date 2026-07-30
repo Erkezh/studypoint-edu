@@ -124,14 +124,47 @@
           <!-- Order Summary and Pay -->
           <div class="bg-white p-8 rounded border border-gray-200 shadow-sm max-w-xl mx-auto text-center">
             <h3 class="text-xl font-medium text-[#1a365d] mb-4">Тапсырыс мәліметтері</h3>
-            <div class="text-4xl font-bold text-[#1a365d] mb-2">
-              ₸{{ calculatedPrice.toLocaleString() }}
+
+            <!-- Price Breakdown -->
+            <div class="space-y-1 mb-4">
+              <div v-if="discountAmount > 0" class="text-sm text-gray-500 line-through">
+                Бастапқы бағасы: ₸{{ basePrice.toLocaleString() }}
+              </div>
+              <div class="text-4xl font-bold text-[#1a365d]">
+                ₸{{ calculatedPrice.toLocaleString() }}
+              </div>
+              <div v-if="discountAmount > 0" class="text-xs font-bold text-emerald-600 bg-emerald-50 py-1 px-3 rounded-full inline-block mt-1">
+                Үнемдеуіңіз: -₸{{ discountAmount.toLocaleString() }}
+              </div>
             </div>
-            <p class="text-gray-500 mb-8 border-b border-gray-100 pb-8">
+
+            <p class="text-gray-500 mb-6 border-b border-gray-100 pb-6 text-sm">
               {{ billingCycle === 'monthly' ? 'ай сайын төленеді' : 'жылына бір рет төленеді' }}
               <span v-if="planType === 'family'">({{ childrenCount }} бала үшін)</span>
               <span v-else>(1 мұғалім және оқушылар үшін)</span>
             </p>
+
+            <!-- Promo Code Input Form -->
+            <div class="mb-6 bg-gray-50 p-3.5 rounded-xl border border-gray-200 text-left">
+              <label class="block text-xs font-semibold text-gray-700 mb-1.5">🎟️ Промокод енгізу</label>
+              <div class="flex gap-2">
+                <input
+                  v-model="promoInput"
+                  type="text"
+                  placeholder="e.g. STUDY2026"
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-xs uppercase font-mono font-bold bg-white focus:outline-none focus:border-[#25b8c6]"
+                />
+                <button
+                  type="button"
+                  @click="applyPromoCode"
+                  class="px-4 py-2 bg-[#25b8c6] hover:bg-[#1fa3b0] text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+                >
+                  Қолдану
+                </button>
+              </div>
+              <p v-if="promoError" class="text-xs text-rose-600 font-medium mt-1.5">{{ promoError }}</p>
+              <p v-if="promoSuccess" class="text-xs text-emerald-600 font-bold mt-1.5">{{ promoSuccess }}</p>
+            </div>
 
             <div v-if="processing" class="py-4 flex flex-col items-center justify-center space-y-3">
               <div class="animate-spin rounded-full h-10 w-10 border-4 border-gray-200 border-t-[#f14635]"></div>
@@ -247,6 +280,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { usePricingStore } from '@/stores/pricingStore'
 import { authApi } from '@/api/auth'
 import type { ApiResponse, AuthTokensResponse } from '@/types/api'
 import { UserRole } from '@/types/api'
@@ -258,6 +292,7 @@ defineOptions({ name: 'PaymentPage' })
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const pricingStore = usePricingStore()
 
 const planType = computed(() => route.query.plan === 'classroom' ? 'classroom' : 'family')
 
@@ -269,22 +304,52 @@ const billingCycle = ref<'monthly' | 'yearly'>('monthly')
 const childrenCount = ref(1)
 const processing = ref(false)
 
-const baseMonthlyPrice = 1990
-const baseYearlyPrice = 1590
+const promoInput = ref('')
+const appliedPromoCode = ref<string | null>(null)
+const promoError = ref<string | null>(null)
+const promoSuccess = ref<string | null>(null)
 
-const classroomMonthlyPrice = 14990
-const classroomYearlyPrice = 12990
+const basePrice = computed(() => {
+  const familyConfig = pricingStore.pricing.FAMILY || { monthlyPrice: 1990, yearlyPrice: 1590 }
+  const classroomConfig = pricingStore.pricing.CLASSROOM || { monthlyPrice: 14990, yearlyPrice: 12990 }
 
-const calculatedPrice = computed(() => {
   if (planType.value === 'classroom') {
-    return billingCycle.value === 'monthly' ? classroomMonthlyPrice : classroomYearlyPrice * 12
+    return billingCycle.value === 'monthly' ? classroomConfig.monthlyPrice : classroomConfig.yearlyPrice * 12
   } else {
-    return billingCycle.value === 'monthly' ? baseMonthlyPrice * childrenCount.value : baseYearlyPrice * 12 * childrenCount.value
+    return billingCycle.value === 'monthly' ? familyConfig.monthlyPrice * childrenCount.value : familyConfig.yearlyPrice * 12 * childrenCount.value
   }
 })
 
+const priceCalculation = computed(() => {
+  return pricingStore.calculateDiscountedPrice(basePrice.value, appliedPromoCode.value || undefined)
+})
+
+const calculatedPrice = computed(() => priceCalculation.value.finalPrice)
+const discountAmount = computed(() => priceCalculation.value.discountAmount)
+
+const applyPromoCode = () => {
+  promoError.value = null
+  promoSuccess.value = null
+  if (!promoInput.value.trim()) {
+    appliedPromoCode.value = null
+    return
+  }
+
+  const result = pricingStore.validatePromoCode(promoInput.value)
+  if (!result.valid) {
+    promoError.value = result.error || 'Қате промокод'
+    appliedPromoCode.value = null
+  } else {
+    appliedPromoCode.value = promoInput.value.toUpperCase().trim()
+    promoSuccess.value = `Промокод сәтті қолданылды!`
+  }
+}
+
 const processPayment = () => {
   processing.value = true
+  if (appliedPromoCode.value) {
+    pricingStore.usePromoCode(appliedPromoCode.value)
+  }
   setTimeout(() => {
     processing.value = false
     currentStep.value = 2

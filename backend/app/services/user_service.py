@@ -26,6 +26,8 @@ class UserService:
             full_name=user.full_name,
             role=user.role,
             is_active=user.is_active,
-            profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile else None,
+            profile=StudentProfileResponse(grade_level=profile.grade_level, school=profile.school) if profile is not None else None,
             subscription=SubscriptionResponse(plan=sub.plan, is_active=sub.is_active) if sub else None,
+            parent_id=str(user.parent_id) if getattr(user, 'parent_id', None) else None,
+            teacher_id=str(user.teacher_id) if getattr(user, 'teacher_id', None) else None,
         )

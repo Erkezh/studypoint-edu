@@ -69,22 +69,51 @@ class TeacherService:
         self.session = session
         self.users = UserRepository(session)
 
-    async def _generate_unique_username(self, base_username: str) -> str:
-        """Find an available username by appending an integer if necessary."""
-        # Check base first
-        # We store username in the `email` field
-        exists = await self.users.get_by_email(base_username)
-        if not exists:
-            return base_username
-            
+    async def _generate_smart_username(self, first_name: str, last_name: str) -> str:
+        """Generate a smart username based on name, surname, combination, or numbers."""
+        fn = _transliterate_cyrillic(first_name)
+        ln = _transliterate_cyrillic(last_name)
+
+        candidates = []
+
+        # 1. Base clean candidates (first name, last name, or combinations)
+        if fn:
+            candidates.append(fn)
+        if ln:
+            candidates.append(ln)
+        if fn and ln:
+            candidates.append(f"{fn}{ln}")
+            candidates.append(f"{fn}.{ln}")
+            candidates.append(f"{fn}_{ln}")
+
+        # Check clean candidates first
+        for candidate in candidates:
+            if candidate and not await self.users.get_by_email(candidate):
+                return candidate
+
+        # 2. Add numbers if base variants are taken (fn1, ln1, fnln1, fn2, ln2, fnln2...)
+        counter = 1
+        while counter < 1000:
+            numbered_candidates = []
+            if fn:
+                numbered_candidates.append(f"{fn}{counter}")
+            if ln:
+                numbered_candidates.append(f"{ln}{counter}")
+            if fn and ln:
+                numbered_candidates.append(f"{fn}{ln}{counter}")
+
+            for candidate in numbered_candidates:
+                if candidate and not await self.users.get_by_email(candidate):
+                    return candidate
+            counter += 1
+
+        # 3. Fallback: user + numbers
         counter = 1
         while True:
-            candidate = f"{base_username}{counter}"
-            exists = await self.users.get_by_email(candidate)
-            if not exists:
+            candidate = f"user{counter}"
+            if not await self.users.get_by_email(candidate):
                 return candidate
             counter += 1
-        return ""
 
     async def create_student(self, teacher_id: str, req: TeacherCreateStudentRequest) -> TeacherCreateStudentResponse:
         teacher_uuid = teacher_id if isinstance(teacher_id, uuid.UUID) else uuid.UUID(str(teacher_id))
@@ -96,9 +125,8 @@ class TeacherService:
             
         full_name = f"{req.first_name} {req.last_name}".strip()
 
-        # Generate username in format user + 4 random digits
-        base_username = f"user{random.randint(1000, 9999)}"
-        username = await self._generate_unique_username(base_username)
+        # Generate smart username based on first name & last name
+        username = await self._generate_smart_username(req.first_name, req.last_name)
         password = _generate_password()
         password_hash = hash_password(password)
         

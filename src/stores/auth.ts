@@ -40,6 +40,15 @@ export const useAuthStore = defineStore('auth', () => {
         user.value = null
         useGameSettingsStore().reset()
         clearStoredAuth()
+        import('@/router').then(({ default: router }) => {
+          if (router.currentRoute.value.path !== '/') {
+            router.push('/')
+          }
+        }).catch(() => {
+          if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+            window.location.href = '/'
+          }
+        })
       },
     }
   }
@@ -89,6 +98,25 @@ export const useAuthStore = defineStore('auth', () => {
 
       initialized.value = true
       syncAuthBridge()
+
+      // Проверка сессии при возвращении на вкладку после длительного отсутствия
+      if (typeof window !== 'undefined') {
+        const handleFocus = async () => {
+          if (accessToken.value) {
+            try {
+              await fetchUser()
+            } catch {
+              // Истечение сессии будет обработано в fetchUser / client.ts
+            }
+          }
+        }
+        window.addEventListener('focus', handleFocus)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            handleFocus()
+          }
+        })
+      }
     })()
 
     return initPromise.value
@@ -173,6 +201,15 @@ export const useAuthStore = defineStore('auth', () => {
       useGameSettingsStore().reset()
       clearStoredAuth()
       syncAuthBridge()
+      import('@/router').then(({ default: router }) => {
+        if (router.currentRoute.value.path !== '/') {
+          router.push('/')
+        }
+      }).catch(() => {
+        if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+          window.location.href = '/'
+        }
+      })
     }
   }
 
