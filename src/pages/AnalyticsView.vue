@@ -734,16 +734,13 @@ const showQuizzesTab = computed(() => {
     return true
   }
 
-  // Student accounts created by a teacher have teacher_id set
-  // Student accounts created by a parent have parent_id set (and no teacher_id)
-  const isTeacherCreatedStudent = !!authStore.user?.teacher_id
-  const isParentCreatedStudent = !!authStore.user?.parent_id && !authStore.user?.teacher_id
-
-  if (isParentCreatedStudent) {
+  // Student accounts created by a parent have parent_id set -> HIDE Quizzes tab
+  if (authStore.user?.parent_id) {
     return false
   }
 
-  return isTeacherCreatedStudent
+  // All non-parent student accounts (created by a teacher or independent) -> SHOW Quizzes tab
+  return true
 })
 
 // Tab configuration

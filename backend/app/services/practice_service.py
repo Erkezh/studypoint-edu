@@ -21,6 +21,7 @@ from app.repositories.catalog_repo import SkillRepository
 from app.repositories.practice_repo import PracticeRepository
 from app.repositories.question_repo import QuestionRepository
 from app.repositories.subscription_repo import SubscriptionRepository
+from app.repositories.user_repo import UserRepository
 from app.schemas.practice import PracticeSessionResponse, PracticeSubmitRequest, PracticeSubmitResponse, QuestionPublic
 from app.services.generator_service import GeneratorService
 from app.services.gamification_service import GamificationService, difficulty_from_question_level
@@ -39,6 +40,7 @@ class PracticeService:
         self.practice = PracticeRepository(session)
         self.subscriptions = SubscriptionRepository(session)
         self.assignments = AssignmentRepository(session)
+        self.users = UserRepository(session)
 
     async def start_session(self, *, user_id, skill_id: int) -> PracticeSessionResponse:
         import logging
@@ -51,9 +53,20 @@ class PracticeService:
         
         logger.info(f"Starting session for skill {skill_id}, has_generator: {bool(skill.generator_code)}")
 
+        user_obj = await self.users.get_by_id(user_uuid)
+        is_guest_user = user_obj is None or bool(user_obj.email and user_obj.email.startswith("guest_"))
+
+        # Check guest trial limit across ALL sessions
+        if is_guest_user:
+            total_answered = await self.practice.count_total_questions_answered(user_id=user_uuid)
+            logger.info(f"[TRIAL] Guest user {user_uuid}: total_answered_24h={total_answered}, limit=10")
+            if total_answered >= 10:
+                raise AppError(status_code=402, code="trial_limit_reached", message="Тегін сынақ сұрақтар лимиті аяқталды. Толық қолжетімділік үшін жүйеге кіріңіз.")
+
         # Resume unfinished session if not expired (IXL-like).
         active = await self.practice.get_active_session(user_id=user_uuid, skill_id=skill_id)
         if active is not None:
+
             if _is_expired(active.last_activity_at):
                 active.finished_at = utc_now()
                 await self.session.flush()
@@ -333,7 +346,14 @@ class PracticeService:
                 f"smartscore={ps.current_smartscore}, "
                 f"wrong_streak={ps.state.get('wrong_streak', 0)}"
             )
-            raise AppError(status_code=409, code="conflict", message="Session already finished")
+        user_obj = await self.users.get_by_id(user_uuid)
+        is_guest_user = user_obj is None or bool(user_obj.email and user_obj.email.startswith("guest_"))
+        if is_guest_user:
+            total_answered = await self.practice.count_total_questions_answered(user_id=user_uuid)
+            if total_answered >= 10:
+                ps.finished_at = utc_now()
+                await self.session.flush()
+                raise AppError(status_code=402, code="trial_limit_reached", message="Тегін сынақ сұрақтар лимиті аяқталды. Толық қолжетімділік үшін жүйеге кіріңіз.")
 
         await self._enforce_subscription_limit(user_id=user_uuid)
         await self._touch_activity(ps)
@@ -709,6 +729,7 @@ class PracticeService:
             )
             logger.info(f"PracticeAttempt created for generator, adding to database")
         else:
+            assert question is not None
             active_seed = ps.state.get("current_question_seed")
             if not active_seed and isinstance(req.submitted_answer, dict):
                 sub_dict = req.submitted_answer
@@ -747,8 +768,12 @@ class PracticeService:
                 zone_after=score_res.zone,
             )
         
-        logger.info(f"Adding PracticeAttempt to database: session_id={attempt.session_id}, question_id={attempt.question_id}, is_correct={attempt.is_correct}")
-        is_parent_preview = user_role in ("PARENT", "TEACHER", "ADMIN")
+        # Check if user is in preview role (TEACHER, ADMIN, PARENT) or a guest user (unauthenticated / trial)
+        role_str = user_role.value if hasattr(user_role, "value") else (user_role or "")
+        user_obj = await self.users.get_by_id(user_uuid)
+        is_guest_user = user_obj is None or bool(user_obj.email and user_obj.email.startswith("guest_"))
+
+        is_parent_preview = role_str.upper() in ("PARENT", "TEACHER", "ADMIN") or is_guest_user
         if not is_parent_preview:
             await self.practice.add_attempt(attempt)
             logger.info(f"PracticeAttempt added successfully")
@@ -965,8 +990,8 @@ class PracticeService:
             session=session_resp,
             next_question=_to_question_public(next_q, ps) if next_q is not None else None,
             finished=finished,
-            gained_xp=reward_payload["xp_gained"],
-            gained_coins=reward_payload["coins_gained"],
+            gained_xp=int(reward_payload.get("xp_gained") or 0),
+            gained_coins=int(reward_payload.get("coins_gained") or 0),
             reward=reward_payload,
         )
 

@@ -163,33 +163,27 @@
     </main>
     <Footer />
 
-    <!-- Модальное окно о завершении пробного периода или необходимости авторизации -->
+    <!-- Модальное окно о завершении пробного периода -->
     <Modal :is-open="showTrialEndedModal"
-      :title="trialQuestions.isTrialQuestionsExhausted.value ? 'Сынақ кезеңі аяқталды' : 'Авторизация қажет'"
-      :show-close="true" @close="showTrialEndedModal = false">
+      title=""
+      :show-close="false" @close="showTrialEndedModal = false">
       <template #content>
-        <div class="space-y-4">
-          <p class="text-gray-700" v-if="trialQuestions.isTrialQuestionsExhausted.value">
-            Сіз бүгін барлық {{ TRIAL_QUESTIONS_LIMIT }} тегін сұрақтарды пайдаландыңыз.
+        <div class="text-center py-4 px-2">
+          <p class="text-base font-semibold text-gray-900 mb-1">
+            Тегін сынақ аяқталды
           </p>
-          <p class="text-gray-700" v-else>
-            Практиканы бастау үшін аккаунтқа кіру қажет.
+          <p class="text-sm text-gray-500 mb-5">
+            {{ TRIAL_QUESTIONS_LIMIT }} сұрақ лимиті толды. Жалғастыру үшін кіріңіз.
           </p>
-          <p class="text-gray-700" v-if="!trialQuestions.isTrialQuestionsExhausted.value">
-            Кіргеннен кейін сіз күн сайын <strong>{{ TRIAL_QUESTIONS_LIMIT }} сұраққа тегін</strong> жауап бере аласыз.
-          </p>
-          <p class="text-gray-700" v-if="trialQuestions.isTrialQuestionsExhausted.value">
-            Практиканы жалғастыру және шексіз сұрақтарға қол жеткізу үшін аккаунтқа кіріңіз.
-          </p>
+          <div class="flex flex-col gap-2">
+            <Button @click="goToLogin" variant="primary" class="w-full justify-center text-sm font-semibold py-2.5">
+              Кіру
+            </Button>
+            <Button @click="goToHome" variant="outline" class="w-full justify-center text-sm py-2.5">
+              Басты бетке
+            </Button>
+          </div>
         </div>
-      </template>
-      <template #actions>
-        <Button @click="goToLogin" variant="primary">
-          Аккаунтқа кіру
-        </Button>
-        <Button @click="goToHome" variant="outline">
-          Басты бетке
-        </Button>
       </template>
     </Modal>
 
@@ -387,6 +381,7 @@ const goToHome = () => {
 }
 
 const getSkillEffectiveScore = (skillId: number): number => {
+  if (!authStore.isAuthenticated) return 0
   const stat = skillStats.value.get(skillId)
   if (!stat) return 0
   return Math.max(stat.best_smartscore || 0, stat.last_smartscore || 0)
@@ -403,6 +398,12 @@ const applySkillStats = (skillId: number, stats: { best_smartscore?: number; las
 
 const navigateToSkill = async (skillId: number) => {
   if (loadingSkillId.value !== null) return
+
+  // Проверяем лимит пробных вопросов для неавторизованных пользователей перед переходом
+  if (!authStore.isAuthenticated && trialQuestions.isTrialQuestionsExhausted.value) {
+    showTrialEndedModal.value = true
+    return
+  }
 
   loadingSkillId.value = skillId
   error.value = null
@@ -462,19 +463,13 @@ const navigateToSkill = async (skillId: number) => {
       return
     }
 
-    // Обработка ошибки 402 (Payment Required)
+    // Обработка ошибки 402 (Payment Required / trial limit)
     if (apiError.response?.status === 402) {
-      // Для авторизованных пользователей ошибка 402 не должна блокировать
-      if (authStore.isAuthenticated) {
-        error.value = 'Қол жеткізу қатесі. Қайталап көріңіз.'
-        return
-      }
-      // Если пользователь не авторизован и пробные вопросы исчерпаны, показываем модальное окно
-      if (!authStore.isAuthenticated && trialQuestions.isTrialQuestionsExhausted.value) {
+      if (!authStore.isAuthenticated) {
         showTrialEndedModal.value = true
         return
       }
-      error.value = 'Практиканы жалғастыру үшін жазылым қажет. Профильде жазылымды рәсімдеңіз.'
+      error.value = 'Қол жеткізу қатесі. Қайталап көріңіз.'
       return
     }
 
@@ -506,6 +501,12 @@ const navigateToSkill = async (skillId: number) => {
 
 // Загрузка статистики для всех навыков
 const loadAllSkillStats = async (currentSkills: SkillListItem[]) => {
+  if (!authStore.isAuthenticated) {
+    skillStats.value.clear()
+    loadingStats.value = false
+    return
+  }
+
   loadingStats.value = true
   try {
     if (isDev) {

@@ -96,6 +96,10 @@ export const useAuthStore = defineStore('auth', () => {
         }
       }
 
+      if (accessToken.value) {
+        fetchUser().catch(() => {})
+      }
+
       initialized.value = true
       syncAuthBridge()
 
@@ -137,12 +141,6 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('refresh_token', response.data.refresh_token)
         localStorage.setItem('user', JSON.stringify(response.data.user))
         syncAuthBridge()
-
-        const { useTrialQuestions } = await import('@/composables/useTrialQuestions')
-        const trialQuestions = useTrialQuestions()
-        if (response.data.user?.subscription?.is_active) {
-          trialQuestions.resetTrialQuestions()
-        }
 
         return response.data
       }

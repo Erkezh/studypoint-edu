@@ -104,19 +104,12 @@ export const usePracticeStore = defineStore('practice', () => {
         throw err
       }
       
-      // Если ошибка 402 (Payment Required), обрабатываем отдельно
+      // Если ошибка 402 (Payment Required / trial limit)
       if (err.response?.status === 402) {
-        // Для авторизованных пользователей ошибка 402 не должна блокировать
-        if (authStore.isAuthenticated) {
-          error.value = 'Қол жеткізу қатесі. Қайталап көріңіз.'
-          throw err
-        }
-        // Если пользователь не авторизован и пробные вопросы исчерпаны
-        if (trialQuestions.isTrialQuestionsExhausted.value) {
-          error.value = 'Сіз бүгін барлық сынақ сұрақтарды пайдаландыңыз. Шексіз қол жеткізу үшін жүйеге кіріңіз.'
-          throw err
+        if (!authStore.isAuthenticated) {
+          error.value = 'trial_limit_reached'
         } else {
-          error.value = 'Практиканы жалғастыру үшін жазылым қажет. Профильде жазылымды рәсімдеңіз.'
+          error.value = 'Қол жеткізу қатесі. Қайталап көріңіз.'
         }
       } else {
         const errorMsg = err.response?.data?.detail 

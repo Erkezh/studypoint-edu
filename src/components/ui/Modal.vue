@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="isOpen" class="fixed inset-0 z-40 flex items-center justify-center p-4 transition-all" :class="backdropClass" @click.self="close">
+      <div v-if="isOpen" class="fixed inset-0 z-40 flex items-center justify-center p-4 transition-all" :class="backdropClass" @click.self="showClose && close()">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative z-50" :class="customClass">
           <div class="flex justify-between items-start mb-4">
             <h3 class="text-xl font-semibold">{{ title }}</h3>

@@ -10,6 +10,7 @@ from app.core.errors import AppError
 from app.core.security import decode_token, hash_password, require_token_type
 from app.db.session import get_db_session
 from app.models.enums import UserRole
+from app.models.user import User
 from app.repositories.user_repo import UserRepository
 
 bearer = HTTPBearer(auto_error=False)
@@ -37,28 +38,30 @@ async def get_current_user_optional(
     creds: HTTPAuthorizationCredentials | None = Depends(bearer),
     session: AsyncSession = Depends(get_db_session),
 ):
-    """Optional user dependency - returns None only when credentials are absent."""
+    """Optional user dependency - returns None when credentials are absent, invalid or expired."""
     if creds is None:
         return None
-    payload = decode_token(creds.credentials)
-    require_token_type(payload, "access")
-    user_id = payload.get("sub")
-    if not user_id:
-        raise AppError(status_code=401, code="unauthorized", message="Invalid token subject")
-    repo = UserRepository(session)
-    user = await repo.get_by_id(user_id)
-    if user is None or not user.is_active:
-        raise AppError(status_code=401, code="unauthorized", message="User not found or inactive")
-    return user
+    try:
+        payload = decode_token(creds.credentials)
+        require_token_type(payload, "access")
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        repo = UserRepository(session)
+        user = await repo.get_by_id(user_id)
+        if user is None or not user.is_active:
+            return None
+        return user
+    except Exception:
+        return None
 
 
 async def get_or_create_guest_user(
     request: Request,
     response: Response,
     session: AsyncSession = Depends(get_db_session),
-) -> "User":
+) -> User:
     """Get or create a unique guest user per session/cookie to isolate unauthenticated practice sessions."""
-    from app.models.user import User
 
     # Retrieve guest_id from header X-Guest-ID or cookie guest_id
     guest_id = request.headers.get("X-Guest-ID") or request.cookies.get("guest_id")

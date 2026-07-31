@@ -60,3 +60,16 @@ class PracticeRepository:
         self.session.add(snap)
         await self.session.flush()
         return snap
+
+    async def count_total_questions_answered(self, *, user_id: uuid.UUID) -> int:
+        """Count total questions answered across ALL sessions for a user in the last 24 hours."""
+        from datetime import timedelta
+        from app.utils.time import utc_now
+
+        cutoff = utc_now() - timedelta(hours=24)
+        stmt = select(func.coalesce(func.sum(PracticeSession.total_questions_answered), 0)).where(
+            PracticeSession.user_id == user_id,
+            PracticeSession.started_at >= cutoff,
+        )
+        result = await self.session.execute(stmt)
+        return int(result.scalar_one())

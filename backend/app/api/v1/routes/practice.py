@@ -76,8 +76,9 @@ async def submit_answer(
     cached = await idempotency_get(user_id=effective_user.id, key=idempotency_key, request_body=body)
     if cached is not None:
         return cached
-    user_role = getattr(effective_user, "role", None)
-    result = await svc.submit(user_id=effective_user.id, session_id=session_id, req=body, user_role=user_role)
+    user_role_val = getattr(effective_user, "role", None)
+    user_role_str = user_role_val.value if hasattr(user_role_val, "value") else str(user_role_val or "")
+    result = await svc.submit(user_id=effective_user.id, session_id=session_id, req=body, user_role=user_role_str)
     resp = ApiResponse(data=result)
     await idempotency_set(user_id=effective_user.id, key=idempotency_key, request_body=body, response=resp)
     return resp

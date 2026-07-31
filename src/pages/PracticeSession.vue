@@ -206,10 +206,14 @@
 
                 <!-- PLUGIN -->
                 <div v-else-if="currentQuestion.type === 'PLUGIN'" class="space-y-4">
+                   <div class="relative">
                    <iframe v-if="pluginIframeSrc" ref="pluginIframeRef" :src="pluginIframeSrc"
                      :style="{ width: '100%', height: `${pluginEmbedHeight}px`, border: 'none', borderRadius: '12px' }"
                      sandbox="allow-scripts allow-forms allow-same-origin" class="rounded-xl" />
-                   <div v-else class="text-red-500 text-sm flex items-center gap-2">
+                   <div v-if="trialBlocked"
+                     class="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-xl z-10 cursor-not-allowed" />
+                   </div>
+                   <div v-if="!pluginIframeSrc" class="text-red-500 text-sm flex items-center gap-2">
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                      Плагин не загружен.
                    </div>
@@ -438,40 +442,26 @@
 
     <!-- Trial ended modal -->
     <Modal :is-open="showTrialEndedModal"
-      title="Сынақ нұсқасы аяқталды (10/10)"
-      :show-close="true"
-      backdrop-class="bg-black/20 backdrop-blur-[2px]"
+      title=""
+      :show-close="false"
+      backdrop-class="bg-black/30 backdrop-blur-[2px]"
       @close="showTrialEndedModal = false">
       <template #content>
-        <div class="text-center py-2">
-          <div class="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m0-6V7a4 4 0 118 0v4m-8 0h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2v-6a2 2 0 012-2h2" />
-            </svg>
-          </div>
-          <h3 class="text-lg font-bold text-gray-900 mb-2">
-            Тегін сынақ лимиті таусылды
-          </h3>
-          <p class="text-gray-600 text-sm mb-4">
-            Сіз жалпы {{ TRIAL_QUESTIONS_LIMIT }} тегін сынақ сұрағының лимитін толық пайдаландыңыз.
+        <div class="text-center py-4 px-2">
+          <p class="text-base font-semibold text-gray-900 mb-1">
+            Тегін сынақ аяқталды
           </p>
-          <div v-if="timeUntilResetFormatted" class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs sm:text-sm text-amber-800 font-medium">
-            ⏳ <strong>Келесі тегін мүмкіндік 24 сағаттан кейін қолжетімді болады</strong><br />
-            (Қалған уақыт: {{ timeUntilResetFormatted }})
-          </div>
-          <p class="text-gray-500 text-xs">
-            Шексіз тапсырмалар орындау және нәтижелерді сақтау үшін жазылым сатып алыңыз немесе аккаунтқа кіріңіз.
+          <p class="text-sm text-gray-500 mb-5">
+            {{ TRIAL_QUESTIONS_LIMIT }} сұрақ лимиті толды. Жалғастыру үшін кіріңіз.
           </p>
-        </div>
-      </template>
-      <template #actions>
-        <div class="flex flex-col sm:flex-row gap-3 w-full">
-          <Button @click="goToPricing" variant="primary" class="w-full justify-center text-sm font-bold py-3">
-            Жазылым сатып алу
-          </Button>
-          <Button @click="goToLogin" variant="outline" class="w-full justify-center text-sm font-semibold py-3">
-            Кіру
-          </Button>
+          <div class="flex flex-col gap-2">
+            <Button @click="goToLogin" variant="primary" class="w-full justify-center text-sm font-semibold py-2.5">
+              Кіру
+            </Button>
+            <Button @click="goToPricing" variant="outline" class="w-full justify-center text-sm py-2.5">
+              Жазылым сатып алу
+            </Button>
+          </div>
         </div>
       </template>
     </Modal>
@@ -502,7 +492,6 @@ import InteractiveQuestion from '@/components/practice/InteractiveQuestion.vue'
 import AnswerVisualizer from '@/components/analytics/AnswerVisualizer.vue'
 import GamificationBar from '@/components/gamification/GamificationBar.vue'
 import RewardModal from '@/components/gamification/RewardModal.vue'
-import { API_BASE_URL } from '@/config/api'
 import type { PracticeSubmitResponse, QuestionPublic } from '@/types/api'
 interface Props {
   sessionId: string
@@ -605,6 +594,9 @@ const TRIAL_QUESTIONS_LIMIT = trialQuestions.TRIAL_QUESTIONS_LIMIT
 
 // Модальное окно для завершения пробного периода
 const showTrialEndedModal = ref(false)
+// Флаг блокировки iframe — устанавливается навсегда при показе trial modal
+const trialBlocked = ref(false)
+watch(showTrialEndedModal, (v) => { if (v) trialBlocked.value = true })
 
 const goToLogin = () => {
   showTrialEndedModal.value = false
@@ -627,10 +619,11 @@ const timeUntilResetFormatted = computed(() => {
   return resetInfo?.formatted || '24 сағат'
 })
 
-const goToHome = () => {
+const _goToHome = () => {
   showTrialEndedModal.value = false
   router.push({ name: 'home' })
 }
+void _goToHome
 
 // getZoneText - для будущего функционала зон
 const _getZoneText = (zone: string) => {
@@ -1109,6 +1102,11 @@ const handleInteractiveAnswer = async (answer: any) => {
 const submitAnswer = async (answer: any, questionType?: string) => {
   if (!currentQuestion.value || !practiceStore.currentSession || submitting.value || showingResult.value) return
 
+  if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
+    showTrialEndedModal.value = true
+    return
+  }
+
   submitting.value = true
 
   // Обновление сессии перед отправкой теперь происходит ниже, после создания requestData
@@ -1258,11 +1256,13 @@ const submitAnswer = async (answer: any, questionType?: string) => {
 
       saveToRecentSessions()
       userAnswer.value = answer
-      gamificationStore.applyReward(response.reward)
-      if (authStore.isAuthenticated) {
+      if (authStore.isAuthenticated && authStore.user?.role === 'STUDENT') {
+        gamificationStore.applyReward(response.reward)
         await gamificationStore.fetchGamification()
+        showRewardModal.value = Boolean(response.is_correct && response.reward && (response.reward.xp_gained || response.reward.coins_gained))
+      } else {
+        showRewardModal.value = false
       }
-      showRewardModal.value = Boolean(response.is_correct && response.reward && (response.reward.xp_gained || response.reward.coins_gained))
 
       // Отправляем результат в iframe для PLUGIN
       if (qType === 'PLUGIN' && pluginWindow) {
@@ -1300,7 +1300,7 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         return
       }
 
-      // Проверяем пробные вопросы
+      // Проверяем пробные вопросы (счетчик уже увеличен в practiceStore.submitAnswer)
       if (shouldCheckTrialQuestions.value && trialQuestions.isTrialQuestionsExhausted.value) {
         showTrialEndedModal.value = true
         return
@@ -1342,6 +1342,11 @@ const submitAnswer = async (answer: any, questionType?: string) => {
         name: 'practice-results',
         params: { sessionId: practiceStore.currentSession.id },
       })
+      return
+    }
+    // 402: trial limit reached from backend
+    if (status === 402 && shouldCheckTrialQuestions.value) {
+      showTrialEndedModal.value = true
       return
     }
 
@@ -1542,7 +1547,9 @@ onMounted(async () => {
       return
     }
 
-    // Загружаем статистику навыка для отображения предыдущего результата
+    if (shouldCheckTrialQuestions.value && (trialQuestions.isTrialQuestionsExhausted.value || (session && session.questions_answered >= 10))) {
+      showTrialEndedModal.value = true
+    }
     if (session?.skill_id) {
       try {
         await catalogStore.getSkill(session.skill_id)

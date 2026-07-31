@@ -33,7 +33,7 @@ const routes: RouteRecordRaw[] = [
     path: '/skill/:skillId',
     name: 'skill',
     component: () => import('@/pages/SkillView.vue'),
-    meta: { requiresAuth: true, title: 'Дағды' },
+    meta: { requiresAuth: false, title: 'Дағды' },
     props: true,
   },
   {

@@ -86,10 +86,10 @@
           </div>
         </div>
 
-        <div v-if="stats" class="bg-white rounded-lg shadow-md p-6">
+        <div v-if="stats && authStore.isAuthenticated" class="bg-white rounded-lg shadow-md p-6">
           <h2 class="text-xl font-semibold mb-4">Ваша статистика</h2>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div v-if="authStore.isAuthenticated">
+            <div>
               <span class="text-sm text-gray-500">SmartScore</span>
               <p class="text-2xl font-bold">{{ stats.best_smartscore || 0 }}</p>
             </div>
@@ -208,12 +208,14 @@ onMounted(async () => {
     const fetchedSkill = await catalogStore.getSkill(skillId)
     skill.value = fetchedSkill
 
-    try {
-      const fetchedStats = await catalogStore.getSkillStats(skillId)
-      stats.value = fetchedStats
-    } catch (err) {
-      console.error('Failed to fetch stats:', err)
-      // Stats не критичны, продолжаем работу
+    if (authStore.isAuthenticated) {
+      try {
+        const fetchedStats = await catalogStore.getSkillStats(skillId)
+        stats.value = fetchedStats
+      } catch (err) {
+        console.error('Failed to fetch stats:', err)
+        // Stats не критичны, продолжаем работу
+      }
     }
   } catch (err: unknown) {
     const errorObj = err as { message?: string }

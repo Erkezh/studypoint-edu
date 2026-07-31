@@ -5,70 +5,76 @@ const TRIAL_QUESTIONS_KEY = 'trial_questions_count'
 const TRIAL_QUESTIONS_START_TIME_KEY = 'trial_questions_start_time'
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000
 
-/**
- * Composable для управления пробными вопросами
- * Неавторизованный пользователь может ответить максимум на 10 вопросов в сумме.
- * По истечении 24 часов с момента первого вопроса лимит сбрасывается.
- */
-export function useTrialQuestions() {
-  // Проверяем 24-часовой интервал и сбрасываем счетчик, если прошло >= 24 часов
-  const checkAndResetIfNeeded = (): void => {
-    if (typeof window === 'undefined') return
+// Глобальный реактивный счётчик — один на всё приложение
+const _count = ref(0)
+const _initialized = ref(false)
 
-    const startTimeStr = localStorage.getItem(TRIAL_QUESTIONS_START_TIME_KEY)
-    if (startTimeStr) {
-      const startTime = parseInt(startTimeStr, 10)
-      const now = Date.now()
+function _syncFromStorage(): void {
+  if (typeof window === 'undefined') return
 
-      if (isNaN(startTime) || now - startTime >= TWENTY_FOUR_HOURS_MS) {
-        localStorage.setItem(TRIAL_QUESTIONS_KEY, '0')
-        localStorage.removeItem(TRIAL_QUESTIONS_START_TIME_KEY)
-      }
+  // Проверяем 24-часовой интервал
+  const startTimeStr = localStorage.getItem(TRIAL_QUESTIONS_START_TIME_KEY)
+  if (startTimeStr) {
+    const startTime = parseInt(startTimeStr, 10)
+    if (isNaN(startTime) || Date.now() - startTime >= TWENTY_FOUR_HOURS_MS) {
+      localStorage.setItem(TRIAL_QUESTIONS_KEY, '0')
+      localStorage.removeItem(TRIAL_QUESTIONS_START_TIME_KEY)
     }
   }
 
-  // Получаем количество использованных пробных вопросов
-  const getTrialQuestionsCount = (): number => {
-    checkAndResetIfNeeded()
-    const count = localStorage.getItem(TRIAL_QUESTIONS_KEY)
-    return count ? parseInt(count, 10) : 0
+  const raw = localStorage.getItem(TRIAL_QUESTIONS_KEY)
+  _count.value = raw ? parseInt(raw, 10) : 0
+}
+
+/**
+ * Composable для управления пробными вопросами.
+ * Неавторизованный пользователь может ответить максимум на 10 вопросов в сумме.
+ * По истечении 24 часов с момента первого вопроса лимит сбрасывается.
+ *
+ * Счётчик хранится в глобальном реактивном ref, синхронизированном с localStorage,
+ * поэтому computed-свойства корректно обновляются при переходах между скиллами.
+ */
+export function useTrialQuestions() {
+  // Инициализируем при первом вызове
+  if (!_initialized.value) {
+    _syncFromStorage()
+    _initialized.value = true
   }
 
-  // Увеличиваем счетчик пробных вопросов
-  const incrementTrialQuestions = (): number => {
-    checkAndResetIfNeeded()
+  const getTrialQuestionsCount = (): number => {
+    _syncFromStorage()
+    return _count.value
+  }
 
-    // Устанавливаем время первого пробного вопроса
+  const incrementTrialQuestions = (): number => {
+    _syncFromStorage()
+
     if (!localStorage.getItem(TRIAL_QUESTIONS_START_TIME_KEY)) {
       localStorage.setItem(TRIAL_QUESTIONS_START_TIME_KEY, Date.now().toString())
     }
 
-    const current = getTrialQuestionsCount()
-    const newCount = current + 1
+    const newCount = _count.value + 1
     localStorage.setItem(TRIAL_QUESTIONS_KEY, newCount.toString())
+    _count.value = newCount
     return newCount
   }
 
-  // Сбрасываем счетчик (например, при авторизации)
   const resetTrialQuestions = () => {
     if (typeof window === 'undefined') return
     localStorage.removeItem(TRIAL_QUESTIONS_KEY)
     localStorage.removeItem(TRIAL_QUESTIONS_START_TIME_KEY)
+    _count.value = 0
   }
 
-  // Расчет оставшегося времени до сброса (24 часа)
   const getTimeUntilReset = (): { hours: number; minutes: number; seconds: number; formatted: string } | null => {
-    checkAndResetIfNeeded()
+    _syncFromStorage()
     const startTimeStr = localStorage.getItem(TRIAL_QUESTIONS_START_TIME_KEY)
     if (!startTimeStr) return null
 
     const startTime = parseInt(startTimeStr, 10)
     if (isNaN(startTime)) return null
 
-    const now = Date.now()
-    const elapsed = now - startTime
-    const remainingMs = Math.max(0, TWENTY_FOUR_HOURS_MS - elapsed)
-
+    const remainingMs = Math.max(0, TWENTY_FOUR_HOURS_MS - (Date.now() - startTime))
     if (remainingMs <= 0) return null
 
     const totalSeconds = Math.floor(remainingMs / 1000)
@@ -88,21 +94,10 @@ export function useTrialQuestions() {
     return { hours, minutes, seconds, formatted }
   }
 
-  // Проверяем, можно ли использовать пробные вопросы
-  const canUseTrialQuestions = computed(() => {
-    return getTrialQuestionsCount() < TRIAL_QUESTIONS_LIMIT
-  })
-
-  // Получаем оставшееся количество пробных вопросов
-  const remainingTrialQuestions = computed(() => {
-    const used = getTrialQuestionsCount()
-    return Math.max(0, TRIAL_QUESTIONS_LIMIT - used)
-  })
-
-  // Проверяем, использованы ли все пробные вопросы
-  const isTrialQuestionsExhausted = computed(() => {
-    return getTrialQuestionsCount() >= TRIAL_QUESTIONS_LIMIT
-  })
+  // Реактивные computed — зависят от _count.value (реактивный ref)
+  const canUseTrialQuestions = computed(() => _count.value < TRIAL_QUESTIONS_LIMIT)
+  const remainingTrialQuestions = computed(() => Math.max(0, TRIAL_QUESTIONS_LIMIT - _count.value))
+  const isTrialQuestionsExhausted = computed(() => _count.value >= TRIAL_QUESTIONS_LIMIT)
 
   return {
     getTrialQuestionsCount,
