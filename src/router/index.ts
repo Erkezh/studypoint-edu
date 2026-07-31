@@ -269,7 +269,14 @@ router.beforeEach(async (to, from, next) => {
           return
         }
 
-        const isGameTrial = to.query.trial === '1' && (to.name === 'garage' || to.name === 'avatar-demo')
+        const isGameTrial = !gameSettings.hasSelectedGame
+          && to.query.trial === '1'
+          && (to.name === 'garage' || to.name === 'avatar-demo')
+
+        if (to.name === 'game-select' && gameSettings.hasSelectedGame) {
+          next(gameSettings.isCarGame ? { name: 'garage' } : { name: 'avatar-demo' })
+          return
+        }
 
         if (to.meta.requiresGame && !gameSettings.hasSelectedGame && !isGameTrial) {
           next({ name: 'game-select', query: { redirect: to.fullPath } })

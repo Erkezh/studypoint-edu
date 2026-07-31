@@ -321,7 +321,13 @@ interface FamilyProfile {
 const authStore = useAuthStore()
 const router = useRouter()
 const gameSettings = useGameSettingsStore()
-const activeGameNavLabel = computed(() => 'Ойынды таңдау')
+const activeGameNavLabel = computed(() => (
+  gameSettings.isCarGame
+    ? 'Көлік гаражы'
+    : gameSettings.isCharacterGame
+      ? 'Кейіпкер әлемі'
+      : 'Ойынды таңдау'
+))
 const showProfileMenu = ref(false)
 const showMobileMenu = ref(false)
 const switchingProfile = ref(false)
@@ -343,7 +349,13 @@ const unreadCount = computed(() => notifications.value.filter(n => !n.is_read).l
 const openGameSelection = (menu?: 'profile' | 'mobile') => {
   if (menu === 'profile') showProfileMenu.value = false
   if (menu === 'mobile') showMobileMenu.value = false
-  void router.push({ name: 'game-select' })
+  void router.push({
+    name: gameSettings.isCarGame
+      ? 'garage'
+      : gameSettings.isCharacterGame
+        ? 'avatar-demo'
+        : 'game-select',
+  })
 }
 
 let pollInterval: ReturnType<typeof setInterval> | null = null

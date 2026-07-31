@@ -124,10 +124,22 @@ const gameSettings = useGameSettingsStore()
 const grades = ref(catalogStore.grades)
 const error = ref<string | null>(null)
 const isStudent = computed(() => authStore.user?.role === 'STUDENT')
-const gameTitle = computed(() => 'Ойынды таңдау')
+const gameTitle = computed(() => (
+  gameSettings.isCarGame
+    ? 'Көлік гаражы'
+    : gameSettings.isCharacterGame
+      ? 'Кейіпкер әлемі'
+      : 'Ойынды таңдау'
+))
 
 const openGameSelection = () => {
-  void router.push({ name: 'game-select' })
+  void router.push({
+    name: gameSettings.isCarGame
+      ? 'garage'
+      : gameSettings.isCharacterGame
+        ? 'avatar-demo'
+        : 'game-select',
+  })
 }
 
 const gradeCardPalette = [

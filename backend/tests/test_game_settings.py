@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 
 import pytest
 from sqlalchemy import text
@@ -61,7 +61,7 @@ async def test_game_settings_require_authentication_and_student_role(client, adm
     assert (await client.get("/api/v1/me/game-settings", headers=auth(admin_token))).status_code == 403
 
 
-async def test_switch_rejects_same_game_and_preserves_progress(client, student_token):
+async def test_game_choice_is_permanent_and_preserves_progress(client, student_token):
     await client.post("/api/v1/me/game-settings/select", json={"game": "car"}, headers=auth(student_token))
     before = (await client.get("/api/v1/gamification/wallet", headers=auth(student_token))).json()["data"]
     same = await client.post("/api/v1/me/game-settings/switch", json={"game": "car"}, headers=auth(student_token))
@@ -69,19 +69,16 @@ async def test_switch_rejects_same_game_and_preserves_progress(client, student_t
     after = (await client.get("/api/v1/gamification/wallet", headers=auth(student_token))).json()["data"]
 
     assert same.status_code == 409
-    assert switched.status_code == 200
-    assert switched.json()["data"]["active_game"] == "character"
-    assert switched.json()["data"]["can_switch"] is False
+    assert switched.status_code == 409
+    assert same.json()["error"]["code"] == "game_selection_locked"
+    assert switched.json()["error"]["code"] == "game_selection_locked"
     assert {key: after[key] for key in ("coins", "xp", "level")} == {key: before[key] for key in ("coins", "xp", "level")}
 
 
-async def test_switch_cooldown_is_enforced_and_expires(client, student_token):
-    await _reset_game_settings(datetime.now(timezone.utc) - timedelta(days=29), "car")
-    blocked = await client.post("/api/v1/me/game-settings/switch", json={"game": "character"}, headers=auth(student_token))
-    assert blocked.status_code == 409
-    assert blocked.json()["error"]["code"] == "game_switch_cooldown"
-
-    await _reset_game_settings(datetime.now(timezone.utc) - timedelta(days=31), "car")
-    allowed = await client.post("/api/v1/me/game-settings/switch", json={"game": "character"}, headers=auth(student_token))
-    assert allowed.status_code == 200
-    assert allowed.json()["data"]["active_game"] == "character"
+async def test_selected_game_reports_that_switching_is_disabled(client, student_token):
+    await client.post("/api/v1/me/game-settings/select", json={"game": "car"}, headers=auth(student_token))
+    settings = await client.get("/api/v1/me/game-settings", headers=auth(student_token))
+    assert settings.status_code == 200
+    assert settings.json()["data"]["active_game"] == "car"
+    assert settings.json()["data"]["can_switch"] is False
+    assert settings.json()["data"]["next_switch_available_at"] is None
