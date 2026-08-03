@@ -110,6 +110,12 @@
         <p>{{ analyticsStore.error }}</p>
       </div>
 
+      <div v-else-if="isParent && parentChildren.length === 0" class="empty-state teacher-select-prompt">
+        <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+        <h3 class="text-xl font-medium text-gray-700 mb-2">Бала профилі табылмады</h3>
+        <p class="text-gray-500">Аналитиканы көру үшін алдымен бала қосыңыз.</p>
+      </div>
+
       <!-- Teacher Needs Selection State -->
       <div v-else-if="isTeacher && !selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill' && activeTab !== 'quizzes'" class="empty-state teacher-select-prompt">
         <svg class="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -133,6 +139,21 @@
       </div>
 
       <div v-else>
+        <div v-if="isParent && parentChildren.length > 0" class="student-carousel-container active-view-carousel">
+          <button @click="prevParentChild" class="carousel-arrow">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+          </button>
+          <div class="carousel-select-wrapper">
+            <span class="carousel-label">БАЛА:</span>
+            <select v-model="selectedParentChildId" @change="onParentChildChange" class="carousel-select">
+              <option v-for="child in parentChildren" :key="child.id" :value="child.id">{{ child.full_name }}</option>
+            </select>
+          </div>
+          <button @click="nextParentChild" class="carousel-arrow">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+          </button>
+        </div>
+
         <!-- Teacher Student Carousel for active views (Usage, Summary) - HIDDEN on Quickview -->
         <div v-if="isTeacher && selectedStudentId && activeTab !== 'students_quickview' && activeTab !== 'trouble_class' && activeTab !== 'skills_practiced' && activeTab !== 'skill_analysis' && activeTab !== 'scores_grid' && activeTab !== 'scores_skill' && activeTab !== 'quizzes'" class="student-carousel-container active-view-carousel">
           <button @click="prevStudent" class="carousel-arrow">
@@ -315,6 +336,8 @@ import { useAuthStore } from '@/stores/auth'
 import { useTeacherStore } from '@/stores/teacher'
 import { storeToRefs } from 'pinia'
 import { teacherApi } from '@/api/teacher'
+import { authApi } from '@/api/auth'
+import { familyApi } from '@/api/family'
 import Header from '@/components/layout/Header.vue'
 import Footer from '@/components/layout/Footer.vue'
 import SummaryTab from '@/components/analytics/SummaryTab.vue'
@@ -328,6 +351,7 @@ import ProgressTab from '@/components/analytics/ProgressTab.vue'
 import ScoreGridTab from '@/components/analytics/ScoreGridTab.vue'
 import SkillScoreChartTab from '@/components/analytics/SkillScoreChartTab.vue'
 import QuizzesTab from '@/components/analytics/QuizzesTab.vue'
+import type { FamilyMemberResponse } from '@/types/api'
 
 interface SkillBreakdown {
   skill_id: number
@@ -358,6 +382,7 @@ const teacherStore = useTeacherStore()
 const { students: teacherStudents } = storeToRefs(teacherStore)
 
 const isTeacher = computed(() => authStore.isTeacher)
+const isParent = computed(() => authStore.user?.role === 'PARENT')
 
 /* === Local Storage Persistence === */
 const SAVED_STATE_KEY = 'analytics_view_state'
@@ -373,6 +398,8 @@ const initialState = loadState()
 
 // Teacher student selection — only restore from localStorage if user is a teacher
 const selectedStudentId = ref(initialState.selectedStudentId || '')
+const selectedParentChildId = ref(initialState.selectedParentChildId || '')
+const parentChildren = ref<FamilyMemberResponse[]>([])
 const studentAnalyticsLoading = ref(false)
 const hoverTab = ref<string | null>(null)
 const studentsBreakdown = ref<StudentBreakdown[]>([])
@@ -524,6 +551,28 @@ const nextStudent = () => {
   onStudentChange()
 }
 
+const prevParentChild = () => {
+  if (parentChildren.value.length === 0) return
+  const currentIndex = parentChildren.value.findIndex(child => child.id === selectedParentChildId.value)
+  if (currentIndex <= 0) {
+    selectedParentChildId.value = parentChildren.value[parentChildren.value.length - 1].id
+  } else {
+    selectedParentChildId.value = parentChildren.value[currentIndex - 1].id
+  }
+  onParentChildChange()
+}
+
+const nextParentChild = () => {
+  if (parentChildren.value.length === 0) return
+  const currentIndex = parentChildren.value.findIndex(child => child.id === selectedParentChildId.value)
+  if (currentIndex === -1 || currentIndex === parentChildren.value.length - 1) {
+    selectedParentChildId.value = parentChildren.value[0].id
+  } else {
+    selectedParentChildId.value = parentChildren.value[currentIndex + 1].id
+  }
+  onParentChildChange()
+}
+
 const tabsThatNeedQuestionData = new Set([
   'usage',
   'summary',
@@ -600,6 +649,37 @@ const loadOwnAnalytics = async (includeQuestions = shouldLoadQuestionData()) => 
 
     await Promise.all(requests)
     ownQuestionsLoaded.value = includeQuestions
+  } finally {
+    analyticsStore.loading = false
+  }
+}
+
+const loadParentChildren = async () => {
+  const response = await authApi.getFamilyMembers()
+  parentChildren.value = (response.data?.members || []).filter(member => member.role === 'STUDENT')
+}
+
+const loadParentChildAnalytics = async (includeQuestions = shouldLoadQuestionData()) => {
+  if (!selectedParentChildId.value) {
+    analyticsStore.overview = null
+    analyticsStore.skills = []
+    analyticsStore.allQuestions = []
+    analyticsStore.error = null
+    return
+  }
+
+  analyticsStore.loading = true
+  analyticsStore.isStale = false
+  try {
+    const data = await familyApi.getChildAnalytics(selectedParentChildId.value, includeQuestions) as { overview: Record<string, unknown>; skills: Array<Record<string, unknown>>; all_questions: Array<Record<string, unknown>> }
+    analyticsStore.overview = data.overview as typeof analyticsStore.overview
+    analyticsStore.skills = (data.skills || []) as typeof analyticsStore.skills
+    analyticsStore.allQuestions = (includeQuestions ? (data.all_questions || []) : []) as typeof analyticsStore.allQuestions
+    analyticsStore.error = null
+    ownQuestionsLoaded.value = includeQuestions
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    analyticsStore.error = e.response?.data?.message || 'Бала аналитикасын жүктеу мүмкін болмады'
   } finally {
     analyticsStore.loading = false
   }
@@ -722,6 +802,17 @@ const onStudentChange = async () => {
   }
 }
 
+const onParentChildChange = async () => {
+  const nextQuery = { ...route.query }
+  if (selectedParentChildId.value) {
+    nextQuery.childId = selectedParentChildId.value
+  } else {
+    delete nextQuery.childId
+  }
+  await router.replace({ path: route.path, query: nextQuery })
+  await loadParentChildAnalytics()
+}
+
 
 interface TabItem {
   id: string
@@ -732,6 +823,10 @@ interface TabItem {
 const showQuizzesTab = computed(() => {
   if (isTeacher.value) {
     return true
+  }
+
+  if (isParent.value) {
+    return false
   }
 
   // Student accounts created by a parent have parent_id set -> HIDE Quizzes tab
@@ -807,6 +902,10 @@ const tabs = computed<TabItem[]>(() => {
 const route = useRoute()
 const router = useRouter()
 
+if (isParent.value && typeof route.query.childId === 'string' && route.query.childId) {
+  selectedParentChildId.value = route.query.childId
+}
+
 const tabToSlugMap: Record<string, string> = {
   summary: 'summary',
   students_quickview: 'students-quickview',
@@ -877,6 +976,17 @@ watch(
   }
 )
 
+watch(
+  () => route.query.childId,
+  (childId) => {
+    if (!isParent.value) return
+    const nextChildId = typeof childId === 'string' ? childId : ''
+    if (nextChildId !== selectedParentChildId.value) {
+      selectedParentChildId.value = nextChildId
+    }
+  }
+)
+
 const analyticsTabTitleMap: Record<string, string> = {
   summary: 'Қорытынды',
   students_quickview: 'Қысқаша көрініс',
@@ -898,8 +1008,13 @@ watch(
   (newTab) => {
     const slug = tabToSlugMap[newTab] || newTab
     const currentParam = route.params.tab as string
+    const nextQuery = { ...route.query }
+    if (isParent.value) {
+      if (selectedParentChildId.value) nextQuery.childId = selectedParentChildId.value
+      else delete nextQuery.childId
+    }
     if (currentParam !== slug) {
-      router.push({ path: `/analytics/${slug}`, query: route.query })
+      router.push({ path: `/analytics/${slug}`, query: nextQuery })
     }
     if (analyticsTabTitleMap[newTab]) {
       document.title = analyticsTabTitleMap[newTab]
@@ -969,7 +1084,6 @@ const dateOptions = [
 
 // Dynamic accomplishments title based on student name + time period
 const accomplishmentsTitle = computed(() => {
-  // Determine the subject name
   let subjectName = ''
   if (isTeacher.value) {
     if (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || !selectedStudentId.value) {
@@ -978,23 +1092,23 @@ const accomplishmentsTitle = computed(() => {
       const student = teacherStudents.value.find((s: { id: string }) => s.id === selectedStudentId.value)
       subjectName = student ? (student as { full_name: string }).full_name : ''
     }
+  } else if (isParent.value) {
+    const child = parentChildren.value.find(member => member.id === selectedParentChildId.value)
+    subjectName = child?.full_name || 'балаңыз'
   } else {
     subjectName = authStore.user?.full_name || ''
   }
 
-  // Determine the period phrase
   const periodOption = dateOptions.find(o => o.id === selectedDateOption.value)
   const periodLabel = periodOption ? periodOption.label.toLowerCase() : ''
 
   if (selectedDateOption.value === 'all') {
-    // "Нұрсәт — StudyPoint жетістіктері" or "Оқушыларыңыздың StudyPoint жетістіктері"
     if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || !selectedStudentId.value)) {
       return 'Оқушыларыңыздың StudyPoint жетістіктері'
     }
     return `${subjectName} — StudyPoint жетістіктері`
   }
 
-  // "Соңғы 30 күн ішінде Нұрсәт..." or "Соңғы 30 күн ішінде оқушыларыңыз..."
   const capitalPeriod = periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1)
   return `${capitalPeriod} ішінде ${subjectName}...`
 })
@@ -1062,14 +1176,15 @@ const selectDateRange = (optionId: string) => {
 
 // Watch state changes and save to local storage
 watch(
-  [activeTab, gradeFrom, gradeTo, selectedDateOption, selectedStudentId],
+  [activeTab, gradeFrom, gradeTo, selectedDateOption, selectedStudentId, selectedParentChildId],
   () => {
     localStorage.setItem(SAVED_STATE_KEY, JSON.stringify({
       activeTab: activeTab.value,
       gradeFrom: gradeFrom.value,
       gradeTo: gradeTo.value,
       selectedDateOption: selectedDateOption.value,
-      selectedStudentId: selectedStudentId.value
+      selectedStudentId: selectedStudentId.value,
+      selectedParentChildId: selectedParentChildId.value
     }))
   },
   { deep: true }
@@ -1086,15 +1201,20 @@ watch(activeTab, async (newVal) => {
 
   if (isTeacher.value && (newVal === 'skills_practiced' || newVal === 'skill_analysis' || newVal === 'scores_grid' || newVal === 'scores_skill')) {
     selectedStudentId.value = ''
-    // Only fetch if we don't already have the class-wide data
     if (studentsBreakdown.value.length === 0) {
       await loadTeacherQuickviewAnalytics()
     }
     return
   }
 
-  // Quizzes tab is self-contained — no analytics data needed
   if (newVal === 'quizzes') {
+    return
+  }
+
+  if (isParent.value) {
+    if (selectedParentChildId.value) {
+      await loadParentChildAnalytics()
+    }
     return
   }
 
@@ -1126,6 +1246,11 @@ watch(selectedDateOption, async () => {
     return
   }
 
+  if (isParent.value && selectedParentChildId.value) {
+    await loadParentChildAnalytics()
+    return
+  }
+
   if (isTeacher.value && selectedStudentId.value && shouldLoadQuestionData() && analyticsStore.allQuestions.length === 0) {
     await onStudentChange()
     return
@@ -1154,6 +1279,8 @@ const refreshDataSilently = async () => {
       await onStudentChange()
     } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid' || activeTab.value === 'scores_skill')) {
       await loadTeacherQuickviewAnalytics()
+    } else if (isParent.value) {
+      await loadParentChildAnalytics(true)
     } else {
       await loadOwnAnalytics(true)
     }
@@ -1163,31 +1290,33 @@ const refreshDataSilently = async () => {
 }
 
 onMounted(async () => {
-  // Initialize date range from saved state
   selectDateRange(selectedDateOption.value)
 
-  // If teacher, load student list for the picker
   if (isTeacher.value && teacherStudents.value.length === 0) {
     await teacherStore.fetchStudents()
   }
 
-  // Auto-select first student if teacher has no student selected and not on quickview
+  if (isParent.value) {
+    await loadParentChildren()
+    if (!selectedParentChildId.value && parentChildren.value.length > 0) {
+      selectedParentChildId.value = parentChildren.value[0].id
+    }
+  }
+
   if (isTeacher.value && !selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill' && activeTab.value !== 'quizzes' && teacherStudents.value.length > 0) {
     selectedStudentId.value = teacherStudents.value[0].id
   }
 
   try {
     if (isTeacher.value && selectedStudentId.value && activeTab.value !== 'students_quickview' && activeTab.value !== 'trouble_class' && activeTab.value !== 'skills_practiced' && activeTab.value !== 'skill_analysis' && activeTab.value !== 'scores_grid' && activeTab.value !== 'scores_skill' && activeTab.value !== 'quizzes') {
-      // Teacher has a student selected and specific tab — load that student's data
       await onStudentChange()
     } else if (isTeacher.value && (activeTab.value === 'students_quickview' || activeTab.value === 'trouble_class' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_grid' || activeTab.value === 'scores_skill')) {
-      // Teacher is on class-wide page - load aggregate data
       await loadTeacherQuickviewAnalytics()
+    } else if (isParent.value) {
+      await onParentChildChange()
     } else if (activeTab.value === 'quizzes') {
       // Quizzes tab is self-contained — QuizzesTab component loads its own data
-      // No analytics loading needed
     } else {
-      // Student or teacher with no selection — load own data
       await loadOwnAnalytics()
     }
   } catch (err) {

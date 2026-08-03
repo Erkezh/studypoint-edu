@@ -74,3 +74,18 @@ class FamilyService:
             })
             
         return results
+
+    async def get_child_analytics(self, *, parent_id: str, child_id: str, include_questions: bool = True) -> dict[str, Any]:
+        child = await self.users.get_by_id(child_id)
+        if not child or str(child.parent_id) != str(parent_id):
+            raise AppError(status_code=404, code="not_found", message="Child not found")
+
+        overview = await self.analytics.overview(user_id=child_id)
+        skills = await self.analytics.skills(user_id=child_id)
+        all_questions = await self.analytics.all_questions(user_id=child_id) if include_questions else []
+
+        return {
+            "overview": overview,
+            "skills": skills,
+            "all_questions": all_questions,
+        }

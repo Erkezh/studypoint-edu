@@ -24,3 +24,20 @@ async def get_analytics(
     svc: FamilyService = Depends(),
 ):
     return ApiResponse(data=await svc.get_analytics(parent_id=user.id))
+
+
+
+@router.get("/children/{child_id}/analytics", response_model=ApiResponse[dict])
+async def get_child_analytics(
+    child_id: str,
+    include_questions: bool = True,
+    user=Depends(get_current_user),
+    svc: FamilyService = Depends(),
+):
+    return ApiResponse(
+        data=await svc.get_child_analytics(
+            parent_id=user.id,
+            child_id=child_id,
+            include_questions=include_questions,
+        )
+    )
