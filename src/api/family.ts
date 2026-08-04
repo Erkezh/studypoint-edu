@@ -1,6 +1,7 @@
 import apiClient from './client'
 
-const BASE_PREFIX = '/api/v1/family'
+// apiClient already uses /api/v1 as its base URL.
+const BASE_PREFIX = '/family'
 
 export const familyApi = {
   getChildrenAnalytics: async () => {

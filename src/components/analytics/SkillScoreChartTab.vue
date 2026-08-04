@@ -115,7 +115,7 @@
             <tr v-for="st in sortedStudents" :key="st.id" class="score-tr">
               <td class="td-name">{{ st.name }}</td>
               <td class="td-score-val">
-                <span v-if="st.score > 0" class="score-num" :style="{ color: getScoreColor(st.score) }">{{ st.score }}</span>
+                <span v-if="st.practicedInWindow" class="score-num" :style="{ color: getScoreColor(st.score) }">{{ st.score }}</span>
                 <span v-else class="score-dash"></span>
               </td>
               <td class="td-questions">
@@ -145,6 +145,7 @@ interface SkillInfo {
   grade_label?: string
   grade_number?: number
   best_smartscore?: number
+  last_smartscore?: number
   total_questions?: number
   total_time_seconds?: number
   last_practiced_at?: string | null
@@ -219,17 +220,10 @@ const studentEntries = computed<StudentEntry[]>(() => {
   if (!selectedSkillId.value) return []
   return props.allStudentsData.map(st => {
     const sk = st.skills?.find(s => s.skill_id.toString() === selectedSkillId.value)
-    let practicedInWindow = false
-    if (sk && sk.last_practiced_at) {
-      if (!props.dateRange?.start) {
-        practicedInWindow = true
-      } else {
-        practicedInWindow = new Date(sk.last_practiced_at) >= props.dateRange.start
-      }
-    } else if (sk && !props.dateRange?.start) {
-      practicedInWindow = true
-    }
-    const score = (sk?.best_smartscore || 0)
+    // The parent has already applied the selected date range to this skill list.
+    // A non-zero question count therefore means the student practiced this skill.
+    const practicedInWindow = Boolean(sk && Number(sk.total_questions || 0) > 0)
+    const score = Math.max(Number(sk?.best_smartscore || 0), Number(sk?.last_smartscore || 0))
     return {
       id: st.student_id,
       name: st.full_name,
@@ -250,7 +244,7 @@ const sortedStudents = computed(() =>
 const totalStudents = computed(() => studentEntries.value.length || 1)
 const masteryCount = computed(() => studentEntries.value.filter(s => s.practicedInWindow && s.score >= 100).length)
 const proficiencyCount = computed(() => studentEntries.value.filter(s => s.practicedInWindow && s.score >= 80 && s.score < 100).length)
-const practicedCount = computed(() => studentEntries.value.filter(s => s.practicedInWindow && s.score > 0 && s.score < 80).length)
+const practicedCount = computed(() => studentEntries.value.filter(s => s.practicedInWindow && s.score < 80).length)
 
 const masteryPercent = computed(() => Math.round((masteryCount.value / totalStudents.value) * 100))
 const proficiencyPercent = computed(() => Math.round((proficiencyCount.value / totalStudents.value) * 100))

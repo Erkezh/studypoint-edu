@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="sp-header flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-6 border-b border-gray-200">
       <div class="header-left flex items-center">
-        <h1 class="header-title text-xl sm:text-2xl font-light uppercase tracking-wider text-gray-700 m-0 mr-4">ОРЫНДАЛҒАН ДАҒДЫЛАР</h1>
+        <h1 class="header-title text-xl sm:text-2xl font-semibold uppercase text-gray-700 m-0 mr-4">ОРЫНДАЛҒАН ДАҒДЫЛАР</h1>
         <button class="icon-btn text-gray-400 hover:text-gray-600 p-1" @click="printReport" title="Басып шығару">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
         </button>
@@ -22,11 +22,11 @@
     </div>
 
     <!-- Practice Overview Cards -->
-    <div class="sp-overview-panel bg-gray-50 p-6 sm:p-8 text-center mt-6 rounded-lg shadow-inner">
-      <h2 class="overview-title text-lg sm:text-2xl font-light text-gray-600 mb-8">Тәжірибе шолуы - {{ dateLabel || 'Барлық уақыт' }}</h2>
-      <div class="overview-cards flex flex-col sm:flex-row justify-center items-center gap-6 sm:gap-12">
+    <div class="sp-overview-panel bg-white border border-gray-200 p-5 sm:p-6 text-center mt-6 shadow-sm">
+      <h2 class="overview-title text-base sm:text-xl font-medium text-gray-600 mb-6">Тәжірибе шолуы - {{ dateLabel || 'Барлық уақыт' }}</h2>
+      <div class="overview-cards flex flex-col sm:flex-row justify-center items-center gap-5 sm:gap-10">
         <div class="o-card flex flex-col items-center w-full sm:w-56">
-          <div class="o-value text-teal-400 text-4xl sm:text-5xl font-light flex items-center justify-center leading-none mb-2">
+          <div class="o-value text-teal-400 text-3xl sm:text-4xl font-medium flex items-center justify-center leading-none mb-2">
             <svg class="w-8 h-8 sm:w-10 sm:h-10 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             {{ totalStudentsPracticed }}
           </div>
@@ -34,7 +34,7 @@
         </div>
         <div class="hidden sm:block o-divider w-px h-16 bg-gray-200"></div>
         <div class="o-card flex flex-col items-center w-full sm:w-56">
-          <div class="o-value text-indigo-400 text-4xl sm:text-5xl font-light flex items-center justify-center leading-none mb-2">
+          <div class="o-value text-indigo-400 text-3xl sm:text-4xl font-medium flex items-center justify-center leading-none mb-2">
             <svg class="w-8 h-8 sm:w-10 sm:h-10 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
             {{ totalSkillsPracticed }}
           </div>
@@ -42,7 +42,7 @@
         </div>
         <div class="hidden sm:block o-divider w-px h-16 bg-gray-200"></div>
         <div class="o-card flex flex-col items-center w-full sm:w-56 cursor-pointer hover:bg-gray-100 rounded-lg p-2 transition-colors" @click="emit('navigate', 'trouble_class')">
-          <div class="o-value text-red-500 text-4xl sm:text-5xl font-light flex items-center justify-center leading-none mb-2">
+          <div class="o-value text-red-500 text-3xl sm:text-4xl font-medium flex items-center justify-center leading-none mb-2">
             <svg class="w-8 h-8 sm:w-10 sm:h-10 mr-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
             {{ totalTroubleSpots }}
           </div>
@@ -54,14 +54,9 @@
     <!-- Skills Table -->
     <div class="sp-table-container mt-12">
       <!-- Table Header -->
-      <div class="sp-table-header bg-[#00AEEF] text-white grid grid-cols-[1fr,80px,40px] sm:grid-cols-[2fr,1fr,150px,40px] px-4 py-3 text-[10px] sm:text-[11px] font-bold tracking-wider items-center">
+      <div class="sp-table-header sp-table-grid bg-[#00AEEF] text-white px-4 sm:px-5 py-3 text-[11px] sm:text-sm font-bold items-center">
         <div class="th-skill flex items-center">
           ДАҒДЫ
-          <label class="toggle-switch ml-4 scale-75 sm:scale-100 origin-left">
-            <input type="checkbox" v-model="showSuggested" />
-            <span class="slider"></span>
-          </label>
-          <span class="hidden sm:inline text-xs ml-2 font-normal">Ұсынылатын дағдылар</span>
         </div>
         <div class="th-progress flex items-center">
           ДАҒДЫЛАР ПРОГРЕСІ
@@ -73,8 +68,8 @@
             <div class="tt-item text-orange-400">Тәжірибе жоқ</div>
           </div>
         </div>
-        <div class="th-trouble text-center hidden sm:block">ҚИЫНДЫҚТАР</div>
-        <div class="th-spacer sm:hidden"></div>
+        <div class="th-trouble text-left">ҚИЫНДЫҚТАР</div>
+        <div aria-hidden="true"></div>
       </div>
 
       <!-- Table Body -->
@@ -85,11 +80,11 @@
 
         <div v-for="skill in analyzedSkills" :key="skill.skillId" class="sp-row">
           <!-- Main row (always visible) -->
-          <div class="sp-row-main grid grid-cols-[1fr,80px,40px] sm:grid-cols-[2fr,1fr,150px,40px] px-4 py-4 items-center cursor-pointer hover:bg-gray-50 transition-colors" @click="toggleRow(skill.skillId)">
-            <div class="td-skill flex flex-wrap gap-x-2 gap-y-0.5 items-baseline">
+          <div class="sp-row-main sp-table-grid px-4 sm:px-5 py-3 items-center cursor-pointer hover:bg-white transition-colors" @click="toggleRow(skill.skillId)">
+            <div class="td-skill flex min-w-0 items-baseline gap-x-2">
               <span class="sk-grade text-gray-500 text-xs sm:text-sm whitespace-nowrap">{{ skill.gradeLabel }}</span>
-              <span class="sk-name text-[#00838F] text-sm font-semibold">{{ skill.skillName }}</span>
-              <span class="sk-code text-gray-300 text-[10px] sm:text-xs uppercase tracking-tight">{{ skill.skillCode }}</span>
+              <span class="sk-name min-w-0 truncate text-[#1685c5] text-xs sm:text-sm font-semibold">{{ skill.skillName }}</span>
+              <span class="sk-code shrink-0 text-gray-300 text-xs uppercase tracking-tight">{{ skill.skillCode }}</span>
             </div>
             <div class="td-progress relative pr-2 sm:pr-0">
               <div class="progress-segmented-bar w-full h-1.5 sm:h-2 flex gap-0.5 rounded-full overflow-hidden bg-gray-100">
@@ -99,16 +94,17 @@
                 <div class="bg-gray-200 h-full" :style="{ width: getPercentage(skill.noPractice.length) + '%' }" v-if="skill.noPractice.length"></div>
               </div>
             </div>
-            <div class="td-trouble text-red-500 flex justify-center items-center hidden sm:flex">
+            <div class="td-trouble text-red-500 flex items-center gap-2 text-xs font-medium whitespace-nowrap">
               <svg v-if="skill.hasTroubleSpot" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+              <span v-if="skill.hasTroubleSpot">{{ skill.troubleStudentsCount }} оқушыға көмек керек</span>
             </div>
             <div class="td-arrow flex justify-end">
-              <svg class="w-5 h-5 text-gray-300 transform transition-transform" :class="{'rotate-180': expandedRows[skill.skillId]}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+              <svg class="w-5 h-5 text-gray-300 transform transition-transform" :class="{'rotate-180': isRowExpanded(skill.skillId)}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
             </div>
           </div>
 
           <!-- Expanded section -->
-          <div class="sp-row-expanded" v-if="expandedRows[skill.skillId]">
+          <div class="sp-row-expanded" v-if="isRowExpanded(skill.skillId)">
             <div class="exp-cols grid grid-cols-4 gap-4 px-6 py-4">
               <!-- Mastered -->
               <div class="exp-col">
@@ -178,6 +174,7 @@ interface StudentAnalyticsData {
     last_smartscore?: number
     total_questions?: number
     last_practiced_at?: string | null
+    missed_questions?: number
   }[]
 }
 
@@ -197,7 +194,6 @@ const emit = defineEmits<{
 }>()
 
 const searchQuery = ref('')
-const showSuggested = ref(false)
 const showInfoTooltip = ref(false)
 const expandedRows = ref<Record<string, boolean>>({})
 
@@ -212,8 +208,10 @@ const getPercentage = (count: number) => {
 }
 
 const toggleRow = (skillId: string | number) => {
-  expandedRows.value[skillId] = !expandedRows.value[skillId]
+  expandedRows.value[skillId] = !isRowExpanded(skillId)
 }
+
+const isRowExpanded = (skillId: string | number) => expandedRows.value[skillId] === true
 
 const printReport = () => window.print()
 
@@ -242,6 +240,7 @@ interface SkillData {
   practicing: StudentGroup[]
   noPractice: StudentGroup[]
   hasTroubleSpot: boolean
+  troubleStudentsCount: number
 }
 
 // Compute the categorized skills based on student data
@@ -264,7 +263,8 @@ const analyzedSkills = computed<SkillData[]>(() => {
           proficient: [],
           practicing: [],
           noPractice: [],
-          hasTroubleSpot: false
+          hasTroubleSpot: false,
+          troubleStudentsCount: 0,
         })
       }
     }
@@ -272,42 +272,31 @@ const analyzedSkills = computed<SkillData[]>(() => {
 
   // Pass 2: map every student into one of the 4 buckets per skill
   for (const skill of skillMap.values()) {
-    let troubleInThisSkill = false
+    const troubleStudentIds = new Set<string>()
     for (const st of props.allStudentsData) {
       const studentSkill = st.skills?.find((s) => s.skill_id.toString() === skill.skillId)
       const score = studentSkill ? Math.max(Number(studentSkill.best_smartscore || 0), Number(studentSkill.last_smartscore || 0)) : 0
       const groupData = { id: st.student_id, name: st.full_name, score }
 
-      let practicedInWindow = false
-      if (studentSkill && studentSkill.last_practiced_at) {
-        if (!props.dateRange?.start) {
-          practicedInWindow = true
-        } else {
-          const lastPracticed = new Date(studentSkill.last_practiced_at)
-          if (lastPracticed >= props.dateRange.start) {
-            practicedInWindow = true
-          }
-        }
-      } else if (studentSkill && !props.dateRange?.start) {
-        // If there's no last_practiced_at but they have a score
-        practicedInWindow = true
-      }
+      // AnalyticsView has already restricted this list to the selected period.
+      const practicedInWindow = Boolean(studentSkill && Number(studentSkill.total_questions || 0) > 0)
 
-      if (!studentSkill || groupData.score === 0 || !practicedInWindow) {
+      if (!studentSkill || !practicedInWindow) {
         skill.noPractice.push(groupData)
-      } else if (groupData.score >= 100) {
+      } else if (groupData.score >= 90) {
         skill.mastered.push(groupData)
       } else if (groupData.score >= 80) {
         skill.proficient.push(groupData)
       } else {
         skill.practicing.push(groupData)
-        // IXL: trouble spot = student missed 3+ questions and SmartScore < 80
-        if ((studentSkill.total_questions || 0) >= 3 && groupData.score < 80) {
-          troubleInThisSkill = true
-        }
+      }
+
+      if (practicedInWindow && Number(studentSkill?.missed_questions || 0) > 0) {
+        troubleStudentIds.add(st.student_id)
       }
     }
-    skill.hasTroubleSpot = troubleInThisSkill
+    skill.troubleStudentsCount = troubleStudentIds.size
+    skill.hasTroubleSpot = skill.troubleStudentsCount > 0
   }
 
   // Remove skills where nobody actually practiced (all students in "No Practice")
@@ -337,8 +326,7 @@ const totalStudentsPracticed = computed(() => {
   if (!props.allStudentsData) return 0
   return props.allStudentsData.filter(st => {
     if (!st.skills || st.skills.length === 0) return false
-    if (!props.dateRange?.start) return true
-    return st.skills.some(sk => sk.last_practiced_at && new Date(sk.last_practiced_at) >= props.dateRange!.start!)
+    return st.skills.some(sk => Number(sk.total_questions || 0) > 0)
   }).length
 })
 
@@ -358,6 +346,106 @@ const totalTroubleSpots = computed(() => {
   color: #333;
 }
 
+.header-title {
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+}
+
+.sp-overview-panel {
+  min-height: 180px;
+}
+
+.overview-cards {
+  max-width: 940px;
+  margin: 0 auto;
+}
+
+.sp-table-container {
+  margin-top: 26px !important;
+  border: 1px solid #e7edf0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.sp-table-grid {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.45fr) minmax(180px, .85fr) minmax(180px, .65fr) 36px;
+  min-width: 700px;
+}
+
+.sp-row-main {
+  min-height: 56px;
+  border-bottom: 1px solid #edf1f2;
+}
+
+.sp-row:nth-child(odd) .sp-row-main {
+  background: #fff;
+}
+
+.sp-row:nth-child(even) .sp-row-main {
+  background: #f4fbfc;
+}
+
+.sp-row:hover .sp-row-main {
+  background: #eef9fc;
+}
+
+.sp-row-expanded {
+  border-bottom: 1px solid #edf1f2;
+  background: white;
+  min-width: 700px;
+}
+
+.exp-cols {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(155px, 1fr));
+  gap: 0 !important;
+}
+
+.exp-col {
+  min-width: 0;
+  padding: 0 16px;
+}
+
+.exp-col + .exp-col {
+  border-left: 1px solid #e6e9ea;
+}
+
+.col-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.st-item {
+  color: #62676b;
+  font-size: 13px;
+}
+
+.exp-footer {
+  padding-top: 14px;
+}
+
+@media (max-width: 640px) {
+  .sp-overview-panel {
+    min-height: auto;
+  }
+
+  .exp-cols {
+    grid-template-columns: repeat(4, minmax(155px, 1fr)) !important;
+    min-width: 700px;
+  }
+
+  .exp-col {
+    padding: 0 20px;
+  }
+
+  .exp-col + .exp-col {
+    border-top: 0;
+    border-left: 1px solid #e6e9ea;
+  }
+}
+
 /* Custom Scrollbar Hide */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
@@ -367,29 +455,43 @@ const totalTroubleSpots = computed(() => {
   scrollbar-width: none;
 }
 
-/* Standard Switch styling if Tailwind not enabled for form elements */
-.slider {
-  border-radius: 34px;
-}
-.slider:before {
-  content: "";
-  height: 14px;
-  width: 14px;
-  left: 2px;
-  bottom: 2px;
-  background-color: #00AEEF;
-  transition: .4s;
-  border-radius: 50%;
-  position: absolute;
-}
-input:checked + .slider { background-color: #2196F3; }
-input:checked + .slider:before {
-  background-color: white;
-  transform: translateX(14px);
-}
-
 .sk-name {
   line-height: 1.3;
+}
+
+.th-progress {
+  justify-self: stretch;
+  padding-left: 6px;
+}
+
+.td-progress {
+  padding-right: 20px;
+}
+
+.progress-segmented-bar {
+  height: 11px !important;
+  background: #e7e9ea !important;
+}
+
+.td-arrow svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (min-width: 641px) {
+  .sp-table-header {
+    min-height: 66px;
+  }
+}
+
+@media (max-width: 640px) {
+  .td-progress {
+    padding-right: 14px;
+  }
+
+  .progress-segmented-bar {
+    height: 9px !important;
+  }
 }
 
 .progress-segmented-bar div:first-child {

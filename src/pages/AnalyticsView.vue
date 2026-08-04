@@ -207,7 +207,7 @@
                         <span class="icon-space">
                           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
                         </span>
-                         {{ formatTimeQuickview(student.total_time_sec).replace(' мин', ' minute') }}
+                        {{ formatQuickviewHeaderTime(student.total_time_sec, student.total_questions) }}
                       </div>
                     </td>
                     <td class="stat-align-column practiced">
@@ -215,12 +215,15 @@
                         <span class="icon-space">
                           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM9 10H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2z"/></svg>
                         </span>
-                        Practiced {{ formatLastPracticedQuickview(student.last_practiced_at) }}
+                        {{ formatQuickviewPracticeStatus(student.last_practiced_at) }}
                       </div>
                     </td>
                   </tr>
                 </thead>
                 <tbody>
+                  <tr v-if="student.skills.length === 0" class="no-practice-row">
+                    <td colspan="5">{{ getNoPracticeMessage(student.full_name) }}</td>
+                  </tr>
                   <tr v-for="skill in student.skills" :key="skill.skill_id" class="skill-row">
                     <td class="skill-grade-cell">{{ skill.grade_label }} ({{ skill.skill_code }})</td>
                     <td class="skill-name-cell">
@@ -258,7 +261,7 @@
                   </tr>
                 </tbody>
               </table>
-              <div class="student-card-footer">
+              <div v-if="student.skills.length > 0" class="student-card-footer">
                 <span class="footer-stat">
                   <svg class="footer-icon mastered" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2H6c-1.1 0-2 .9-2 2v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V4c0-1.1-.9-2-2-2zm-1 14.86c-1.35-.35-2.59-.95-3.69-1.78l-.31-.24-.31.24c-1.1.83-2.34 1.43-3.69 1.78V10h8v6.86zM12 8c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/></svg>
                   {{ student.mastered_count }} Mastered
@@ -363,6 +366,8 @@ interface SkillBreakdown {
   total_time_seconds: number
   best_smartscore: number
   last_smartscore: number
+  last_practiced_at: string | null
+  missed_questions?: number
 }
 
 interface StudentBreakdown {
@@ -487,6 +492,11 @@ const displayStudentsBreakdown = computed<StudentBreakdown[]>(() => {
         const baseSkill = student.skills.find(s => Number(s.skill_id) === skId)
         const skQuestions = qs.length
         const skTime = qs.reduce((sum, q) => sum + Number(q.time_spent_seconds || (q as Record<string, unknown>).time_spent_sec || 0), 0)
+        const missedQuestions = qs.filter(q => !q.is_correct).length
+        const skillLastPracticedAt = qs
+          .map(q => (q.answered_at || (q as Record<string, unknown>).created_at) as string | undefined)
+          .filter((timestamp): timestamp is string => Boolean(timestamp))
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] || null
 
         const scores = qs.map(q => Number(q.smartscore_after || q.smartscore_before || 0))
         const maxScore = scores.length > 0 ? Math.max(...scores) : (baseSkill?.best_smartscore || 0)
@@ -505,6 +515,8 @@ const displayStudentsBreakdown = computed<StudentBreakdown[]>(() => {
           total_time_seconds: skTime,
           best_smartscore: maxScore,
           last_smartscore: lastScore,
+          last_practiced_at: skillLastPracticedAt,
+          missed_questions: missedQuestions,
         })
       })
 
@@ -519,12 +531,27 @@ const displayStudentsBreakdown = computed<StudentBreakdown[]>(() => {
       }
     })
     .filter(student => {
+      // These overview tables must include students with no practice in the selected period.
+      if (activeTab.value === 'students_quickview' || activeTab.value === 'skills_practiced' || activeTab.value === 'skill_analysis' || activeTab.value === 'scores_skill') return true
       if (startDate) {
         return student.total_questions > 0
       }
       return true
     })
 })
+
+const getNoPracticeMessage = (studentName: string): string => {
+  if (selectedDateOption.value === 'all') {
+    return `${studentName} әлі практика жасамады.`
+  }
+  return `${studentName} ${dateRangeLabel.value.toLowerCase()} ішінде практика жасамады.`
+}
+
+const formatQuickviewHeaderTime = (seconds: number, questionsCount: number): string =>
+  questionsCount === 0 ? '0 мин' : formatTimeQuickview(seconds)
+
+const formatQuickviewPracticeStatus = (lastPracticedAt: string | null): string =>
+  lastPracticedAt ? `Практика: ${formatLastPracticedQuickview(lastPracticedAt)}` : 'Практика жоқ'
 
 // Carousel Logic
 const prevStudent = () => {
@@ -1880,6 +1907,15 @@ onMounted(async () => {
 
 .skill-row:nth-child(even) {
   background: #f9f9f9;
+}
+
+.no-practice-row td {
+  padding: 32px 24px;
+  border-bottom: 1px solid #e8edf2;
+  color: #6b7280;
+  font-size: 16px;
+  font-style: italic;
+  text-align: center;
 }
 
 .skill-row td {

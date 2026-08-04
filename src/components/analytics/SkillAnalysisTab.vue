@@ -1,182 +1,138 @@
 <template>
-  <div class="ixl-skill-analysis">
-    <!-- Header -->
-    <div class="sa-header">
-      <h1 class="sa-title">ДАҒДЫЛАРДЫҢ ТАЛДАУЫ</h1>
-      <button class="icon-btn" @click="printReport" title="Басып шығару">
-        <svg viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z" /></svg>
-      </button>
-    </div>
+  <section class="skill-analysis">
+    <header class="sa-page-header">
+      <div class="sa-title-row">
+        <h1>ДАҒДЫЛАРДЫ ТАЛДАУ</h1>
+        <button class="sa-icon-button" type="button" title="Басып шығару" @click="printReport">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M6 17H4V9h16v8h-2M7 14h10v7H7z" /></svg>
+        </button>
+      </div>
 
-    <!-- Skill Selector -->
-    <div class="sa-skill-selector">
-      <label class="selector-label">ДАҒДЫ:</label>
-      <select v-model="selectedSkillId" class="selector-dropdown">
-        <option value="" disabled>Дағдыны таңдаңыз...</option>
-        <option v-for="sk in availableSkills" :key="sk.skillId" :value="sk.skillId">
-          {{ sk.gradeLabel }} ({{ sk.skillCode }}) {{ sk.skillName }}
-        </option>
-      </select>
-    </div>
+      <label class="skill-picker">
+        <span>ДАҒДЫ</span>
+        <select v-model="selectedSkillId">
+          <option value="" disabled>Дағдыны таңдаңыз</option>
+          <option v-for="skill in availableSkills" :key="skill.skillId" :value="skill.skillId">
+            {{ skill.gradeLabel }} ({{ skill.skillCode }}) {{ skill.skillName }}
+          </option>
+        </select>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+      </label>
+    </header>
 
-    <!-- No Skill Selected -->
-    <div v-if="!selectedSkillId" class="empty-state">
-      <svg class="w-16 h-16 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" /></svg>
-      <p>Жоғарыдан дағдыны таңдаңыз</p>
-    </div>
+    <div v-if="!selectedSkill" class="sa-empty">Дағдыны таңдау үшін жоғарыдағы тізімді пайдаланыңыз.</div>
 
-    <!-- Skill Overview -->
-    <div v-else class="sa-content">
-      <div class="overview-panel">
-        <h2 class="overview-heading">Дағды шолуы - {{ dateLabel || 'Барлық уақыт' }}</h2>
+    <template v-else>
+      <section class="overview-card">
+        <div class="overview-heading">
+          <h2>Дағды шолуы</h2>
+          <span>{{ dateLabel || 'Барлық уақыт' }}</span>
+        </div>
+
         <div class="overview-grid">
-          <!-- Donut Chart: CLASS STATUS -->
-          <div class="overview-card donut-card">
-            <h3 class="card-label">СЫНЫП КҮЙІ</h3>
-            <div class="donut-row">
-              <div class="donut-container">
-                <svg viewBox="0 0 36 36" class="donut-svg">
-                  <!-- Background circle -->
-                  <circle cx="18" cy="18" r="15.9155" fill="none" stroke="#e0e0e0" stroke-width="3" />
-                  <!-- No Practice (orange) -->
-                  <circle cx="18" cy="18" r="15.9155" fill="none"
-                    stroke="#ffa726" stroke-width="3"
-                    :stroke-dasharray="`${noPracticePercent} ${100 - noPracticePercent}`"
-                    :stroke-dashoffset="25" />
-                  <!-- Practicing (blue) -->
-                  <circle cx="18" cy="18" r="15.9155" fill="none"
-                    stroke="#42a5f5" stroke-width="3"
-                    :stroke-dasharray="`${practicingPercent} ${100 - practicingPercent}`"
-                    :stroke-dashoffset="25 - noPracticePercent" />
-                  <!-- Mastered (green) -->
-                  <circle cx="18" cy="18" r="15.9155" fill="none"
-                    stroke="#66bb6a" stroke-width="3"
-                    :stroke-dasharray="`${masteredPercent} ${100 - masteredPercent}`"
-                    :stroke-dashoffset="25 - noPracticePercent - practicingPercent" />
-                </svg>
+          <div class="status-summary">
+            <span class="metric-label">СЫНЫП КҮЙІ</span>
+            <div class="status-content">
+              <div class="donut" :style="{ background: donutBackground }">
+                <div class="donut-center">{{ selectedSkillStats.studentsPracticed }}/{{ studentEntries.length }}</div>
               </div>
-              <div class="donut-legend">
-                <div class="legend-item"><span class="legend-dot bg-green"></span>{{ masteredPercent }}% Меңгерілген</div>
-                <div class="legend-item"><span class="legend-dot bg-blue"></span>{{ practicingPercent }}% Жаттығуда</div>
-                <div class="legend-item"><span class="legend-dot bg-orange"></span>{{ noPracticePercent }}% Тәжірибе жоқ</div>
+              <div class="legend">
+                <span><i class="legend-mastered"></i>{{ masteredPercent }}% меңгерді</span>
+                <span><i class="legend-practicing"></i>{{ practicingPercent }}% жаттығуда</span>
+                <span><i class="legend-no-practice"></i>{{ noPracticePercent }}% практика жоқ</span>
               </div>
             </div>
           </div>
 
-          <!-- Questions Answered -->
-          <div class="overview-card stat-card">
-            <h3 class="card-label">ЖАУАП БЕРІЛГЕН СҰРАҚТАР</h3>
-            <div class="stat-value-col">
-              <svg class="stat-icon text-green-500" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>
-              <span class="stat-number text-green-500">{{ selectedSkillStats.totalQuestions }}</span>
-            </div>
+          <div class="summary-metric metric-questions">
+            <span class="metric-label">ЖАУАП БЕРІЛГЕН СҰРАҚТАР</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.5 9.9-9.9 3.5 3.5-9.9 9.9H4zM14.9 5.6l1.5-1.5a1.5 1.5 0 0 1 2.1 0l1.4 1.4a1.5 1.5 0 0 1 0 2.1l-1.5 1.5z" /></svg>
+            <strong>{{ selectedSkillStats.totalQuestions }}</strong>
           </div>
 
-          <!-- Time Spent -->
-          <div class="overview-card stat-card">
-            <h3 class="card-label">ЖҰМСАЛҒАН УАҚЫТ</h3>
-            <div class="stat-value-col">
-              <svg class="stat-icon text-cyan-500" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" /></svg>
-              <span class="stat-number text-cyan-500">{{ selectedSkillStats.timeSpent }}</span>
-            </div>
+          <div class="summary-metric metric-time">
+            <span class="metric-label">ЖҰМСАЛҒАН УАҚЫТ</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3.5 2" /></svg>
+            <strong>{{ selectedSkillStats.timeSpent }}</strong>
           </div>
 
-          <!-- Students Who Practiced -->
-          <div class="overview-card stat-card">
-            <h3 class="card-label">ТӘЖІРИБЕ ЖАСАҒАН ОҚУШЫЛАР</h3>
-            <div class="stat-value-col">
-              <svg class="stat-icon text-orange-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              <span class="stat-number text-orange-500">{{ selectedSkillStats.studentsPracticed }}</span>
-            </div>
-            <p class="stat-note">{{ dateLabel || 'Барлық уақыт' }} ішіндегі тәжірибе</p>
+          <div class="summary-metric metric-students">
+            <span class="metric-label">ТӘЖІРИБЕ ЖАСАҒАН ОҚУШЫЛАР</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M5.5 20c.2-4 2.5-6 6.5-6s6.3 2 6.5 6" /></svg>
+            <strong>{{ selectedSkillStats.studentsPracticed }}</strong>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Class Breakdown -->
-      <div class="breakdown-panel">
-        <h2 class="breakdown-heading">Сынып бөлінісі</h2>
-
-        <!-- MASTERED -->
-        <div class="breakdown-section">
-          <div class="section-header bg-mastered">
-            <span class="section-icon">🏆</span>
-            <span class="section-title">МЕҢГЕРІЛГЕН</span>
-            <span class="section-count">
-              <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              {{ masteredStudents.length }}
-            </span>
+      <section class="breakdown-card">
+        <div class="breakdown-heading">
+          <div>
+            <h2>Сынып бөлінісі</h2>
+            <p>{{ selectedSkill.gradeLabel }} · {{ selectedSkill.skillName }}</p>
           </div>
-          <div class="section-body">
-            <div v-if="masteredStudents.length === 0" class="section-empty">
-              Әзірге бірде-бір оқушы бұл дағдыны меңгерген жоқ. Оларды тәжірибе жасауға ынталандырыңыз!
-            </div>
-            <div v-else class="student-list">
-              <div v-for="st in masteredStudents" :key="st.id" class="student-row">
-                <a href="#" @click.prevent="goToQuestions(st.id)" class="student-name-link">{{ st.name }}</a>
-                <span class="student-score score-mastered">{{ st.score }}</span>
-              </div>
-            </div>
-          </div>
+          <span>{{ studentEntries.length }} оқушы</span>
         </div>
 
-        <!-- PRACTICING -->
-        <div class="breakdown-section">
-          <div class="section-header bg-practicing">
-            <span class="section-icon">📘</span>
-            <span class="section-title">ЖАТТЫҒУДА</span>
-            <span class="section-count">
-              <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              {{ practicingStudents.length }}
-            </span>
-          </div>
-          <div class="section-body">
-            <div v-if="practicingStudents.length === 0" class="section-empty">
-              Осы дағды бойынша тәжірибе жасап жатқан оқушылар жоқ.
-            </div>
-            <div v-else class="student-list">
-              <div v-for="st in practicingStudents" :key="st.id" class="student-row">
-                <a href="#" @click.prevent="goToQuestions(st.id)" class="student-name-link">{{ st.name }}</a>
-                <div class="student-score-bar">
-                  <div class="score-bar-bg">
-                    <div class="score-bar-fill" :style="{ width: st.score + '%' }"></div>
-                  </div>
-                  <span class="student-score score-practicing">{{ st.score }}</span>
-                  <span v-if="st.isTroubleSpot" class="trouble-icon" title="Қиындық">⚠️</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <StudentStatusSection
+          tone="mastered"
+          title="МЕҢГЕРІЛГЕН"
+          :students="masteredStudents"
+          empty-message="Бұл дағдыны әлі ешкім меңгерген жоқ."
+          @select="goToQuestions"
+        />
 
-        <!-- NO PRACTICE -->
-        <div class="breakdown-section">
-          <div class="section-header bg-nopractice">
-            <span class="section-icon">⏸️</span>
-            <span class="section-title">ТӘЖІРИБЕ ЖОҚ</span>
-            <span class="section-count">
-              <svg class="w-4 h-4 inline mr-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              {{ noPracticeStudents.length }}
-            </span>
-          </div>
-          <div class="section-body">
-            <div v-if="noPracticeStudents.length === 0" class="section-empty">
-              Барлық оқушылар бұл дағды бойынша тәжірибе жасаған!
+        <StudentStatusSection
+          v-for="level in practiceLevels"
+          :key="level.key"
+          tone="practicing"
+          :title="level.title"
+          :students="level.students"
+          :show-score="true"
+          :empty-message="''"
+          @select="goToQuestions"
+        >
+          <template #after-header>
+            <span class="level-hint">{{ level.description }}</span>
+          </template>
+        </StudentStatusSection>
+
+        <section v-if="recentSkillQuestions.length > 0" class="recent-questions">
+          <div class="recent-heading">
+            <div>
+              <span>ОСЫ ДАҒДЫ БОЙЫНША СОҢҒЫ СҰРАҚТАР</span>
+              <small>{{ recentSkillQuestions.length }} әрекет</small>
             </div>
-            <div v-else class="student-list">
-              <div v-for="st in noPracticeStudents" :key="st.id" class="student-row">
-                <a href="#" @click.prevent="goToQuestions(st.id)" class="student-name-link text-gray-500">{{ st.name }}</a>
-              </div>
+            <div v-if="recentSkillQuestions.length > 1" class="question-nav">
+              <button type="button" :disabled="selectedQuestionIndex === 0" @click="selectedQuestionIndex -= 1">‹</button>
+              <span>{{ selectedQuestionIndex + 1 }} / {{ recentSkillQuestions.length }}</span>
+              <button type="button" :disabled="selectedQuestionIndex === recentSkillQuestions.length - 1" @click="selectedQuestionIndex += 1">›</button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
+
+          <div v-if="selectedPreviewQuestion" class="question-preview-shell">
+            <div class="question-result" :class="selectedPreviewQuestion.isCorrect ? 'is-correct' : 'is-incorrect'">
+              {{ selectedPreviewQuestion.isCorrect ? 'Дұрыс жауап' : 'Қате жауап' }}
+            </div>
+            <SessionQuestionPreview :question="selectedPreviewQuestion" />
+          </div>
+        </section>
+
+        <StudentStatusSection
+          tone="no-practice"
+          title="ТӘЖІРИБЕ ЖОҚ"
+          :students="noPracticeStudents"
+          empty-message="Барлық оқушы осы дағды бойынша тәжірибе жасаған."
+          @select="goToQuestions"
+        />
+      </section>
+    </template>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineComponent, h, ref, watch, type PropType } from 'vue'
+import { useAnalyticsStore } from '@/stores/analytics'
+import SessionQuestionPreview from './SessionQuestionPreview.vue'
 
 interface SkillInfo {
   skill_id: number
@@ -185,9 +141,11 @@ interface SkillInfo {
   grade_label?: string
   grade_number?: number
   best_smartscore?: number
+  last_smartscore?: number
   total_questions?: number
   total_time_seconds?: number
   last_practiced_at?: string | null
+  missed_questions?: number
 }
 
 interface StudentAnalyticsData {
@@ -204,362 +162,255 @@ interface Props {
   allStudentsData?: StudentAnalyticsData[]
 }
 
-const props = withDefaults(defineProps<Props>(), {
-  allStudentsData: () => [],
-})
-
-const emit = defineEmits<{
-  (e: 'navigate', route: string, context?: Record<string, unknown>): void
-}>()
-
-const selectedSkillId = ref('')
-
-// Build unique skills list from all students
-interface AvailableSkill {
-  skillId: string
-  skillName: string
-  skillCode: string
-  gradeLabel: string
-}
-
-const availableSkills = computed<AvailableSkill[]>(() => {
-  const map = new Map<string, AvailableSkill>()
-  for (const st of props.allStudentsData) {
-    if (!st.skills) continue
-    for (const sk of st.skills) {
-      const id = sk.skill_id.toString()
-      if (!map.has(id)) {
-        map.set(id, {
-          skillId: id,
-          skillName: sk.skill_name || 'Дағды',
-          skillCode: sk.skill_code || '',
-          gradeLabel: sk.grade_label || `${sk.grade_number} сынып`,
-        })
-      }
-    }
-  }
-  return Array.from(map.values())
-})
-
-// Auto-select first skill when list is ready
-watch(availableSkills, (skills) => {
-  if (skills.length > 0 && !selectedSkillId.value) {
-    selectedSkillId.value = skills[0].skillId
-  }
-}, { immediate: true })
-
-// Per-student data for the selected skill
-interface StudentSkillEntry {
+interface StudentEntry {
   id: string
   name: string
   score: number
   totalQuestions: number
   totalTime: number
-  isTroubleSpot: boolean
-  practicedInWindow: boolean
+  practiced: boolean
 }
 
-const studentEntries = computed<StudentSkillEntry[]>(() => {
-  if (!selectedSkillId.value) return []
-  return props.allStudentsData.map(st => {
-    const sk = st.skills?.find(s => s.skill_id.toString() === selectedSkillId.value)
-    let practicedInWindow = false
-    if (sk && sk.last_practiced_at) {
-      if (!props.dateRange?.start) {
-        practicedInWindow = true
-      } else {
-        practicedInWindow = new Date(sk.last_practiced_at) >= props.dateRange.start
-      }
-    } else if (sk && !props.dateRange?.start) {
-      practicedInWindow = true
-    }
+interface StatusStudent {
+  id: string
+  name: string
+  score: number
+}
 
-    const score = (sk?.best_smartscore || 0)
-    return {
-      id: st.student_id,
-      name: st.full_name,
-      score: practicedInWindow ? score : 0,
-      totalQuestions: practicedInWindow ? (sk?.total_questions || 0) : 0,
-      totalTime: practicedInWindow ? (sk?.total_time_seconds || 0) : 0,
-      isTroubleSpot: practicedInWindow && (sk?.total_questions || 0) >= 3 && score < 80,
-      practicedInWindow,
-    }
-  })
+const StudentStatusSection = defineComponent({
+  name: 'StudentStatusSection',
+  props: {
+    title: { type: String, required: true },
+    tone: { type: String as PropType<'mastered' | 'practicing' | 'no-practice'>, required: true },
+    students: { type: Array as PropType<StatusStudent[]>, required: true },
+    showScore: { type: Boolean, default: false },
+    emptyMessage: { type: String, required: true },
+  },
+  emits: ['select'],
+  setup(props, { emit, slots }) {
+    return () => h('section', { class: ['status-section', `status-${props.tone}`] }, [
+      h('div', { class: 'status-header' }, [
+        h('div', { class: 'status-heading' }, [
+          h('span', { class: 'status-symbol' }, props.tone === 'mastered' ? '★' : props.tone === 'no-practice' ? '○' : '●'),
+          h('span', props.title),
+          slots['after-header']?.(),
+        ]),
+        h('span', { class: 'status-count' }, `${props.students.length} оқушы`),
+      ]),
+      props.students.length
+        ? h('div', { class: 'status-students' }, props.students.map(student => h('button', {
+          key: student.id,
+          class: 'student-chip',
+          type: 'button',
+          onClick: () => emit('select', student.id),
+        }, [
+          h('span', student.name),
+          props.showScore ? h('b', String(student.score)) : null,
+        ])))
+        : props.emptyMessage ? h('p', { class: 'status-empty' }, props.emptyMessage) : null,
+    ])
+  },
 })
 
-const masteredStudents = computed(() =>
-  studentEntries.value.filter(s => s.practicedInWindow && s.score >= 100).sort((a, b) => b.score - a.score)
-)
-const practicingStudents = computed(() =>
-  studentEntries.value.filter(s => s.practicedInWindow && s.score > 0 && s.score < 100).sort((a, b) => b.score - a.score)
-)
-const noPracticeStudents = computed(() =>
-  studentEntries.value.filter(s => !s.practicedInWindow || s.score === 0).sort((a, b) => a.name.localeCompare(b.name))
-)
+const props = withDefaults(defineProps<Props>(), { allStudentsData: () => [] })
+const emit = defineEmits<{ (e: 'navigate', route: string, context?: Record<string, unknown>): void }>()
+const analyticsStore = useAnalyticsStore()
+const selectedSkillId = ref('')
+const selectedQuestionIndex = ref(0)
 
-const totalStudents = computed(() => studentEntries.value.length || 1)
-const masteredPercent = computed(() => Math.round((masteredStudents.value.length / totalStudents.value) * 100))
-const practicingPercent = computed(() => Math.round((practicingStudents.value.length / totalStudents.value) * 100))
-const noPracticePercent = computed(() => 100 - masteredPercent.value - practicingPercent.value)
+const availableSkills = computed(() => {
+  const skills = new Map<string, { skillId: string; skillName: string; skillCode: string; gradeLabel: string }>()
+  for (const student of props.allStudentsData) {
+    for (const skill of student.skills || []) {
+      const skillId = String(skill.skill_id)
+      if (!skills.has(skillId)) {
+        skills.set(skillId, {
+          skillId,
+          skillName: skill.skill_name || 'Дағды',
+          skillCode: skill.skill_code || '',
+          gradeLabel: skill.grade_label || `${skill.grade_number || ''} сынып`,
+        })
+      }
+    }
+  }
+  return [...skills.values()].sort((a, b) => a.gradeLabel.localeCompare(b.gradeLabel) || a.skillName.localeCompare(b.skillName))
+})
+
+const selectedSkill = computed(() => availableSkills.value.find(skill => skill.skillId === selectedSkillId.value) || null)
+
+watch(availableSkills, skills => {
+  if (!skills.some(skill => skill.skillId === selectedSkillId.value)) {
+    selectedSkillId.value = skills[0]?.skillId || ''
+  }
+}, { immediate: true })
+
+const studentEntries = computed<StudentEntry[]>(() => props.allStudentsData.map(student => {
+  const skill = student.skills?.find(item => String(item.skill_id) === selectedSkillId.value)
+  const totalQuestions = Number(skill?.total_questions || 0)
+  const practiced = Boolean(skill && totalQuestions > 0)
+  return {
+    id: student.student_id,
+    name: student.full_name,
+    score: practiced ? Math.max(Number(skill?.best_smartscore || 0), Number(skill?.last_smartscore || 0)) : 0,
+    totalQuestions: practiced ? totalQuestions : 0,
+    totalTime: practiced ? Number(skill?.total_time_seconds || 0) : 0,
+    practiced,
+  }
+}))
+
+const masteredStudents = computed<StatusStudent[]>(() => studentEntries.value
+  .filter(student => student.practiced && student.score >= 90)
+  .sort((a, b) => b.score - a.score))
+
+const practicingStudents = computed(() => studentEntries.value
+  .filter(student => student.practiced && student.score < 90)
+  .sort((a, b) => b.score - a.score))
+
+const noPracticeStudents = computed<StatusStudent[]>(() => studentEntries.value
+  .filter(student => !student.practiced)
+  .sort((a, b) => a.name.localeCompare(b.name)))
+
+const practiceLevels = computed(() => [
+  { key: 'level-3', title: '3-ДЕҢГЕЙ', description: '80–89 SmartScore', students: practicingStudents.value.filter(student => student.score >= 80) },
+  { key: 'level-2', title: '2-ДЕҢГЕЙ', description: '50–79 SmartScore', students: practicingStudents.value.filter(student => student.score >= 50 && student.score < 80) },
+  { key: 'level-1', title: '1-ДЕҢГЕЙ', description: '0–49 SmartScore', students: practicingStudents.value.filter(student => student.score < 50) },
+].filter(level => level.students.length > 0))
+
+const studentCount = computed(() => Math.max(studentEntries.value.length, 1))
+const masteredPercent = computed(() => Math.round((masteredStudents.value.length / studentCount.value) * 100))
+const practicingPercent = computed(() => Math.round((practicingStudents.value.length / studentCount.value) * 100))
+const noPracticePercent = computed(() => Math.max(0, 100 - masteredPercent.value - practicingPercent.value))
+
+const donutBackground = computed(() => {
+  const masteredEnd = masteredPercent.value
+  const practicingEnd = masteredEnd + practicingPercent.value
+  return `conic-gradient(#86ce1c 0 ${masteredEnd}%, #18afe4 ${masteredEnd}% ${practicingEnd}%, #ff9e13 ${practicingEnd}% 100%)`
+})
 
 const selectedSkillStats = computed(() => {
-  const practiced = studentEntries.value.filter(s => s.practicedInWindow && s.score > 0)
-  const totalQ = studentEntries.value.reduce((sum, s) => sum + s.totalQuestions, 0)
-  const totalSec = studentEntries.value.reduce((sum, s) => sum + s.totalTime, 0)
-  const mins = Math.floor(totalSec / 60)
-  let timeStr = '<1 мин'
-  if (mins >= 60) {
-    const hrs = Math.floor(mins / 60)
-    const rem = mins % 60
-    timeStr = rem > 0 ? `${hrs} сағ ${rem} мин` : `${hrs} сағ`
-  } else if (mins >= 1) {
-    timeStr = `${mins} мин`
-  }
+  const practiced = studentEntries.value.filter(student => student.practiced)
+  const totalSeconds = practiced.reduce((sum, student) => sum + student.totalTime, 0)
   return {
-    totalQuestions: totalQ,
-    timeSpent: timeStr,
+    totalQuestions: practiced.reduce((sum, student) => sum + student.totalQuestions, 0),
     studentsPracticed: practiced.length,
+    timeSpent: formatDuration(totalSeconds),
   }
 })
 
-const printReport = () => window.print()
-const goToQuestions = (studentId: string) => {
-  emit('navigate', 'questions', { studentId })
+const recentSkillQuestions = computed(() => {
+  const start = props.dateRange?.start
+  const end = props.dateRange?.end
+  return (analyticsStore.allQuestions || [])
+    .filter(question => {
+      if (String(question.skill_id || '') !== selectedSkillId.value) return false
+      const timestamp = String(question.answered_at || question.created_at || '')
+      if (!start || !timestamp) return true
+      const date = new Date(timestamp)
+      return date >= start && (!end || date <= end)
+    })
+    .sort((a, b) => new Date(String(b.answered_at || b.created_at || 0)).getTime() - new Date(String(a.answered_at || a.created_at || 0)).getTime())
+    .slice(0, 10)
+})
+
+const selectedPreviewQuestion = computed(() => {
+  const question = recentSkillQuestions.value[selectedQuestionIndex.value]
+  if (!question) return null
+  const rawAnswer = normalizeJson(question.user_answer)
+  const questionData = asRecord(question.question_data)
+  const submittedData = asRecord(rawAnswer)
+  const submittedQuestionData = asRecord(submittedData?.questionData) || asRecord(submittedData?.visualData)
+  const data = submittedQuestionData ? { ...questionData, ...submittedQuestionData } : questionData
+  const type = String(question.question_type || question.type || '')
+  return {
+    prompt: String(question.question_prompt || question.prompt || data.prompt || ''),
+    type,
+    data,
+    userAnswer: rawAnswer,
+    isCorrect: Boolean(question.is_correct),
+    correctAnswer: normalizeJson(question.correct_answer),
+    seed: (question.seed ?? data.seed ?? submittedData?.seed ?? null) as string | number | null,
+    level: (question.level ?? data.level ?? null) as string | number | null,
+  }
+})
+
+watch([selectedSkillId, recentSkillQuestions], () => { selectedQuestionIndex.value = 0 })
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
 }
+
+function normalizeJson(value: unknown): unknown {
+  if (typeof value !== 'string') return value
+  try { return JSON.parse(value) } catch { return value }
+}
+
+function formatDuration(seconds: number): string {
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 1) return '<1 мин'
+  if (minutes < 60) return `${minutes} мин`
+  const hours = Math.floor(minutes / 60)
+  const remaining = minutes % 60
+  return remaining ? `${hours} сағ ${remaining} мин` : `${hours} сағ`
+}
+
+function printReport() { window.print() }
+function goToQuestions(studentId: string) { emit('navigate', 'questions', { studentId }) }
 </script>
 
 <style scoped>
-.ixl-skill-analysis {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 24px 16px;
-  font-family: 'Inter', 'Segoe UI', sans-serif;
+.skill-analysis {
+  color: #4a4f54;
+  font-family: 'Open Sans', 'Helvetica Neue', sans-serif;
 }
-
-/* Header */
-.sa-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.sa-title {
-  font-size: 26px;
-  font-weight: 300;
-  color: #333;
-  letter-spacing: 0.5px;
-}
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #aaa;
-  padding: 6px;
-  border-radius: 4px;
-  transition: color 0.2s;
-}
-.icon-btn:hover { color: #333; }
-.icon-btn svg { width: 20px; height: 20px; }
-
-/* Skill Selector */
-.sa-skill-selector {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 28px;
-  background: white;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-}
-.selector-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #666;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-}
-.selector-dropdown {
-  flex: 1;
-  border: none;
-  font-size: 14px;
-  color: #333;
-  background: transparent;
-  outline: none;
-  cursor: pointer;
-}
-
-/* Empty State */
-.empty-state {
-  text-align: center;
-  padding: 80px 20px;
-  color: #888;
-  font-size: 16px;
-}
-
-/* Overview Panel */
-.overview-panel {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 28px;
-  margin-bottom: 28px;
-}
-.overview-heading {
-  font-size: 22px;
-  font-weight: 300;
-  color: #333;
-  margin-bottom: 24px;
-}
-.overview-grid {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1fr;
-  gap: 0;
-}
-.overview-card {
-  padding: 16px 20px;
-  border-left: 1px solid #eee;
-}
-.overview-card:first-child { border-left: none; }
-.donut-card { padding: 16px 24px; }
-.card-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #888;
-  letter-spacing: 0.5px;
-  margin-bottom: 16px;
-}
-
-/* Donut */
-.donut-row {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-.donut-container { width: 110px; height: 110px; flex-shrink: 0; }
-.donut-svg { transform: rotate(-90deg); }
-.donut-legend { font-size: 14px; line-height: 2; }
-.legend-item { display: flex; align-items: center; gap: 8px; }
-.legend-dot {
-  width: 12px; height: 12px;
-  border-radius: 2px;
-  display: inline-block;
-  flex-shrink: 0;
-}
-.bg-green { background: #66bb6a; }
-.bg-blue { background: #42a5f5; }
-.bg-orange { background: #ffa726; }
-
-/* Stat Cards */
-.stat-card { text-align: center; }
-.stat-value-col {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.stat-icon { width: 32px; height: 32px; }
-.stat-number { font-size: 32px; font-weight: 700; }
-.stat-note { font-size: 11px; color: #999; margin-top: 8px; font-style: italic; }
-.text-green-500 { color: #66bb6a; }
-.text-cyan-500 { color: #00bcd4; }
-.text-orange-500 { color: #ff9800; }
-
-/* Class Breakdown */
-.breakdown-panel {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.breakdown-heading {
-  font-size: 22px;
-  font-weight: 300;
-  color: #333;
-  padding: 24px 28px 16px;
-}
-.breakdown-section { border-top: 1px solid #eee; }
-.section-header {
-  display: flex;
-  align-items: center;
-  padding: 10px 20px;
-  color: white;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.5px;
-}
-.bg-mastered { background: linear-gradient(135deg, #66bb6a, #43a047); }
-.bg-practicing { background: linear-gradient(135deg, #42a5f5, #1e88e5); }
-.bg-nopractice { background: linear-gradient(135deg, #ffa726, #fb8c00); }
-.section-icon { font-size: 18px; margin-right: 10px; }
-.section-title { flex: 1; }
-.section-count {
-  display: flex;
-  align-items: center;
-  font-size: 14px;
-}
-.section-body { padding: 12px 20px; }
-.section-empty {
-  color: #888;
-  font-size: 14px;
-  font-style: italic;
-  padding: 12px 0;
-}
-
-/* Student List */
-.student-list { }
-.student-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 4px;
-  border-bottom: 1px solid #f5f5f5;
-}
-.student-row:last-child { border-bottom: none; }
-.student-name-link {
-  color: #333;
-  text-decoration: none;
-  font-size: 14px;
-  transition: color 0.15s;
-}
-.student-name-link:hover { color: #00bcd4; text-decoration: underline; }
-.student-score {
-  font-weight: 700;
-  font-size: 14px;
-  min-width: 30px;
-  text-align: right;
-}
-.score-mastered { color: #43a047; }
-.score-practicing { color: #1e88e5; }
-.student-score-bar {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.score-bar-bg {
-  width: 120px;
-  height: 8px;
-  background: #e0e0e0;
-  border-radius: 4px;
-  overflow: hidden;
-}
-.score-bar-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #42a5f5, #1e88e5);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-.trouble-icon { font-size: 14px; }
-.w-4 { width: 16px; }
-.h-4 { height: 16px; }
-.w-5 { width: 20px; }
-.h-5 { height: 20px; }
-.w-16 { width: 64px; }
-.h-16 { height: 64px; }
-.mx-auto { margin-left: auto; margin-right: auto; }
-.mb-4 { margin-bottom: 16px; }
-.text-gray-300 { color: #d1d5db; }
-.text-gray-500 { color: #9ca3af; }
-.inline { display: inline; }
-.mr-1 { margin-right: 4px; }
+.sa-page-header { border-bottom: 1px solid #e5e9eb; padding-bottom: 20px; }
+.sa-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.sa-title-row h1 { margin: 0; color: #3d4246; font-size: 28px; font-weight: 500; letter-spacing: -.4px; }
+.sa-icon-button { display: grid; width: 30px; height: 30px; place-items: center; border: 0; background: transparent; color: #a2aaad; cursor: pointer; }
+.sa-icon-button:hover { color: #4e575c; }
+.sa-icon-button svg { width: 20px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; }
+.skill-picker { position: relative; display: flex; align-items: center; width: min(100%, 520px); border: 1px solid #d7dcdf; border-radius: 5px; background: #fff; color: #626a6f; }
+.skill-picker > span { padding-left: 14px; color: #939b9f; font-size: 12px; font-weight: 700; letter-spacing: .25px; }
+.skill-picker select { width: 100%; appearance: none; border: 0; background: transparent; color: #545b5f; cursor: pointer; font: inherit; font-size: 14px; outline: 0; padding: 13px 38px 13px 7px; }
+.skill-picker > svg { position: absolute; right: 12px; width: 18px; fill: none; stroke: #9ca5a9; stroke-width: 2; pointer-events: none; }
+.sa-empty { margin-top: 28px; border: 1px dashed #d9dfe1; background: #fff; color: #879196; padding: 44px 20px; text-align: center; }
+.overview-card, .breakdown-card { margin-top: 26px; border: 1px solid #e2e7e9; background: #fff; box-shadow: 0 1px 2px rgb(21 47 56 / 4%); }
+.overview-heading, .breakdown-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 20px 24px 15px; }
+.overview-heading h2, .breakdown-heading h2 { margin: 0; color: #53595d; font-size: 23px; font-weight: 400; letter-spacing: -.3px; }
+.overview-heading span, .breakdown-heading > span { color: #929a9d; font-size: 12px; }
+.overview-grid { display: grid; grid-template-columns: 1.6fr repeat(3, 1fr); border-top: 1px solid #edf0f1; }
+.status-summary, .summary-metric { min-height: 166px; padding: 20px; }
+.summary-metric { display: flex; flex-direction: column; align-items: center; border-left: 1px solid #edf0f1; text-align: center; }
+.metric-label { color: #788187; font-size: 11px; font-weight: 700; letter-spacing: .2px; }
+.status-content { display: flex; align-items: center; gap: 22px; margin-top: 14px; }
+.donut { display: grid; width: 112px; height: 112px; flex: 0 0 112px; place-items: center; border-radius: 50%; }
+.donut::after { width: 76px; height: 76px; border-radius: 50%; background: #fff; content: ''; grid-area: 1 / 1; }
+.donut-center { z-index: 1; grid-area: 1 / 1; color: #5c6569; font-size: 14px; font-weight: 700; }
+.legend { display: grid; gap: 10px; color: #596166; font-size: 13px; }
+.legend span { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.legend i { width: 11px; height: 11px; border-radius: 2px; }
+.legend-mastered { background: #86ce1c; }.legend-practicing { background: #18afe4; }.legend-no-practice { background: #ff9e13; }
+.summary-metric svg { width: 35px; height: 35px; margin-top: 20px; fill: none; stroke-width: 1.7; }
+.summary-metric strong { margin-top: 7px; font-size: 31px; line-height: 1; }
+.metric-questions svg, .metric-questions strong { color: #80c519; fill: currentColor; stroke: currentColor; }.metric-time svg, .metric-time strong { color: #12aee4; }.metric-students svg, .metric-students strong { color: #fb9b15; }
+.breakdown-heading { padding-bottom: 19px; }.breakdown-heading p { margin: 5px 0 0; color: #8a9498; font-size: 13px; }
+.status-section { border-top: 1px solid #edf0f1; }.status-header { display: flex; align-items: center; justify-content: space-between; min-height: 43px; padding: 0 19px; color: #fff; font-size: 12px; font-weight: 700; }.status-heading { display: flex; align-items: center; gap: 9px; }.status-symbol { font-size: 17px; line-height: 1; }.status-count { opacity: .9; font-size: 12px; font-weight: 600; }.status-mastered .status-header { background: #85ca1d; }.status-practicing .status-header { background: #18afe4; }.status-no-practice .status-header { background: #ff9e13; }.level-hint { margin-left: 4px; color: rgb(255 255 255 / 80%); font-size: 11px; font-weight: 400; }
+.status-empty { margin: 0; padding: 22px 20px; color: #7f898d; font-size: 13px; font-style: italic; }.status-students { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 20px; }.student-chip { display: inline-flex; align-items: center; gap: 11px; border: 1px solid #b7dc7f; border-radius: 3px; background: #fff; color: #6ea615; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 11px; }.student-chip:hover { background: #f8fdf0; }.student-chip b { color: #4f5960; }.status-practicing .student-chip { border-color: #8ddcf6; color: #168bb8; }.status-no-practice .student-chip { border-color: #facb83; color: #a86a05; }
+:deep(.status-header) { display: flex; align-items: center; justify-content: space-between; min-height: 43px; padding: 0 19px; color: #fff; font-size: 12px; font-weight: 700; }
+:deep(.status-heading) { display: flex; align-items: center; gap: 9px; }
+:deep(.status-symbol) { font-size: 17px; line-height: 1; }
+:deep(.status-count) { opacity: .9; font-size: 12px; font-weight: 600; }
+:deep(.status-mastered .status-header) { background: #85ca1d; }
+:deep(.status-practicing .status-header) { background: #18afe4; }
+:deep(.status-no-practice .status-header) { background: #ff9e13; }
+:deep(.level-hint) { margin-left: 4px; color: rgb(255 255 255 / 80%); font-size: 11px; font-weight: 400; }
+:deep(.status-empty) { margin: 0; padding: 22px 20px; color: #7f898d; font-size: 13px; font-style: italic; }
+:deep(.status-students) { display: flex; flex-wrap: wrap; gap: 10px; padding: 16px 20px; }
+:deep(.student-chip) { display: inline-flex; align-items: center; gap: 11px; border: 1px solid #b7dc7f; border-radius: 3px; background: #fff; color: #6ea615; cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; padding: 8px 11px; }
+:deep(.student-chip:hover) { background: #f8fdf0; }
+:deep(.student-chip b) { color: #4f5960; }
+:deep(.status-practicing .student-chip) { border-color: #8ddcf6; color: #168bb8; }
+:deep(.status-no-practice .student-chip) { border-color: #facb83; color: #a86a05; }
+.recent-questions { border-top: 1px solid #edf0f1; padding: 20px; }.recent-heading { display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid #e8edef; padding-bottom: 12px; }.recent-heading > div:first-child { display: grid; gap: 3px; }.recent-heading span { color: #707a7f; font-size: 11px; font-weight: 700; }.recent-heading small { color: #a0a8ab; font-size: 12px; }.question-nav { display: flex; align-items: center; gap: 8px; }.question-nav button { width: 26px; height: 26px; border: 1px solid #dce3e5; border-radius: 3px; background: #fff; color: #5c686d; cursor: pointer; font-size: 21px; line-height: 1; }.question-nav button:disabled { color: #cbd2d5; cursor: default; }.question-nav span { color: #6a7479; font-size: 12px; font-weight: 600; }.question-preview-shell { position: relative; padding: 20px 4px 0; }.question-result { position: absolute; z-index: 1; top: 19px; right: 4px; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 5px 9px; }.is-correct { background: #eff9dc; color: #679f14; }.is-incorrect { background: #fff1ef; color: #e05a50; }
+@media (max-width: 850px) { .overview-grid { grid-template-columns: 1fr 1fr; }.status-summary { grid-column: span 2; }.summary-metric:nth-child(2) { border-left: 0; }.summary-metric { border-top: 1px solid #edf0f1; } }
+@media (max-width: 560px) { .sa-title-row h1 { font-size: 23px; }.skill-picker { width: 100%; }.overview-heading, .breakdown-heading { align-items: flex-start; flex-direction: column; gap: 4px; }.overview-grid { grid-template-columns: 1fr; }.status-summary { grid-column: auto; }.summary-metric { min-height: 135px; border-left: 0; }.status-content { gap: 14px; }.donut { width: 92px; height: 92px; flex-basis: 92px; }.donut::after { width: 62px; height: 62px; }.legend { font-size: 12px; }.recent-questions { padding: 16px; }.question-result { position: static; display: inline-block; margin-bottom: 10px; } }
 </style>

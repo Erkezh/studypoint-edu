@@ -66,9 +66,14 @@
             </button>
             
             <div class="ixl-question-box">
-              <p class="ixl-question-text">
-                {{ skill.questions[troubleQuestionIndex[skill.skillId] || 0]?.prompt || 'Сұрақ мәтіні жоқ' }}
-              </p>
+              <div class="ixl-question-progress">
+                {{ (troubleQuestionIndex[skill.skillId] || 0) + 1 }} / {{ skill.questions.length }} қате сұрақ
+              </div>
+              <SessionQuestionPreview
+                v-if="getCurrentTroubleQuestion(skill)"
+                :key="`${skill.skillId}-${troubleQuestionIndex[skill.skillId] || 0}`"
+                :question="getCurrentTroubleQuestion(skill)!"
+              />
             </div>
             
             <button class="ixl-arrow-btn" @click="navigateTroubleQuestion(skill.skillId, 1)" :disabled="(troubleQuestionIndex[skill.skillId] || 0) >= skill.questions.length - 1">
@@ -114,6 +119,23 @@ import { computed, ref, onMounted } from 'vue'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useAuthStore } from '@/stores/auth'
 import { useTeacherStore } from '@/stores/teacher'
+import SessionQuestionPreview from './SessionQuestionPreview.vue'
+
+interface TroubleQuestionPreview {
+  prompt: string
+  type: string
+  data: Record<string, unknown>
+  userAnswer: unknown
+  isCorrect: boolean
+  correctAnswer: unknown
+  seed: string | number | null
+  level: string | number | null
+}
+
+interface TroubleSkill {
+  skillId: number
+  questions: TroubleQuestionPreview[]
+}
 
 const props = defineProps<{
   gradeFrom: number
@@ -179,10 +201,37 @@ const toggleStuck = (skillId: number) => {
 const isPlugin = (q: Record<string, unknown>) =>
   (q.question_type as string) === 'PLUGIN' || (q.question_type as string) === 'INTERACTIVE'
 
+const asRecord = (value: unknown): Record<string, unknown> =>
+  value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+
 const getPluginPrompt = (q: Record<string, unknown>): string => {
-  const ua = q.user_answer as Record<string, unknown> | null
-  if (!ua) return (q.question_prompt as string) || ''
-  return (ua.question ?? ua.prompt ?? ua.equation ?? ua.problem ?? ua.questionText ?? q.question_prompt ?? '') as string
+  const ua = asRecord(q.user_answer)
+  const questionData = asRecord(ua.questionData || ua.visualData)
+  return String(
+    ua.question ?? ua.prompt ?? ua.equation ?? ua.problem ?? ua.questionText ?? questionData.question ?? q.question_prompt ?? ''
+  )
+}
+
+const toTroubleQuestionPreview = (q: Record<string, unknown>): TroubleQuestionPreview => {
+  const questionData = asRecord(q.question_data)
+  const rawUserAnswer = q.user_answer ?? null
+  const userAnswer = asRecord(rawUserAnswer)
+  const embeddedQuestionData = asRecord(userAnswer.questionData || userAnswer.visualData)
+  const data = Object.keys(embeddedQuestionData).length > 0
+    ? { ...questionData, ...embeddedQuestionData }
+    : questionData
+
+  return {
+    prompt: isPlugin(q) ? getPluginPrompt(q) : String(q.question_prompt || ''),
+    type: String(q.question_type || ''),
+    data,
+    // Keep the original payload so SessionQuestionPreview can reconstruct plugin review mode.
+    userAnswer: rawUserAnswer,
+    isCorrect: Boolean(q.is_correct),
+    correctAnswer: q.correct_answer ?? null,
+    seed: (q.seed ?? data.seed ?? userAnswer.seed ?? null) as string | number | null,
+    level: (q.level ?? q.question_level ?? data.level ?? null) as string | number | null,
+  }
 }
 
 const troubleSpotSkills = computed(() => {
@@ -266,10 +315,7 @@ const troubleSpotSkills = computed(() => {
       missedCount: qs.length,
       strugglingStudentsCount,
       stuckStudents,
-      questions: qs.map(q => ({
-        questionType: (q.question_type as string) || '',
-        prompt: isPlugin(q) ? getPluginPrompt(q) : ((q.question_prompt as string) || ''),
-      })),
+      questions: qs.map(toTroubleQuestionPreview),
     }
   })
 
@@ -294,6 +340,9 @@ const navigateTroubleQuestion = (skillId: number, direction: number) => {
     troubleQuestionIndex.value[skillId] = next
   }
 }
+
+const getCurrentTroubleQuestion = (skill: TroubleSkill): TroubleQuestionPreview | undefined =>
+  skill.questions[troubleQuestionIndex.value[skill.skillId] || 0]
 </script>
 
 <style scoped>
@@ -445,10 +494,11 @@ const navigateTroubleQuestion = (skillId: number, direction: number) => {
 }
 
 .ixl-question-carousel {
-  display: flex;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 16px;
   align-items: center;
-  justify-content: space-between;
-  margin: 32px 0 48px;
+  margin: 24px 0 40px;
 }
 .ixl-arrow-btn {
   background: transparent;
@@ -456,6 +506,7 @@ const navigateTroubleQuestion = (skillId: number, direction: number) => {
   color: #eee;
   cursor: pointer;
   outline: none;
+  padding: 8px 0;
 }
 .ixl-arrow-btn:hover:not(:disabled) {
   color: #ccc;
@@ -465,15 +516,18 @@ const navigateTroubleQuestion = (skillId: number, direction: number) => {
   cursor: default;
 }
 .ixl-question-box {
-  flex: 1;
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid #e7ece9;
+  border-radius: 12px;
+  background: #fcfdfc;
 }
-.ixl-question-text {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
+.ixl-question-progress {
+  margin-bottom: 12px;
+  color: #728078;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: right;
 }
 
 .ixl-stuck-section {
@@ -551,4 +605,19 @@ const navigateTroubleQuestion = (skillId: number, direction: number) => {
 }
 .trouble-star { color: #FFB300; }
 .trouble-footer-warning svg { color: #FF9800; }
+
+@media (max-width: 640px) {
+  .ixl-card-body {
+    padding: 20px 16px;
+  }
+
+  .ixl-question-carousel {
+    grid-template-columns: 28px minmax(0, 1fr) 28px;
+    gap: 4px;
+  }
+
+  .ixl-question-box {
+    padding: 12px;
+  }
+}
 </style>

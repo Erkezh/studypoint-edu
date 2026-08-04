@@ -14,11 +14,13 @@
           </span>
           <template v-if="skillInfo">
             <router-link
+              v-if="skillInfo.gradeNumber !== null"
               :to="{ name: 'class', params: { gradeId: skillInfo.gradeNumber } }"
               class="hover:text-green-600 font-medium transition-colors shrink-0"
             >
-              {{ skillInfo.gradeNumber }} сынып
+              {{ skillInfo.gradeLabel }}
             </router-link>
+            <span v-else class="font-medium shrink-0">{{ skillInfo.gradeLabel }}</span>
             <span class="mx-2 text-gray-400 shrink-0">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             </span>
@@ -217,13 +219,6 @@
                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
                      Плагин не загружен.
                    </div>
-                   <div v-if="pluginIframeSrc && !lastResult" class="flex gap-3">
-                     <button @click="requestPluginAnswer"
-                       :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                       class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
-                       {{ submitting ? 'Жіберілуде...' : 'Жіберу' }}
-                     </button>
-                   </div>
                    <div v-else-if="lastResult" class="flex justify-end pt-2">
                      <button @click="loadNextQuestion"
                        :disabled="loadingNext"
@@ -249,17 +244,6 @@
                   </button>
                 </div>
 
-                <!-- Finish button at bottom -->
-                <div class="flex justify-end mt-8 pt-4 border-t border-gray-100">
-                  <button @click="finishSession"
-                    :disabled="submitting || showingResult || (shouldCheckTrialQuestions && trialQuestions.isTrialQuestionsExhausted.value)"
-                    class="text-gray-500 hover:text-gray-700 text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                    Сессияны аяқтау
-                  </button>
-                </div>
               </div>
 
               <!-- Result display - shows below question/iframe -->
@@ -334,10 +318,6 @@
                   <Button v-if="lastResult.finished" @click="goToResults" :disabled="loadingNext"
                     class="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg">
                     Нәтижелерге өту
-                  </Button>
-                  <Button v-if="!lastResult.finished" @click="finishSession" variant="outline" :disabled="loadingNext"
-                    class="px-6 py-3">
-                    Сессияны аяқтау
                   </Button>
                 </div>
               </div>
@@ -674,6 +654,29 @@ const formatTimeCompact = (seconds: number): string => {
   return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
 }
 
+const resolveGradeNumber = (gradeId: unknown, session: Record<string, unknown>, skill?: Record<string, unknown>) => {
+  const toGradeNumber = (value: unknown) => {
+    if (value === null || value === undefined || value === '') return null
+    const number = Number(value)
+    return Number.isFinite(number) ? number : null
+  }
+
+  const sessionGradeNumber = toGradeNumber(session.grade_number)
+  if (sessionGradeNumber !== null) return sessionGradeNumber
+
+  const skillGradeNumber = toGradeNumber(skill?.grade_number)
+  if (skillGradeNumber !== null) return skillGradeNumber
+
+  const grade = catalogStore.grades.find(item => item.id === Number(gradeId))
+  return grade?.number ?? null
+}
+
+const formatGradeLabel = (gradeNumber: number | null) => {
+  if (gradeNumber === -1) return 'Мектепалды даярлық'
+  if (gradeNumber === 0) return 'Даярлық сынып'
+  return gradeNumber === null ? 'Сынып' : `${gradeNumber} сынып`
+}
+
 // Информация о навыке для хлебных крошек
 const skillInfo = computed(() => {
   const session = practiceStore.currentSession
@@ -682,18 +685,23 @@ const skillInfo = computed(() => {
   // Получаем информацию о навыке из store или данных сессии
   const skillId = session.skill_id
   const skill = catalogStore.skillDetails.get(skillId)
+  const sessionData = session as unknown as Record<string, unknown>
 
   if (skill) {
+    const gradeNumber = resolveGradeNumber(skill.grade_id, sessionData, skill as unknown as Record<string, unknown>)
     return {
-      gradeNumber: skill.grade_id || (session as any).grade_number || (session as any).grade_id || 3,
+      gradeNumber,
+      gradeLabel: formatGradeLabel(gradeNumber),
       code: skill.code || (session as any).skill_code || '',
       title: skill.title || (session as any).skill_title || 'Тапсырма'
     }
   }
 
   // Fallback: используем данные из сессии
+  const gradeNumber = resolveGradeNumber(sessionData.grade_id, sessionData)
   return {
-    gradeNumber: (session as any).grade_number || (session as any).grade_id || 3,
+    gradeNumber,
+    gradeLabel: formatGradeLabel(gradeNumber),
     code: (session as any).skill_code || (session as any).code || '',
     title: (session as any).skill_title || (session as any).title || 'Тапсырма'
   }
@@ -1411,16 +1419,6 @@ const loadNextQuestion = async () => {
   }
 }
 
-const finishSession = async () => {
-  if (!practiceStore.currentSession) return
-  try {
-    await practiceStore.finishSession(practiceStore.currentSession.id)
-    goToResults()
-  } catch (err: any) {
-    console.error('Failed to finish session:', err)
-  }
-}
-
 const goToResults = () => {
   stopTimer()
   if (practiceStore.currentSession?.id) {
@@ -1428,17 +1426,6 @@ const goToResults = () => {
       name: 'practice-results',
       params: { sessionId: practiceStore.currentSession.id },
     })
-  }
-}
-
-const requestPluginAnswer = () => {
-  if (!pluginIframeRef.value?.contentWindow || !currentQuestion.value || currentQuestion.value.type !== 'PLUGIN') return
-  if (submitting.value || showingResult.value) return
-  error.value = null
-  try {
-    pluginIframeRef.value.contentWindow.postMessage({ type: 'REQUEST_ANSWER' }, '*')
-  } catch (e) {
-    console.warn('PracticeSession: postMessage REQUEST_ANSWER failed', e)
   }
 }
 
@@ -1552,7 +1539,10 @@ onMounted(async () => {
     }
     if (session?.skill_id) {
       try {
-        await catalogStore.getSkill(session.skill_id)
+        await Promise.all([
+          catalogStore.getSkill(session.skill_id),
+          catalogStore.getGrades(),
+        ])
       } catch {
         // Игнорируем
       }
