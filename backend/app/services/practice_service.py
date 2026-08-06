@@ -862,6 +862,7 @@ class PracticeService:
             reward_payload = await GamificationService(self.session).question_result(
                 user_uuid,
                 correct=is_correct,
+                difficulty=difficulty_from_question_level(question_level),
                 topic_id=ps.skill_id,
                 smartscore_before=score_before,
                 smartscore_after=ps.current_smartscore,

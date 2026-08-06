@@ -100,7 +100,7 @@ VEHICLE_PROGRESSION: tuple[VehicleProgression, ...] = (
     VehicleProgression("porsche-963-lmdh-hypercar", "Гиперкөлік", "hypercar", "hypercar", 12, 10900, 13500, "/assets/models/body/porsche_963_lmdh_hypercar.glb", "/assets/models/body/porsche_963_lmdh_hypercar.glb"),
 )
 
-XP_PER_CORRECT = 2
+DIFFICULTY_XP: dict[str, int] = {"easy": 2, "medium": 4, "hard": 6}
 LEVEL_THRESHOLDS: dict[int, int] = {
     1: 0,
     2: 300,
@@ -370,6 +370,7 @@ class GamificationService:
         student_id: uuid.UUID,
         *,
         correct: bool,
+        difficulty: str = "medium",
         topic_id: int | None,
         smartscore_before: int,
         smartscore_after: int,
@@ -380,6 +381,7 @@ class GamificationService:
         return await self.process_answer_rewards(
             student_id,
             correct=correct,
+            difficulty=difficulty,
             topic_id=topic_id,
             smartscore_before=smartscore_before,
             smartscore_after=smartscore_after,
@@ -393,6 +395,7 @@ class GamificationService:
         student_id: uuid.UUID,
         *,
         correct: bool,
+        difficulty: str = "medium",
         topic_id: int | None,
         smartscore_before: int,
         smartscore_after: int,
@@ -425,7 +428,8 @@ class GamificationService:
         streak_reward_cycles: list[int] = []
 
         if correct:
-            xp_gained = XP_PER_CORRECT
+            normalized_difficulty = normalize_difficulty(difficulty)
+            xp_gained = xp_for_difficulty(normalized_difficulty)
             wallet.xp += xp_gained
             wallet.total_problems_solved += 1
             self._add_wallet_transaction(
@@ -436,7 +440,7 @@ class GamificationService:
                 wallet=wallet,
                 reference_type=reference_type or "practice_attempt",
                 reference_id=reference_id,
-                metadata={"topic_id": topic_id},
+                metadata={"topic_id": topic_id, "difficulty": normalized_difficulty},
             )
 
             if topic_id is not None:
@@ -537,6 +541,7 @@ class GamificationService:
         return await self.question_result(
             student_id,
             correct=correct,
+            difficulty=difficulty,
             topic_id=None,
             smartscore_before=0,
             smartscore_after=0,
@@ -548,6 +553,7 @@ class GamificationService:
         is_correct: bool,
         current_streak: int,
         *,
+        difficulty: str = "medium",
         topic_id: int | None = None,
         smartscore_before: int = 0,
         smartscore_after: int = 0,
@@ -555,6 +561,7 @@ class GamificationService:
         result = await self.question_result(
             user_id,
             correct=is_correct,
+            difficulty=difficulty,
             topic_id=topic_id,
             smartscore_before=smartscore_before,
             smartscore_after=smartscore_after,
@@ -994,6 +1001,10 @@ def normalize_difficulty(difficulty: str) -> str:
     if value in {"3", "4"}:
         return "medium"
     return "hard"
+
+
+def xp_for_difficulty(difficulty: str) -> int:
+    return DIFFICULTY_XP[normalize_difficulty(difficulty)]
 
 
 def difficulty_from_question_level(level: int | None) -> str:

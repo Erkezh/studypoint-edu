@@ -326,8 +326,9 @@ const handleRegister = async () => {
       school: school.value || null,
     })
 
-    // Redirect to pricing page after registration
-    router.push({ name: 'pricing' })
+    // A student makes the permanent game choice immediately after registration.
+    // Other account types continue through the existing subscription flow.
+    await router.replace({ name: selectedRole.value === 'STUDENT' ? 'game-select' : 'pricing' })
   } catch (err: unknown) {
     const e = err as { response?: { data?: { detail?: string } }, message?: string }
     error.value = e.response?.data?.detail || e.message || 'Тіркелу қатесі. Қайта көріңіз.'

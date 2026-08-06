@@ -1,4 +1,9 @@
-from app.services.gamification_service import GamificationService, calculate_level, character_item_progression
+from app.services.gamification_service import (
+    GamificationService,
+    calculate_level,
+    character_item_progression,
+    xp_for_difficulty,
+)
 
 
 def test_progression_supports_twelve_levels() -> None:
@@ -25,3 +30,12 @@ def test_character_catalog_spans_full_progression() -> None:
     level, price = character_item_progression("Overall_SmartDress", "overall")
     assert 6 <= level <= 12
     assert price > 0
+
+
+def test_correct_answer_xp_scales_with_difficulty() -> None:
+    assert xp_for_difficulty("easy") == 2
+    assert xp_for_difficulty("medium") == 4
+    assert xp_for_difficulty("hard") == 6
+    assert xp_for_difficulty("1") == 2
+    assert xp_for_difficulty("3") == 4
+    assert xp_for_difficulty("5") == 6

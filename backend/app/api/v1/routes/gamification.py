@@ -77,6 +77,7 @@ async def post_answer_result(
     reward = await svc.question_result(
         user.id,
         correct=payload.correct,
+        difficulty=payload.difficulty,
         topic_id=payload.topic_id,
         smartscore_before=payload.smartscore_before,
         smartscore_after=payload.smartscore_after,
@@ -96,6 +97,7 @@ async def post_reward_question_result(
     reward = await svc.question_result(
         user.id,
         correct=payload.correct,
+        difficulty=payload.difficulty,
         topic_id=payload.topic_id,
         smartscore_before=payload.smartscore_before,
         smartscore_after=payload.smartscore_after,

@@ -238,6 +238,20 @@ router.beforeEach(async (to, from, next) => {
   // Ждем завершения инициализации (бесшумного обновления токена через cookie)
   await authStore.init()
 
+  // The home page is public, but an authenticated student must complete the
+  // one-time game choice before continuing into the student experience.
+  if (to.name === 'home' && authStore.isAuthenticated && authStore.user?.role === 'STUDENT') {
+    try {
+      await gameSettings.fetchGameSettings()
+      if (!gameSettings.hasSelectedGame) {
+        next({ name: 'game-select' })
+        return
+      }
+    } catch {
+      // Keep the public home page available if game settings cannot be loaded.
+    }
+  }
+
   // Если роут требует аутентификацию
   if (to.meta.requiresAuth) {
     if (!authStore.isAuthenticated) {
