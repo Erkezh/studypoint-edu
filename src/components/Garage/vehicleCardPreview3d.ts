@@ -70,7 +70,6 @@ function previewRotation(path: string): number {
   const filename = path.toLowerCase()
   if (
     filename.includes('btwin_triban') ||
-    filename.includes('vino.glb') ||
     filename.includes('ducati_streetfighter')
   ) return Math.PI * 0.18
   return Math.PI * 0.68
@@ -81,9 +80,11 @@ function normalizeModel(model: THREE.Object3D, path: string, rotation: number) {
   const size = box.getSize(new THREE.Vector3())
   const maxAxis = Math.max(size.x, size.y, size.z)
   const filename = path.toLowerCase()
-  const targetSize = filename.includes('mini_car') || filename.includes('mustang') || filename.includes('mclaren')
-    ? 3.25
-    : 3.7
+  const targetSize = filename.includes('mustang') || filename.includes('mclaren')
+    ? 4.2
+    : filename.includes('mini_car')
+      ? 3.4
+      : 3.7
   if (maxAxis > 0) model.scale.multiplyScalar(targetSize / maxAxis)
 
   box.setFromObject(model)
