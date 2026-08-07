@@ -1,29 +1,11 @@
 <template>
   <span class="vehicle-card-preview" aria-hidden="true">
-    <img v-if="thumbnail" :src="thumbnail" alt="" />
+    <img :src="`/assets/garage-thumbnails/${vehicleId}.png`" alt="" />
   </span>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue'
-import { getVehicleCardThumbnail } from './vehicleCardThumbnail'
-
-const props = defineProps<{ model: string }>()
-const thumbnail = ref('')
-let loadToken = 0
-
-const loadThumbnail = async () => {
-  const token = ++loadToken
-  try {
-    const image = await getVehicleCardThumbnail(props.model)
-    if (token === loadToken) thumbnail.value = image
-  } catch {
-    if (token === loadToken) thumbnail.value = ''
-  }
-}
-
-onMounted(loadThumbnail)
-watch(() => props.model, loadThumbnail)
+defineProps<{ vehicleId: string }>()
 </script>
 
 <style scoped>

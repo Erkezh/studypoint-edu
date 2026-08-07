@@ -21,7 +21,7 @@
       >
         <VehicleCardPreview
           v-if="option.model && !option.value"
-          :model="option.model"
+          :vehicle-id="option.id"
         />
         <span v-else class="garage-option__preview" :style="previewStyle(option)"></span>
         <span class="garage-option__name">{{ option.name }}</span>
