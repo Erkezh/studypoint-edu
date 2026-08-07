@@ -13,6 +13,7 @@ from app.db.session import get_db_session
 from app.models.quiz import Quiz, QuizQuestion, QuizAssignment
 from app.schemas.quiz import QuizCreateRequest, QuizAssignmentCreate
 from app.schemas.quiz import StudentQuizAssignmentResponse
+from app.services.gamification_service import GamificationService, difficulty_from_question_level
 
 
 class QuizService:
@@ -390,6 +391,7 @@ class QuizService:
         correct_count = 0
         total_count = len(quiz.questions)
         graded_results = {}
+        gamification = GamificationService(self.session)
 
         # Sort questions by position to maintain the same ordering
         sorted_qs = sorted(quiz.questions, key=lambda x: x.position)
@@ -471,11 +473,25 @@ class QuizService:
 
             if is_correct:
                 correct_count += 1
+                reward = await gamification.question_result(
+                    student_uuid,
+                    correct=True,
+                    difficulty=difficulty_from_question_level(qq.level or q.level or 1),
+                    topic_id=q.skill_id,
+                    smartscore_before=0,
+                    smartscore_after=0,
+                    idempotency_key=f"quiz_assignment:{assignment_uuid}:question:{qq.id}",
+                    reference_type="quiz_question",
+                    reference_id=str(qq.id),
+                )
+            else:
+                reward = None
             graded_results[q_id_str] = {
                 "correct": is_correct,
                 "submitted_answer": submitted_payload if q.type.value in ("PLUGIN", "INTERACTIVE") else submitted_ans,
                 "correct_answer": q.correct_answer,
-                "question": submitted_payload.get("question") if isinstance(submitted_payload, dict) else None
+                "question": submitted_payload.get("question") if isinstance(submitted_payload, dict) else None,
+                "reward": reward,
             }
 
         computed_score = 0

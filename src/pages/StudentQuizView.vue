@@ -426,6 +426,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, isRef } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useGamificationStore } from '@/stores/gamification'
 import Header from '@/components/layout/Header.vue'
 import Modal from '@/components/ui/Modal.vue'
 import SessionQuestionPreview from '@/components/analytics/SessionQuestionPreview.vue'
@@ -433,6 +434,7 @@ import { quizApi, type QuizResponse } from '@/api/quiz'
 import router from '@/router'
 
 const authStore = useAuthStore()
+const gamificationStore = useGamificationStore()
 const isChildWithParent = computed(() => authStore.user?.role === 'STUDENT' && !!(authStore.user as Record<string, unknown>)?.parent_id)
 
 const props = defineProps<{
@@ -837,6 +839,7 @@ const confirmSubmitQuiz = async () => {
       })
       if (resp?.data?.data) {
         currentAssignment.value = resp.data.data
+        await gamificationStore.fetchGamification()
       }
     } catch (err) {
       console.error('Failed to submit quiz assignment to server:', err)

@@ -25,6 +25,12 @@ async def admin_token(client: httpx.AsyncClient) -> str:
 
 @pytest.mark.asyncio
 async def test_quiz_grading_mcq_and_plugin(client, teacher_token, student_token, admin_token):
+    wallet_before_res = await client.get(
+        "/api/v1/gamification/me",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert wallet_before_res.status_code == 200, wallet_before_res.text
+    wallet_before = wallet_before_res.json()["data"]
     # 1. Create a PLUGIN question using admin_token
     q_plugin = await client.post(
         "/api/v1/admin/questions",
@@ -124,6 +130,17 @@ async def test_quiz_grading_mcq_and_plugin(client, teacher_token, student_token,
     assert submitted_assignment["question_results"][str(qq_id_mcq)]["submitted_answer"] == "B"
     assert submitted_assignment["question_results"][str(qq_id_plugin)]["correct"] is True
     assert submitted_assignment["question_results"][str(qq_id_plugin)]["submitted_answer"]["answer"] == 8
+    assert submitted_assignment["question_results"][str(qq_id_mcq)]["reward"]["coins_gained"] >= 1
+    assert submitted_assignment["question_results"][str(qq_id_plugin)]["reward"]["coins_gained"] >= 1
+
+    wallet_after_res = await client.get(
+        "/api/v1/gamification/me",
+        headers={"Authorization": f"Bearer {student_token}"},
+    )
+    assert wallet_after_res.status_code == 200, wallet_after_res.text
+    wallet_after = wallet_after_res.json()["data"]
+    assert wallet_after["coins"] >= wallet_before["coins"] + 2
+    assert wallet_after["xp"] > wallet_before["xp"]
 
 @pytest.mark.asyncio
 async def test_quiz_grading_mixed_correctness(client, teacher_token, student_token, admin_token):
