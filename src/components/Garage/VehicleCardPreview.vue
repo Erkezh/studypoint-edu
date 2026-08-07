@@ -20,7 +20,6 @@ let scene: THREE.Scene | null = null
 let camera: THREE.PerspectiveCamera | null = null
 let modelRoot: THREE.Object3D | null = null
 let resizeObserver: ResizeObserver | null = null
-let frameId = 0
 let loadToken = 0
 
 const loader = new GLTFLoader()
@@ -39,7 +38,6 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  cancelAnimationFrame(frameId)
   resizeObserver?.disconnect()
   renderer?.dispose()
   renderer?.domElement.remove()
@@ -53,27 +51,31 @@ function initScene() {
   if (!host.value || renderer) return
 
   scene = new THREE.Scene()
-  camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100)
-  camera.position.set(2.9, 1.15, 6.2)
-  camera.lookAt(0, 0, 0)
+  camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100)
+  camera.position.set(3.25, 1.8, 5.4)
+  camera.lookAt(0, -0.05, 0)
 
   renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: 'low-power' })
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
   renderer.outputColorSpace = THREE.SRGBColorSpace
+  renderer.toneMapping = THREE.ACESFilmicToneMapping
+  renderer.toneMappingExposure = 1.2
   host.value.appendChild(renderer.domElement)
 
-  scene.add(new THREE.HemisphereLight('#ffffff', '#cbd5e1', 2.15))
-  const keyLight = new THREE.DirectionalLight('#ffffff', 2.85)
-  keyLight.position.set(3, 4, 5)
+  scene.add(new THREE.HemisphereLight('#ffffff', '#94a3b8', 2.8))
+  const keyLight = new THREE.DirectionalLight('#ffffff', 4.2)
+  keyLight.position.set(4, 5, 6)
   scene.add(keyLight)
-  const fillLight = new THREE.DirectionalLight('#e0f2fe', 1.45)
-  fillLight.position.set(-4, 2, -2)
+  const fillLight = new THREE.DirectionalLight('#dbeafe', 2.2)
+  fillLight.position.set(-4, 3, 2)
   scene.add(fillLight)
+  const rimLight = new THREE.DirectionalLight('#fef3c7', 1.4)
+  rimLight.position.set(1, 2, -5)
+  scene.add(rimLight)
 
   resizeObserver = new ResizeObserver(resize)
   resizeObserver.observe(host.value)
   resize()
-  animate()
 }
 
 async function loadModel() {
@@ -88,6 +90,7 @@ async function loadModel() {
     modelRoot = source.clone(true)
     normalizeModel(modelRoot)
     scene.add(modelRoot)
+    renderPreview()
   } catch {
     // Empty preview is better than blocking the garage card.
   }
@@ -106,13 +109,13 @@ function normalizeModel(model: THREE.Object3D) {
   const box = new THREE.Box3().setFromObject(model)
   const size = box.getSize(new THREE.Vector3())
   const maxAxis = Math.max(size.x, size.y, size.z)
-  if (maxAxis > 0) model.scale.multiplyScalar(1.85 / maxAxis)
+  if (maxAxis > 0) model.scale.multiplyScalar(2.2 / maxAxis)
 
   box.setFromObject(model)
   const center = box.getCenter(new THREE.Vector3())
   model.position.sub(center)
-  model.position.y = -0.34
-  model.rotation.y = -0.55
+  model.position.y = -0.08
+  model.rotation.y = Math.PI * 0.68
 }
 
 function resize() {
@@ -123,11 +126,10 @@ function resize() {
   renderer.setSize(width, height, false)
   camera.aspect = width / height
   camera.updateProjectionMatrix()
+  renderPreview()
 }
 
-function animate() {
-  frameId = requestAnimationFrame(animate)
-  if (modelRoot) modelRoot.rotation.y += 0.004
+function renderPreview() {
   if (renderer && scene && camera) renderer.render(scene, camera)
 }
 </script>
@@ -135,9 +137,12 @@ function animate() {
 <style scoped>
 .vehicle-card-preview {
   position: absolute;
-  inset: 3px 5px 30px;
-  z-index: 0;
+  inset: 2px 4px 42px;
+  z-index: 1;
   opacity: 1;
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(circle at 50% 62%, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.5) 62%, transparent 76%);
 }
 
 .vehicle-card-preview :deep(canvas) {

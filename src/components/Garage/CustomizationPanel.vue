@@ -23,7 +23,7 @@
           v-if="option.model && !option.value"
           :model="option.model"
         />
-        <span class="garage-option__preview" :style="previewStyle(option)"></span>
+        <span v-else class="garage-option__preview" :style="previewStyle(option)"></span>
         <span class="garage-option__name">{{ option.name }}</span>
         <small>{{ locked(option) ? lockedLabel(option) : rarityLabel(option.rarity) }}</small>
         <span v-if="locked(option)" class="garage-option__lock" aria-hidden="true">
