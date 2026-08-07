@@ -24,17 +24,17 @@ export const usePracticeStore = defineStore('practice', () => {
   const lastActivity = ref<number>(Date.now())
   const rateLimitMessage = ref<string | null>(null)
 
-  const smartscore = computed(() => currentSession.value?.smartscore || 0)
+  const smartscore = computed(() => currentSession.value?.current_smartscore ?? currentSession.value?.smartscore ?? 0)
   const zone = computed(() => {
     const score = smartscore.value
     if (score < 60) return 'LEARNING'
     if (score < 80) return 'REFINING'
     return 'CHALLENGE'
   })
-  const questionsAnswered = computed(() => currentSession.value?.questions_answered || 0)
-  const correctCount = computed(() => currentSession.value?.correct_count || 0)
-  const wrongCount = computed(() => currentSession.value?.wrong_count || 0)
-  const timeElapsed = computed(() => currentSession.value?.time_elapsed_sec || 0)
+  const questionsAnswered = computed(() => currentSession.value?.total_questions_answered ?? currentSession.value?.questions_answered ?? 0)
+  const correctCount = computed(() => currentSession.value?.total_correct ?? currentSession.value?.correct_count ?? 0)
+  const wrongCount = computed(() => currentSession.value?.total_incorrect ?? currentSession.value?.wrong_count ?? 0)
+  const timeElapsed = computed(() => currentSession.value?.active_time_seconds ?? currentSession.value?.time_elapsed_sec ?? 0)
 
   // Создание или восстановление сессии
   const createSession = async (skillId: number) => {

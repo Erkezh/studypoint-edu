@@ -1295,9 +1295,6 @@ const submitAnswer = async (answer: any, questionType?: string) => {
       const sessionAny = response.session as any
       const currentSmartScore = sessionAny?.current_smartscore || sessionAny?.smartscore || 0
       if (currentSmartScore >= 100 && !response.finished) {
-        if (qType === 'PLUGIN') {
-          return
-        }
         try {
           await practiceStore.finishSession(practiceStore.currentSession!.id)
         } catch (err) {
@@ -1497,8 +1494,8 @@ const saveToRecentSessions = () => {
   const data = {
     id: session.id,
     skillName: title,
-    correct: session.correct_count || 0,
-    total: session.questions_answered || 0,
+    correct: session.total_correct ?? session.correct_count ?? 0,
+    total: session.total_questions_answered ?? session.questions_answered ?? 0,
     date: new Date().toISOString()
   }
 
@@ -1534,7 +1531,8 @@ onMounted(async () => {
       return
     }
 
-    if (shouldCheckTrialQuestions.value && (trialQuestions.isTrialQuestionsExhausted.value || (session && session.questions_answered >= 10))) {
+    const answeredCount = session?.total_questions_answered ?? session?.questions_answered ?? 0
+    if (shouldCheckTrialQuestions.value && (trialQuestions.isTrialQuestionsExhausted.value || answeredCount >= 10)) {
       showTrialEndedModal.value = true
     }
     if (session?.skill_id) {
@@ -1560,8 +1558,8 @@ onMounted(async () => {
     saveToRecentSessions()
 
     // Восстанавливаем время сессии
-    if (session?.time_elapsed_sec !== undefined) {
-      currentTime.value = session.time_elapsed_sec
+    if (session) {
+      currentTime.value = session.active_time_seconds ?? session.time_elapsed_sec ?? 0
     }
 
     if (session && !session.current_question) {

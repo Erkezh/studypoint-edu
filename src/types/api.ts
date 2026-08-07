@@ -220,6 +220,15 @@ export interface PracticeSessionResponse {
   time_elapsed_sec: number
   state: Record<string, unknown>
   current_question?: QuestionPublic | null
+  current_smartscore?: number | null
+  best_smartscore?: number | null
+  total_questions_answered?: number | null
+  total_correct?: number | null
+  total_incorrect?: number | null
+  current_streak_correct?: number | null
+  max_streak_correct?: number | null
+  current_zone?: string | null
+  active_time_seconds?: number | null
 }
 
 export interface QuestionPublic {

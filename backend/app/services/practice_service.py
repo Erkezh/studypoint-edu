@@ -87,6 +87,9 @@ class PracticeService:
             "recent_window": {"correct": 0, "total": 0},
             "entered_challenge_zone_at": None,
             "wrong_streak": 0,  # Серия неправильных ответов подряд
+            "difficulty_correct_streak": 0,
+            "difficulty_wrong_streak": 0,
+            "current_question_level": 1,
         }
 
         now = utc_now()
@@ -134,6 +137,10 @@ class PracticeService:
                 ps.state['generated_questions'][question_id] = q_data
                 ps.state["current_question_id"] = question_id
                 ps.last_question_id = None  # Для генераторов не используем question_id из БД
+                if QuestionType(q_data.get("type", "MCQ")) in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                    import random
+                    ps.state["current_question_seed"] = random.randint(1, 2147483647)
+                    ps.state["current_question_level"] = _current_plugin_level(ps)
                 # Сохраняем изменения в state
                 await self.session.flush()
                 q = _generated_to_question_public(q_data, question_id)
@@ -294,17 +301,7 @@ class PracticeService:
             import random
             seed = random.randint(1, 2147483647)
             
-            score = ps.current_smartscore or 0
-            if score >= 90:
-                lvl = 5
-            elif score >= 75:
-                lvl = 4
-            elif score >= 55:
-                lvl = 3
-            elif score >= 30:
-                lvl = 2
-            else:
-                lvl = 1
+            lvl = _current_plugin_level(ps)
 
             ps.state["current_question_seed"] = seed
             ps.state["current_question_level"] = lvl
@@ -428,6 +425,8 @@ class PracticeService:
             logger.info(f"Marking question {current_q_id} as answered")
             ps.state.setdefault("answered_question_ids", []).append(current_q_id)
             question_level = q_data.get('level', 1)
+            if question_type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+                question_level = _current_plugin_level(ps)
             question = None  # Для генераторов question = None
             # Для генераторов правильный ответ уже в q_data
             correct_answer = q_data.get('correct_answer', {})
@@ -786,6 +785,9 @@ class PracticeService:
         ps.current_smartscore = score_res.smartscore
         ps.current_zone = score_res.zone
         ps.best_smartscore = max(ps.best_smartscore or 0, ps.current_smartscore)
+
+        if question_type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
+            _apply_plugin_difficulty_result(ps, is_correct=is_correct)
         
         # Обновляем серию неправильных ответов в state
         ps.state["wrong_streak"] = wrong_streak_after
@@ -908,17 +910,7 @@ class PracticeService:
                     if next_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
                         import random
                         seed = random.randint(1, 2147483647)
-                        score = ps.current_smartscore or 0
-                        if score >= 90:
-                            lvl = 5
-                        elif score >= 75:
-                            lvl = 4
-                        elif score >= 55:
-                            lvl = 3
-                        elif score >= 30:
-                            lvl = 2
-                        else:
-                            lvl = 1
+                        lvl = _current_plugin_level(ps)
                         ps.state["current_question_seed"] = seed
                         ps.state["current_question_level"] = lvl
                         from sqlalchemy.orm.attributes import flag_modified
@@ -947,17 +939,7 @@ class PracticeService:
                     if next_q.type in (QuestionType.PLUGIN, QuestionType.INTERACTIVE):
                         import random
                         seed = random.randint(1, 2147483647)
-                        score = ps.current_smartscore or 0
-                        if score >= 90:
-                            lvl = 5
-                        elif score >= 75:
-                            lvl = 4
-                        elif score >= 55:
-                            lvl = 3
-                        elif score >= 30:
-                            lvl = 2
-                        else:
-                            lvl = 1
+                        lvl = _current_plugin_level(ps)
                         ps.state["current_question_seed"] = seed
                         ps.state["current_question_level"] = lvl
 
@@ -1064,17 +1046,7 @@ class PracticeService:
                 ps.state["current_question_seed"] = seed
                 need_save = True
             if lvl is None:
-                score = ps.current_smartscore or 0
-                if score >= 90:
-                    lvl = 5
-                elif score >= 75:
-                    lvl = 4
-                elif score >= 55:
-                    lvl = 3
-                elif score >= 30:
-                    lvl = 2
-                else:
-                    lvl = 1
+                lvl = _current_plugin_level(ps)
                 ps.state["current_question_level"] = lvl
                 need_save = True
                 
@@ -1225,6 +1197,56 @@ class PracticeService:
 
 def _is_expired(last_activity_at: datetime) -> bool:
     return (utc_now() - last_activity_at).total_seconds() > (settings.practice_session_expiry_hours * 3600)
+
+
+def _current_plugin_level(ps: PracticeSession) -> int:
+    """Return the persisted adaptive level, including a safe legacy fallback."""
+    state = ps.state or {}
+    raw_level = state.get("current_question_level")
+    if raw_level is None:
+        score = ps.current_smartscore or 0
+        raw_level = 5 if score >= 90 else 4 if score >= 75 else 3 if score >= 55 else 2 if score >= 30 else 1
+    try:
+        return max(1, min(5, int(raw_level)))
+    except (TypeError, ValueError):
+        return 1
+
+
+def _plugin_difficulty_transition(
+    *, level: int, correct_streak: int, wrong_streak: int, is_correct: bool
+) -> tuple[int, int, int]:
+    """Increase after two correct answers and decrease after three wrong answers."""
+    level = max(1, min(5, level))
+    if is_correct:
+        correct_streak += 1
+        wrong_streak = 0
+        if correct_streak >= 2:
+            level = min(5, level + 1)
+            correct_streak = 0
+    else:
+        wrong_streak += 1
+        correct_streak = 0
+        if wrong_streak >= 3:
+            level = max(1, level - 1)
+            wrong_streak = 0
+    return level, correct_streak, wrong_streak
+
+
+def _apply_plugin_difficulty_result(ps: PracticeSession, *, is_correct: bool) -> None:
+    from sqlalchemy.orm.attributes import flag_modified
+
+    state = ps.state or {}
+    level, correct_streak, wrong_streak = _plugin_difficulty_transition(
+        level=_current_plugin_level(ps),
+        correct_streak=int(state.get("difficulty_correct_streak") or 0),
+        wrong_streak=int(state.get("difficulty_wrong_streak") or 0),
+        is_correct=is_correct,
+    )
+    state["current_question_level"] = level
+    state["difficulty_correct_streak"] = correct_streak
+    state["difficulty_wrong_streak"] = wrong_streak
+    ps.state = state
+    flag_modified(ps, "state")
 
 
 def _parse_uuid(value) -> uuid.UUID:
