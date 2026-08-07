@@ -12,7 +12,8 @@ export async function mountVehicleCardModel(canvas: HTMLCanvasElement, path: str
   if (disposed) return () => undefined
 
   const model = source.clone(true)
-  normalizeModel(model)
+  const baseRotation = previewRotation(path)
+  normalizeModel(model, path, baseRotation)
 
   const scene = new THREE.Scene()
   scene.add(model)
@@ -38,9 +39,11 @@ export async function mountVehicleCardModel(canvas: HTMLCanvasElement, path: str
   renderer.toneMappingExposure = 1.2
 
   let frame = 0
+  const startedAt = performance.now()
   const render = () => {
     if (disposed) return
-    model.rotation.y += 0.004
+    const elapsed = (performance.now() - startedAt) / 1000
+    model.rotation.y = baseRotation + Math.sin(elapsed * 0.7) * 0.12
     renderer.render(scene, camera)
     frame = requestAnimationFrame(render)
   }
@@ -63,15 +66,29 @@ function loadModel(path: string): Promise<THREE.Object3D> {
   return model
 }
 
-function normalizeModel(model: THREE.Object3D) {
+function previewRotation(path: string): number {
+  const filename = path.toLowerCase()
+  if (
+    filename.includes('btwin_triban') ||
+    filename.includes('vino.glb') ||
+    filename.includes('ducati_streetfighter')
+  ) return Math.PI * 0.18
+  return Math.PI * 0.68
+}
+
+function normalizeModel(model: THREE.Object3D, path: string, rotation: number) {
   const box = new THREE.Box3().setFromObject(model)
   const size = box.getSize(new THREE.Vector3())
   const maxAxis = Math.max(size.x, size.y, size.z)
-  if (maxAxis > 0) model.scale.multiplyScalar(4.1 / maxAxis)
+  const filename = path.toLowerCase()
+  const targetSize = filename.includes('mini_car') || filename.includes('mustang') || filename.includes('mclaren')
+    ? 3.25
+    : 3.7
+  if (maxAxis > 0) model.scale.multiplyScalar(targetSize / maxAxis)
 
   box.setFromObject(model)
   const center = box.getCenter(new THREE.Vector3())
   model.position.sub(center)
   model.position.y = -0.08
-  model.rotation.y = Math.PI * 0.68
+  model.rotation.y = rotation
 }
