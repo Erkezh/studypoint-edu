@@ -1,11 +1,52 @@
 <template>
-  <span class="vehicle-card-preview" aria-hidden="true">
+  <span ref="host" class="vehicle-card-preview" aria-hidden="true">
     <img :src="`/assets/garage-thumbnails/${vehicleId}.png`" alt="" />
+    <canvas ref="canvas"></canvas>
   </span>
 </template>
 
 <script setup lang="ts">
-defineProps<{ vehicleId: string }>()
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { mountVehicleCardModel } from './vehicleCardPreview3d'
+
+const props = defineProps<{ vehicleId: string; model: string }>()
+const host = ref<HTMLElement | null>(null)
+const canvas = ref<HTMLCanvasElement | null>(null)
+let observer: IntersectionObserver | null = null
+let stopPreview: (() => void) | null = null
+let previewVersion = 0
+
+const stop = () => {
+  previewVersion += 1
+  stopPreview?.()
+  stopPreview = null
+}
+
+const start = async () => {
+  if (!canvas.value || stopPreview) return
+  const version = ++previewVersion
+  const cleanup = await mountVehicleCardModel(canvas.value, props.model)
+  if (version !== previewVersion) cleanup()
+  else stopPreview = cleanup
+}
+
+onMounted(() => {
+  observer = new IntersectionObserver(([entry]) => {
+    if (entry?.isIntersecting) void start()
+    else stop()
+  }, { threshold: 0.1 })
+  if (host.value) observer.observe(host.value)
+})
+
+watch(() => props.model, () => {
+  stop()
+  void start()
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  stop()
+})
 </script>
 
 <style scoped>
@@ -26,6 +67,13 @@ defineProps<{ vehicleId: string }>()
   height: 100%;
   display: block;
   object-fit: contain;
+}
+
+.vehicle-card-preview canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 @media (max-width: 720px) {
