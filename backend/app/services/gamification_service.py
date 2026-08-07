@@ -72,6 +72,10 @@ def character_item_progression(item_key: str, category: str) -> tuple[int, int]:
     return level, price
 
 
+def coins_for_correct_answer(correct: bool) -> int:
+    return CORRECT_ANSWER_COINS if correct else 0
+
+
 @dataclass(frozen=True)
 class VehicleProgression:
     id: str
@@ -101,6 +105,7 @@ VEHICLE_PROGRESSION: tuple[VehicleProgression, ...] = (
 )
 
 DIFFICULTY_XP: dict[str, int] = {"easy": 2, "medium": 4, "hard": 6}
+CORRECT_ANSWER_COINS = 1
 LEVEL_THRESHOLDS: dict[int, int] = {
     1: 0,
     2: 300,
@@ -422,6 +427,7 @@ class GamificationService:
         previous_level = wallet.level
 
         xp_gained = 0
+        base_coins = 0
         milestone_coins = 0
         milestone_rewards: list[dict[str, int]] = []
         streak_bonus = 0
@@ -430,13 +436,15 @@ class GamificationService:
         if correct:
             normalized_difficulty = normalize_difficulty(difficulty)
             xp_gained = xp_for_difficulty(normalized_difficulty)
+            base_coins = coins_for_correct_answer(correct)
             wallet.xp += xp_gained
+            wallet.coins += base_coins
             wallet.total_problems_solved += 1
             self._add_wallet_transaction(
                 student_id,
-                transaction_type="CORRECT_ANSWER_XP",
+                transaction_type="CORRECT_ANSWER_REWARD",
                 xp_change=xp_gained,
-                coin_change=0,
+                coin_change=base_coins,
                 wallet=wallet,
                 reference_type=reference_type or "practice_attempt",
                 reference_id=reference_id,
@@ -493,11 +501,11 @@ class GamificationService:
         state.total_problems_solved = wallet.total_problems_solved
         state.combo_streak = 0
 
-        coins_gained = milestone_coins + level_bonus + streak_bonus
+        coins_gained = base_coins + milestone_coins + level_bonus + streak_bonus
         result = {
             "xp_gained": xp_gained,
             "coins_gained": coins_gained,
-            "base_coins": 0,
+            "base_coins": base_coins,
             "combo_bonus": 0,
             "combo_streak": 0,
             "daily_streak": streak.current_streak,
