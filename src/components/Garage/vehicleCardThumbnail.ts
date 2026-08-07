@@ -73,7 +73,7 @@ function normalizeModel(model: THREE.Object3D) {
   const box = new THREE.Box3().setFromObject(model)
   const size = box.getSize(new THREE.Vector3())
   const maxAxis = Math.max(size.x, size.y, size.z)
-  if (maxAxis > 0) model.scale.multiplyScalar(2.2 / maxAxis)
+  if (maxAxis > 0) model.scale.multiplyScalar(4.1 / maxAxis)
 
   box.setFromObject(model)
   const center = box.getCenter(new THREE.Vector3())

@@ -28,14 +28,15 @@ watch(() => props.model, loadThumbnail)
 
 <style scoped>
 .vehicle-card-preview {
-  position: absolute;
-  inset: 2px 4px 42px;
-  z-index: 1;
+  position: relative;
+  z-index: 2;
   display: grid;
+  width: 100%;
+  height: 50px;
   place-items: center;
   overflow: hidden;
-  border-radius: 12px;
-  background: radial-gradient(circle at 50% 62%, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.5) 62%, transparent 76%);
+  border-radius: 13px;
+  background: radial-gradient(circle at 50% 62%, rgba(255, 255, 255, 0.96), rgba(224, 242, 254, 0.5) 68%, transparent 82%);
 }
 
 .vehicle-card-preview img {
@@ -43,5 +44,11 @@ watch(() => props.model, loadThumbnail)
   height: 100%;
   display: block;
   object-fit: contain;
+}
+
+@media (max-width: 720px) {
+  .vehicle-card-preview {
+    height: 42px;
+  }
 }
 </style>
