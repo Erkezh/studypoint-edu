@@ -67,6 +67,7 @@ onBeforeUnmount(() => {
   height: 100%;
   display: block;
   object-fit: contain;
+  transform: translateY(7px);
 }
 
 .vehicle-card-preview canvas {
@@ -74,6 +75,7 @@ onBeforeUnmount(() => {
   inset: 0;
   width: 100%;
   height: 100%;
+  transform: translateY(7px);
 }
 
 @media (max-width: 720px) {
